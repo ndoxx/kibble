@@ -1,0 +1,2 @@
+subdirs(kibble)
+subdirs(tests)
