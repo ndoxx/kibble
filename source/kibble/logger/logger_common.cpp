@@ -5,7 +5,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 #if ANSI_3
@@ -42,7 +42,7 @@ const std::array<std::string, size_t(MsgType::COUNT)> Style::s_icons = {
 };
 #endif
 
-} // namespace log
+} // namespace klog
 
 #if ANSI_3
 static const std::map<char, std::string> s_COLORMAP = {

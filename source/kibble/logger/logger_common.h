@@ -43,7 +43,7 @@ struct WCB
     std::string escape;
 };
 
-namespace log
+namespace klog
 {
 
 enum class MsgType : std::uint8_t
@@ -89,5 +89,5 @@ public:
     static const std::array<std::string, size_t(MsgType::COUNT)> s_icons;
 };
 
-} // namespace log
+} // namespace klog
 } // namespace kb

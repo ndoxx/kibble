@@ -9,7 +9,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 #if ANSI_3
@@ -88,5 +88,5 @@ void LogFileSink::finish()
     std::cout << "\033[1;39mSaved log file: " << k_log_files_style << filename_ << "\n";
 }
 
-} // namespace log
+} // namespace klog
 } // namespace kb

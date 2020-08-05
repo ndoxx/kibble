@@ -9,7 +9,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 static constexpr float k_light = 0.75f;
@@ -257,5 +257,5 @@ void LoggerThread::thread_cleanup() { std::cout << "\033[0mLogger Thread: cleanu
 
 std::shared_ptr<LoggerThread> Logger::LOGGER_THREAD = nullptr;
 
-} // namespace log
+} // namespace klog
 } // namespace kb

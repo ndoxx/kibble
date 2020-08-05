@@ -9,7 +9,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 class Sink;
@@ -108,11 +108,11 @@ struct Logger
 	static std::shared_ptr<LoggerThread> LOGGER_THREAD;
 };
 
-} // namespace log
+} // namespace klog
 
 #if LOGGING_ENABLED==1
-    #define KLOGGER_START( ) log::Logger::LOGGER_THREAD = std::make_shared<log::LoggerThread>()
-    #define KLOGGER( INSTR ) (*log::Logger::LOGGER_THREAD).INSTR;
+    #define KLOGGER_START( ) klog::Logger::LOGGER_THREAD = std::make_shared<klog::LoggerThread>()
+    #define KLOGGER( INSTR ) (*klog::Logger::LOGGER_THREAD).INSTR;
 #else
     #define KLOGGER_START( )
     #define KLOGGER( INSTR )

@@ -12,7 +12,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 // Output stream that will synchronize with the logger thread queue on std::endl
@@ -63,7 +63,7 @@ private:
     return ls;
 }
 
-} // namespace log
+} // namespace klog
 
 // These macros will be optimized out (and arguments not evaluated)
 // when LOGGING_ENABLED is set to 0. Should be better performance wise than using a null stream.
@@ -71,53 +71,53 @@ private:
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::NORMAL, (S))
+        get_log(kb::H_((C)), kb::klog::MsgType::NORMAL, (S))
 #define KLOGI                                                                                                          \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(0, kb::log::MsgType::ITEM, 4)
+        get_log(0, kb::klog::MsgType::ITEM, 4)
 #define KLOGR(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::RAW, 0)
+        get_log(kb::H_((C)), kb::klog::MsgType::RAW, 0)
 #define KLOGN(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::NOTIFY, 0)
+        get_log(kb::H_((C)), kb::klog::MsgType::NOTIFY, 0)
 #define KLOGW(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::WARNING, 1, __LINE__, __FILE__)
+        get_log(kb::H_((C)), kb::klog::MsgType::WARNING, 1, __LINE__, __FILE__)
 #define KLOGE(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::ERROR, 2, __LINE__, __FILE__)
+        get_log(kb::H_((C)), kb::klog::MsgType::ERROR, 2, __LINE__, __FILE__)
 #define KLOGF(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::FATAL, 3, __LINE__, __FILE__)
+        get_log(kb::H_((C)), kb::klog::MsgType::FATAL, 3, __LINE__, __FILE__)
 #define KLOGG(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::GOOD, 3, __LINE__, __FILE__)
+        get_log(kb::H_((C)), kb::klog::MsgType::GOOD, 3, __LINE__, __FILE__)
 #define KLOGB(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::log::MsgType::BAD, 3, __LINE__, __FILE__)
+        get_log(kb::H_((C)), kb::klog::MsgType::BAD, 3, __LINE__, __FILE__)
 #define KBANG()                                                                                                        \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_("core"), kb::log::MsgType::BANG, 3) << __FILE__ << ":" << __LINE__ << std::endl
+        get_log(kb::H_("core"), kb::klog::MsgType::BANG, 3) << __FILE__ << ":" << __LINE__ << std::endl
 
-#define KLOGR__(C) get_log(kb::H_((C)), kb::log::MsgType::RAW, 0)
+#define KLOGR__(C) get_log(kb::H_((C)), kb::klog::MsgType::RAW, 0)
 
 } // namespace kb

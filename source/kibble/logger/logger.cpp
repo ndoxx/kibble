@@ -6,7 +6,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 LoggerStream::StringBuffer::StringBuffer(LoggerStream& parent) : parent_(parent) {}
@@ -48,5 +48,5 @@ void LoggerStream::submit(const std::string& message)
     Logger::LOGGER_THREAD->enqueue(stmt_);
 }
 
-} // namespace log
+} // namespace klog
 } // namespace kb

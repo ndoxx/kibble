@@ -6,7 +6,7 @@
 
 namespace kb
 {
-namespace log
+namespace klog
 {
 
 struct LogStatement;
@@ -59,5 +59,5 @@ private:
     std::vector<std::string> entries_;
 };
 
-} // namespace log
+} // namespace klog
 } // namespace kb

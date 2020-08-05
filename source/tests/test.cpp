@@ -35,7 +35,7 @@ void init_logger()
     	KLOGGER(create_channel(k_channels[ii], 3));
 	}
 
-    KLOGGER(attach_all("console_sink", std::make_unique<log::ConsoleSink>()));
+    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_single_threaded(true));
     KLOGGER(set_backtrace_on_error(false));
     KLOGGER(spawn());
