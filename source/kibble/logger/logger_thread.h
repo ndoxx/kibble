@@ -112,9 +112,11 @@ struct Logger
 
 #if LOGGING_ENABLED==1
     #define KLOGGER_START( ) kb::klog::Logger::LOGGER_THREAD = std::make_shared<kb::klog::LoggerThread>()
+    #define KLOGGER_SHARE_INSTANCE( INSTANCE ) kb::klog::Logger::LOGGER_THREAD = INSTANCE // TODO: Also share time base
     #define KLOGGER( INSTR ) (*kb::klog::Logger::LOGGER_THREAD).INSTR;
 #else
     #define KLOGGER_START( )
+    #define KLOGGER_SHARE_INSTANCE( INSTANCE )
     #define KLOGGER( INSTR )
 #endif
 } // namespace kb
