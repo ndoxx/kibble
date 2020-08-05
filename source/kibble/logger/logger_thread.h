@@ -111,8 +111,8 @@ struct Logger
 } // namespace klog
 
 #if LOGGING_ENABLED==1
-    #define KLOGGER_START( ) klog::Logger::LOGGER_THREAD = std::make_shared<klog::LoggerThread>()
-    #define KLOGGER( INSTR ) (*klog::Logger::LOGGER_THREAD).INSTR;
+    #define KLOGGER_START( ) kb::klog::Logger::LOGGER_THREAD = std::make_shared<kb::klog::LoggerThread>()
+    #define KLOGGER( INSTR ) (*kb::klog::Logger::LOGGER_THREAD).INSTR;
 #else
     #define KLOGGER_START( )
     #define KLOGGER( INSTR )
