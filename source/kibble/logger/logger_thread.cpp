@@ -253,9 +253,7 @@ void LoggerThread::thread_init() { std::cout << "\033[0mLogger Thread: init" << 
 
 void LoggerThread::thread_cleanup() { std::cout << "\033[0mLogger Thread: cleanup" << std::endl; }
 
-#if LOGGING_ENABLED == 1
-std::unique_ptr<LoggerThread> Logger::LOGGER_THREAD = std::make_unique<LoggerThread>();
-#endif
+std::shared_ptr<LoggerThread> Logger::LOGGER_THREAD = nullptr;
 
 } // namespace log
 } // namespace kb

@@ -55,8 +55,8 @@ private:
 };
 
 // Return a unique stream per invoker thread, using thread local storage
-static inline LoggerStream& get_log(hash_t channel, MsgType msg_type, uint8_t severity, int code_line = 0,
-                                    const char* code_file = "")
+[[maybe_unused]] static inline LoggerStream& get_log(hash_t channel, MsgType msg_type, uint8_t severity,
+                                                     int code_line = 0, const char* code_file = "")
 {
     thread_local LoggerStream ls;
     ls.prepare(channel, msg_type, severity, code_line, code_file);

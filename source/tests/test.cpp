@@ -28,16 +28,18 @@ static const std::array<std::string,15> k_channels =
 
 void init_logger()
 {
+	KLOGGER_START();
+	
 	for(size_t ii=0; ii<k_channels.size(); ++ii)
 	{
-    	WLOGGER(create_channel(k_channels[ii], 3));
+    	KLOGGER(create_channel(k_channels[ii], 3));
 	}
 
-    WLOGGER(attach_all("console_sink", std::make_unique<log::ConsoleSink>()));
-    WLOGGER(set_single_threaded(true));
-    WLOGGER(set_backtrace_on_error(false));
-    WLOGGER(spawn());
-    WLOGGER(sync());
+    KLOGGER(attach_all("console_sink", std::make_unique<log::ConsoleSink>()));
+    KLOGGER(set_single_threaded(true));
+    KLOGGER(set_backtrace_on_error(false));
+    KLOGGER(spawn());
+    KLOGGER(sync());
 }
 
 int main()

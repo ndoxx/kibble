@@ -12,8 +12,6 @@ target_include_directories(kibble
         "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
-target_compile_definitions(kibble PUBLIC -DLOGGING_ENABLED=1)
-
 set_target_properties(kibble
     PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"

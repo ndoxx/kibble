@@ -103,18 +103,18 @@ private:
 	std::multimap<hash_t, size_t> sink_subscriptions_;	     // Sinks can subscribe to multiple channels
 };
 
-#if LOGGING_ENABLED==1
 struct Logger
 {
-	static std::unique_ptr<LoggerThread> LOGGER_THREAD;
+	static std::shared_ptr<LoggerThread> LOGGER_THREAD;
 };
-#endif
 
 } // namespace log
 
 #if LOGGING_ENABLED==1
-    #define WLOGGER( INSTR ) (*log::Logger::LOGGER_THREAD).INSTR;
+    #define KLOGGER_START( ) log::Logger::LOGGER_THREAD = std::make_shared<log::LoggerThread>()
+    #define KLOGGER( INSTR ) (*log::Logger::LOGGER_THREAD).INSTR;
 #else
-    #define WLOGGER( INSTR )
+    #define KLOGGER_START( )
+    #define KLOGGER( INSTR )
 #endif
 } // namespace kb
