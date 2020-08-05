@@ -17,6 +17,7 @@ set_target_properties(kibble
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+        POSITION_INDEPENDENT_CODE ON
 )
 
 target_link_libraries(kibble
