@@ -46,7 +46,6 @@ int main()
 {
 	init_logger();
 
-
     KLOGN("core") << "-------- [CHANNELS] --------" << std::endl;
 	KLOG("core",1) << "Hello" << std::endl;
 	KLOG("application",1) << "Hello" << std::endl;

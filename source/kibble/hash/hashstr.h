@@ -45,12 +45,12 @@ template <typename T, typename... Rest> inline void hash_combine(std::size_t& se
     };                                                                                                                 \
     }
 
-typedef unsigned long long hash_t;
+using hash_t = unsigned long long;
 // compile-time hash
 static constexpr hash_t H_(const char* str) { return detail::hash_one(str[0], str + 1, detail::basis); }
 
 // string literal expression
-constexpr hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
+static constexpr hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
 
 inline hash_t HCOMBINE_(hash_t first, hash_t second) { return (first ^ second) * detail::prime; }
 

@@ -1,4 +1,5 @@
 #include <array>
+#include <cmath>
 #include <iostream>
 
 #include "logger.h"
@@ -11,6 +12,7 @@ namespace kb
 namespace log
 {
 
+static constexpr float k_light = 0.75f;
 static constexpr size_t k_palette_sz = 16;
 static constexpr std::array<uint32_t, k_palette_sz> k_palette = {
     0xffb400, 0xffde00, 0xd7ea02, 0x85ea02, 0x20efa8, 0x20efed, 0x20bcef, 0x2073ef,
@@ -51,9 +53,9 @@ void LoggerThread::create_channel(const std::string& name, uint8_t verbosity)
 
     std::string short_name = name.substr(0, 3);
     size_t pal_idx = channels_.size() % k_palette_sz;
-    uint32_t R = (k_palette[pal_idx] & R_MASK) >> R_SHIFT;
-    uint32_t G = (k_palette[pal_idx] & G_MASK) >> G_SHIFT;
-    uint32_t B = (k_palette[pal_idx] & B_MASK) >> B_SHIFT;
+    uint32_t R = uint32_t(std::roundf(k_light * float((k_palette[pal_idx] & R_MASK) >> R_SHIFT)));
+    uint32_t G = uint32_t(std::roundf(k_light * float((k_palette[pal_idx] & G_MASK) >> G_SHIFT)));
+    uint32_t B = uint32_t(std::roundf(k_light * float((k_palette[pal_idx] & B_MASK) >> B_SHIFT)));
 
     std::stringstream ss;
     ss << "\033[1;48;2;" << R << ";" << G << ";" << B << "m"
