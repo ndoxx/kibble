@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "../hash/hashstr.h"
-#include "../time/time_base.h"
+#include "../time/clock.h"
 
 #if LOGGING_ANSI_3 == 1
 #define ANSI_3 true
@@ -68,7 +68,7 @@ struct LogStatement
 {
     hash_t channel;
     MsgType msg_type;
-    TimeStamp timestamp;
+    TimeBase::TimeStamp timestamp;
     uint8_t severity;
     int code_line;
     std::string code_file;

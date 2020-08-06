@@ -24,7 +24,7 @@ int LoggerStream::StringBuffer::sync()
 }
 
 LoggerStream::LoggerStream()
-    : std::ostream(&buffer_), buffer_(*this), stmt_({"core"_h, MsgType::NORMAL, TimeStamp(), 0, 0, "", ""})
+    : std::ostream(&buffer_), buffer_(*this), stmt_({"core"_h, MsgType::NORMAL, TimeBase::TimeStamp(), 0, 0, "", ""})
 {}
 
 void LoggerStream::prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char* code_file)

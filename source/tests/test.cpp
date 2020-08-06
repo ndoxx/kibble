@@ -1,9 +1,12 @@
+#include <thread>
 #include <iostream>
 #include <string_view>
 
 #include "logger/logger.h"
 #include "logger/logger_sink.h"
 #include "logger/logger_thread.h"
+
+#include "time/clock.h"
 
 using namespace kb;
 
@@ -88,6 +91,14 @@ int main()
     KLOGE("core") << "Error message" << std::endl;
     KLOGF("core") << "Fatal error message" << std::endl;
 
+/*
+    milliClock clk;
+    clk.restart();
+    std::this_thread::sleep_for(std::chrono::milliseconds(512));
+    auto dur = clk.get_elapsed_time();
+
+    KLOG("core",1) << dur.count() << "ms" << std::endl;
+*/
 
 	return 0;
 }
