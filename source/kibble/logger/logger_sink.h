@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "../hash/hashstr.h"
 
 namespace kb
 {
@@ -18,6 +19,12 @@ struct LogChannel;
 class Sink
 {
 public:
+    struct ChannelDescription
+    {
+        hash_t id;
+        std::string name;
+    };
+    
     virtual ~Sink() = default;
 
     // Submit a log statement to this sink, specifying the channel it emanates from
@@ -30,8 +37,12 @@ public:
     inline void set_enabled(bool value) { enabled_ = value; }
     inline bool is_enabled() const { return enabled_; }
 
+    inline void add_channel_subscription(const ChannelDescription& desc) { subscriptions_.push_back(desc); }
+    inline const std::vector<ChannelDescription>& get_channel_subscriptions() const { return subscriptions_; }
+
 protected:
     bool enabled_ = true;
+    std::vector<ChannelDescription> subscriptions_;
 };
 
 // This sink writes to the terminal with ANSI color support
