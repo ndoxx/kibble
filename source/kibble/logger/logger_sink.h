@@ -24,7 +24,7 @@ public:
         hash_t id;
         std::string name;
     };
-    
+
     virtual ~Sink() = default;
 
     // Submit a log statement to this sink, specifying the channel it emanates from
@@ -33,6 +33,8 @@ public:
     virtual void send_raw(const std::string& message) = 0;
     // Override this if some operations need to be performed before logger destruction
     virtual void finish() {}
+    // Called after channel subscription
+    virtual void on_attach() {}
 
     inline void set_enabled(bool value) { enabled_ = value; }
     inline bool is_enabled() const { return enabled_; }

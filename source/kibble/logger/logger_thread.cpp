@@ -76,6 +76,7 @@ void LoggerThread::attach(const std::string& sink_name, std::unique_ptr<Sink> si
         sink_subscriptions_.insert(std::make_pair(channel, hsink));
         sink_ref->add_channel_subscription({channel, channels_.at(channel).name});
     }
+    sink_ref->on_attach();
 }
 
 void LoggerThread::attach_all(const std::string& sink_name, std::unique_ptr<Sink> sink)
@@ -89,6 +90,7 @@ void LoggerThread::attach_all(const std::string& sink_name, std::unique_ptr<Sink
         sink_subscriptions_.insert(std::make_pair(key, hsink));
         sink_ref->add_channel_subscription({key, chan.name});
     }
+    sink_ref->on_attach();
 }
 
 void LoggerThread::spawn()
