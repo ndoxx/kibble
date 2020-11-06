@@ -89,11 +89,25 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, mixed name length", "[fl
 	REQUIRE(parser.is_set('c'));
 }
 
-TEST_CASE_METHOD(FlagFixture, "Bad syntax", "[flag]")
+TEST_CASE_METHOD(FlagFixture, "Flag, bad syntax", "[flag]")
 {
 	int argc = 2;
 	char a1[] = "test_flag";
 	char a2[] = "-cyan";
+	char* argv[] = {a1, a2};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!parser.is_set('o'));
+	REQUIRE(!parser.is_set('c'));
+}
+
+TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
+{
+	int argc = 2;
+	char a1[] = "test_flag";
+	char a2[] = "--green";
 	char* argv[] = {a1, a2};
 
 	bool success = parser.parse(argc, argv);

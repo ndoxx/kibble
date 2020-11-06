@@ -5,12 +5,29 @@
 #include <map>
 #include <unordered_map>
 #include <cassert>
-// #include "logger/logger.h"
+#include <exception>
+#include "logger/logger.h"
 
 namespace kb
 {
 namespace ap
 {
+
+struct IllegalSyntaxException: public std::exception
+{
+	const char* what () const throw ()
+	{
+		return "Exception: illegal syntax";
+	}
+};
+
+struct UnknownArgumentException: public std::exception
+{
+	const char* what () const throw ()
+	{
+		return "Exception: unknown argument";
+	}
+};
 
 struct ArgFlag
 {
@@ -41,7 +58,7 @@ public:
 		assert(findit == flags_.end() && "Flag argument already existing at this name.");
 
 		flags_.insert(std::pair(short_name, ArgFlag{default_value, short_name, full_name, description}));
-		flag_full_to_short_.insert(std::pair(full_name, short_name));
+		full_to_short_.insert(std::pair(full_name, short_name));
 	}
 
 	inline bool is_set(char short_name) const
@@ -57,44 +74,61 @@ public:
 		assert(argc > 0 && "Arg count should be a strictly positive integer.");
 		argc_ = argc;
 		program_name_ = argv[0];
-		bool all_legal = true;
+		success_ = true;
 
-		for(int ii = 1; ii < argc; ++ii)
+		try
 		{
-			all_legal &= parse_flag(argv[ii]);
+			for(int ii = 1; ii < argc; ++ii)
+			{
+				char key = 0;
+				if(get_key(argv[ii], key))
+				{
+					// Is it a flag?
+					auto flag_it = flags_.find(key);
+					if(flag_it != flags_.end())
+					{
+						flag_it->second.value = true;
+						continue;
+					}
+				}
+			}
+		}
+		catch(std::exception& e)
+		{
+			KLOGE("kibble") << e.what() << std::endl;
+			success_ = false;
 		}
 
 		// NOTE(ndx): also check no unknown argument was given
-		success_ = all_legal;
 		return success_;
 	}
 
 private:
-	bool parse_flag(const std::string& arg)
+	bool get_key(const std::string& arg, char& key) const
 	{
-		// Not a flag
+		// Not a flag and not a variable
 		if(arg[0] != '-')
-			return true;
+			return false;
 
 		if(arg.size() == 2)
 		{
-			char key = arg[1];
-			auto findit = flags_.find(key);
-			if(findit != flags_.end())
-				findit->second.value = true;
+			key = arg[1];
+			return true;
 		}
 		else
 		{
-			// Long names MUST use a double-dash
 			if(arg[1] != '-')
-				return false;
+				throw IllegalSyntaxException();
 
-			auto findit = flag_full_to_short_.find(arg.substr(2));
-			if(findit != flag_full_to_short_.end())
-				flags_.at(findit->second).value = true;
+			auto full_it = full_to_short_.find(arg.substr(2));
+			if(full_it != full_to_short_.end())
+			{
+				key = full_it->second;
+				return true;
+			}
+			else
+				throw UnknownArgumentException();
 		}
-
-		return true;
 	}
 
 private:
@@ -102,7 +136,7 @@ private:
 	std::string ver_string_;
 	std::string program_name_;
 	std::map<char, ArgFlag> flags_;
-	std::unordered_map<std::string, char> flag_full_to_short_;
+	std::unordered_map<std::string, char> full_to_short_;
 	bool success_;
 
 	int argc_;
