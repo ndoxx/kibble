@@ -113,8 +113,6 @@ TEST_CASE_METHOD(FlagFixture, "Flag, bad syntax", "[flag]")
 	bool success = parser.parse(argc, argv);
 
 	REQUIRE(!success);
-	REQUIRE(!parser.is_set('o'));
-	REQUIRE(!parser.is_set('c'));
 }
 
 TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
