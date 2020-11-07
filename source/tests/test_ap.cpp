@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include "logger/logger.h"
-#include "argparse/argparse.hpp"
+#include "argparse/argparse.h"
 
 using namespace kb;
 
@@ -59,13 +59,27 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument, full name", "[flag]")
 	REQUIRE(!parser.is_set('c'));
 }
 
-TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only", "[flag]")
+TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, no concat", "[flag]")
 {
 	int argc = 3;
 	char a1[] = "test_flag";
 	char a2[] = "-o";
 	char a3[] = "-c";
 	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(parser.is_set('o'));
+	REQUIRE(parser.is_set('c'));
+}
+
+TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, concat", "[flag]")
+{
+	int argc = 2;
+	char a1[] = "test_flag";
+	char a2[] = "-oc";
+	char* argv[] = {a1, a2};
 
 	bool success = parser.parse(argc, argv);
 

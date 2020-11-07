@@ -1,3 +1,5 @@
+# -------- LOGGER DISPLAY TEST -------- #
+
 add_executable(test_logger)
 target_sources(test_logger
     PRIVATE
@@ -31,6 +33,7 @@ target_link_libraries(test_logger
 cotire(test_logger)
 
 
+# -------- UNIT TESTS -------- #
 
 set(SRC_KIBBLE_TEST
     catch_app.cpp
@@ -50,9 +53,9 @@ target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(test_kibble
     PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
 )
 
 target_link_libraries(test_kibble
@@ -66,3 +69,40 @@ target_link_libraries(test_kibble
 )
 
 cotire(test_kibble)
+
+
+
+# -------- NUCLEAR TEST -------- #
+
+set(SRC_NUCLEAR
+    nuclear.cpp
+   )
+
+add_executable(nuclear ${SRC_NUCLEAR})
+
+target_include_directories(nuclear
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/source/kibble"
+    )
+
+target_compile_definitions(nuclear PRIVATE -DLOGGING_ANSI_3=0)
+target_compile_definitions(nuclear PRIVATE -DLOGGING_ENABLED=1)
+
+set_target_properties(nuclear
+    PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+    )
+
+target_link_libraries(nuclear
+    PRIVATE
+        project_options
+        project_warnings
+        pthread
+        stdc++fs
+        kibble
+    )
+
+cotire(nuclear)
