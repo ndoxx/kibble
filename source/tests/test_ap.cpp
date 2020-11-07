@@ -130,3 +130,130 @@ TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
 	REQUIRE(!parser.is_set('o'));
 	REQUIRE(!parser.is_set('c'));
 }
+
+
+
+
+class VarFixture
+{
+public:
+	VarFixture():
+	parser("Test parser", "0.1")
+	{
+		
+	}
+
+protected:
+	ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, default", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 1;
+	char a1[] = "test_var";
+	char* argv[] = {a1};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(!var.is_set);
+	REQUIRE(var.value == 42);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "-a";
+	char a3[] = "56";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(var.is_set);
+	REQUIRE(var.value == 56);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name, missing value", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 2;
+	char a1[] = "test_var";
+	char a2[] = "-a";
+	char* argv[] = {a1, a2};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!var.is_set);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "--age";
+	char a3[] = "56";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(var.is_set);
+	REQUIRE(var.value == 56);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name, missing value", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 2;
+	char a1[] = "test_var";
+	char a2[] = "--age";
+	char* argv[] = {a1, a2};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!var.is_set);
+}
+
+TEST_CASE_METHOD(VarFixture, "Unknown variable, short name", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "-p";
+	char a3[] = "56";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!var.is_set);
+}
+
+TEST_CASE_METHOD(VarFixture, "Unknown variable, full name", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "--page";
+	char a3[] = "56";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!var.is_set);
+}

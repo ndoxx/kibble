@@ -3,6 +3,9 @@
 #include "logger/logger_thread.h"
 #include "argparse/argparse.h"
 
+#include <string>
+#include <exception>
+
 using namespace kb;
 
 void init_logger()
@@ -25,6 +28,7 @@ int main(int argc, char** argv)
 	ap::ArgParse parser("Test parser", "0.1");
 	parser.add_flag('o', "orange", "Use the best color in the world");
 	parser.add_flag('c', "cyan", "Use the second best color in the world");
+	parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
 	parser.parse(argc, argv);
 	parser.debug_report();
