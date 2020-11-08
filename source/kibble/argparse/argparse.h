@@ -1,18 +1,18 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <functional>
 
 /*
  * TODO:
  * - Argument dependency
  * 		-> An optional argument may require another one to be set
  * - List operands
- *      -> An optional argument may expect a comma separated list of values   
+ *      -> An optional argument may expect a comma separated list of values
  */
 
 namespace kb
@@ -23,10 +23,12 @@ namespace ap
 struct ArgFlag
 {
     size_t exclusive_idx = 0;
-    bool value;
-    char short_name;
+    bool value = false;
+    char short_name = 0;
     std::string full_name;
     std::string description;
+
+    inline bool operator()() const { return value; }
 };
 
 struct ArgVarBase
@@ -51,8 +53,7 @@ template <typename T> struct ArgVar : public ArgVarBase
     virtual std::string underlying_type() const override { return "NONE"; }
 };
 
-template <typename T>
-struct DefaultInit
+template <typename T> struct DefaultInit
 {
     static inline T from(int Z) { return T(Z); }
 };
@@ -92,8 +93,8 @@ public:
         return *var;
     }
 
-    void add_flag(char short_name, const std::string& full_name, const std::string& description,
-                  bool default_value = false);
+    const ArgFlag& add_flag(char short_name, const std::string& full_name, const std::string& description,
+                            bool default_value = false);
     void set_flags_exclusive(const std::set<char>& exclusive_set);
     void set_variables_exclusive(const std::set<char>& exclusive_set);
     bool parse(int argc, char** argv) noexcept;
@@ -107,13 +108,13 @@ private:
     char try_set_flag_group(const std::string& group) noexcept;
     bool try_set_variable(char key, const std::string& operand) noexcept(false);
     bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
-    bool check_positional_requirements() noexcept;
-    bool check_exclusivity_constraints() noexcept;
 
-    std::set<char> get_active_flags() const;
-    std::set<char> get_active_variables() const;
+    bool check_positional_requirements() const noexcept;
+    bool check_exclusivity_constraints() const noexcept;
+    std::set<char> get_active_flags() const noexcept;
+    std::set<char> get_active_variables() const noexcept;
     bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
-                            std::function<void(char)> show_argument) const;
+                            std::function<void(char)> show_argument) const noexcept;
 
 private:
     std::string ver_string_;
@@ -126,9 +127,7 @@ private:
     std::unordered_map<std::string, char> full_to_short_;
     bool valid_state_;
     bool was_run_;
-    int argc_;
 };
-
 
 template <> struct ArgVar<int> : public ArgVarBase
 {
@@ -175,8 +174,7 @@ template <> struct ArgVar<std::string> : public ArgVarBase
     virtual std::string underlying_type() const override { return "string"; }
 };
 
-template <>
-struct DefaultInit<std::string>
+template <> struct DefaultInit<std::string>
 {
     static inline std::string from(int) { return ""; }
 };

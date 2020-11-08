@@ -10,34 +10,64 @@ namespace kb
 namespace ap
 {
 
+// Error logging is implemented as a side-effect of what(). Uggly, but it works.
 struct IllegalSyntaxException : public std::exception
 {
-    const char* what() const noexcept override { return "Exception: illegal syntax"; }
+    const char* what() const noexcept override
+    {
+        KLOGW("core") << "Illegal syntax." << std::endl;
+        return "Exception: illegal syntax";
+    }
 };
 
 struct UnknownArgumentException : public std::exception
 {
     UnknownArgumentException(const std::string& argument) : argument_(argument) {}
-    const char* what() const noexcept override { return "Exception: unknown argument"; }
+    const char* what() const noexcept override
+    {
+        KLOGW("core") << "Unknown argument: " << argument_ << std::endl;
+        return "Exception: unknown argument";
+    }
     std::string argument_;
 };
 
 struct SupernumeraryArgumentException : public std::exception
 {
     SupernumeraryArgumentException(const std::string& argument) : argument_(argument) {}
-    const char* what() const noexcept override { return "Exception: supernumerary argument"; }
+    const char* what() const noexcept override
+    {
+        KLOGW("core") << "Supernumerary argument: " << argument_ << std::endl;
+        return "Exception: supernumerary argument";
+    }
     std::string argument_;
 };
 
-struct MissingValueException : public std::exception
+struct MissingOperandException : public std::exception
 {
-    MissingValueException(const std::string& variable) : variable_(variable) {}
-    const char* what() const noexcept override { return "Exception: missing value after argument"; }
-    std::string variable_;
+    MissingOperandException(const std::string& argument) : argument_(argument) {}
+    const char* what() const noexcept override
+    {
+        KLOGW("core") << "Missing operand after argument: " << argument_ << std::endl;
+        return "Exception: missing operand after argument";
+    }
+    std::string argument_;
+};
+
+struct InvalidOperandException : public std::exception
+{
+    InvalidOperandException(const std::string& argument, const std::string& value) : argument_(argument), value_(value)
+    {}
+    const char* what() const noexcept override
+    {
+        KLOGW("core") << "Invalid operand: \"" << value_ << "\" for argument: " << argument_ << std::endl;
+        return "Exception: invalid operand";
+    }
+    std::string argument_;
+    std::string value_;
 };
 
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
-    : ver_string_(ver_string), program_name_(program_name), valid_state_(false), was_run_(false), argc_(0)
+    : ver_string_(ver_string), program_name_(program_name), valid_state_(false), was_run_(false)
 {}
 
 ArgParse::~ArgParse()
@@ -48,14 +78,16 @@ ArgParse::~ArgParse()
         delete pvar;
 }
 
-void ArgParse::add_flag(char short_name, const std::string& full_name, const std::string& description,
-                        bool default_value)
+const ArgFlag& ArgParse::add_flag(char short_name, const std::string& full_name, const std::string& description,
+                                  bool default_value)
 {
     [[maybe_unused]] auto findit = flags_.find(short_name);
     assert(findit == flags_.end() && "Flag argument already existing at this name.");
 
     flags_.insert(std::pair(short_name, ArgFlag{0, default_value, short_name, full_name, description}));
     full_to_short_.insert(std::pair(full_name, short_name));
+
+    return flags_.at(short_name);
 }
 
 void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
@@ -94,8 +126,6 @@ bool ArgParse::is_set(char short_name) const
 bool ArgParse::parse(int argc, char** argv) noexcept
 {
     assert(argc > 0 && "Arg count should be a strictly positive integer.");
-    argc_ = argc;
-    // program_name_ = argv[0];
     valid_state_ = true;
     was_run_ = true;
     size_t current_positional = 0;
@@ -107,6 +137,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
         {
             std::string arg = argv[ii];
 
+            // Detect dash / double dash syntax
             bool single_short = (arg.size() == 2 && arg[0] == '-');
             bool single_full = (arg[0] == '-' && arg[1] == '-');
             bool positional_candidate = (arg[0] != '-');
@@ -121,7 +152,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                 if(full_it != full_to_short_.end())
                     key = full_it->second;
                 else
-                    throw UnknownArgumentException(arg.substr(2));
+                    throw UnknownArgumentException(arg);
             }
             if(single_short)
                 key = arg[1];
@@ -132,23 +163,31 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                 if(try_set_flag(key))
                     continue; // Token parsed correctly as a flag
 
-                // Current token is the last one, so operand is missing
+                // If current token is the last one, operand is missing
                 if(ii == argc - 1)
-                    throw MissingValueException(arg);
+                    throw MissingOperandException(arg);
 
-                if(try_set_variable(key, argv[ii + 1]))
+                try
                 {
-                    ++ii;     // Next token already parsed as an operand
-                    continue; // Current token parsed correctly as a variable
+                    if(try_set_variable(key, argv[ii + 1]))
+                    {
+                        ++ii;     // Next token already parsed as an operand
+                        continue; // Current token parsed correctly as a variable
+                    }
+                }
+                catch(std::invalid_argument& e)
+                {
+                    // Got here because stoi/l/f/d did not manage to parse the operand
+                    throw InvalidOperandException(arg, argv[ii + 1]);
                 }
 
-                throw UnknownArgumentException(std::string(1, arg[size_t(ii)]));
+                throw UnknownArgumentException(arg);
             }
             // Single dash, multiple concatenated flags
             else if(!positional_candidate)
             {
                 if(char unknown = try_set_flag_group(arg))
-                    throw UnknownArgumentException(std::string(1, unknown));
+                    throw UnknownArgumentException(std::string("-") + unknown);
             }
             // No dash, must be a positional argument
             else
@@ -158,22 +197,14 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             }
         }
     }
-    catch(UnknownArgumentException& e)
-    {
-        KLOGE("kibble") << "Unknown argument: " << e.argument_ << std::endl;
-        valid_state_ = false;
-    }
-    catch(MissingValueException& e)
-    {
-        KLOGE("kibble") << "Missing value for argument: " << e.variable_ << std::endl;
-        valid_state_ = false;
-    }
     catch(std::exception& e)
     {
-        KLOGE("kibble") << e.what() << std::endl;
+        // Error logging is implemented as a side-effect of what(). Uggly, but it works.
+        e.what();
         valid_state_ = false;
     }
 
+    // Check constraints
     valid_state_ &= check_positional_requirements();
     valid_state_ &= check_exclusivity_constraints();
 
@@ -248,14 +279,14 @@ bool ArgParse::try_set_positional(size_t& current_positional, const std::string&
     return false;
 }
 
-bool ArgParse::check_positional_requirements() noexcept
+bool ArgParse::check_positional_requirements() const noexcept
 {
     // * Check that all positional arguments are set
     for(auto* pvar : positionals_)
     {
         if(!pvar->is_set)
         {
-            KLOGE("kibble") << "Missing required argument: " << pvar->full_name << std::endl;
+            KLOGW("core") << "Missing required argument: --" << pvar->full_name << std::endl;
             return false;
         }
     }
@@ -263,7 +294,7 @@ bool ArgParse::check_positional_requirements() noexcept
     return true;
 }
 
-bool ArgParse::check_exclusivity_constraints() noexcept
+bool ArgParse::check_exclusivity_constraints() const noexcept
 {
     // * Check flags exclusivity constraints
     {
@@ -271,7 +302,7 @@ bool ArgParse::check_exclusivity_constraints() noexcept
         auto active_set = get_active_flags();
 
         if(!check_intersection(active_set, exclusive_flags_, [this](char key) {
-               KLOGE("kibble") << flags_.at(key).full_name << " (" << key << ") ";
+               KLOGW("core") << "--" << flags_.at(key).full_name << " (-" << key << ')';
            }))
             return false;
     }
@@ -282,7 +313,7 @@ bool ArgParse::check_exclusivity_constraints() noexcept
         auto active_set = get_active_variables();
 
         if(!check_intersection(active_set, exclusive_variables_, [this](char key) {
-               KLOGE("kibble") << variables_.at(key)->full_name << " (" << key << ") ";
+               KLOGW("core") << "--" << variables_.at(key)->full_name << " (-" << key << ')';
            }))
             return false;
     }
@@ -290,7 +321,7 @@ bool ArgParse::check_exclusivity_constraints() noexcept
     return true;
 }
 
-std::set<char> ArgParse::get_active_flags() const
+std::set<char> ArgParse::get_active_flags() const noexcept
 {
     std::set<char> active_set;
     for(auto&& [key, flag] : flags_)
@@ -300,7 +331,7 @@ std::set<char> ArgParse::get_active_flags() const
     return active_set;
 }
 
-std::set<char> ArgParse::get_active_variables() const
+std::set<char> ArgParse::get_active_variables() const noexcept
 {
     std::set<char> active_set;
     for(auto&& [key, pvar] : variables_)
@@ -311,7 +342,7 @@ std::set<char> ArgParse::get_active_variables() const
 }
 
 bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
-                                  std::function<void(char)> show_argument) const
+                                  std::function<void(char)> show_argument) const noexcept
 {
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
@@ -323,10 +354,17 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
                               std::inserter(intersection, intersection.begin()));
         if(intersection.size() > 1)
         {
-            KLOGE("kibble") << "Incompatible arguments: ";
+            KLOGW("core") << "Incompatible arguments: ";
+            size_t count = 0;
             for(char key : intersection)
+            {
                 show_argument(key);
-            KLOGE("kibble") << std::endl;
+                if(++count < intersection.size())
+                {
+                    KLOGW("core") << ", ";
+                }
+            }
+            KLOGW("core") << std::endl;
             return false;
         }
     }
@@ -349,82 +387,81 @@ void ArgParse::usage() const
             nonex_vars += key;
 
     // Start usage string
-    KLOG("kibble", 1) << "Usage:" << std::endl;
-    KLOG("kibble", 1) << program_name_;
+    KLOG("core", 1) << "Usage:" << std::endl;
+    KLOG("core", 1) << program_name_;
 
     // Display nonexclusive flags
     if(nonex_flags.size())
     {
-        KLOG("kibble", 1) << " [-" << nonex_flags << ']';
+        KLOG("core", 1) << " [-" << nonex_flags << ']';
     }
 
     // Display exclusive flags
     for(const auto& ex_set : exclusive_flags_)
     {
         size_t count = 0;
-        KLOG("kibble", 1) << " [";
+        KLOG("core", 1) << " [";
         for(char key : ex_set)
         {
-            KLOG("kibble", 1) << '-' << key;
+            KLOG("core", 1) << '-' << key;
             if(++count < ex_set.size())
             {
-                KLOG("kibble", 1) << " | ";
+                KLOG("core", 1) << " | ";
             }
         }
-        KLOG("kibble", 1) << ']';
+        KLOG("core", 1) << ']';
     }
 
     // Display nonexclusive variables
     for(char key : nonex_vars)
     {
         const auto* pvar = variables_.at(key);
-        KLOG("kibble", 1) << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
+        KLOG("core", 1) << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
     }
 
     // Display exclusive variables
     for(const auto& ex_set : exclusive_variables_)
     {
         size_t count = 0;
-        KLOG("kibble", 1) << " [";
+        KLOG("core", 1) << " [";
         for(char key : ex_set)
         {
             const auto* pvar = variables_.at(key);
-            KLOG("kibble", 1) << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
+            KLOG("core", 1) << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
             if(++count < ex_set.size())
             {
-                KLOG("kibble", 1) << " | ";
+                KLOG("core", 1) << " | ";
             }
         }
-        KLOG("kibble", 1) << ']';
+        KLOG("core", 1) << ']';
     }
 
     // Display positional arguments
     for(const auto* var : positionals_)
     {
-        KLOG("kibble", 1) << ' ' << var->full_name;
+        KLOG("core", 1) << ' ' << var->full_name;
     }
-    KLOG("kibble", 1) << std::endl;
+    KLOG("core", 1) << std::endl;
 
     // Show argument descriptions
-    KLOG("kibble", 1) << std::endl << "With:" << std::endl;
+    KLOG("core", 1) << std::endl << "With:" << std::endl;
 
     for(const auto* var : positionals_)
     {
-        KLOG("kibble", 1) << var->full_name << " <" << var->underlying_type() << ">: " << var->description << std::endl;
+        KLOG("core", 1) << var->full_name << " <" << var->underlying_type() << ">: " << var->description << std::endl;
     }
 
-    KLOG("kibble", 1) << "--help\tDisplay this usage string and exit." << std::endl;
-    KLOG("kibble", 1) << "--version\tDisplay program version string and exit." << std::endl;
+    KLOG("core", 1) << "--help\tDisplay this usage string and exit." << std::endl;
+    KLOG("core", 1) << "--version\tDisplay program version string and exit." << std::endl;
     for(auto&& [key, flag] : flags_)
     {
-        KLOG("kibble", 1) << '-' << flag.short_name << " (--" << flag.full_name << "): " << flag.description
-                          << std::endl;
+        KLOG("core", 1) << '-' << flag.short_name << " (--" << flag.full_name << "): " << flag.description << std::endl;
     }
 
     for(auto&& [key, var] : variables_)
     {
-        KLOG("kibble", 1) << '-' << var->short_name << " (--" << var->full_name << ") " << var->underlying_type()
-                          << ": " << var->description << std::endl;
+        KLOG("core", 1) << '-' << var->short_name << " (--" << var->full_name << ") " << var->underlying_type() << ": "
+                        << var->description << std::endl;
     }
 }
 
@@ -432,7 +469,7 @@ void ArgParse::version() const
 {
     std::string pg_upper = program_name_;
     std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
-    KLOG("kibble", 1) << pg_upper << " - version: " << ver_string_ << std::endl;
+    KLOG("core", 1) << pg_upper << " - version: " << ver_string_ << std::endl;
 }
 
 } // namespace ap
