@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 {
 	init_logger();
 
-	ap::ArgParse parser("Captain", "0.1");
+	ap::ArgParse parser("nuclear", "0.1");
 	
 #if 0
 	parser.add_flag('o', "orange", "Use the best color in the world");

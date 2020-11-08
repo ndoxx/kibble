@@ -8,7 +8,7 @@ class FlagFixture
 {
 public:
 	FlagFixture():
-	parser("Test parser", "0.1")
+	parser("program", "0.1")
 	{
 		parser.add_flag('o', "orange", "Use the best color in the world");
 		parser.add_flag('c', "cyan", "Use the second best color in the world");
@@ -136,7 +136,7 @@ class VarFixture
 {
 public:
 	VarFixture():
-	parser("Test parser", "0.1")
+	parser("program", "0.1")
 	{
 		
 	}
@@ -254,4 +254,149 @@ TEST_CASE_METHOD(VarFixture, "Unknown variable, full name", "[var]")
 
 	REQUIRE(!success);
 	REQUIRE(!var.is_set);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable argument, cast failure", "[var]")
+{
+	const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "--age";
+	char a3[] = "plop";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+	REQUIRE(!var.is_set);
+}
+
+TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[var]")
+{
+	const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+	const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
+
+	int argc = 5;
+	char a1[] = "test_var";
+	char a2[] = "--age";
+	char a3[] = "56";
+	char a4[] = "--height";
+	char a5[] = "185";
+	char* argv[] = {a1, a2, a3, a4, a5};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(age.is_set);
+	REQUIRE(age.value == 56);
+	REQUIRE(height.is_set);
+	REQUIRE(height.value == 185);
+}
+
+TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[var]")
+{
+	const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+	const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
+
+	int argc = 5;
+	char a1[] = "test_var";
+	char a2[] = "-a";
+	char a3[] = "56";
+	char a4[] = "-h";
+	char a5[] = "185";
+	char* argv[] = {a1, a2, a3, a4, a5};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(age.is_set);
+	REQUIRE(age.value == 56);
+	REQUIRE(height.is_set);
+	REQUIRE(height.value == 185);
+}
+
+
+
+class PosFixture
+{
+public:
+	PosFixture():
+	parser("program", "0.1")
+	{
+		
+	}
+
+protected:
+	ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(PosFixture, "Single positional argument", "[pos]")
+{
+	const auto& A = parser.add_positional<int>("A", "First number");
+	
+	int argc = 2;
+	char a1[] = "test_pos";
+	char a2[] = "42";
+	char* argv[] = {a1, a2};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(A.is_set);
+	REQUIRE(A.value == 42);
+}
+
+TEST_CASE_METHOD(PosFixture, "Three positional arguments", "[pos]")
+{
+	const auto& A = parser.add_positional<int>("A", "First number");
+	const auto& B = parser.add_positional<int>("B", "Second number");
+	const auto& C = parser.add_positional<int>("C", "Third number");
+	
+	int argc = 4;
+	char a1[] = "test_pos";
+	char a2[] = "42";
+	char a3[] = "43";
+	char a4[] = "44";
+	char* argv[] = {a1, a2, a3, a4};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(A.is_set);
+	REQUIRE(A.value == 42);
+	REQUIRE(B.is_set);
+	REQUIRE(B.value == 43);
+	REQUIRE(C.is_set);
+	REQUIRE(C.value == 44);
+}
+
+TEST_CASE_METHOD(PosFixture, "Two positional arguments, missing one", "[pos]")
+{
+	parser.add_positional<int>("A", "First number");
+	parser.add_positional<int>("B", "Second number");
+	
+	int argc = 2;
+	char a1[] = "test_pos";
+	char a2[] = "42";
+	char* argv[] = {a1, a2};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+}
+
+TEST_CASE_METHOD(PosFixture, "One positional argument needed, supernumerary one", "[pos]")
+{
+	parser.add_positional<int>("A", "First number");
+	
+	int argc = 3;
+	char a1[] = "test_pos";
+	char a2[] = "42";
+	char a3[] = "43";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
 }

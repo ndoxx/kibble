@@ -1,6 +1,7 @@
 #include "argparse/argparse.h"
 #include "logger/logger.h"
 
+#include <algorithm>
 #include <cassert>
 #include <exception>
 
@@ -35,9 +36,8 @@ struct MissingValueException : public std::exception
     std::string variable_;
 };
 
-ArgParse::ArgParse(const std::string& description, const std::string& ver_string)
-    : description_(description), ver_string_(ver_string), program_name_("program"), valid_state_(false),
-      was_run_(false), argc_(0)
+ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
+    : ver_string_(ver_string), program_name_(program_name), valid_state_(false), was_run_(false), argc_(0)
 {}
 
 ArgParse::~ArgParse()
@@ -71,7 +71,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
 {
     assert(argc > 0 && "Arg count should be a strictly positive integer.");
     argc_ = argc;
-    program_name_ = argv[0];
+    // program_name_ = argv[0];
     valid_state_ = true;
     was_run_ = true;
     size_t current_positional = 0;
@@ -90,6 +90,9 @@ bool ArgParse::parse(int argc, char** argv) noexcept
 
             if(single_full)
             {
+                if(try_match_special_options(arg))
+                    exit(0);
+
                 auto full_it = full_to_short_.find(arg.substr(2));
                 if(full_it != full_to_short_.end())
                     key = full_it->second;
@@ -102,23 +105,17 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             // Single argument
             if(single_short || single_full)
             {
-                auto flag_it = flags_.find(key);
-                if(flag_it != flags_.end())
-                {
-                    flag_it->second.value = true;
+                if(try_set_flag(key))
                     continue; // Token parsed correctly as a flag
-                }
-                auto var_it = variables_.find(key);
-                if(var_it != variables_.end())
-                {
-                    auto* pvar = var_it->second;
-                    if(ii == argc - 1)
-                        throw MissingValueException(pvar->full_name);
 
-                    pvar->cast(argv[ii + 1]);
-                    pvar->is_set = true;
-                    ++ii;     // Next token already parsed as a value
-                    continue; // Token parsed correctly as a variable
+                // Current token is the last one, so operand is missing
+                if(ii == argc - 1)
+                    throw MissingValueException(arg);
+
+                if(try_set_variable(key, argv[ii + 1]))
+                {
+                    ++ii;     // Next token already parsed as an operand
+                    continue; // Current token parsed correctly as a variable
                 }
 
                 throw UnknownArgumentException(std::string(1, arg[size_t(ii)]));
@@ -126,27 +123,14 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             // Single dash, multiple concatenated flags
             else if(!positional_candidate)
             {
-                for(size_t jj = 1; jj < arg.size(); ++jj)
-                {
-                    if(flags_.find(arg[jj]) != flags_.end())
-                        flags_.at(arg[jj]).value = true;
-                    else
-                        throw UnknownArgumentException(std::string(1, arg[jj]));
-                    // TODO(ndx): Detect if a variable short name was concatenated
-                    // if so, provide a more precise exception for this specific case
-                }
+                if(char unknown = try_set_flag_group(arg))
+                    throw UnknownArgumentException(std::string(1, unknown));
             }
             // No dash, must be a positional argument
             else
             {
-                if(current_positional < positionals_.size())
-                {
-                    positionals_[current_positional]->cast(argv[ii]);
-                    positionals_[current_positional]->is_set = true;
-                    ++current_positional;
-                }
-                else
-                    throw SupernumeraryArgumentException(argv[ii]);
+                if(!try_set_positional(current_positional, arg))
+                    throw SupernumeraryArgumentException(arg);
             }
         }
     }
@@ -166,17 +150,92 @@ bool ArgParse::parse(int argc, char** argv) noexcept
         valid_state_ = false;
     }
 
+    valid_state_ &= check_requirements();
+
+    return valid_state_;
+}
+
+bool ArgParse::try_match_special_options(const std::string& arg) noexcept
+{
+    // --help => show usage and exit
+    if(!arg.compare("--help"))
+    {
+        usage();
+        return true;
+    }
+
+    // --version => show version string and exit
+    if(!arg.compare("--version"))
+    {
+        version();
+        return true;
+    }
+    return false;
+}
+
+bool ArgParse::try_set_flag(char key) noexcept
+{
+    auto flag_it = flags_.find(key);
+    if(flag_it != flags_.end())
+    {
+        flag_it->second.value = true;
+        return true;
+    }
+    return false;
+}
+
+char ArgParse::try_set_flag_group(const std::string& group) noexcept
+{
+    for(size_t ii = 1; ii < group.size(); ++ii)
+    {
+        if(flags_.find(group[ii]) != flags_.end())
+            flags_.at(group[ii]).value = true;
+        else
+            return group[ii];
+        // TODO(ndx): Detect if a variable short name was concatenated
+        // if so, provide a more precise exception for this specific case
+    }
+    return 0;
+}
+
+bool ArgParse::try_set_variable(char key, const std::string& operand) noexcept(false)
+{
+    auto var_it = variables_.find(key);
+    if(var_it != variables_.end())
+    {
+        auto* pvar = var_it->second;
+        pvar->cast(operand);
+        pvar->is_set = true;
+        return true;
+    }
+    return false;
+}
+
+bool ArgParse::try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false)
+{
+    if(current_positional < positionals_.size())
+    {
+        positionals_[current_positional]->cast(arg);
+        positionals_[current_positional]->is_set = true;
+        ++current_positional;
+        return true;
+    }
+    return false;
+}
+
+bool ArgParse::check_requirements() noexcept
+{
     // Check that all positional arguments are set
     for(auto* pvar : positionals_)
     {
         if(!pvar->is_set)
         {
-            valid_state_ = false;
             KLOGE("kibble") << "Missing required argument: " << pvar->full_name << std::endl;
+            return false;
         }
     }
 
-    return valid_state_;
+    return true;
 }
 
 void ArgParse::usage() const
@@ -202,6 +261,8 @@ void ArgParse::usage() const
     KLOG("kibble", 1) << std::endl;
 
     KLOG("kibble", 1) << std::endl << "With:" << std::endl;
+    KLOG("kibble", 1) << "--help" << std::endl;
+    KLOGI << "Display this usage string and exit." << std::endl;
     for(const auto* var : positionals_)
     {
         KLOG("kibble", 1) << var->full_name << " <" << var->underlying_type() << ">:" << std::endl;
@@ -218,6 +279,13 @@ void ArgParse::usage() const
                           << std::endl;
         KLOGI << var->description << std::endl;
     }
+}
+
+void ArgParse::version() const
+{
+    std::string pg_upper = program_name_;
+    std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
+    KLOG("kibble", 1) << pg_upper << " - version: " << ver_string_ << std::endl;
 }
 
 void ArgParse::debug_report() const

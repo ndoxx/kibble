@@ -5,6 +5,16 @@
 #include <unordered_map>
 #include <vector>
 
+/*
+ * TODO:
+ * - Exclusive flags sets
+ * 		-> No two flags of the same set shall be active simultaneously
+ * - Exclusive variables sets
+ * 		-> No two variables of the same set shall be set simultaneously
+ * - Argument dependency
+ * 		-> An optional argument may require another one to be set
+ */
+
 namespace kb
 {
 namespace ap
@@ -51,10 +61,10 @@ template <> struct ArgVar<int> : public ArgVarBase
 class ArgParse
 {
 public:
-    ArgParse(const std::string& description, const std::string& ver_string);
+    ArgParse(const std::string& program_name, const std::string& ver_string);
     ~ArgParse();
 
-    inline const std::string& get_description() const { return description_; }
+    inline const std::string& get_program_name() const { return program_name_; }
     inline const std::string& get_version_string() const { return ver_string_; }
 
     template <typename T>
@@ -88,10 +98,18 @@ public:
     bool parse(int argc, char** argv) noexcept;
     bool is_set(char short_name) const;
     void usage() const;
+    void version() const;
     void debug_report() const;
 
 private:
-    std::string description_;
+    bool try_match_special_options(const std::string& arg) noexcept;
+    bool try_set_flag(char key) noexcept;
+    char try_set_flag_group(const std::string& group) noexcept;
+    bool try_set_variable(char key, const std::string& operand) noexcept(false);
+    bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
+    bool check_requirements() noexcept;
+
+private:
     std::string ver_string_;
     std::string program_name_;
     std::map<char, ArgFlag> flags_;
