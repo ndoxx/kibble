@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 /*
  * TODO:
@@ -22,6 +23,7 @@ namespace ap
 
 struct ArgFlag
 {
+    size_t exclusive_idx = 0;
     bool value;
     char short_name;
     std::string full_name;
@@ -95,11 +97,11 @@ public:
 
     void add_flag(char short_name, const std::string& full_name, const std::string& description,
                   bool default_value = false);
+    void set_flags_exclusive(const std::set<char>& exclusive_set);
     bool parse(int argc, char** argv) noexcept;
     bool is_set(char short_name) const;
     void usage() const;
     void version() const;
-    void debug_report() const;
 
 private:
     bool try_match_special_options(const std::string& arg) noexcept;
@@ -107,7 +109,8 @@ private:
     char try_set_flag_group(const std::string& group) noexcept;
     bool try_set_variable(char key, const std::string& operand) noexcept(false);
     bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
-    bool check_requirements() noexcept;
+    bool check_positional_requirements() noexcept;
+    bool check_exclusivity_constraints() noexcept;
 
 private:
     std::string ver_string_;
@@ -115,6 +118,7 @@ private:
     std::map<char, ArgFlag> flags_;
     std::map<char, ArgVarBase*> variables_;
     std::vector<ArgVarBase*> positionals_;
+    std::vector<std::set<char>> exclusive_flags_;
     std::unordered_map<std::string, char> full_to_short_;
     bool valid_state_;
     bool was_run_;

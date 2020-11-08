@@ -54,8 +54,20 @@ void ArgParse::add_flag(char short_name, const std::string& full_name, const std
     [[maybe_unused]] auto findit = flags_.find(short_name);
     assert(findit == flags_.end() && "Flag argument already existing at this name.");
 
-    flags_.insert(std::pair(short_name, ArgFlag{default_value, short_name, full_name, description}));
+    flags_.insert(std::pair(short_name, ArgFlag{0, default_value, short_name, full_name, description}));
     full_to_short_.insert(std::pair(full_name, short_name));
+}
+
+void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
+{
+    for(char key : exclusive_set)
+    {
+        auto flag_it = flags_.find(key);
+        assert(flag_it != flags_.end() && "Unknown flag.");
+        flag_it->second.exclusive_idx = exclusive_flags_.size() + 1;
+    }
+
+    exclusive_flags_.push_back(exclusive_set);
 }
 
 bool ArgParse::is_set(char short_name) const
@@ -150,7 +162,8 @@ bool ArgParse::parse(int argc, char** argv) noexcept
         valid_state_ = false;
     }
 
-    valid_state_ &= check_requirements();
+    valid_state_ &= check_positional_requirements();
+    valid_state_ &= check_exclusivity_constraints();
 
     return valid_state_;
 }
@@ -223,9 +236,9 @@ bool ArgParse::try_set_positional(size_t& current_positional, const std::string&
     return false;
 }
 
-bool ArgParse::check_requirements() noexcept
+bool ArgParse::check_positional_requirements() noexcept
 {
-    // Check that all positional arguments are set
+    // * Check that all positional arguments are set
     for(auto* pvar : positionals_)
     {
         if(!pvar->is_set)
@@ -238,18 +251,70 @@ bool ArgParse::check_requirements() noexcept
     return true;
 }
 
+bool ArgParse::check_exclusivity_constraints() noexcept
+{
+    // * Check flags exclusivity constraints
+    // First, get the set of all active flags
+    std::set<char> active_set;
+    for(auto&& [key, flag] : flags_)
+        if(flag.value)
+            active_set.insert(key);
+
+    // If any intersection of the active set with an exclusive set is of cardinal greater
+    // than one, it means the exclusivity constraint was violated
+    for(const auto& ex_set : exclusive_flags_)
+    {
+        std::set<char> intersection;
+
+        std::set_intersection(active_set.begin(), active_set.end(), ex_set.begin(), ex_set.end(),
+                              std::inserter(intersection, intersection.begin()));
+        if(intersection.size() > 1)
+        {
+            KLOGE("kibble") << "Incompatible arguments: " << std::endl;
+            for(char f: intersection)
+            {
+                KLOGI << flags_.at(f).full_name << " (" << f << ')' << std::endl;
+            }
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void ArgParse::usage() const
 {
-    std::string flags = "";
+    // Gather all non exclusive flags
+    std::string nonex_flags = "";
     for(auto&& [key, flag] : flags_)
-        flags += key;
+        if(flag.exclusive_idx == 0)
+            nonex_flags += key;
 
     KLOG("kibble", 1) << "Usage:" << std::endl;
     KLOG("kibble", 1) << program_name_;
-    if(flags.size())
+    if(nonex_flags.size())
     {
-        KLOG("kibble", 1) << " [-" << flags << ']';
+        KLOG("kibble", 1) << " [-" << nonex_flags << ']';
     }
+
+    if(exclusive_flags_.size())
+    {
+        for(const auto& ex_set: exclusive_flags_)
+        {
+            size_t count = 0;
+            KLOG("kibble", 1) << " [";
+            for(char key: ex_set)
+            {
+                KLOG("kibble", 1) << '-' << key;
+                if(++count < ex_set.size())
+                {
+                    KLOG("kibble", 1) << " | ";
+                }
+            }
+            KLOG("kibble", 1) << ']';
+        }
+    }
+
     for(auto&& [key, var] : variables_)
     {
         KLOG("kibble", 1) << " [-" << var->short_name << " <" << var->underlying_type() << ">]";
@@ -261,8 +326,12 @@ void ArgParse::usage() const
     KLOG("kibble", 1) << std::endl;
 
     KLOG("kibble", 1) << std::endl << "With:" << std::endl;
+
     KLOG("kibble", 1) << "--help" << std::endl;
     KLOGI << "Display this usage string and exit." << std::endl;
+    KLOG("kibble", 1) << "--version" << std::endl;
+    KLOGI << "Display program version string and exit." << std::endl;
+
     for(const auto* var : positionals_)
     {
         KLOG("kibble", 1) << var->full_name << " <" << var->underlying_type() << ">:" << std::endl;
@@ -286,38 +355,6 @@ void ArgParse::version() const
     std::string pg_upper = program_name_;
     std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
     KLOG("kibble", 1) << pg_upper << " - version: " << ver_string_ << std::endl;
-}
-
-void ArgParse::debug_report() const
-{
-    if(!was_run_)
-    {
-        KLOGW("kibble") << "Parser was not run." << std::endl;
-        return;
-    }
-
-    if(!valid_state_)
-    {
-        KLOGE("kibble") << "Invalid command line, could not parse arguments." << std::endl;
-        return;
-    }
-
-    for(auto&& [key, flag] : flags_)
-    {
-        if(flag.value)
-        {
-            KLOG("kibble", 1) << "[FLAG] " << flag.full_name << " (" << flag.short_name << ')' << std::endl;
-        }
-    }
-
-    for(auto&& [key, var] : variables_)
-    {
-        if(var->is_set)
-        {
-            // TODO: value as a string
-            KLOG("kibble", 1) << "[VAR]  " << var->full_name << " (" << var->short_name << ") = " << std::endl;
-        }
-    }
 }
 
 } // namespace ap

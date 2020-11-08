@@ -400,3 +400,93 @@ TEST_CASE_METHOD(PosFixture, "One positional argument needed, supernumerary one"
 
 	REQUIRE(!success);
 }
+
+
+
+class ExFlagFixture
+{
+public:
+	ExFlagFixture():
+	parser("program", "0.1")
+	{
+
+	}
+
+protected:
+	ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint obeyed", "[exf]")
+{
+	parser.add_flag('x', "param_x", "The parameter x");
+	parser.add_flag('y', "param_y", "The parameter y");
+	parser.add_flag('z', "param_z", "The parameter z");
+	parser.set_flags_exclusive({'x', 'y'});
+	
+	int argc = 3;
+	char a1[] = "test_exf";
+	char a2[] = "-x";
+	char a3[] = "-z";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+}
+
+TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint violated", "[exf]")
+{
+	parser.add_flag('x', "param_x", "The parameter x");
+	parser.add_flag('y', "param_y", "The parameter y");
+	parser.add_flag('z', "param_z", "The parameter z");
+	parser.set_flags_exclusive({'x', 'y'});
+	
+	int argc = 4;
+	char a1[] = "test_exf";
+	char a2[] = "-x";
+	char a3[] = "-y";
+	char a4[] = "-z";
+	char* argv[] = {a1, a2, a3, a4};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+}
+
+TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint obeyed", "[exf]")
+{
+	parser.add_flag('x', "param_x", "The parameter x");
+	parser.add_flag('y', "param_y", "The parameter y");
+	parser.add_flag('z', "param_z", "The parameter z");
+	parser.set_flags_exclusive({'x', 'y'});
+	parser.set_flags_exclusive({'y', 'z'});
+	
+	int argc = 3;
+	char a1[] = "test_exf";
+	char a2[] = "-x";
+	char a3[] = "-z";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+}
+
+TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint violated", "[exf]")
+{
+	parser.add_flag('x', "param_x", "The parameter x");
+	parser.add_flag('y', "param_y", "The parameter y");
+	parser.add_flag('z', "param_z", "The parameter z");
+	parser.set_flags_exclusive({'x', 'y'});
+	parser.set_flags_exclusive({'y', 'z'});
+	
+	int argc = 3;
+	char a1[] = "test_exf";
+	char a2[] = "-y";
+	char a3[] = "-z";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+}

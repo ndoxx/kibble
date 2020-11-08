@@ -21,18 +21,14 @@ void init_logger()
     KLOGGER(sync());
 }
 
-int main(int argc, char** argv)
+int p1(int argc, char** argv)
 {
-	init_logger();
-
 	ap::ArgParse parser("nuclear", "0.1");
-	
-#if 0
+
 	parser.add_flag('o', "orange", "Use the best color in the world");
 	parser.add_flag('y', "yarr", "Say Yarrrrrr!");
 	const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 	bool success = parser.parse(argc, argv);
-	//parser.debug_report();
 
 	parser.usage();
 	if(!success)
@@ -50,7 +46,13 @@ int main(int argc, char** argv)
 		KLOG("captain",1) << "Yarrrrrr!" << std::endl;
 	}
 
-#else
+	return 0;
+}
+
+int p2(int argc, char** argv)
+{
+	ap::ArgParse parser("nuclear", "0.1");
+
 	parser.add_flag('o', "orange", "Use the best color in the world");
 	const auto& A = parser.add_positional<int>("first_number", "the first number to be added");
 	const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
@@ -67,7 +69,45 @@ int main(int argc, char** argv)
 		KLOG("kibble",1) << WCC(255,190,0);
 	}
 	KLOG("kibble",1) << "The sum of " << A.value << " and " << B.value << " is " << A.value+B.value << std::endl;
-#endif
 
 	return 0;
+}
+
+int p3(int argc, char** argv)
+{
+	ap::ArgParse parser("nuclear", "0.1");
+
+	parser.add_flag('A', "param_A", "The parameter A");
+	parser.add_flag('B', "param_B", "The parameter B");
+	parser.add_flag('C', "param_C", "The parameter C");
+	parser.add_flag('x', "param_x", "The parameter x");
+	parser.add_flag('y', "param_y", "The parameter y");
+	parser.add_flag('z', "param_z", "The parameter z");
+	parser.set_flags_exclusive({'x', 'y'});
+	parser.set_flags_exclusive({'y', 'z'});
+	parser.add_variable<int>('m', "var_m", "The variable m", 10);
+	parser.add_variable<int>('n', "var_n", "The variable n", 10);
+	parser.add_positional<int>("magic", "The magic number");
+
+	parser.usage();
+
+	bool success = parser.parse(argc, argv);
+
+	if(success)
+	{
+		KLOGG("kibble") << "Success!" << std::endl;
+	}
+
+	return 0;
+}
+
+int main(int argc, char** argv)
+{
+	init_logger();
+
+	ap::ArgParse parser("nuclear", "0.1");
+	
+	// return p1(argc, argv);
+	// return p2(argc, argv);
+	return p3(argc, argv);
 }
