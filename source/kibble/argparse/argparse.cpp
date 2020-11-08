@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <exception>
+#include <sstream>
 
 namespace kb
 {
@@ -286,7 +287,7 @@ bool ArgParse::check_positional_requirements() const noexcept
     {
         if(!pvar->is_set)
         {
-            KLOGW("core") << "Missing required argument: --" << pvar->full_name << std::endl;
+            KLOGW("core") << "Missing required argument: " << pvar->full_name << std::endl;
             return false;
         }
     }
@@ -372,6 +373,35 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
     return true;
 }
 
+static void format_description(char key, const std::string& full_name, const std::string& type,
+                               const std::string& description, long max_left)
+{
+    std::stringstream ss;
+
+    ss << "    ";
+    if(key != 0)
+        ss << '-' << key << ", ";
+    if(type.size()==0 || key != 0)
+        ss << "--";
+    ss << full_name;
+    if(type.size())
+        ss << " <" << type << '>';
+
+    ss.seekg(0, std::ios::end);
+    long size = ss.tellg();
+    ss.seekg(0, std::ios::beg);
+
+    long padding = std::max(max_left - size, 0l);
+
+    while(padding>=0)
+    {
+        ss << ' ';
+        --padding;
+    }
+
+    KLOGR("core") << ss.str() << description << std::endl;
+}
+
 void ArgParse::usage() const
 {
     // Gather all non exclusive flags
@@ -388,81 +418,77 @@ void ArgParse::usage() const
 
     // Start usage string
     KLOG("core", 1) << "Usage:" << std::endl;
-    KLOG("core", 1) << program_name_;
+    KLOGR("core") << program_name_;
 
     // Display nonexclusive flags
     if(nonex_flags.size())
     {
-        KLOG("core", 1) << " [-" << nonex_flags << ']';
+        KLOGR("core") << " [-" << nonex_flags << ']';
     }
 
     // Display exclusive flags
     for(const auto& ex_set : exclusive_flags_)
     {
         size_t count = 0;
-        KLOG("core", 1) << " [";
+        KLOGR("core") << " [";
         for(char key : ex_set)
         {
-            KLOG("core", 1) << '-' << key;
+            KLOGR("core") << '-' << key;
             if(++count < ex_set.size())
             {
-                KLOG("core", 1) << " | ";
+                KLOGR("core") << " | ";
             }
         }
-        KLOG("core", 1) << ']';
+        KLOGR("core") << ']';
     }
 
     // Display nonexclusive variables
     for(char key : nonex_vars)
     {
         const auto* pvar = variables_.at(key);
-        KLOG("core", 1) << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
+        KLOGR("core") << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
     }
 
     // Display exclusive variables
     for(const auto& ex_set : exclusive_variables_)
     {
         size_t count = 0;
-        KLOG("core", 1) << " [";
+        KLOGR("core") << " [";
         for(char key : ex_set)
         {
             const auto* pvar = variables_.at(key);
-            KLOG("core", 1) << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
+            KLOGR("core") << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
             if(++count < ex_set.size())
             {
-                KLOG("core", 1) << " | ";
+                KLOGR("core") << " | ";
             }
         }
-        KLOG("core", 1) << ']';
+        KLOGR("core") << ']';
     }
 
     // Display positional arguments
-    for(const auto* var : positionals_)
+    for(const auto* pvar : positionals_)
     {
-        KLOG("core", 1) << ' ' << var->full_name;
+        KLOGR("core") << ' ' << pvar->full_name;
     }
-    KLOG("core", 1) << std::endl;
+    KLOGR("core") << std::endl;
 
     // Show argument descriptions
-    KLOG("core", 1) << std::endl << "With:" << std::endl;
+    KLOGR("core") << std::endl << "With:" << std::endl;
 
-    for(const auto* var : positionals_)
-    {
-        KLOG("core", 1) << var->full_name << " <" << var->underlying_type() << ">: " << var->description << std::endl;
-    }
+    for(const auto* pvar : positionals_)
+        format_description(pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
 
-    KLOG("core", 1) << "--help\tDisplay this usage string and exit." << std::endl;
-    KLOG("core", 1) << "--version\tDisplay program version string and exit." << std::endl;
+    KLOGR("core") << std::endl << "Options:" << std::endl;
+
+    format_description(0, "help", "", "Display this usage string and exit", usage_padding_);
+    format_description(0, "version", "", "Display the program version string and exit", usage_padding_);
+
     for(auto&& [key, flag] : flags_)
-    {
-        KLOG("core", 1) << '-' << flag.short_name << " (--" << flag.full_name << "): " << flag.description << std::endl;
-    }
+        format_description(flag.short_name, flag.full_name, "", flag.description, usage_padding_);
 
-    for(auto&& [key, var] : variables_)
-    {
-        KLOG("core", 1) << '-' << var->short_name << " (--" << var->full_name << ") " << var->underlying_type() << ": "
-                        << var->description << std::endl;
-    }
+    for(auto&& [key, pvar] : variables_)
+        format_description(pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
 }
 
 void ArgParse::version() const

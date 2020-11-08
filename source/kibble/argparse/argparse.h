@@ -67,6 +67,8 @@ public:
     inline const std::string& get_program_name() const { return program_name_; }
     inline const std::string& get_version_string() const { return ver_string_; }
 
+    inline void set_usage_padding(long padding) { usage_padding_ = padding; }
+
     template <typename T>
     const ArgVar<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
                                   T default_value = DefaultInit<T>::from(0))
@@ -127,6 +129,8 @@ private:
     std::unordered_map<std::string, char> full_to_short_;
     bool valid_state_;
     bool was_run_;
+
+    long usage_padding_ = 30;
 };
 
 template <> struct ArgVar<int> : public ArgVarBase
