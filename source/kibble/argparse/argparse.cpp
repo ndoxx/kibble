@@ -70,6 +70,18 @@ void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
     exclusive_flags_.push_back(exclusive_set);
 }
 
+void ArgParse::set_variables_exclusive(const std::set<char>& exclusive_set)
+{
+    for(char key : exclusive_set)
+    {
+        auto var_it = variables_.find(key);
+        assert(var_it != variables_.end() && "Unknown variable.");
+        var_it->second->exclusive_idx = exclusive_variables_.size() + 1;
+    }
+
+    exclusive_variables_.push_back(exclusive_set);
+}
+
 bool ArgParse::is_set(char short_name) const
 {
     assert(was_run_ && "Parser was not run.");
@@ -254,27 +266,67 @@ bool ArgParse::check_positional_requirements() noexcept
 bool ArgParse::check_exclusivity_constraints() noexcept
 {
     // * Check flags exclusivity constraints
-    // First, get the set of all active flags
+    {
+        // First, get the set of all active flags
+        auto active_set = get_active_flags();
+
+        if(!check_intersection(active_set, exclusive_flags_, [this](char key) {
+               KLOGE("kibble") << flags_.at(key).full_name << " (" << key << ") ";
+           }))
+            return false;
+    }
+
+    // * Check variables exclusivity constraints
+    {
+        // First, get the set of all active variables
+        auto active_set = get_active_variables();
+
+        if(!check_intersection(active_set, exclusive_variables_, [this](char key) {
+               KLOGE("kibble") << variables_.at(key)->full_name << " (" << key << ") ";
+           }))
+            return false;
+    }
+
+    return true;
+}
+
+std::set<char> ArgParse::get_active_flags() const
+{
     std::set<char> active_set;
     for(auto&& [key, flag] : flags_)
         if(flag.value)
             active_set.insert(key);
 
+    return active_set;
+}
+
+std::set<char> ArgParse::get_active_variables() const
+{
+    std::set<char> active_set;
+    for(auto&& [key, pvar] : variables_)
+        if(pvar->is_set)
+            active_set.insert(key);
+
+    return active_set;
+}
+
+bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
+                                  std::function<void(char)> show_argument) const
+{
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
-    for(const auto& ex_set : exclusive_flags_)
+    for(const auto& ex_set : exclusives)
     {
         std::set<char> intersection;
 
-        std::set_intersection(active_set.begin(), active_set.end(), ex_set.begin(), ex_set.end(),
+        std::set_intersection(active.begin(), active.end(), ex_set.begin(), ex_set.end(),
                               std::inserter(intersection, intersection.begin()));
         if(intersection.size() > 1)
         {
-            KLOGE("kibble") << "Incompatible arguments: " << std::endl;
-            for(char f: intersection)
-            {
-                KLOGI << flags_.at(f).full_name << " (" << f << ')' << std::endl;
-            }
+            KLOGE("kibble") << "Incompatible arguments: ";
+            for(char key : intersection)
+                show_argument(key);
+            KLOGE("kibble") << std::endl;
             return false;
         }
     }
@@ -290,63 +342,89 @@ void ArgParse::usage() const
         if(flag.exclusive_idx == 0)
             nonex_flags += key;
 
+    // Gather all non exclusive variables
+    std::string nonex_vars = "";
+    for(auto&& [key, pvar] : variables_)
+        if(pvar->exclusive_idx == 0)
+            nonex_vars += key;
+
+    // Start usage string
     KLOG("kibble", 1) << "Usage:" << std::endl;
     KLOG("kibble", 1) << program_name_;
+
+    // Display nonexclusive flags
     if(nonex_flags.size())
     {
         KLOG("kibble", 1) << " [-" << nonex_flags << ']';
     }
 
-    if(exclusive_flags_.size())
+    // Display exclusive flags
+    for(const auto& ex_set : exclusive_flags_)
     {
-        for(const auto& ex_set: exclusive_flags_)
+        size_t count = 0;
+        KLOG("kibble", 1) << " [";
+        for(char key : ex_set)
         {
-            size_t count = 0;
-            KLOG("kibble", 1) << " [";
-            for(char key: ex_set)
+            KLOG("kibble", 1) << '-' << key;
+            if(++count < ex_set.size())
             {
-                KLOG("kibble", 1) << '-' << key;
-                if(++count < ex_set.size())
-                {
-                    KLOG("kibble", 1) << " | ";
-                }
+                KLOG("kibble", 1) << " | ";
             }
-            KLOG("kibble", 1) << ']';
         }
+        KLOG("kibble", 1) << ']';
     }
 
-    for(auto&& [key, var] : variables_)
+    // Display nonexclusive variables
+    for(char key : nonex_vars)
     {
-        KLOG("kibble", 1) << " [-" << var->short_name << " <" << var->underlying_type() << ">]";
+        const auto* pvar = variables_.at(key);
+        KLOG("kibble", 1) << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
     }
+
+    // Display exclusive variables
+    for(const auto& ex_set : exclusive_variables_)
+    {
+        size_t count = 0;
+        KLOG("kibble", 1) << " [";
+        for(char key : ex_set)
+        {
+            const auto* pvar = variables_.at(key);
+            KLOG("kibble", 1) << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
+            if(++count < ex_set.size())
+            {
+                KLOG("kibble", 1) << " | ";
+            }
+        }
+        KLOG("kibble", 1) << ']';
+    }
+
+    // Display positional arguments
     for(const auto* var : positionals_)
     {
         KLOG("kibble", 1) << ' ' << var->full_name;
     }
     KLOG("kibble", 1) << std::endl;
 
+    // Show argument descriptions
     KLOG("kibble", 1) << std::endl << "With:" << std::endl;
-
-    KLOG("kibble", 1) << "--help" << std::endl;
-    KLOGI << "Display this usage string and exit." << std::endl;
-    KLOG("kibble", 1) << "--version" << std::endl;
-    KLOGI << "Display program version string and exit." << std::endl;
 
     for(const auto* var : positionals_)
     {
-        KLOG("kibble", 1) << var->full_name << " <" << var->underlying_type() << ">:" << std::endl;
-        KLOGI << var->description << std::endl;
+        KLOG("kibble", 1) << var->full_name << " <" << var->underlying_type() << ">: " << var->description << std::endl;
     }
+
+    KLOG("kibble", 1) << "--help\tDisplay this usage string and exit." << std::endl;
+    KLOG("kibble", 1) << "--version\tDisplay program version string and exit." << std::endl;
     for(auto&& [key, flag] : flags_)
     {
-        KLOG("kibble", 1) << '-' << flag.short_name << " (--" << flag.full_name << "):" << std::endl;
-        KLOGI << flag.description << std::endl;
+        KLOG("kibble", 1) << '-' << flag.short_name << " (--" << flag.full_name << "): " << flag.description
+                          << std::endl;
     }
+
     for(auto&& [key, var] : variables_)
     {
-        KLOG("kibble", 1) << '-' << var->short_name << " (--" << var->full_name << ") " << var->underlying_type() << ':'
-                          << std::endl;
-        KLOGI << var->description << std::endl;
+        KLOG("kibble", 1) << '-' << var->short_name << " (--" << var->full_name << ") " << var->underlying_type()
+                          << ": " << var->description << std::endl;
     }
 }
 

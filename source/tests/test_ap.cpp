@@ -316,6 +316,77 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[
 	REQUIRE(height.value == 185);
 }
 
+TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
+{
+	const auto& x = parser.add_variable<float>('x', "var_x", "The x variable");
+	const auto& y = parser.add_variable<float>('y', "var_y", "The y variable");
+	const auto& z = parser.add_variable<float>('z', "var_z", "The z variable");
+
+	int argc = 7;
+	char a1[] = "test_var";
+	char a2[] = "-x";
+	char a3[] = "1";
+	char a4[] = "-y";
+	char a5[] = "1.2345";
+	char a6[] = "-z";
+	char a7[] = "1.2345e-1";
+	char* argv[] = {a1, a2, a3, a4, a5, a6, a7};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(x.is_set);
+	REQUIRE(x.value == 1.f);
+	REQUIRE(y.is_set);
+	REQUIRE(y.value == 1.2345f);
+	REQUIRE(z.is_set);
+	REQUIRE(z.value == 1.2345e-1f);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
+{
+	const auto& x = parser.add_variable<double>('x', "var_x", "The x variable");
+	const auto& y = parser.add_variable<double>('y', "var_y", "The y variable");
+	const auto& z = parser.add_variable<double>('z', "var_z", "The z variable");
+
+	int argc = 7;
+	char a1[] = "test_var";
+	char a2[] = "-x";
+	char a3[] = "1";
+	char a4[] = "-y";
+	char a5[] = "1.2345";
+	char a6[] = "-z";
+	char a7[] = "1.2345e-100";
+	char* argv[] = {a1, a2, a3, a4, a5, a6, a7};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(x.is_set);
+	REQUIRE(x.value == 1.0);
+	REQUIRE(y.is_set);
+	REQUIRE(y.value == 1.2345);
+	REQUIRE(z.is_set);
+	REQUIRE(z.value == 1.2345e-100);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <string> argument", "[var]")
+{
+	const auto& s = parser.add_variable<std::string>('s', "var_s", "The s variable");
+
+	int argc = 3;
+	char a1[] = "test_var";
+	char a2[] = "-s";
+	char a3[] = "plip plop";
+	char* argv[] = {a1, a2, a3};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+	REQUIRE(s.is_set);
+	REQUIRE(!s.value.compare("plip plop"));
+}
+
 
 
 class PosFixture
@@ -416,7 +487,7 @@ protected:
 	ap::ArgParse parser;
 };
 
-TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint obeyed", "[exf]")
+TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive flags, constraint obeyed", "[exf]")
 {
 	parser.add_flag('x', "param_x", "The parameter x");
 	parser.add_flag('y', "param_y", "The parameter y");
@@ -434,7 +505,7 @@ TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint obeyed", "[exf]
 	REQUIRE(success);
 }
 
-TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint violated", "[exf]")
+TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive flags, constraint violated", "[exf]")
 {
 	parser.add_flag('x', "param_x", "The parameter x");
 	parser.add_flag('y', "param_y", "The parameter y");
@@ -453,7 +524,7 @@ TEST_CASE_METHOD(ExFlagFixture, "Two exclusive flags, constraint violated", "[ex
 	REQUIRE(!success);
 }
 
-TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint obeyed", "[exf]")
+TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive sets, constraint obeyed", "[exf]")
 {
 	parser.add_flag('x', "param_x", "The parameter x");
 	parser.add_flag('y', "param_y", "The parameter y");
@@ -472,7 +543,7 @@ TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint obeyed", "[exf]"
 	REQUIRE(success);
 }
 
-TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint violated", "[exf]")
+TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive sets, constraint violated", "[exf]")
 {
 	parser.add_flag('x', "param_x", "The parameter x");
 	parser.add_flag('y', "param_y", "The parameter y");
@@ -486,6 +557,103 @@ TEST_CASE_METHOD(ExFlagFixture, "Two exclusive sets, constraint violated", "[exf
 	char a3[] = "-z";
 	char* argv[] = {a1, a2, a3};
 
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+}
+
+
+
+class ExVarFixture
+{
+public:
+	ExVarFixture():
+	parser("program", "0.1")
+	{
+
+	}
+
+protected:
+	ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive variables, constraint obeyed", "[exv]")
+{
+	parser.add_variable<int>('x', "var_x", "The x variable", 0);
+	parser.add_variable<int>('y', "var_y", "The y variable", 0);
+	parser.add_variable<int>('z', "var_z", "The z variable", 0);
+	parser.set_variables_exclusive({'x', 'y'});
+
+	int argc = 5;
+	char a1[] = "test_exv";
+	char a2[] = "-x";
+	char a3[] = "10";
+	char a4[] = "-z";
+	char a5[] = "10";
+	char* argv[] = {a1, a2, a3, a4, a5};
+
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+}
+
+TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive variables, constraint violated", "[exv]")
+{
+	parser.add_variable<int>('x', "var_x", "The x variable", 0);
+	parser.add_variable<int>('y', "var_y", "The y variable", 0);
+	parser.add_variable<int>('z', "var_z", "The z variable", 0);
+	parser.set_variables_exclusive({'x', 'y'});
+
+	int argc = 5;
+	char a1[] = "test_exv";
+	char a2[] = "-x";
+	char a3[] = "10";
+	char a4[] = "-y";
+	char a5[] = "10";
+	char* argv[] = {a1, a2, a3, a4, a5};
+	
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(!success);
+}
+
+TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint obeyed", "[exv]")
+{
+	parser.add_variable<int>('x', "var_x", "The x variable", 0);
+	parser.add_variable<int>('y', "var_y", "The y variable", 0);
+	parser.add_variable<int>('z', "var_z", "The z variable", 0);
+	parser.set_variables_exclusive({'x', 'y'});
+	parser.set_variables_exclusive({'y', 'z'});
+
+	int argc = 5;
+	char a1[] = "test_exv";
+	char a2[] = "-x";
+	char a3[] = "10";
+	char a4[] = "-z";
+	char a5[] = "10";
+	char* argv[] = {a1, a2, a3, a4, a5};
+	
+	bool success = parser.parse(argc, argv);
+
+	REQUIRE(success);
+}
+
+TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint violated", "[exv]")
+{
+	parser.add_variable<int>('x', "var_x", "The x variable", 0);
+	parser.add_variable<int>('y', "var_y", "The y variable", 0);
+	parser.add_variable<int>('z', "var_z", "The z variable", 0);
+	parser.set_variables_exclusive({'x', 'y'});
+	parser.set_variables_exclusive({'y', 'z'});
+
+	int argc = 5;
+	char a1[] = "test_exv";
+	char a2[] = "-y";
+	char a3[] = "10";
+	char a4[] = "-z";
+	char a5[] = "10";
+	char* argv[] = {a1, a2, a3, a4, a5};
+	
 	bool success = parser.parse(argc, argv);
 
 	REQUIRE(!success);

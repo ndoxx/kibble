@@ -1,19 +1,18 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <set>
+#include <functional>
 
 /*
  * TODO:
- * - Exclusive flags sets
- * 		-> No two flags of the same set shall be active simultaneously
- * - Exclusive variables sets
- * 		-> No two variables of the same set shall be set simultaneously
  * - Argument dependency
  * 		-> An optional argument may require another one to be set
+ * - List operands
+ *      -> An optional argument may expect a comma separated list of values   
  */
 
 namespace kb
@@ -32,6 +31,7 @@ struct ArgFlag
 
 struct ArgVarBase
 {
+    size_t exclusive_idx = 0;
     bool is_set = false;
     char short_name = 0;
     std::string full_name;
@@ -51,13 +51,10 @@ template <typename T> struct ArgVar : public ArgVarBase
     virtual std::string underlying_type() const override { return "NONE"; }
 };
 
-template <> struct ArgVar<int> : public ArgVarBase
+template <typename T>
+struct DefaultInit
 {
-    int value;
-
-    virtual ~ArgVar() = default;
-    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stoi(arg); }
-    virtual std::string underlying_type() const override { return "int"; }
+    static inline T from(int Z) { return T(Z); }
 };
 
 class ArgParse
@@ -71,7 +68,7 @@ public:
 
     template <typename T>
     const ArgVar<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
-                                  T default_value = T(0))
+                                  T default_value = DefaultInit<T>::from(0))
     {
         ArgVar<T>* var = new ArgVar<T>();
         var->short_name = short_name;
@@ -98,6 +95,7 @@ public:
     void add_flag(char short_name, const std::string& full_name, const std::string& description,
                   bool default_value = false);
     void set_flags_exclusive(const std::set<char>& exclusive_set);
+    void set_variables_exclusive(const std::set<char>& exclusive_set);
     bool parse(int argc, char** argv) noexcept;
     bool is_set(char short_name) const;
     void usage() const;
@@ -112,6 +110,11 @@ private:
     bool check_positional_requirements() noexcept;
     bool check_exclusivity_constraints() noexcept;
 
+    std::set<char> get_active_flags() const;
+    std::set<char> get_active_variables() const;
+    bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
+                            std::function<void(char)> show_argument) const;
+
 private:
     std::string ver_string_;
     std::string program_name_;
@@ -119,10 +122,63 @@ private:
     std::map<char, ArgVarBase*> variables_;
     std::vector<ArgVarBase*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
+    std::vector<std::set<char>> exclusive_variables_;
     std::unordered_map<std::string, char> full_to_short_;
     bool valid_state_;
     bool was_run_;
     int argc_;
+};
+
+
+template <> struct ArgVar<int> : public ArgVarBase
+{
+    int value;
+
+    virtual ~ArgVar() = default;
+    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stoi(arg); }
+    virtual std::string underlying_type() const override { return "int"; }
+};
+
+template <> struct ArgVar<long> : public ArgVarBase
+{
+    long value;
+
+    virtual ~ArgVar() = default;
+    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stol(arg); }
+    virtual std::string underlying_type() const override { return "long"; }
+};
+
+template <> struct ArgVar<float> : public ArgVarBase
+{
+    float value;
+
+    virtual ~ArgVar() = default;
+    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stof(arg); }
+    virtual std::string underlying_type() const override { return "float"; }
+};
+
+template <> struct ArgVar<double> : public ArgVarBase
+{
+    double value;
+
+    virtual ~ArgVar() = default;
+    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stod(arg); }
+    virtual std::string underlying_type() const override { return "double"; }
+};
+
+template <> struct ArgVar<std::string> : public ArgVarBase
+{
+    std::string value;
+
+    virtual ~ArgVar() = default;
+    virtual void cast(const std::string& arg) noexcept override { value = arg; }
+    virtual std::string underlying_type() const override { return "string"; }
+};
+
+template <>
+struct DefaultInit<std::string>
+{
+    static inline std::string from(int) { return ""; }
 };
 
 } // namespace ap

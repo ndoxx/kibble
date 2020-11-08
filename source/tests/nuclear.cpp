@@ -83,11 +83,14 @@ int p3(int argc, char** argv)
 	parser.add_flag('x', "param_x", "The parameter x");
 	parser.add_flag('y', "param_y", "The parameter y");
 	parser.add_flag('z', "param_z", "The parameter z");
-	parser.set_flags_exclusive({'x', 'y'});
-	parser.set_flags_exclusive({'y', 'z'});
 	parser.add_variable<int>('m', "var_m", "The variable m", 10);
 	parser.add_variable<int>('n', "var_n", "The variable n", 10);
-	parser.add_positional<int>("magic", "The magic number");
+	parser.add_variable<int>('o', "var_o", "The variable o", 10);
+	parser.add_positional<int>("MAGIC", "The magic number");
+
+	parser.set_flags_exclusive({'x', 'y'});
+	parser.set_flags_exclusive({'y', 'z'});
+	parser.set_variables_exclusive({'m', 'o'});
 
 	parser.usage();
 
