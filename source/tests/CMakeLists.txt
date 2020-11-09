@@ -106,10 +106,10 @@ target_compile_options(fuzz_tester
 target_compile_definitions(fuzz_tester PRIVATE -DLOGGING_ENABLED=0)
 
 # 10 seconds fuzz testing
-set(FUZZ_RUNTIME
-    10
-    CACHE STRING "Number of seconds to run fuzz tests during ctest run"
-)
+# set(FUZZ_RUNTIME
+#     10
+#     CACHE STRING "Number of seconds to run fuzz tests during ctest run"
+# )
 
 # add_test(NAME fuzz_tester_run COMMAND fuzz_tester -max_total_time=${FUZZ_RUNTIME})
 

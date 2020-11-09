@@ -4,8 +4,8 @@
 #include "logger/logger_thread.h"
 
 #include <exception>
-#include <string>
 #include <regex>
+#include <string>
 
 using namespace kb;
 
@@ -29,7 +29,7 @@ int p1(int argc, char** argv)
     const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
     const auto& yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
-    
+
     bool success = parser.parse(argc, argv);
     if(!success)
     {
@@ -77,11 +77,7 @@ int p2(int argc, char** argv)
 int p3(int argc, char** argv)
 {
     ap::ArgParse parser("nuclear", "0.1");
-    parser.set_log_output([](const std::string& str)
-    {
-    	KLOG("kibble", 1) << str << std::endl;
-    });
-
+    parser.set_log_output([](const std::string& str) { KLOG("kibble", 1) << str << std::endl; });
 
     parser.add_flag('A', "param_A", "The parameter A");
     parser.add_flag('B', "param_B", "The parameter B");
@@ -110,8 +106,8 @@ int p3(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	(void)argc;
-	(void)argv;
+    (void)argc;
+    (void)argv;
 
     init_logger();
 

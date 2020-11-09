@@ -18,10 +18,7 @@ std::vector<std::string> tokenize(const char* data, size_t size)
     return result;
 }
 
-inline std::vector<std::string> tokenize(const std::string& str)
-{
-    return tokenize(str.data(), str.size());
-}
+inline std::vector<std::string> tokenize(const std::string& str) { return tokenize(str.data(), str.size()); }
 
 std::vector<const char*> make_argv(const std::vector<std::string>& arguments)
 {

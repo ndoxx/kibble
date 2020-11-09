@@ -7,7 +7,16 @@
 #include <unordered_map>
 #include <vector>
 
-/*
+/* FEATURES:
+ * - Simple and natural interface
+ * - Single/double dash syntax
+ * - Handles optional flags and variables as well as required positional arguments
+ * - Variables and positionals can have integer, floating point and string operands
+ * - Exclusive flags and variables
+ * - Automatic usage and version strings generation
+ * - Useful error messages on parsing error
+ *
+ *
  * TODO:
  * - Argument dependency
  * 		-> An optional argument may require another one to be set
@@ -82,6 +91,7 @@ public:
     inline const std::vector<std::string>& get_errors() const { return error_log_; }
     inline void set_usage_padding(long padding) { usage_padding_ = padding; }
     inline void set_log_output(std::function<void(const std::string&)> output) { output_ = output; }
+    inline void set_exit_on_special_command(bool value) { exit_on_special_command_ = value; }
 
     template <typename T>
     const ArgVar<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
@@ -117,7 +127,7 @@ public:
     bool is_set(char short_name) const;
 
 private:
-    bool try_match_special_options(const std::string& arg) noexcept;
+    bool try_match_special_command(const std::string& arg) noexcept;
     bool try_set_flag(char key) noexcept;
     char try_set_flag_group(const std::string& group) noexcept;
     bool try_set_variable(char key, const std::string& operand) noexcept(false);
@@ -146,10 +156,11 @@ private:
     std::vector<std::set<char>> exclusive_variables_;
     std::unordered_map<std::string, char> full_to_short_;
     std::vector<std::string> error_log_;
-    std::function<void(const std::string&)> output_ = [](const std::string&){};
-    bool valid_state_;
-    bool was_run_;
+    std::function<void(const std::string&)> output_ = [](const std::string&) {};
 
+    bool valid_state_ = false;
+    bool was_run_ = false;
+    bool exit_on_special_command_ = true;
     long usage_padding_ = 30;
 };
 

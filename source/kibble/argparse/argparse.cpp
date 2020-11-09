@@ -10,13 +10,13 @@ namespace kb
 namespace ap
 {
 
-struct ParsingException: public std::exception
+struct ParsingException : public std::exception
 {
     std::string message_;
     const char* what() const noexcept override { return message_.c_str(); }
 };
 
-struct UnknownArgumentException: public ParsingException
+struct UnknownArgumentException : public ParsingException
 {
     UnknownArgumentException(const std::string& argument)
     {
@@ -57,7 +57,7 @@ struct InvalidOperandException : public ParsingException
 };
 
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
-    : ver_string_(ver_string), program_name_(program_name), valid_state_(false), was_run_(false)
+    : ver_string_(ver_string), program_name_(program_name)
 {}
 
 ArgParse::~ArgParse()
@@ -135,7 +135,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
 
             if(single_full)
             {
-                if(try_match_special_options(arg))
+                if(try_match_special_command(arg) && exit_on_special_command_)
                     exit(0);
 
                 auto full_it = full_to_short_.find(arg.substr(2));
@@ -200,7 +200,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
     return valid_state_;
 }
 
-bool ArgParse::try_match_special_options(const std::string& arg) noexcept
+bool ArgParse::try_match_special_command(const std::string& arg) noexcept
 {
     // --help => show usage and exit
     if(!arg.compare("--help"))
@@ -373,7 +373,7 @@ static void format_description(std::stringstream& oss, char key, const std::stri
     ss << "    ";
     if(key != 0)
         ss << '-' << key << ", ";
-    if(type.size()==0 || key != 0)
+    if(type.size() == 0 || key != 0)
         ss << "--";
     ss << full_name;
     if(type.size())
@@ -385,7 +385,7 @@ static void format_description(std::stringstream& oss, char key, const std::stri
 
     long padding = std::max(max_left - size, 0l);
 
-    while(padding>=0)
+    while(padding >= 0)
     {
         ss << ' ';
         --padding;
@@ -471,7 +471,8 @@ void ArgParse::make_usage_string()
     ss << std::endl << "With:" << std::endl;
 
     for(const auto* pvar : positionals_)
-        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
+        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description,
+                           usage_padding_);
 
     ss << std::endl << "Options:" << std::endl;
 
@@ -482,7 +483,8 @@ void ArgParse::make_usage_string()
         format_description(ss, flag.short_name, flag.full_name, "", flag.description, usage_padding_);
 
     for(auto&& [key, pvar] : variables_)
-        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
+        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description,
+                           usage_padding_);
 
     usage_string_.assign(ss.str());
 }
