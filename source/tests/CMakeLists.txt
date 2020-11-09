@@ -72,6 +72,49 @@ cotire(test_kibble)
 
 
 
+# -------- FUZZ TESTING -------- #
+
+add_executable(fuzz_tester fuzz_tester.cpp)
+
+target_include_directories(fuzz_tester
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/source/kibble"
+    )
+
+set_target_properties(fuzz_tester
+    PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+)
+
+target_link_libraries(fuzz_tester
+    PRIVATE
+        project_options
+        project_warnings
+        kibble
+        -coverage
+        -fsanitize=fuzzer,undefined,address
+    )
+
+target_compile_options(fuzz_tester
+    PRIVATE
+        -fsanitize=fuzzer,undefined,address
+    )
+
+target_compile_definitions(fuzz_tester PRIVATE -DLOGGING_ENABLED=0)
+
+# 10 seconds fuzz testing
+set(FUZZ_RUNTIME
+    10
+    CACHE STRING "Number of seconds to run fuzz tests during ctest run"
+)
+
+# add_test(NAME fuzz_tester_run COMMAND fuzz_tester -max_total_time=${FUZZ_RUNTIME})
+
+
+
 # -------- NUCLEAR TEST -------- #
 
 set(SRC_NUCLEAR

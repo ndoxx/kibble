@@ -1,5 +1,4 @@
 #include "argparse/argparse.h"
-#include "logger/logger.h"
 
 #include <algorithm>
 #include <cassert>
@@ -11,60 +10,50 @@ namespace kb
 namespace ap
 {
 
-// Error logging is implemented as a side-effect of what(). Uggly, but it works.
-struct IllegalSyntaxException : public std::exception
+struct ParsingException: public std::exception
 {
-    const char* what() const noexcept override
+    std::string message_;
+    const char* what() const noexcept override { return message_.c_str(); }
+};
+
+struct UnknownArgumentException: public ParsingException
+{
+    UnknownArgumentException(const std::string& argument)
     {
-        KLOGW("core") << "Illegal syntax." << std::endl;
-        return "Exception: illegal syntax";
+        std::stringstream ss;
+        ss << "Unknown argument: " << argument;
+        message_.assign(ss.str());
     }
 };
 
-struct UnknownArgumentException : public std::exception
+struct SupernumeraryArgumentException : public ParsingException
 {
-    UnknownArgumentException(const std::string& argument) : argument_(argument) {}
-    const char* what() const noexcept override
+    SupernumeraryArgumentException(const std::string& argument)
     {
-        KLOGW("core") << "Unknown argument: " << argument_ << std::endl;
-        return "Exception: unknown argument";
+        std::stringstream ss;
+        ss << "Supernumerary argument: " << argument;
+        message_.assign(ss.str());
     }
-    std::string argument_;
 };
 
-struct SupernumeraryArgumentException : public std::exception
+struct MissingOperandException : public ParsingException
 {
-    SupernumeraryArgumentException(const std::string& argument) : argument_(argument) {}
-    const char* what() const noexcept override
+    MissingOperandException(const std::string& argument)
     {
-        KLOGW("core") << "Supernumerary argument: " << argument_ << std::endl;
-        return "Exception: supernumerary argument";
+        std::stringstream ss;
+        ss << "Missing operand after argument: " << argument;
+        message_.assign(ss.str());
     }
-    std::string argument_;
 };
 
-struct MissingOperandException : public std::exception
+struct InvalidOperandException : public ParsingException
 {
-    MissingOperandException(const std::string& argument) : argument_(argument) {}
-    const char* what() const noexcept override
+    InvalidOperandException(const std::string& argument, const std::string& value)
     {
-        KLOGW("core") << "Missing operand after argument: " << argument_ << std::endl;
-        return "Exception: missing operand after argument";
+        std::stringstream ss;
+        ss << "Invalid operand: \"" << value << "\" for argument: " << argument;
+        message_.assign(ss.str());
     }
-    std::string argument_;
-};
-
-struct InvalidOperandException : public std::exception
-{
-    InvalidOperandException(const std::string& argument, const std::string& value) : argument_(argument), value_(value)
-    {}
-    const char* what() const noexcept override
-    {
-        KLOGW("core") << "Invalid operand: \"" << value_ << "\" for argument: " << argument_ << std::endl;
-        return "Exception: invalid operand";
-    }
-    std::string argument_;
-    std::string value_;
 };
 
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
@@ -200,8 +189,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
     }
     catch(std::exception& e)
     {
-        // Error logging is implemented as a side-effect of what(). Uggly, but it works.
-        e.what();
+        log_error(e.what());
         valid_state_ = false;
     }
 
@@ -217,14 +205,14 @@ bool ArgParse::try_match_special_options(const std::string& arg) noexcept
     // --help => show usage and exit
     if(!arg.compare("--help"))
     {
-        usage();
+        output_(usage());
         return true;
     }
 
     // --version => show version string and exit
     if(!arg.compare("--version"))
     {
-        version();
+        output_(version());
         return true;
     }
     return false;
@@ -280,14 +268,16 @@ bool ArgParse::try_set_positional(size_t& current_positional, const std::string&
     return false;
 }
 
-bool ArgParse::check_positional_requirements() const noexcept
+bool ArgParse::check_positional_requirements() noexcept
 {
     // * Check that all positional arguments are set
     for(auto* pvar : positionals_)
     {
         if(!pvar->is_set)
         {
-            KLOGW("core") << "Missing required argument: " << pvar->full_name << std::endl;
+            std::stringstream ss;
+            ss << "Missing required argument: " << pvar->full_name << std::endl;
+            log_error(ss.str());
             return false;
         }
     }
@@ -295,15 +285,15 @@ bool ArgParse::check_positional_requirements() const noexcept
     return true;
 }
 
-bool ArgParse::check_exclusivity_constraints() const noexcept
+bool ArgParse::check_exclusivity_constraints() noexcept
 {
     // * Check flags exclusivity constraints
     {
         // First, get the set of all active flags
         auto active_set = get_active_flags();
 
-        if(!check_intersection(active_set, exclusive_flags_, [this](char key) {
-               KLOGW("core") << "--" << flags_.at(key).full_name << " (-" << key << ')';
+        if(!check_intersection(active_set, exclusive_flags_, [this](std::stringstream& ss, char key) {
+               ss << "--" << flags_.at(key).full_name << " (-" << key << ')';
            }))
             return false;
     }
@@ -313,8 +303,8 @@ bool ArgParse::check_exclusivity_constraints() const noexcept
         // First, get the set of all active variables
         auto active_set = get_active_variables();
 
-        if(!check_intersection(active_set, exclusive_variables_, [this](char key) {
-               KLOGW("core") << "--" << variables_.at(key)->full_name << " (-" << key << ')';
+        if(!check_intersection(active_set, exclusive_variables_, [this](std::stringstream& ss, char key) {
+               ss << "--" << variables_.at(key)->full_name << " (-" << key << ')';
            }))
             return false;
     }
@@ -343,7 +333,7 @@ std::set<char> ArgParse::get_active_variables() const noexcept
 }
 
 bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
-                                  std::function<void(char)> show_argument) const noexcept
+                                  std::function<void(std::stringstream&, char)> show_argument) noexcept
 {
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
@@ -355,17 +345,19 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
                               std::inserter(intersection, intersection.begin()));
         if(intersection.size() > 1)
         {
-            KLOGW("core") << "Incompatible arguments: ";
+            std::stringstream ss;
+            ss << "Incompatible arguments: ";
             size_t count = 0;
             for(char key : intersection)
             {
-                show_argument(key);
+                show_argument(ss, key);
                 if(++count < intersection.size())
                 {
-                    KLOGW("core") << ", ";
+                    ss << ", ";
                 }
             }
-            KLOGW("core") << std::endl;
+            ss << std::endl;
+            log_error(ss.str());
             return false;
         }
     }
@@ -373,7 +365,7 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
     return true;
 }
 
-static void format_description(char key, const std::string& full_name, const std::string& type,
+static void format_description(std::stringstream& oss, char key, const std::string& full_name, const std::string& type,
                                const std::string& description, long max_left)
 {
     std::stringstream ss;
@@ -399,10 +391,10 @@ static void format_description(char key, const std::string& full_name, const std
         --padding;
     }
 
-    KLOGR("core") << ss.str() << description << std::endl;
+    oss << ss.str() << description << std::endl;
 }
 
-void ArgParse::usage() const
+void ArgParse::make_usage_string()
 {
     // Gather all non exclusive flags
     std::string nonex_flags = "";
@@ -416,86 +408,92 @@ void ArgParse::usage() const
         if(pvar->exclusive_idx == 0)
             nonex_vars += key;
 
+    std::stringstream ss;
+
     // Start usage string
-    KLOG("core", 1) << "Usage:" << std::endl;
-    KLOGR("core") << program_name_;
+    ss << "Usage:" << std::endl;
+    ss << program_name_;
 
     // Display nonexclusive flags
     if(nonex_flags.size())
     {
-        KLOGR("core") << " [-" << nonex_flags << ']';
+        ss << " [-" << nonex_flags << ']';
     }
 
     // Display exclusive flags
     for(const auto& ex_set : exclusive_flags_)
     {
         size_t count = 0;
-        KLOGR("core") << " [";
+        ss << " [";
         for(char key : ex_set)
         {
-            KLOGR("core") << '-' << key;
+            ss << '-' << key;
             if(++count < ex_set.size())
             {
-                KLOGR("core") << " | ";
+                ss << " | ";
             }
         }
-        KLOGR("core") << ']';
+        ss << ']';
     }
 
     // Display nonexclusive variables
     for(char key : nonex_vars)
     {
         const auto* pvar = variables_.at(key);
-        KLOGR("core") << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
+        ss << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
     }
 
     // Display exclusive variables
     for(const auto& ex_set : exclusive_variables_)
     {
         size_t count = 0;
-        KLOGR("core") << " [";
+        ss << " [";
         for(char key : ex_set)
         {
             const auto* pvar = variables_.at(key);
-            KLOGR("core") << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
+            ss << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
             if(++count < ex_set.size())
             {
-                KLOGR("core") << " | ";
+                ss << " | ";
             }
         }
-        KLOGR("core") << ']';
+        ss << ']';
     }
 
     // Display positional arguments
     for(const auto* pvar : positionals_)
     {
-        KLOGR("core") << ' ' << pvar->full_name;
+        ss << ' ' << pvar->full_name;
     }
-    KLOGR("core") << std::endl;
+    ss << std::endl;
 
     // Show argument descriptions
-    KLOGR("core") << std::endl << "With:" << std::endl;
+    ss << std::endl << "With:" << std::endl;
 
     for(const auto* pvar : positionals_)
-        format_description(pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
+        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
 
-    KLOGR("core") << std::endl << "Options:" << std::endl;
+    ss << std::endl << "Options:" << std::endl;
 
-    format_description(0, "help", "", "Display this usage string and exit", usage_padding_);
-    format_description(0, "version", "", "Display the program version string and exit", usage_padding_);
+    format_description(ss, 0, "help", "", "Display this usage string and exit", usage_padding_);
+    format_description(ss, 0, "version", "", "Display the program version string and exit", usage_padding_);
 
     for(auto&& [key, flag] : flags_)
-        format_description(flag.short_name, flag.full_name, "", flag.description, usage_padding_);
+        format_description(ss, flag.short_name, flag.full_name, "", flag.description, usage_padding_);
 
     for(auto&& [key, pvar] : variables_)
-        format_description(pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
+        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description, usage_padding_);
+
+    usage_string_.assign(ss.str());
 }
 
-void ArgParse::version() const
+void ArgParse::make_version_string()
 {
+    std::stringstream ss;
     std::string pg_upper = program_name_;
     std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
-    KLOG("core", 1) << pg_upper << " - version: " << ver_string_ << std::endl;
+    ss << pg_upper << " - version: " << ver_string_ << std::endl;
+    full_ver_string_.assign(ss.str());
 }
 
 } // namespace ap

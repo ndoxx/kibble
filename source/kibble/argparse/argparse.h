@@ -51,6 +51,7 @@ template <typename T> struct ArgVar : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string&) noexcept(false) override {}
     virtual std::string underlying_type() const override { return "NONE"; }
+    inline const T& operator()() const { return value; }
 };
 
 template <typename T> struct DefaultInit
@@ -64,10 +65,23 @@ public:
     ArgParse(const std::string& program_name, const std::string& ver_string);
     ~ArgParse();
 
-    inline const std::string& get_program_name() const { return program_name_; }
-    inline const std::string& get_version_string() const { return ver_string_; }
+    inline const std::string& version()
+    {
+        if(full_ver_string_.size() == 0)
+            make_version_string();
+        return full_ver_string_;
+    }
 
+    inline const std::string& usage()
+    {
+        if(usage_string_.size() == 0)
+            make_usage_string();
+        return usage_string_;
+    }
+
+    inline const std::vector<std::string>& get_errors() const { return error_log_; }
     inline void set_usage_padding(long padding) { usage_padding_ = padding; }
+    inline void set_log_output(std::function<void(const std::string&)> output) { output_ = output; }
 
     template <typename T>
     const ArgVar<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
@@ -101,8 +115,6 @@ public:
     void set_variables_exclusive(const std::set<char>& exclusive_set);
     bool parse(int argc, char** argv) noexcept;
     bool is_set(char short_name) const;
-    void usage() const;
-    void version() const;
 
 private:
     bool try_match_special_options(const std::string& arg) noexcept;
@@ -111,22 +123,30 @@ private:
     bool try_set_variable(char key, const std::string& operand) noexcept(false);
     bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
 
-    bool check_positional_requirements() const noexcept;
-    bool check_exclusivity_constraints() const noexcept;
+    bool check_positional_requirements() noexcept;
+    bool check_exclusivity_constraints() noexcept;
     std::set<char> get_active_flags() const noexcept;
     std::set<char> get_active_variables() const noexcept;
     bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
-                            std::function<void(char)> show_argument) const noexcept;
+                            std::function<void(std::stringstream&, char)> show_argument) noexcept;
+
+    void make_usage_string();
+    void make_version_string();
+    inline void log_error(const std::string& err) { error_log_.push_back(err); }
 
 private:
     std::string ver_string_;
     std::string program_name_;
+    std::string usage_string_;
+    std::string full_ver_string_;
     std::map<char, ArgFlag> flags_;
     std::map<char, ArgVarBase*> variables_;
     std::vector<ArgVarBase*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
     std::vector<std::set<char>> exclusive_variables_;
     std::unordered_map<std::string, char> full_to_short_;
+    std::vector<std::string> error_log_;
+    std::function<void(const std::string&)> output_ = [](const std::string&){};
     bool valid_state_;
     bool was_run_;
 
@@ -140,6 +160,7 @@ template <> struct ArgVar<int> : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string& arg) noexcept(false) override { value = std::stoi(arg); }
     virtual std::string underlying_type() const override { return "int"; }
+    inline int operator()() const { return value; }
 };
 
 template <> struct ArgVar<long> : public ArgVarBase
@@ -149,6 +170,7 @@ template <> struct ArgVar<long> : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string& arg) noexcept(false) override { value = std::stol(arg); }
     virtual std::string underlying_type() const override { return "long"; }
+    inline long operator()() const { return value; }
 };
 
 template <> struct ArgVar<float> : public ArgVarBase
@@ -158,6 +180,7 @@ template <> struct ArgVar<float> : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string& arg) noexcept(false) override { value = std::stof(arg); }
     virtual std::string underlying_type() const override { return "float"; }
+    inline float operator()() const { return value; }
 };
 
 template <> struct ArgVar<double> : public ArgVarBase
@@ -167,6 +190,7 @@ template <> struct ArgVar<double> : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string& arg) noexcept(false) override { value = std::stod(arg); }
     virtual std::string underlying_type() const override { return "double"; }
+    inline double operator()() const { return value; }
 };
 
 template <> struct ArgVar<std::string> : public ArgVarBase
@@ -176,6 +200,7 @@ template <> struct ArgVar<std::string> : public ArgVarBase
     virtual ~ArgVar() = default;
     virtual void cast(const std::string& arg) noexcept override { value = arg; }
     virtual std::string underlying_type() const override { return "string"; }
+    inline const std::string& operator()() const { return value; }
 };
 
 template <> struct DefaultInit<std::string>

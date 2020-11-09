@@ -5,6 +5,7 @@
 
 #include <exception>
 #include <string>
+#include <regex>
 
 using namespace kb;
 
@@ -28,11 +29,11 @@ int p1(int argc, char** argv)
     const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
     const auto& yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    
     bool success = parser.parse(argc, argv);
-
-    parser.usage();
     if(!success)
     {
+        KLOG("kibble", 1) << parser.usage();
         return 0;
     }
 
@@ -40,7 +41,7 @@ int p1(int argc, char** argv)
     {
         KLOG("kibble", 1) << WCC(255, 190, 0);
     }
-    KLOG("kibble", 1) << "Age of the captain: " << age.value << std::endl;
+    KLOG("kibble", 1) << "Age of the captain: " << age() << std::endl;
     if(yarr())
     {
         KLOG("captain", 1) << "Yarrrrrr!" << std::endl;
@@ -53,22 +54,22 @@ int p2(int argc, char** argv)
 {
     ap::ArgParse parser("nuclear", "0.1");
 
-    parser.add_flag('o', "orange", "Use the best color in the world");
+    const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
     const auto& A = parser.add_positional<int>("first_number", "the first number to be added");
     const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
 
     bool success = parser.parse(argc, argv);
     if(!success)
     {
-        parser.usage();
+        KLOG("kibble", 1) << parser.usage();
         return 0;
     }
 
-    if(parser.is_set('o'))
+    if(orange())
     {
         KLOG("kibble", 1) << WCC(255, 190, 0);
     }
-    KLOG("kibble", 1) << "The sum of " << A.value << " and " << B.value << " is " << A.value + B.value << std::endl;
+    KLOG("kibble", 1) << "The sum of " << A() << " and " << B() << " is " << A() + B() << std::endl;
 
     return 0;
 }
@@ -76,6 +77,11 @@ int p2(int argc, char** argv)
 int p3(int argc, char** argv)
 {
     ap::ArgParse parser("nuclear", "0.1");
+    parser.set_log_output([](const std::string& str)
+    {
+    	KLOG("kibble", 1) << str << std::endl;
+    });
+
 
     parser.add_flag('A', "param_A", "The parameter A");
     parser.add_flag('B', "param_B", "The parameter B");
@@ -87,18 +93,16 @@ int p3(int argc, char** argv)
     parser.add_variable<int>('n', "var_n", "The variable n", 10);
     parser.add_variable<float>('o', "var_o", "The variable o", 10);
     parser.add_positional<int>("MAGIC", "The magic number");
-
     parser.set_flags_exclusive({'x', 'y'});
     parser.set_flags_exclusive({'y', 'z'});
     parser.set_variables_exclusive({'m', 'o'});
 
-    parser.usage();
-
     bool success = parser.parse(argc, argv);
 
-    if(success)
+    if(!success)
     {
-        KLOGG("kibble") << "Success!" << std::endl;
+        KLOG("kibble", 1) << parser.usage();
+        return 0;
     }
 
     return 0;
@@ -106,9 +110,10 @@ int p3(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    init_logger();
+	(void)argc;
+	(void)argv;
 
-    ap::ArgParse parser("nuclear", "0.1");
+    init_logger();
 
     // return p1(argc, argv);
     // return p2(argc, argv);

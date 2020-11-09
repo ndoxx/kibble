@@ -1,8 +1,15 @@
 #include "argparse/argparse.h"
-#include "logger/logger.h"
+#include "test_common.hpp"
 #include <catch2/catch_all.hpp>
 
 using namespace kb;
+
+bool Parse(ap::ArgParse& parser, const std::string& input)
+{
+	auto arguments = tc::tokenize(input);
+	auto argv = tc::make_argv(arguments);
+	return parser.parse(int(argv.size()) - 1, const_cast<char**>(argv.data()));
+}
 
 class FlagFixture
 {
@@ -19,11 +26,7 @@ protected:
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument parsing default", "[flag]")
 {
-    int argc = 1;
-    char a1[] = "test_flag";
-    char* argv[] = {a1};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program");
 
     REQUIRE(success);
     REQUIRE(!parser.is_set('o'));
@@ -32,12 +35,7 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument parsing default", "[flag]")
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument, short name", "[flag]")
 {
-    int argc = 2;
-    char a1[] = "test_flag";
-    char a2[] = "-o";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -o");
 
     REQUIRE(success);
     REQUIRE(parser.is_set('o'));
@@ -46,12 +44,7 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument, short name", "[flag]")
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument, full name", "[flag]")
 {
-    int argc = 2;
-    char a1[] = "test_flag";
-    char a2[] = "--orange";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --orange");
 
     REQUIRE(success);
     REQUIRE(parser.is_set('o'));
@@ -60,13 +53,7 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument, full name", "[flag]")
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, no concat", "[flag]")
 {
-    int argc = 3;
-    char a1[] = "test_flag";
-    char a2[] = "-o";
-    char a3[] = "-c";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -o -c");
 
     REQUIRE(success);
     REQUIRE(parser.is_set('o'));
@@ -75,12 +62,7 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, no conc
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, concat", "[flag]")
 {
-    int argc = 2;
-    char a1[] = "test_flag";
-    char a2[] = "-oc";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -oc");
 
     REQUIRE(success);
     REQUIRE(parser.is_set('o'));
@@ -89,13 +71,7 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, concat"
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, mixed name length", "[flag]")
 {
-    int argc = 3;
-    char a1[] = "test_flag";
-    char a2[] = "-o";
-    char a3[] = "--cyan";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -o --cyan");
 
     REQUIRE(success);
     REQUIRE(parser.is_set('o'));
@@ -104,24 +80,14 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, mixed name length", "[fl
 
 TEST_CASE_METHOD(FlagFixture, "Flag, bad syntax", "[flag]")
 {
-    int argc = 2;
-    char a1[] = "test_flag";
-    char a2[] = "-cyan";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -cyan");
 
     REQUIRE(!success);
 }
 
 TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
 {
-    int argc = 2;
-    char a1[] = "test_flag";
-    char a2[] = "--green";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --green");
 
     REQUIRE(!success);
     REQUIRE(!parser.is_set('o'));
@@ -141,11 +107,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, default", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 1;
-    char a1[] = "test_var";
-    char* argv[] = {a1};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program");
 
     REQUIRE(success);
     REQUIRE(!var.is_set);
@@ -156,13 +118,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "-a";
-    char a3[] = "56";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -a 56");
 
     REQUIRE(success);
     REQUIRE(var.is_set);
@@ -173,12 +129,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name, missing value
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 2;
-    char a1[] = "test_var";
-    char a2[] = "-a";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -a");
 
     REQUIRE(!success);
     REQUIRE(!var.is_set);
@@ -188,13 +139,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "--age";
-    char a3[] = "56";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --age 56");
 
     REQUIRE(success);
     REQUIRE(var.is_set);
@@ -205,12 +150,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name, missing value"
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 2;
-    char a1[] = "test_var";
-    char a2[] = "--age";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --age");
 
     REQUIRE(!success);
     REQUIRE(!var.is_set);
@@ -220,13 +160,7 @@ TEST_CASE_METHOD(VarFixture, "Unknown variable, short name", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "-p";
-    char a3[] = "56";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -p 56");
 
     REQUIRE(!success);
     REQUIRE(!var.is_set);
@@ -236,13 +170,7 @@ TEST_CASE_METHOD(VarFixture, "Unknown variable, full name", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "--page";
-    char a3[] = "56";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --page 56");
 
     REQUIRE(!success);
     REQUIRE(!var.is_set);
@@ -252,13 +180,7 @@ TEST_CASE_METHOD(VarFixture, "Variable argument, cast failure", "[var]")
 {
     const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "--age";
-    char a3[] = "plop";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --age plop");
 
     REQUIRE(!success);
     REQUIRE(!var.is_set);
@@ -269,15 +191,7 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[v
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
     const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
 
-    int argc = 5;
-    char a1[] = "test_var";
-    char a2[] = "--age";
-    char a3[] = "56";
-    char a4[] = "--height";
-    char a5[] = "185";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program --age 56 --height 185");
 
     REQUIRE(success);
     REQUIRE(age.is_set);
@@ -291,15 +205,7 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
     const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
 
-    int argc = 5;
-    char a1[] = "test_var";
-    char a2[] = "-a";
-    char a3[] = "56";
-    char a4[] = "-h";
-    char a5[] = "185";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -a 56 -h 185");
 
     REQUIRE(success);
     REQUIRE(age.is_set);
@@ -314,17 +220,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
     const auto& y = parser.add_variable<float>('y', "var_y", "The y variable");
     const auto& z = parser.add_variable<float>('z', "var_z", "The z variable");
 
-    int argc = 7;
-    char a1[] = "test_var";
-    char a2[] = "-x";
-    char a3[] = "1";
-    char a4[] = "-y";
-    char a5[] = "1.2345";
-    char a6[] = "-z";
-    char a7[] = "1.2345e-1";
-    char* argv[] = {a1, a2, a3, a4, a5, a6, a7};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x 1 -y 1.2345 -z 1.2345e-1");
 
     REQUIRE(success);
     REQUIRE(x.is_set);
@@ -341,17 +237,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
     const auto& y = parser.add_variable<double>('y', "var_y", "The y variable");
     const auto& z = parser.add_variable<double>('z', "var_z", "The z variable");
 
-    int argc = 7;
-    char a1[] = "test_var";
-    char a2[] = "-x";
-    char a3[] = "1";
-    char a4[] = "-y";
-    char a5[] = "1.2345";
-    char a6[] = "-z";
-    char a7[] = "1.2345e-100";
-    char* argv[] = {a1, a2, a3, a4, a5, a6, a7};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x 1 -y 1.2345 -z 1.2345e-100");
 
     REQUIRE(success);
     REQUIRE(x.is_set);
@@ -362,21 +248,16 @@ TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
     REQUIRE(z.value == 1.2345e-100);
 }
 
+// TODO: test with spaces
 TEST_CASE_METHOD(VarFixture, "Variable <string> argument", "[var]")
 {
     const auto& s = parser.add_variable<std::string>('s', "var_s", "The s variable");
 
-    int argc = 3;
-    char a1[] = "test_var";
-    char a2[] = "-s";
-    char a3[] = "plip plop";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -s plip_plop");
 
     REQUIRE(success);
     REQUIRE(s.is_set);
-    REQUIRE(!s.value.compare("plip plop"));
+    REQUIRE(!s.value.compare("plip_plop"));
 }
 
 class PosFixture
@@ -392,12 +273,7 @@ TEST_CASE_METHOD(PosFixture, "Single positional argument", "[pos]")
 {
     const auto& A = parser.add_positional<int>("A", "First number");
 
-    int argc = 2;
-    char a1[] = "test_pos";
-    char a2[] = "42";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program 42");
 
     REQUIRE(success);
     REQUIRE(A.is_set);
@@ -410,14 +286,7 @@ TEST_CASE_METHOD(PosFixture, "Three positional arguments", "[pos]")
     const auto& B = parser.add_positional<int>("B", "Second number");
     const auto& C = parser.add_positional<int>("C", "Third number");
 
-    int argc = 4;
-    char a1[] = "test_pos";
-    char a2[] = "42";
-    char a3[] = "43";
-    char a4[] = "44";
-    char* argv[] = {a1, a2, a3, a4};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program 42 43 44");
 
     REQUIRE(success);
     REQUIRE(A.is_set);
@@ -433,12 +302,7 @@ TEST_CASE_METHOD(PosFixture, "Two positional arguments, missing one", "[pos]")
     parser.add_positional<int>("A", "First number");
     parser.add_positional<int>("B", "Second number");
 
-    int argc = 2;
-    char a1[] = "test_pos";
-    char a2[] = "42";
-    char* argv[] = {a1, a2};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program 42");
 
     REQUIRE(!success);
 }
@@ -447,13 +311,7 @@ TEST_CASE_METHOD(PosFixture, "One positional argument needed, supernumerary one"
 {
     parser.add_positional<int>("A", "First number");
 
-    int argc = 3;
-    char a1[] = "test_pos";
-    char a2[] = "42";
-    char a3[] = "43";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program 42 43");
 
     REQUIRE(!success);
 }
@@ -474,13 +332,7 @@ TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive flags, constraint obeyed", "
     parser.add_flag('z', "param_z", "The parameter z");
     parser.set_flags_exclusive({'x', 'y'});
 
-    int argc = 3;
-    char a1[] = "test_exf";
-    char a2[] = "-x";
-    char a3[] = "-z";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x -z");
 
     REQUIRE(success);
 }
@@ -492,14 +344,7 @@ TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive flags, constraint violated",
     parser.add_flag('z', "param_z", "The parameter z");
     parser.set_flags_exclusive({'x', 'y'});
 
-    int argc = 4;
-    char a1[] = "test_exf";
-    char a2[] = "-x";
-    char a3[] = "-y";
-    char a4[] = "-z";
-    char* argv[] = {a1, a2, a3, a4};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x -y -z");
 
     REQUIRE(!success);
 }
@@ -512,13 +357,7 @@ TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive sets, constraint obeyed", "[
     parser.set_flags_exclusive({'x', 'y'});
     parser.set_flags_exclusive({'y', 'z'});
 
-    int argc = 3;
-    char a1[] = "test_exf";
-    char a2[] = "-x";
-    char a3[] = "-z";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x -z");
 
     REQUIRE(success);
 }
@@ -531,13 +370,7 @@ TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive sets, constraint violated", 
     parser.set_flags_exclusive({'x', 'y'});
     parser.set_flags_exclusive({'y', 'z'});
 
-    int argc = 3;
-    char a1[] = "test_exf";
-    char a2[] = "-y";
-    char a3[] = "-z";
-    char* argv[] = {a1, a2, a3};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -y -z");
 
     REQUIRE(!success);
 }
@@ -558,15 +391,7 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive variables, constraint obeyed"
     parser.add_variable<int>('z', "var_z", "The z variable", 0);
     parser.set_variables_exclusive({'x', 'y'});
 
-    int argc = 5;
-    char a1[] = "test_exv";
-    char a2[] = "-x";
-    char a3[] = "10";
-    char a4[] = "-z";
-    char a5[] = "10";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x 10 -z 10");
 
     REQUIRE(success);
 }
@@ -578,15 +403,7 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive variables, constraint violate
     parser.add_variable<int>('z', "var_z", "The z variable", 0);
     parser.set_variables_exclusive({'x', 'y'});
 
-    int argc = 5;
-    char a1[] = "test_exv";
-    char a2[] = "-x";
-    char a3[] = "10";
-    char a4[] = "-y";
-    char a5[] = "10";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x 10 -y 10");
 
     REQUIRE(!success);
 }
@@ -599,15 +416,7 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint obeyed", "[e
     parser.set_variables_exclusive({'x', 'y'});
     parser.set_variables_exclusive({'y', 'z'});
 
-    int argc = 5;
-    char a1[] = "test_exv";
-    char a2[] = "-x";
-    char a3[] = "10";
-    char a4[] = "-z";
-    char a5[] = "10";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -x 10 -z 10");
 
     REQUIRE(success);
 }
@@ -620,15 +429,7 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint violated", "
     parser.set_variables_exclusive({'x', 'y'});
     parser.set_variables_exclusive({'y', 'z'});
 
-    int argc = 5;
-    char a1[] = "test_exv";
-    char a2[] = "-y";
-    char a3[] = "10";
-    char a4[] = "-z";
-    char a5[] = "10";
-    char* argv[] = {a1, a2, a3, a4, a5};
-
-    bool success = parser.parse(argc, argv);
+    bool success = Parse(parser, "program -y 10 -z 10");
 
     REQUIRE(!success);
 }
