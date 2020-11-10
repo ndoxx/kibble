@@ -2,27 +2,25 @@
 
 #include <functional>
 #include <map>
+#include <ostream>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <ostream>
 
 /* FEATURES:
  * - Simple and natural interface
  * - Single/double dash syntax, multiple flags can be concatenated after a single dash
  * - Handles optional flags and variables as well as required positional arguments
- * - Variables and positionals can have integer, floating point and string operands
- * - Exclusive flags and variables
+ * - Options and positionals can have integer, floating point and string operands,
+ *   options can also receive comma-separated lists of these types
+ * - Options can be mutually exclusive or dependent on one another
  * - Automatic usage and version strings generation
- * - Useful error messages on parsing error
+ * - Useful error messages on parsing failure
  *
  *
  * TODO:
- * - Argument dependency
- * 		-> An optional argument may require another one to be set
- * - List operands
- *      -> An optional argument may expect a comma separated list of values
  * - "program @arguments.txt" syntax to allow loading of arguments from a text file
  *
  * EVAL:
@@ -36,6 +34,8 @@ namespace kb
 namespace ap
 {
 
+struct InvalidOperandException;
+
 enum class ArgType : uint8_t
 {
     NONE,
@@ -44,10 +44,18 @@ enum class ArgType : uint8_t
     LONG,
     FLOAT,
     DOUBLE,
-    STRING
+    STRING,
+    VEC_INT,
+    VEC_LONG,
+    VEC_FLOAT,
+    VEC_DOUBLE,
+    VEC_STRING
 };
 
-struct AbstractArgument
+template <typename T> T StringCast(const std::string&) noexcept(false);
+template <typename T> static ArgType k_underlying_type;
+
+struct AbstractOption
 {
     char dependency = 0;
     bool is_set = false;
@@ -56,28 +64,23 @@ struct AbstractArgument
     std::string description;
     std::set<size_t> exclusive_sets;
 
-    virtual ~AbstractArgument() = default;
+    virtual ~AbstractOption() = default;
     virtual void cast(const std::string&) noexcept(false) = 0;
     virtual ArgType underlying_type() const = 0;
     void format_description(std::ostream&, long max_pad) const;
 };
 
-template <typename T> struct Argument : public AbstractArgument
+template <typename T> struct Option : public AbstractOption
 {
     T value;
 
-    virtual ~Argument() = default;
-    virtual void cast(const std::string&) noexcept(false) override {}
-    virtual ArgType underlying_type() const override { return ArgType::NONE; }
+    virtual ~Option() = default;
+    virtual void cast(const std::string& operand) noexcept(false) override { value = StringCast<T>(operand); }
+    virtual ArgType underlying_type() const override { return k_underlying_type<T>; }
     inline const T& operator()() const { return value; }
 };
 
-using ArgFlag = Argument<bool>;
-
-template <typename T> struct DefaultInit
-{
-    static inline T from(int Z) { return T(Z); }
-};
+using Flag = Option<bool>;
 
 class ArgParse
 {
@@ -105,36 +108,42 @@ public:
     inline void set_exit_on_special_command(bool value) { exit_on_special_command_ = value; }
 
     template <typename T>
-    const Argument<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
-                                    T default_value = DefaultInit<T>::from(0))
+    const Option<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
+                                  T default_value)
     {
-        Argument<T>* var = new Argument<T>();
-        var->short_name = short_name;
-        var->full_name = full_name;
-        var->description = description;
+        Option<T>* opt = new Option<T>();
+        opt->short_name = short_name;
+        opt->full_name = full_name;
+        opt->description = description;
         if constexpr(!std::is_same_v<T, bool>)
-            var->value = default_value;
-        arguments_.insert(std::pair(short_name, var));
+            opt->value = default_value;
+        arguments_.insert(std::pair(short_name, opt));
         full_to_short_.insert(std::pair(full_name, short_name));
 
-        return *var;
+        return *opt;
     }
 
-    const ArgFlag& add_flag(char short_name, const std::string& full_name, const std::string& description)
+    inline const Flag& add_flag(char short_name, const std::string& full_name, const std::string& description)
     {
-        return add_variable<bool>(short_name, full_name, description);
+        return add_variable<bool>(short_name, full_name, description, false);
     }
 
     template <typename T>
-    const Argument<T>& add_positional(const std::string& full_name, const std::string& description)
+    inline const Option<std::vector<T>>& add_list(char short_name, const std::string& full_name,
+                                                  const std::string& description)
     {
-        Argument<T>* var = new Argument<T>();
-        var->full_name = full_name;
-        var->description = description;
-        var->value = T(0);
-        positionals_.push_back(var);
+        return add_variable<std::vector<T>>(short_name, full_name, description, {});
+    }
 
-        return *var;
+    template <typename T> const Option<T>& add_positional(const std::string& full_name, const std::string& description)
+    {
+        Option<T>* opt = new Option<T>();
+        opt->full_name = full_name;
+        opt->description = description;
+        opt->value = T(0);
+        positionals_.push_back(opt);
+
+        return *opt;
     }
 
     void set_flags_exclusive(const std::set<char>& exclusive_set);
@@ -152,7 +161,7 @@ private:
     bool check_exclusivity_constraints() noexcept;
     bool check_dependencies() noexcept;
     bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept;
-    std::set<char> get_active(std::function<bool(AbstractArgument*)>) const noexcept;
+    std::set<char> get_active(std::function<bool(AbstractOption*)>) const noexcept;
     bool compatible(char, char) const;
 
     void make_usage_string();
@@ -164,9 +173,9 @@ private:
     std::string program_name_;
     std::string usage_string_;
     std::string full_ver_string_;
-    std::map<char, AbstractArgument*> arguments_;
+    std::map<char, AbstractOption*> arguments_;
     std::map<char, std::function<void()>> triggers_;
-    std::vector<AbstractArgument*> positionals_;
+    std::vector<AbstractOption*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
     std::vector<std::set<char>> exclusive_variables_;
     std::unordered_map<std::string, char> full_to_short_;
@@ -179,67 +188,36 @@ private:
     long usage_padding_ = 30;
 };
 
-template <> struct Argument<bool> : public AbstractArgument
+template <>[[maybe_unused]] static ArgType k_underlying_type<bool> = ArgType::BOOL;
+template <>[[maybe_unused]] static ArgType k_underlying_type<int> = ArgType::INT;
+template <>[[maybe_unused]] static ArgType k_underlying_type<long> = ArgType::LONG;
+template <>[[maybe_unused]] static ArgType k_underlying_type<float> = ArgType::FLOAT;
+template <>[[maybe_unused]] static ArgType k_underlying_type<double> = ArgType::DOUBLE;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::string> = ArgType::STRING;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::vector<int>> = ArgType::VEC_INT;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::vector<long>> = ArgType::VEC_LONG;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::vector<float>> = ArgType::VEC_FLOAT;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::vector<double>> = ArgType::VEC_DOUBLE;
+template <>[[maybe_unused]] static ArgType k_underlying_type<std::vector<std::string>> = ArgType::VEC_STRING;
+
+template <> bool StringCast<bool>(const std::string&) noexcept(false);
+template <> int StringCast<int>(const std::string&) noexcept(false);
+template <> long StringCast<long>(const std::string&) noexcept(false);
+template <> float StringCast<float>(const std::string&) noexcept(false);
+template <> double StringCast<double>(const std::string&) noexcept(false);
+template <> std::string StringCast<std::string>(const std::string&) noexcept(false);
+template <> std::vector<int> StringCast<std::vector<int>>(const std::string&) noexcept(false);
+template <> std::vector<long> StringCast<std::vector<long>>(const std::string&) noexcept(false);
+template <> std::vector<float> StringCast<std::vector<float>>(const std::string&) noexcept(false);
+template <> std::vector<double> StringCast<std::vector<double>>(const std::string&) noexcept(false);
+template <> std::vector<std::string> StringCast<std::vector<std::string>>(const std::string&) noexcept(false);
+
+template <> struct Option<bool> : public AbstractOption
 {
-    virtual ~Argument() = default;
-    virtual void cast(const std::string&) noexcept override { is_set = true; }
+    virtual ~Option() = default;
+    virtual void cast(const std::string&) noexcept(false) override { is_set = true; }
     virtual ArgType underlying_type() const override { return ArgType::BOOL; }
     inline bool operator()() const { return is_set; }
-};
-
-template <> struct Argument<int> : public AbstractArgument
-{
-    int value;
-
-    virtual ~Argument() = default;
-    virtual void cast(const std::string& operand) noexcept(false) override;
-    virtual ArgType underlying_type() const override { return ArgType::INT; }
-    inline int operator()() const { return value; }
-};
-
-template <> struct Argument<long> : public AbstractArgument
-{
-    long value;
-
-    virtual ~Argument() = default;
-    virtual void cast(const std::string& operand) noexcept(false) override;
-    virtual ArgType underlying_type() const override { return ArgType::LONG; }
-    inline long operator()() const { return value; }
-};
-
-template <> struct Argument<float> : public AbstractArgument
-{
-    float value;
-
-    virtual ~Argument() = default;
-    virtual void cast(const std::string& operand) noexcept(false) override;
-    virtual ArgType underlying_type() const override { return ArgType::FLOAT; }
-    inline float operator()() const { return value; }
-};
-
-template <> struct Argument<double> : public AbstractArgument
-{
-    double value;
-
-    virtual ~Argument() = default;
-    virtual void cast(const std::string& operand) noexcept(false) override;
-    virtual ArgType underlying_type() const override { return ArgType::DOUBLE; }
-    inline double operator()() const { return value; }
-};
-
-template <> struct Argument<std::string> : public AbstractArgument
-{
-    std::string value;
-
-    virtual ~Argument() = default;
-    virtual void cast(const std::string& operand) noexcept override { value = operand; }
-    virtual ArgType underlying_type() const override { return ArgType::STRING; }
-    inline const std::string& operator()() const { return value; }
-};
-
-template <> struct DefaultInit<std::string>
-{
-    static inline std::string from(int) { return ""; }
 };
 
 } // namespace ap

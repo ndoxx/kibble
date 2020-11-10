@@ -21,8 +21,8 @@ public:
 
 protected:
     ap::ArgParse parser;
-    const ap::ArgFlag& orange;
-    const ap::ArgFlag& cyan;
+    const ap::Flag& orange;
+    const ap::Flag& cyan;
 };
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument parsing default", "[flag]")
@@ -212,9 +212,9 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[
 
 TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
 {
-    const auto& x = parser.add_variable<float>('x', "var_x", "The x variable");
-    const auto& y = parser.add_variable<float>('y', "var_y", "The y variable");
-    const auto& z = parser.add_variable<float>('z', "var_z", "The z variable");
+    const auto& x = parser.add_variable<float>('x', "var_x", "The x variable", 0.f);
+    const auto& y = parser.add_variable<float>('y', "var_y", "The y variable", 0.f);
+    const auto& z = parser.add_variable<float>('z', "var_z", "The z variable", 0.f);
 
     bool success = Parse(parser, "program -x 1 -y 1.2345 -z 1.2345e-1");
 
@@ -229,9 +229,9 @@ TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
 
 TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
 {
-    const auto& x = parser.add_variable<double>('x', "var_x", "The x variable");
-    const auto& y = parser.add_variable<double>('y', "var_y", "The y variable");
-    const auto& z = parser.add_variable<double>('z', "var_z", "The z variable");
+    const auto& x = parser.add_variable<double>('x', "var_x", "The x variable", 0.0);
+    const auto& y = parser.add_variable<double>('y', "var_y", "The y variable", 0.0);
+    const auto& z = parser.add_variable<double>('z', "var_z", "The z variable", 0.0);
 
     bool success = Parse(parser, "program -x 1 -y 1.2345 -z 1.2345e-100");
 
@@ -247,7 +247,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
 // TODO: test with spaces
 TEST_CASE_METHOD(VarFixture, "Variable <string> argument", "[var]")
 {
-    const auto& s = parser.add_variable<std::string>('s', "var_s", "The s variable");
+    const auto& s = parser.add_variable<std::string>('s', "var_s", "The s variable", "");
 
     bool success = Parse(parser, "program -s plip_plop");
 
@@ -459,6 +459,35 @@ TEST_CASE_METHOD(DepsFixture, "Flag dependency not satisfied", "[dep]")
     parser.set_dependency('y', 'x');
 
     bool success = Parse(parser, "program -yz");
+
+    REQUIRE(!success);
+}
+
+class ListsFixture
+{
+public:
+    ListsFixture() : parser("program", "0.1") {}
+
+protected:
+    ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(ListsFixture, "Valid list of ints", "[lis]")
+{
+    const auto& l = parser.add_list<int>('l', "list_l", "A list of values");
+
+    bool success = Parse(parser, "program -l 1,2,-3,4");
+
+    std::vector<int> ans = {1,2,-3,4};
+    REQUIRE(success);
+    REQUIRE(l() == ans);
+}
+
+TEST_CASE_METHOD(ListsFixture, "Invalid list of ints", "[lis]")
+{
+    parser.add_list<int>('l', "list_l", "A list of values");
+
+    bool success = Parse(parser, "program -l 1,b,a,4");
 
     REQUIRE(!success);
 }
