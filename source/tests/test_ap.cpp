@@ -6,21 +6,18 @@ using namespace kb;
 
 bool Parse(ap::ArgParse& parser, const std::string& input)
 {
-	auto arguments = tc::tokenize(input);
-	auto argv = tc::make_argv(arguments);
-	return parser.parse(int(argv.size()) - 1, const_cast<char**>(argv.data()));
+    auto arguments = tc::tokenize(input);
+    auto argv = tc::make_argv(arguments);
+    return parser.parse(int(argv.size()) - 1, const_cast<char**>(argv.data()));
 }
 
 class FlagFixture
 {
 public:
-    FlagFixture() :
-    parser("program", "0.1"),
-    orange(parser.add_flag('o', "orange", "Use the best color in the world")),
-    cyan(parser.add_flag('c', "cyan", "Use the second best color in the world"))
-    {
-    
-    }
+    FlagFixture()
+        : parser("program", "0.1"), orange(parser.add_flag('o', "orange", "Use the best color in the world")),
+          cyan(parser.add_flag('c', "cyan", "Use the second best color in the world"))
+    {}
 
 protected:
     ap::ArgParse parser;
@@ -188,7 +185,7 @@ TEST_CASE_METHOD(VarFixture, "Variable argument, cast failure", "[var]")
 TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[var]")
 {
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
-    const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
+    const auto& height = parser.add_variable<int>('x', "height", "Height of the captain", 180);
 
     bool success = Parse(parser, "program --age 56 --height 185");
 
@@ -202,9 +199,9 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[v
 TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[var]")
 {
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
-    const auto& height = parser.add_variable<int>('h', "height", "Height of the captain", 180);
+    const auto& height = parser.add_variable<int>('x', "height", "Height of the captain", 180);
 
-    bool success = Parse(parser, "program -a 56 -h 185");
+    bool success = Parse(parser, "program -a 56 -x 185");
 
     REQUIRE(success);
     REQUIRE(age.is_set);
@@ -429,6 +426,39 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint violated", "
     parser.set_variables_exclusive({'y', 'z'});
 
     bool success = Parse(parser, "program -y 10 -z 10");
+
+    REQUIRE(!success);
+}
+
+class DepsFixture
+{
+public:
+    DepsFixture() : parser("program", "0.1") {}
+
+protected:
+    ap::ArgParse parser;
+};
+
+TEST_CASE_METHOD(DepsFixture, "Flag dependency satisfied", "[dep]")
+{
+    parser.add_flag('x', "param_x", "The parameter x");
+    parser.add_flag('y', "param_y", "The parameter y");
+    parser.add_flag('z', "param_z", "The parameter z");
+    parser.set_dependency('y', 'x');
+
+    bool success = Parse(parser, "program -xyz");
+
+    REQUIRE(success);
+}
+
+TEST_CASE_METHOD(DepsFixture, "Flag dependency not satisfied", "[dep]")
+{
+    parser.add_flag('x', "param_x", "The parameter x");
+    parser.add_flag('y', "param_y", "The parameter y");
+    parser.add_flag('z', "param_z", "The parameter z");
+    parser.set_dependency('y', 'x');
+
+    bool success = Parse(parser, "program -yz");
 
     REQUIRE(!success);
 }

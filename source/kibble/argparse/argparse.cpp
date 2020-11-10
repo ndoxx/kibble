@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <exception>
+#include <iostream>
 #include <sstream>
 
 namespace kb
@@ -56,22 +57,28 @@ struct InvalidOperandException : public ParsingException
     }
 };
 
-
-const std::map<ArgType, std::string> k_type_str =
-{
-    {ArgType::NONE, "NONE"}, 
-    {ArgType::BOOL, "bool"}, 
-    {ArgType::INT, "int"}, 
-    {ArgType::LONG, "long"}, 
-    {ArgType::FLOAT, "float"}, 
-    {ArgType::DOUBLE, "double"}, 
-    {ArgType::STRING, "string"}, 
+const std::map<ArgType, std::string> k_type_str = {
+    {ArgType::NONE, "NONE"},   {ArgType::BOOL, "bool"},     {ArgType::INT, "int"},       {ArgType::LONG, "long"},
+    {ArgType::FLOAT, "float"}, {ArgType::DOUBLE, "double"}, {ArgType::STRING, "string"},
 };
-
 
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
     : ver_string_(ver_string), program_name_(program_name)
-{}
+{
+    // Add special commands
+    add_flag('v', "version", "Display the program version string and exit");
+    add_flag('h', "help", "Display this usage string and exit");
+    set_trigger('v', [this]() {
+        output_(version());
+        if(exit_on_special_command_)
+            exit(0);
+    });
+    set_trigger('?', [this]() {
+        output_(usage());
+        if(exit_on_special_command_)
+            exit(0);
+    });
+}
 
 ArgParse::~ArgParse()
 {
@@ -88,7 +95,7 @@ void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
         auto arg_it = arguments_.find(key);
         assert(arg_it != arguments_.end() && "Unknown flag.");
         assert(arg_it->second->underlying_type() == ArgType::BOOL && "Not a flag.");
-        arg_it->second->exclusive_idx = exclusive_flags_.size() + 1;
+        arg_it->second->exclusive_sets.insert(exclusive_flags_.size());
     }
 
     exclusive_flags_.push_back(exclusive_set);
@@ -101,7 +108,7 @@ void ArgParse::set_variables_exclusive(const std::set<char>& exclusive_set)
         auto arg_it = arguments_.find(key);
         assert(arg_it != arguments_.end() && "Unknown variable.");
         assert(arg_it->second->underlying_type() != ArgType::BOOL && "Not a variable.");
-        arg_it->second->exclusive_idx = exclusive_variables_.size() + 1;
+        arg_it->second->exclusive_sets.insert(exclusive_variables_.size());
     }
 
     exclusive_variables_.push_back(exclusive_set);
@@ -129,9 +136,6 @@ bool ArgParse::parse(int argc, char** argv) noexcept
 
             if(single_full)
             {
-                if(try_match_special_command(arg) && exit_on_special_command_)
-                    exit(0);
-
                 auto full_it = full_to_short_.find(arg.substr(2));
                 if(full_it != full_to_short_.end())
                     key = full_it->second;
@@ -144,6 +148,11 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             // Single argument
             if(single_short || single_full)
             {
+                // If there is a trigger associated, execute it immediately
+                auto trig_it = triggers_.find(key);
+                if(trig_it != triggers_.end())
+                    trig_it->second();
+
                 auto arg_it = arguments_.find(key);
                 if(arg_it != arguments_.end())
                 {
@@ -154,15 +163,7 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                         if(ii == argc - 1)
                             throw MissingOperandException(arg);
 
-                        try
-                        {
-                            arg_it->second->cast(argv[ii + 1]);
-                        }
-                        catch(std::invalid_argument& e)
-                        {
-                            // Got here because stoi/l/f/d did not manage to parse the operand
-                            throw InvalidOperandException(arg, argv[ii + 1]);
-                        }
+                        arg_it->second->cast(argv[ii + 1]);
                         ++ii; // Next token already parsed as an operand
                     }
                 }
@@ -192,32 +193,32 @@ bool ArgParse::parse(int argc, char** argv) noexcept
     // Check constraints
     valid_state_ &= check_positional_requirements();
     valid_state_ &= check_exclusivity_constraints();
+    valid_state_ &= check_dependencies();
 
     return valid_state_;
 }
 
-/*void ArgParse::set_dependent(char key, char req)
+void ArgParse::set_dependency(char key, char req)
 {
-    char* target_dependency = nullptr;
-    // Does key point to a
-}*/
+    auto arg_it = arguments_.find(key);
+    [[maybe_unused]] auto req_it = arguments_.find(req);
+    assert(arg_it != arguments_.end() && "Unknown argument");
+    assert(req_it != arguments_.end() && "Unknown argument");
+    // Check these two do not belong to the same exclusive set
+    assert(compatible(key, req) && "Cannot set dependency on mutually exclusive options");
+    arg_it->second->dependency = req;
+}
 
-bool ArgParse::try_match_special_command(const std::string& arg) noexcept
+bool ArgParse::compatible(char A, char B) const
 {
-    // --help => show usage and exit
-    if(!arg.compare("--help"))
-    {
-        output_(usage());
-        return true;
-    }
+    // If these two arguments have an exclusive set in common, they are not compatible
+    const auto* arg_A = arguments_.at(A);
+    const auto* arg_B = arguments_.at(B);
+    std::set<char> intersection;
 
-    // --version => show version string and exit
-    if(!arg.compare("--version"))
-    {
-        output_(version());
-        return true;
-    }
-    return false;
+    std::set_intersection(arg_A->exclusive_sets.begin(), arg_A->exclusive_sets.end(), arg_B->exclusive_sets.begin(),
+                          arg_B->exclusive_sets.end(), std::inserter(intersection, intersection.begin()));
+    return (intersection.size() == 0);
 }
 
 char ArgParse::try_set_flag_group(const std::string& group) noexcept
@@ -273,33 +274,57 @@ bool ArgParse::check_exclusivity_constraints() noexcept
 {
     // * Check flags exclusivity constraints
     // First, get the set of all active flags
-    if(!check_intersection(get_active_flags(), exclusive_flags_))
+    if(!check_intersection(
+           get_active([](AbstractArgument* parg) { return (parg->underlying_type() == ArgType::BOOL); }),
+           exclusive_flags_))
         return false;
 
     // * Check variables exclusivity constraints
     // First, get the set of all active variables
-    if(!check_intersection(get_active_variables(), exclusive_variables_))
+    if(!check_intersection(
+           get_active([](AbstractArgument* parg) { return (parg->underlying_type() != ArgType::BOOL); }),
+           exclusive_variables_))
         return false;
 
     return true;
 }
 
-std::set<char> ArgParse::get_active_flags() const noexcept
+bool ArgParse::check_dependencies() noexcept
 {
-    std::set<char> active_set;
-    for(auto&& [key, parg] : arguments_)
-        if(parg->underlying_type() == ArgType::BOOL)
-            if(parg->is_set)
-                active_set.insert(key);
+    // All dependencies of all arguments in the active set must be in the active set
+    auto active_set = get_active([](AbstractArgument*) { return true; });
+    std::set<char> required, difference;
+    for(char key : active_set)
+        if(char dep = arguments_.at(key)->dependency)
+            required.insert(dep);
 
-    return active_set;
+    std::set_difference(required.begin(), required.end(), active_set.begin(), active_set.end(),
+                        std::inserter(difference, difference.begin()));
+
+    if(difference.size() > 0)
+    {
+        std::stringstream ss;
+        ss << "These arguments are required: ";
+        size_t count = 0;
+        for(char key : difference)
+        {
+            ss << "--" << arguments_.at(key)->full_name << " (-" << key << ')';
+            if(++count < difference.size())
+                ss << ", ";
+        }
+        ss << std::endl;
+        log_error(ss.str());
+        return false;
+    }
+
+    return true;
 }
 
-std::set<char> ArgParse::get_active_variables() const noexcept
+std::set<char> ArgParse::get_active(std::function<bool(AbstractArgument*)> filter) const noexcept
 {
     std::set<char> active_set;
     for(auto&& [key, parg] : arguments_)
-        if(parg->underlying_type() != ArgType::BOOL)
+        if(filter(parg))
             if(parg->is_set)
                 active_set.insert(key);
 
@@ -336,49 +361,34 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
     return true;
 }
 
-static void format_description(std::stringstream& oss, char key, const std::string& full_name, const std::string& type,
-                               const std::string& description, long max_left)
-{
-    std::stringstream ss;
-
-    ss << "    ";
-    if(key != 0)
-        ss << '-' << key << ", ";
-    if(type.size() == 0 || key != 0)
-        ss << "--";
-    ss << full_name;
-    if(type.size())
-        ss << " <" << type << '>';
-
-    ss.seekg(0, std::ios::end);
-    long size = ss.tellg();
-    ss.seekg(0, std::ios::beg);
-
-    long padding = std::max(max_left - size, 0l);
-
-    while(padding >= 0)
-    {
-        ss << ' ';
-        --padding;
-    }
-
-    oss << ss.str() << description << std::endl;
-}
-
 void ArgParse::make_usage_string()
 {
-    // Gather all non exclusive flags & variables
-    std::string nonex_flags = "";
-    std::string nonex_vars = "";
+    // Gather all unconstrained flags & variables
+    std::set<char> compat_flags;
+    std::set<char> compat_vars;
+    std::vector<std::pair<AbstractArgument*,AbstractArgument*>> args_with_deps;
+    std::set<char> blacklist = {'h', 'v'}; // Exclude -h and -v from synopsis
     for(auto&& [key, parg] : arguments_)
     {
-        if(parg->exclusive_idx == 0)
+        if(parg->dependency != 0)
+        {
+            args_with_deps.push_back({arguments_.at(key), arguments_.at(parg->dependency)});
+            blacklist.insert(parg->dependency);
+            continue;
+        }
+        if(parg->exclusive_sets.size() == 0)
         {
             if(parg->underlying_type() == ArgType::BOOL)
-                nonex_flags += key;
+                compat_flags.insert(key);
             else
-                nonex_vars += key;
+                compat_vars.insert(key);
         }
+    }
+
+    for(char key: blacklist)
+    {
+        compat_flags.erase(key);
+        compat_vars.erase(key);
     }
 
     std::stringstream ss;
@@ -388,8 +398,13 @@ void ArgParse::make_usage_string()
     ss << program_name_;
 
     // Display nonexclusive flags
-    if(nonex_flags.size())
-        ss << " [-" << nonex_flags << ']';
+    if(compat_flags.size())
+    {
+        ss << " [-";
+        for(char key: compat_flags)
+            ss << key;
+        ss << ']';
+    }
 
     // Display exclusive flags
     for(const auto& ex_set : exclusive_flags_)
@@ -406,7 +421,7 @@ void ArgParse::make_usage_string()
     }
 
     // Display nonexclusive variables
-    for(char key : nonex_vars)
+    for(char key : compat_vars)
     {
         const auto* parg = arguments_.at(key);
         ss << " [-" << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << ">]";
@@ -429,31 +444,39 @@ void ArgParse::make_usage_string()
         ss << ']';
     }
 
+    // Display arguments with dependencies
+    for(auto&& [parg,preq]: args_with_deps)
+    {
+        ss << " [-" << preq->short_name;
+        if(preq->underlying_type() != ArgType::BOOL)
+            ss << " <" << k_type_str.at(preq->underlying_type()) << '>';
+        ss << " [-" << parg->short_name;
+        if(parg->underlying_type() != ArgType::BOOL)
+            ss << " <" << k_type_str.at(parg->underlying_type()) << '>';
+        ss << "]]";
+    }
+
     // Display positional arguments
     for(const auto* parg : positionals_)
         ss << ' ' << parg->full_name;
     ss << std::endl;
 
     // Show argument descriptions
-    ss << std::endl << "With:" << std::endl;
+    if(positionals_.size())
+        ss << std::endl << "With:" << std::endl;
 
     for(const auto* parg : positionals_)
-        format_description(ss, parg->short_name, parg->full_name, k_type_str.at(parg->underlying_type()), parg->description,
-                           usage_padding_);
+        parg->format_description(ss, usage_padding_);
 
     ss << std::endl << "Options:" << std::endl;
 
-    format_description(ss, 0, "help", "", "Display this usage string and exit", usage_padding_);
-    format_description(ss, 0, "version", "", "Display the program version string and exit", usage_padding_);
-
     for(auto&& [key, parg] : arguments_)
         if(parg->underlying_type() == ArgType::BOOL)
-            format_description(ss, parg->short_name, parg->full_name, "", parg->description, usage_padding_);
+            parg->format_description(ss, usage_padding_);
 
     for(auto&& [key, parg] : arguments_)
         if(parg->underlying_type() != ArgType::BOOL)
-            format_description(ss, parg->short_name, parg->full_name, k_type_str.at(parg->underlying_type()), parg->description,
-                               usage_padding_);
+            parg->format_description(ss, usage_padding_);
 
     usage_string_.assign(ss.str());
 }
@@ -465,6 +488,89 @@ void ArgParse::make_version_string()
     std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
     ss << pg_upper << " - version: " << ver_string_ << std::endl;
     full_ver_string_.assign(ss.str());
+}
+
+void AbstractArgument::format_description(std::ostream& stream, long max_pad) const
+{
+    std::stringstream ss;
+
+    ss << "    ";
+    if(short_name != 0)
+    {
+        ss << '-' << short_name << ", ";
+        ss << "--" << full_name;
+    }
+    else
+    {
+        ss << full_name;
+    }
+    if(underlying_type() != ArgType::BOOL)
+        ss << " <" << k_type_str.at(underlying_type()) << '>';
+
+    if(dependency)
+        ss << " REQ: -" << dependency;
+
+    ss.seekg(0, std::ios::end);
+    long size = ss.tellg();
+    ss.seekg(0, std::ios::beg);
+
+    long padding = std::max(max_pad - size, 0l);
+
+    while(padding >= 0)
+    {
+        ss << ' ';
+        --padding;
+    }
+
+    stream << ss.str() << description << std::endl;
+}
+
+void Argument<int>::cast(const std::string& operand) noexcept(false)
+{
+    try
+    {
+        value = std::stoi(operand);
+    }
+    catch(std::invalid_argument& e)
+    {
+        throw InvalidOperandException(std::string("--") + full_name, operand);
+    }
+}
+
+void Argument<long>::cast(const std::string& operand) noexcept(false)
+{
+    try
+    {
+        value = std::stol(operand);
+    }
+    catch(std::invalid_argument& e)
+    {
+        throw InvalidOperandException(std::string("--") + full_name, operand);
+    }
+}
+
+void Argument<float>::cast(const std::string& operand) noexcept(false)
+{
+    try
+    {
+        value = std::stof(operand);
+    }
+    catch(std::invalid_argument& e)
+    {
+        throw InvalidOperandException(std::string("--") + full_name, operand);
+    }
+}
+
+void Argument<double>::cast(const std::string& operand) noexcept(false)
+{
+    try
+    {
+        value = std::stod(operand);
+    }
+    catch(std::invalid_argument& e)
+    {
+        throw InvalidOperandException(std::string("--") + full_name, operand);
+    }
 }
 
 } // namespace ap

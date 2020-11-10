@@ -22,12 +22,21 @@ void init_logger()
     KLOGGER(sync());
 }
 
+void show_error_and_die(ap::ArgParse& parser)
+{
+    for(const auto& msg : parser.get_errors())
+        KLOGW("kibble") << msg << std::endl;
+
+    KLOG("kibble", 1) << parser.usage() << std::endl;
+    exit(0);
+}
+
 int p0(int argc, char** argv)
 {
-	for(int ii=0; ii<argc; ++ii)
-	{
-		KLOG("kibble", 1) << ii << " = " << argv[ii] << std::endl;
-	}
+    for(int ii = 0; ii < argc; ++ii)
+    {
+        KLOG("kibble", 1) << ii << " = " << argv[ii] << std::endl;
+    }
 
     return 0;
 }
@@ -41,11 +50,7 @@ int p1(int argc, char** argv)
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-    {
-        KLOG("kibble", 1) << parser.usage();
-        return 0;
-    }
+    if(!success) show_error_and_die(parser);
 
     if(orange())
     {
@@ -69,11 +74,7 @@ int p2(int argc, char** argv)
     const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-    {
-        KLOG("kibble", 1) << parser.usage();
-        return 0;
-    }
+    if(!success) show_error_and_die(parser);
 
     if(orange())
     {
@@ -92,6 +93,8 @@ int p3(int argc, char** argv)
     parser.add_flag('A', "param_A", "The parameter A");
     parser.add_flag('B', "param_B", "The parameter B");
     parser.add_flag('C', "param_C", "The parameter C");
+    parser.add_flag('D', "param_D", "The parameter D");
+    parser.add_flag('E', "param_E", "The parameter E");
     parser.add_flag('x', "param_x", "The parameter x");
     parser.add_flag('y', "param_y", "The parameter y");
     parser.add_flag('z', "param_z", "The parameter z");
@@ -102,15 +105,30 @@ int p3(int argc, char** argv)
     parser.set_flags_exclusive({'x', 'y'});
     parser.set_flags_exclusive({'y', 'z'});
     parser.set_variables_exclusive({'m', 'o'});
+    parser.set_dependency('D', 'E');
 
     bool success = parser.parse(argc, argv);
+    if(!success) show_error_and_die(parser);
 
-    if(!success)
-    {
-        KLOG("kibble", 1) << parser.usage();
-        return 0;
-    }
+    return 0;
+}
 
+int p4(int argc, char** argv)
+{
+    ap::ArgParse parser("nuclear", "0.1");
+    parser.set_log_output([](const std::string& str) { KLOG("kibble", 1) << str << std::endl; });
+
+    parser.add_flag('x', "param_x", "The parameter x");
+    parser.add_flag('y', "param_y", "The parameter y");
+    parser.add_flag('z', "param_z", "The parameter z");
+    parser.add_variable<int>('m', "var_m", "The variable m", 10);
+    parser.add_positional<int>("MAGIC", "The magic number");
+    parser.set_dependency('y', 'x');
+
+    bool success = parser.parse(argc, argv);
+    if(!success) show_error_and_die(parser);
+
+    KLOGN("kibble") << "done" << std::endl;
     return 0;
 }
 
@@ -124,5 +142,6 @@ int main(int argc, char** argv)
     // return p0(argc, argv);
     // return p1(argc, argv);
     // return p2(argc, argv);
-    return p3(argc, argv);
+    // return p3(argc, argv);
+    return p4(argc, argv);
 }

@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <ostream>
 
 /* FEATURES:
  * - Simple and natural interface
@@ -48,16 +49,17 @@ enum class ArgType : uint8_t
 
 struct AbstractArgument
 {
-    size_t exclusive_idx = 0;
     char dependency = 0;
     bool is_set = false;
     char short_name = 0;
     std::string full_name;
     std::string description;
+    std::set<size_t> exclusive_sets;
 
     virtual ~AbstractArgument() = default;
     virtual void cast(const std::string&) noexcept(false) = 0;
     virtual ArgType underlying_type() const = 0;
+    void format_description(std::ostream&, long max_pad) const;
 };
 
 template <typename T> struct Argument : public AbstractArgument
@@ -110,7 +112,7 @@ public:
         var->short_name = short_name;
         var->full_name = full_name;
         var->description = description;
-        if constexpr(!std::is_same_v<T,bool>)
+        if constexpr(!std::is_same_v<T, bool>)
             var->value = default_value;
         arguments_.insert(std::pair(short_name, var));
         full_to_short_.insert(std::pair(full_name, short_name));
@@ -137,19 +139,21 @@ public:
 
     void set_flags_exclusive(const std::set<char>& exclusive_set);
     void set_variables_exclusive(const std::set<char>& exclusive_set);
-    void set_dependent(char key, char req);
+    void set_dependency(char key, char req);
     bool parse(int argc, char** argv) noexcept;
 
 private:
-    bool try_match_special_command(const std::string& arg) noexcept;
+    inline void set_trigger(char key, std::function<void()> trig) { triggers_.insert(std::pair(key, trig)); }
+
     char try_set_flag_group(const std::string& group) noexcept;
     bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
 
     bool check_positional_requirements() noexcept;
     bool check_exclusivity_constraints() noexcept;
-    std::set<char> get_active_flags() const noexcept;
-    std::set<char> get_active_variables() const noexcept;
+    bool check_dependencies() noexcept;
     bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept;
+    std::set<char> get_active(std::function<bool(AbstractArgument*)>) const noexcept;
+    bool compatible(char, char) const;
 
     void make_usage_string();
     void make_version_string();
@@ -161,6 +165,7 @@ private:
     std::string usage_string_;
     std::string full_ver_string_;
     std::map<char, AbstractArgument*> arguments_;
+    std::map<char, std::function<void()>> triggers_;
     std::vector<AbstractArgument*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
     std::vector<std::set<char>> exclusive_variables_;
@@ -187,7 +192,7 @@ template <> struct Argument<int> : public AbstractArgument
     int value;
 
     virtual ~Argument() = default;
-    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stoi(arg); }
+    virtual void cast(const std::string& operand) noexcept(false) override;
     virtual ArgType underlying_type() const override { return ArgType::INT; }
     inline int operator()() const { return value; }
 };
@@ -197,7 +202,7 @@ template <> struct Argument<long> : public AbstractArgument
     long value;
 
     virtual ~Argument() = default;
-    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stol(arg); }
+    virtual void cast(const std::string& operand) noexcept(false) override;
     virtual ArgType underlying_type() const override { return ArgType::LONG; }
     inline long operator()() const { return value; }
 };
@@ -207,7 +212,7 @@ template <> struct Argument<float> : public AbstractArgument
     float value;
 
     virtual ~Argument() = default;
-    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stof(arg); }
+    virtual void cast(const std::string& operand) noexcept(false) override;
     virtual ArgType underlying_type() const override { return ArgType::FLOAT; }
     inline float operator()() const { return value; }
 };
@@ -217,7 +222,7 @@ template <> struct Argument<double> : public AbstractArgument
     double value;
 
     virtual ~Argument() = default;
-    virtual void cast(const std::string& arg) noexcept(false) override { value = std::stod(arg); }
+    virtual void cast(const std::string& operand) noexcept(false) override;
     virtual ArgType underlying_type() const override { return ArgType::DOUBLE; }
     inline double operator()() const { return value; }
 };
@@ -227,7 +232,7 @@ template <> struct Argument<std::string> : public AbstractArgument
     std::string value;
 
     virtual ~Argument() = default;
-    virtual void cast(const std::string& arg) noexcept override { value = arg; }
+    virtual void cast(const std::string& operand) noexcept override { value = operand; }
     virtual ArgType underlying_type() const override { return ArgType::STRING; }
     inline const std::string& operator()() const { return value; }
 };
