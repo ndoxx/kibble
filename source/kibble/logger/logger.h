@@ -41,7 +41,7 @@ private:
 
 public:
     LoggerStream();
-    ~LoggerStream() = default;
+    ~LoggerStream();
 
     // Initialize log message state attributes
     void prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char* code_file);
