@@ -14,14 +14,18 @@ bool Parse(ap::ArgParse& parser, const std::string& input)
 class FlagFixture
 {
 public:
-    FlagFixture() : parser("program", "0.1")
+    FlagFixture() :
+    parser("program", "0.1"),
+    orange(parser.add_flag('o', "orange", "Use the best color in the world")),
+    cyan(parser.add_flag('c', "cyan", "Use the second best color in the world"))
     {
-        parser.add_flag('o', "orange", "Use the best color in the world");
-        parser.add_flag('c', "cyan", "Use the second best color in the world");
+    
     }
 
 protected:
     ap::ArgParse parser;
+    const ap::ArgFlag& orange;
+    const ap::ArgFlag& cyan;
 };
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument parsing default", "[flag]")
@@ -29,8 +33,8 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument parsing default", "[flag]")
     bool success = Parse(parser, "program");
 
     REQUIRE(success);
-    REQUIRE(!parser.is_set('o'));
-    REQUIRE(!parser.is_set('c'));
+    REQUIRE(!orange());
+    REQUIRE(!cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument, short name", "[flag]")
@@ -38,8 +42,8 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument, short name", "[flag]")
     bool success = Parse(parser, "program -o");
 
     REQUIRE(success);
-    REQUIRE(parser.is_set('o'));
-    REQUIRE(!parser.is_set('c'));
+    REQUIRE(orange());
+    REQUIRE(!cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Flag argument, full name", "[flag]")
@@ -47,8 +51,8 @@ TEST_CASE_METHOD(FlagFixture, "Flag argument, full name", "[flag]")
     bool success = Parse(parser, "program --orange");
 
     REQUIRE(success);
-    REQUIRE(parser.is_set('o'));
-    REQUIRE(!parser.is_set('c'));
+    REQUIRE(orange());
+    REQUIRE(!cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, no concat", "[flag]")
@@ -56,8 +60,8 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, no conc
     bool success = Parse(parser, "program -o -c");
 
     REQUIRE(success);
-    REQUIRE(parser.is_set('o'));
-    REQUIRE(parser.is_set('c'));
+    REQUIRE(orange());
+    REQUIRE(cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, concat", "[flag]")
@@ -65,8 +69,8 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, short name only, concat"
     bool success = Parse(parser, "program -oc");
 
     REQUIRE(success);
-    REQUIRE(parser.is_set('o'));
-    REQUIRE(parser.is_set('c'));
+    REQUIRE(orange());
+    REQUIRE(cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, mixed name length", "[flag]")
@@ -74,8 +78,8 @@ TEST_CASE_METHOD(FlagFixture, "Multiple flag arguments, mixed name length", "[fl
     bool success = Parse(parser, "program -o --cyan");
 
     REQUIRE(success);
-    REQUIRE(parser.is_set('o'));
-    REQUIRE(parser.is_set('c'));
+    REQUIRE(orange());
+    REQUIRE(cyan());
 }
 
 TEST_CASE_METHOD(FlagFixture, "Flag, bad syntax", "[flag]")
@@ -90,8 +94,8 @@ TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
     bool success = Parse(parser, "program --green");
 
     REQUIRE(!success);
-    REQUIRE(!parser.is_set('o'));
-    REQUIRE(!parser.is_set('c'));
+    REQUIRE(!orange());
+    REQUIRE(!cyan());
 }
 
 class VarFixture
@@ -111,7 +115,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, default", "[var]")
 
     REQUIRE(success);
     REQUIRE(!var.is_set);
-    REQUIRE(var.value == 42);
+    REQUIRE(var() == 42);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name", "[var]")
@@ -122,17 +126,16 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name", "[var]")
 
     REQUIRE(success);
     REQUIRE(var.is_set);
-    REQUIRE(var.value == 56);
+    REQUIRE(var() == 56);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <int> argument, short name, missing value", "[var]")
 {
-    const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = Parse(parser, "program -a");
 
     REQUIRE(!success);
-    REQUIRE(!var.is_set);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name", "[var]")
@@ -143,47 +146,43 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name", "[var]")
 
     REQUIRE(success);
     REQUIRE(var.is_set);
-    REQUIRE(var.value == 56);
+    REQUIRE(var() == 56);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <int> argument, full name, missing value", "[var]")
 {
-    const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = Parse(parser, "program --age");
 
     REQUIRE(!success);
-    REQUIRE(!var.is_set);
 }
 
 TEST_CASE_METHOD(VarFixture, "Unknown variable, short name", "[var]")
 {
-    const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = Parse(parser, "program -p 56");
 
     REQUIRE(!success);
-    REQUIRE(!var.is_set);
 }
 
 TEST_CASE_METHOD(VarFixture, "Unknown variable, full name", "[var]")
 {
-    const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = Parse(parser, "program --page 56");
 
     REQUIRE(!success);
-    REQUIRE(!var.is_set);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable argument, cast failure", "[var]")
 {
-    const auto& var = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = Parse(parser, "program --age plop");
 
     REQUIRE(!success);
-    REQUIRE(!var.is_set);
 }
 
 TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[var]")
@@ -195,9 +194,9 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, full name used", "[v
 
     REQUIRE(success);
     REQUIRE(age.is_set);
-    REQUIRE(age.value == 56);
+    REQUIRE(age() == 56);
     REQUIRE(height.is_set);
-    REQUIRE(height.value == 185);
+    REQUIRE(height() == 185);
 }
 
 TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[var]")
@@ -209,9 +208,9 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[
 
     REQUIRE(success);
     REQUIRE(age.is_set);
-    REQUIRE(age.value == 56);
+    REQUIRE(age() == 56);
     REQUIRE(height.is_set);
-    REQUIRE(height.value == 185);
+    REQUIRE(height() == 185);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
@@ -224,11 +223,11 @@ TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
 
     REQUIRE(success);
     REQUIRE(x.is_set);
-    REQUIRE(x.value == 1.f);
+    REQUIRE(x() == 1.f);
     REQUIRE(y.is_set);
-    REQUIRE(y.value == 1.2345f);
+    REQUIRE(y() == 1.2345f);
     REQUIRE(z.is_set);
-    REQUIRE(z.value == 1.2345e-1f);
+    REQUIRE(z() == 1.2345e-1f);
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
@@ -241,11 +240,11 @@ TEST_CASE_METHOD(VarFixture, "Variable <double> argument, valid input", "[var]")
 
     REQUIRE(success);
     REQUIRE(x.is_set);
-    REQUIRE(x.value == 1.0);
+    REQUIRE(x() == 1.0);
     REQUIRE(y.is_set);
-    REQUIRE(y.value == 1.2345);
+    REQUIRE(y() == 1.2345);
     REQUIRE(z.is_set);
-    REQUIRE(z.value == 1.2345e-100);
+    REQUIRE(z() == 1.2345e-100);
 }
 
 // TODO: test with spaces
@@ -257,7 +256,7 @@ TEST_CASE_METHOD(VarFixture, "Variable <string> argument", "[var]")
 
     REQUIRE(success);
     REQUIRE(s.is_set);
-    REQUIRE(!s.value.compare("plip_plop"));
+    REQUIRE(!s().compare("plip_plop"));
 }
 
 class PosFixture
@@ -277,7 +276,7 @@ TEST_CASE_METHOD(PosFixture, "Single positional argument", "[pos]")
 
     REQUIRE(success);
     REQUIRE(A.is_set);
-    REQUIRE(A.value == 42);
+    REQUIRE(A() == 42);
 }
 
 TEST_CASE_METHOD(PosFixture, "Three positional arguments", "[pos]")
@@ -290,11 +289,11 @@ TEST_CASE_METHOD(PosFixture, "Three positional arguments", "[pos]")
 
     REQUIRE(success);
     REQUIRE(A.is_set);
-    REQUIRE(A.value == 42);
+    REQUIRE(A() == 42);
     REQUIRE(B.is_set);
-    REQUIRE(B.value == 43);
+    REQUIRE(B() == 43);
     REQUIRE(C.is_set);
-    REQUIRE(C.value == 44);
+    REQUIRE(C() == 44);
 }
 
 TEST_CASE_METHOD(PosFixture, "Two positional arguments, missing one", "[pos]")

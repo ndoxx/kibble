@@ -22,6 +22,16 @@ void init_logger()
     KLOGGER(sync());
 }
 
+int p0(int argc, char** argv)
+{
+	for(int ii=0; ii<argc; ++ii)
+	{
+		KLOG("kibble", 1) << ii << " = " << argv[ii] << std::endl;
+	}
+
+    return 0;
+}
+
 int p1(int argc, char** argv)
 {
     ap::ArgParse parser("nuclear", "0.1");
@@ -111,6 +121,7 @@ int main(int argc, char** argv)
 
     init_logger();
 
+    // return p0(argc, argv);
     // return p1(argc, argv);
     // return p2(argc, argv);
     return p3(argc, argv);

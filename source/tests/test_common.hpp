@@ -7,6 +7,7 @@
 namespace tc
 {
 
+// TODO: Should not split if space is within quotes
 std::vector<std::string> tokenize(const char* data, size_t size)
 {
     std::string str(data, size);

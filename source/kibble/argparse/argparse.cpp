@@ -56,37 +56,39 @@ struct InvalidOperandException : public ParsingException
     }
 };
 
+
+const std::map<ArgType, std::string> k_type_str =
+{
+    {ArgType::NONE, "NONE"}, 
+    {ArgType::BOOL, "bool"}, 
+    {ArgType::INT, "int"}, 
+    {ArgType::LONG, "long"}, 
+    {ArgType::FLOAT, "float"}, 
+    {ArgType::DOUBLE, "double"}, 
+    {ArgType::STRING, "string"}, 
+};
+
+
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
     : ver_string_(ver_string), program_name_(program_name)
 {}
 
 ArgParse::~ArgParse()
 {
-    for(auto&& [key, pvar] : variables_)
-        delete pvar;
-    for(auto* pvar : positionals_)
-        delete pvar;
-}
-
-const ArgFlag& ArgParse::add_flag(char short_name, const std::string& full_name, const std::string& description,
-                                  bool default_value)
-{
-    [[maybe_unused]] auto findit = flags_.find(short_name);
-    assert(findit == flags_.end() && "Flag argument already existing at this name.");
-
-    flags_.insert(std::pair(short_name, ArgFlag{0, default_value, short_name, full_name, description}));
-    full_to_short_.insert(std::pair(full_name, short_name));
-
-    return flags_.at(short_name);
+    for(auto&& [key, parg] : arguments_)
+        delete parg;
+    for(auto* parg : positionals_)
+        delete parg;
 }
 
 void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
 {
     for(char key : exclusive_set)
     {
-        auto flag_it = flags_.find(key);
-        assert(flag_it != flags_.end() && "Unknown flag.");
-        flag_it->second.exclusive_idx = exclusive_flags_.size() + 1;
+        auto arg_it = arguments_.find(key);
+        assert(arg_it != arguments_.end() && "Unknown flag.");
+        assert(arg_it->second->underlying_type() == ArgType::BOOL && "Not a flag.");
+        arg_it->second->exclusive_idx = exclusive_flags_.size() + 1;
     }
 
     exclusive_flags_.push_back(exclusive_set);
@@ -96,21 +98,13 @@ void ArgParse::set_variables_exclusive(const std::set<char>& exclusive_set)
 {
     for(char key : exclusive_set)
     {
-        auto var_it = variables_.find(key);
-        assert(var_it != variables_.end() && "Unknown variable.");
-        var_it->second->exclusive_idx = exclusive_variables_.size() + 1;
+        auto arg_it = arguments_.find(key);
+        assert(arg_it != arguments_.end() && "Unknown variable.");
+        assert(arg_it->second->underlying_type() != ArgType::BOOL && "Not a variable.");
+        arg_it->second->exclusive_idx = exclusive_variables_.size() + 1;
     }
 
     exclusive_variables_.push_back(exclusive_set);
-}
-
-bool ArgParse::is_set(char short_name) const
-{
-    assert(was_run_ && "Parser was not run.");
-    assert(valid_state_ && "Invalid command line.");
-    auto findit = flags_.find(short_name);
-    assert(findit != flags_.end() && "Unknown flag argument.");
-    return findit->second.value;
 }
 
 bool ArgParse::parse(int argc, char** argv) noexcept
@@ -150,28 +144,30 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             // Single argument
             if(single_short || single_full)
             {
-                if(try_set_flag(key))
-                    continue; // Token parsed correctly as a flag
-
-                // If current token is the last one, operand is missing
-                if(ii == argc - 1)
-                    throw MissingOperandException(arg);
-
-                try
+                auto arg_it = arguments_.find(key);
+                if(arg_it != arguments_.end())
                 {
-                    if(try_set_variable(key, argv[ii + 1]))
+                    arg_it->second->is_set = true;
+                    if(arg_it->second->underlying_type() != ArgType::BOOL)
                     {
-                        ++ii;     // Next token already parsed as an operand
-                        continue; // Current token parsed correctly as a variable
+                        // If current token is the last one, operand is missing
+                        if(ii == argc - 1)
+                            throw MissingOperandException(arg);
+
+                        try
+                        {
+                            arg_it->second->cast(argv[ii + 1]);
+                        }
+                        catch(std::invalid_argument& e)
+                        {
+                            // Got here because stoi/l/f/d did not manage to parse the operand
+                            throw InvalidOperandException(arg, argv[ii + 1]);
+                        }
+                        ++ii; // Next token already parsed as an operand
                     }
                 }
-                catch(std::invalid_argument& e)
-                {
-                    // Got here because stoi/l/f/d did not manage to parse the operand
-                    throw InvalidOperandException(arg, argv[ii + 1]);
-                }
-
-                throw UnknownArgumentException(arg);
+                else
+                    throw UnknownArgumentException(arg);
             }
             // Single dash, multiple concatenated flags
             else if(!positional_candidate)
@@ -200,6 +196,12 @@ bool ArgParse::parse(int argc, char** argv) noexcept
     return valid_state_;
 }
 
+/*void ArgParse::set_dependent(char key, char req)
+{
+    char* target_dependency = nullptr;
+    // Does key point to a
+}*/
+
 bool ArgParse::try_match_special_command(const std::string& arg) noexcept
 {
     // --help => show usage and exit
@@ -218,42 +220,24 @@ bool ArgParse::try_match_special_command(const std::string& arg) noexcept
     return false;
 }
 
-bool ArgParse::try_set_flag(char key) noexcept
-{
-    auto flag_it = flags_.find(key);
-    if(flag_it != flags_.end())
-    {
-        flag_it->second.value = true;
-        return true;
-    }
-    return false;
-}
-
 char ArgParse::try_set_flag_group(const std::string& group) noexcept
 {
     for(size_t ii = 1; ii < group.size(); ++ii)
     {
-        if(flags_.find(group[ii]) != flags_.end())
-            flags_.at(group[ii]).value = true;
+        auto flag_it = arguments_.find(group[ii]);
+        if(flag_it != arguments_.end())
+        {
+            if(flag_it->second->underlying_type() == ArgType::BOOL)
+                flag_it->second->is_set = true;
+            else
+                return group[ii];
+        }
         else
             return group[ii];
         // TODO(ndx): Detect if a variable short name was concatenated
         // if so, provide a more precise exception for this specific case
     }
     return 0;
-}
-
-bool ArgParse::try_set_variable(char key, const std::string& operand) noexcept(false)
-{
-    auto var_it = variables_.find(key);
-    if(var_it != variables_.end())
-    {
-        auto* pvar = var_it->second;
-        pvar->cast(operand);
-        pvar->is_set = true;
-        return true;
-    }
-    return false;
 }
 
 bool ArgParse::try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false)
@@ -271,12 +255,12 @@ bool ArgParse::try_set_positional(size_t& current_positional, const std::string&
 bool ArgParse::check_positional_requirements() noexcept
 {
     // * Check that all positional arguments are set
-    for(auto* pvar : positionals_)
+    for(auto* parg : positionals_)
     {
-        if(!pvar->is_set)
+        if(!parg->is_set)
         {
             std::stringstream ss;
-            ss << "Missing required argument: " << pvar->full_name << std::endl;
+            ss << "Missing required argument: " << parg->full_name << std::endl;
             log_error(ss.str());
             return false;
         }
@@ -288,26 +272,14 @@ bool ArgParse::check_positional_requirements() noexcept
 bool ArgParse::check_exclusivity_constraints() noexcept
 {
     // * Check flags exclusivity constraints
-    {
-        // First, get the set of all active flags
-        auto active_set = get_active_flags();
-
-        if(!check_intersection(active_set, exclusive_flags_, [this](std::stringstream& ss, char key) {
-               ss << "--" << flags_.at(key).full_name << " (-" << key << ')';
-           }))
-            return false;
-    }
+    // First, get the set of all active flags
+    if(!check_intersection(get_active_flags(), exclusive_flags_))
+        return false;
 
     // * Check variables exclusivity constraints
-    {
-        // First, get the set of all active variables
-        auto active_set = get_active_variables();
-
-        if(!check_intersection(active_set, exclusive_variables_, [this](std::stringstream& ss, char key) {
-               ss << "--" << variables_.at(key)->full_name << " (-" << key << ')';
-           }))
-            return false;
-    }
+    // First, get the set of all active variables
+    if(!check_intersection(get_active_variables(), exclusive_variables_))
+        return false;
 
     return true;
 }
@@ -315,9 +287,10 @@ bool ArgParse::check_exclusivity_constraints() noexcept
 std::set<char> ArgParse::get_active_flags() const noexcept
 {
     std::set<char> active_set;
-    for(auto&& [key, flag] : flags_)
-        if(flag.value)
-            active_set.insert(key);
+    for(auto&& [key, parg] : arguments_)
+        if(parg->underlying_type() == ArgType::BOOL)
+            if(parg->is_set)
+                active_set.insert(key);
 
     return active_set;
 }
@@ -325,15 +298,15 @@ std::set<char> ArgParse::get_active_flags() const noexcept
 std::set<char> ArgParse::get_active_variables() const noexcept
 {
     std::set<char> active_set;
-    for(auto&& [key, pvar] : variables_)
-        if(pvar->is_set)
-            active_set.insert(key);
+    for(auto&& [key, parg] : arguments_)
+        if(parg->underlying_type() != ArgType::BOOL)
+            if(parg->is_set)
+                active_set.insert(key);
 
     return active_set;
 }
 
-bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives,
-                                  std::function<void(std::stringstream&, char)> show_argument) noexcept
+bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept
 {
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
@@ -350,11 +323,9 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
             size_t count = 0;
             for(char key : intersection)
             {
-                show_argument(ss, key);
+                ss << "--" << arguments_.at(key)->full_name << " (-" << key << ')';
                 if(++count < intersection.size())
-                {
                     ss << ", ";
-                }
             }
             ss << std::endl;
             log_error(ss.str());
@@ -396,17 +367,19 @@ static void format_description(std::stringstream& oss, char key, const std::stri
 
 void ArgParse::make_usage_string()
 {
-    // Gather all non exclusive flags
+    // Gather all non exclusive flags & variables
     std::string nonex_flags = "";
-    for(auto&& [key, flag] : flags_)
-        if(flag.exclusive_idx == 0)
-            nonex_flags += key;
-
-    // Gather all non exclusive variables
     std::string nonex_vars = "";
-    for(auto&& [key, pvar] : variables_)
-        if(pvar->exclusive_idx == 0)
-            nonex_vars += key;
+    for(auto&& [key, parg] : arguments_)
+    {
+        if(parg->exclusive_idx == 0)
+        {
+            if(parg->underlying_type() == ArgType::BOOL)
+                nonex_flags += key;
+            else
+                nonex_vars += key;
+        }
+    }
 
     std::stringstream ss;
 
@@ -416,9 +389,7 @@ void ArgParse::make_usage_string()
 
     // Display nonexclusive flags
     if(nonex_flags.size())
-    {
         ss << " [-" << nonex_flags << ']';
-    }
 
     // Display exclusive flags
     for(const auto& ex_set : exclusive_flags_)
@@ -429,9 +400,7 @@ void ArgParse::make_usage_string()
         {
             ss << '-' << key;
             if(++count < ex_set.size())
-            {
                 ss << " | ";
-            }
         }
         ss << ']';
     }
@@ -439,8 +408,8 @@ void ArgParse::make_usage_string()
     // Display nonexclusive variables
     for(char key : nonex_vars)
     {
-        const auto* pvar = variables_.at(key);
-        ss << " [-" << pvar->short_name << " <" << pvar->underlying_type() << ">]";
+        const auto* parg = arguments_.at(key);
+        ss << " [-" << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << ">]";
     }
 
     // Display exclusive variables
@@ -450,8 +419,8 @@ void ArgParse::make_usage_string()
         ss << " [";
         for(char key : ex_set)
         {
-            const auto* pvar = variables_.at(key);
-            ss << '-' << pvar->short_name << " <" << pvar->underlying_type() << '>';
+            const auto* parg = arguments_.at(key);
+            ss << '-' << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << '>';
             if(++count < ex_set.size())
             {
                 ss << " | ";
@@ -461,17 +430,15 @@ void ArgParse::make_usage_string()
     }
 
     // Display positional arguments
-    for(const auto* pvar : positionals_)
-    {
-        ss << ' ' << pvar->full_name;
-    }
+    for(const auto* parg : positionals_)
+        ss << ' ' << parg->full_name;
     ss << std::endl;
 
     // Show argument descriptions
     ss << std::endl << "With:" << std::endl;
 
-    for(const auto* pvar : positionals_)
-        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description,
+    for(const auto* parg : positionals_)
+        format_description(ss, parg->short_name, parg->full_name, k_type_str.at(parg->underlying_type()), parg->description,
                            usage_padding_);
 
     ss << std::endl << "Options:" << std::endl;
@@ -479,12 +446,14 @@ void ArgParse::make_usage_string()
     format_description(ss, 0, "help", "", "Display this usage string and exit", usage_padding_);
     format_description(ss, 0, "version", "", "Display the program version string and exit", usage_padding_);
 
-    for(auto&& [key, flag] : flags_)
-        format_description(ss, flag.short_name, flag.full_name, "", flag.description, usage_padding_);
+    for(auto&& [key, parg] : arguments_)
+        if(parg->underlying_type() == ArgType::BOOL)
+            format_description(ss, parg->short_name, parg->full_name, "", parg->description, usage_padding_);
 
-    for(auto&& [key, pvar] : variables_)
-        format_description(ss, pvar->short_name, pvar->full_name, pvar->underlying_type(), pvar->description,
-                           usage_padding_);
+    for(auto&& [key, parg] : arguments_)
+        if(parg->underlying_type() != ArgType::BOOL)
+            format_description(ss, parg->short_name, parg->full_name, k_type_str.at(parg->underlying_type()), parg->description,
+                               usage_padding_);
 
     usage_string_.assign(ss.str());
 }
