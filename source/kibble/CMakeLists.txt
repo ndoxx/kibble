@@ -45,6 +45,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/time)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/argparse/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
+
 ## More elegant, but DNW as dir is absolute
 # file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 # foreach ( file ${H_LIB} )
