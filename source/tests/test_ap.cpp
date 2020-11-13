@@ -265,7 +265,7 @@ protected:
     ap::ArgParse parser;
 };
 
-TEST_CASE_METHOD(PosFixture, "Single positional argument", "[pos]")
+TEST_CASE_METHOD(PosFixture, "Single positional int argument", "[pos]")
 {
     const auto& A = parser.add_positional<int>("A", "First number");
 
@@ -274,6 +274,17 @@ TEST_CASE_METHOD(PosFixture, "Single positional argument", "[pos]")
     REQUIRE(success);
     REQUIRE(A.is_set);
     REQUIRE(A() == 42);
+}
+
+TEST_CASE_METHOD(PosFixture, "Single positional string argument", "[pos]")
+{
+    const auto& A = parser.add_positional<std::string>("A", "First number");
+
+    bool success = Parse(parser, "program plop");
+
+    REQUIRE(success);
+    REQUIRE(A.is_set);
+    REQUIRE(!A().compare("plop"));
 }
 
 TEST_CASE_METHOD(PosFixture, "Three positional arguments", "[pos]")

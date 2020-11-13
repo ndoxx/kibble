@@ -136,6 +136,18 @@ int p4(int argc, char** argv)
     return 0;
 }
 
+int p5(int argc, char** argv)
+{
+    ap::ArgParse parser("nuclear", "0.1");
+    const auto& target = parser.add_positional<std::string>("ROM_PATH", "Path to the ROM");
+    parser.parse(argc, argv);
+
+    KLOGN("kibble") << "Extracting from: " << std::endl;
+    KLOGI << WCC('p') << target() << std::endl;
+
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -147,5 +159,6 @@ int main(int argc, char** argv)
     // return p1(argc, argv);
     // return p2(argc, argv);
     // return p3(argc, argv);
-    return p4(argc, argv);
+    // return p4(argc, argv);
+    return p5(argc, argv);
 }

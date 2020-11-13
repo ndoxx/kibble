@@ -140,7 +140,6 @@ public:
         Option<T>* opt = new Option<T>();
         opt->full_name = full_name;
         opt->description = description;
-        opt->value = T(0);
         positionals_.push_back(opt);
 
         return *opt;
