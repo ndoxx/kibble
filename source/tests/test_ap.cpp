@@ -210,6 +210,28 @@ TEST_CASE_METHOD(VarFixture, "Two variable <int> arguments, short name used", "[
     REQUIRE(height() == 185);
 }
 
+TEST_CASE_METHOD(VarFixture, "Variable <int> argument, hexadecimal repr", "[var]")
+{
+    const auto& var = parser.add_variable<int>('o', "offset", "Offset of the captain", 0x10);
+
+    bool success = Parse(parser, "program -o 0x22");
+
+    REQUIRE(success);
+    REQUIRE(var.is_set);
+    REQUIRE(var() == 0x22);
+}
+
+TEST_CASE_METHOD(VarFixture, "Variable <long> argument, hexadecimal repr", "[var]")
+{
+    const auto& var = parser.add_variable<long>('o', "offset", "Offset of the captain", 0x10);
+
+    bool success = Parse(parser, "program -o 0xff45289c4565");
+
+    REQUIRE(success);
+    REQUIRE(var.is_set);
+    REQUIRE(var() == 0xff45289c4565);
+}
+
 TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")
 {
     const auto& x = parser.add_variable<float>('x', "var_x", "The x variable", 0.f);

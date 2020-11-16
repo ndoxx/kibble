@@ -4,6 +4,7 @@
 #include <cassert>
 #include <exception>
 #include <iostream>
+#include <iomanip>
 #include <regex>
 
 namespace kb
@@ -566,9 +567,35 @@ static inline void assign_list(const std::string& operand, std::vector<T>& targe
 
 template <> bool StringCast<bool>(const std::string&) noexcept(false) { return true; }
 
-template <> int StringCast<int>(const std::string& operand) noexcept(false) { return std::stoi(operand); }
+template <> int StringCast<int>(const std::string& operand) noexcept(false)
+{
+    // Hexadecimal?
+    if(operand[0]=='0' && operand[1]=='x')
+    {
+        std::stringstream ss;
+        int value;
+        ss << std::hex << operand;
+        ss >> value;
+        return value;
+    }
 
-template <> long StringCast<long>(const std::string& operand) noexcept(false) { return std::stol(operand); }
+    return std::stoi(operand);
+}
+
+template <> long StringCast<long>(const std::string& operand) noexcept(false)
+{
+    // Hexadecimal?
+    if(operand[0]=='0' && operand[1]=='x')
+    {
+        std::stringstream ss;
+        long value;
+        ss << std::hex << operand;
+        ss >> value;
+        return value;
+    }
+
+    return std::stol(operand);
+}
 
 template <> float StringCast<float>(const std::string& operand) noexcept(false) { return std::stof(operand); }
 

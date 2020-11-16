@@ -122,12 +122,17 @@ int p4(int argc, char** argv)
     parser.add_flag('y', "param_y", "The parameter y");
     parser.add_flag('z', "param_z", "The parameter z");
     const auto& l = parser.add_list<int>('l', "list_l", "A list of values");
-    parser.add_variable<int>('m', "var_m", "The variable m", 10);
+    const auto& mm = parser.add_variable<int>('m', "var_m", "The variable m", 10);
     parser.add_positional<int>("MAGIC", "The magic number");
     parser.set_dependency('y', 'x');
 
     bool success = parser.parse(argc, argv);
     if(!success) show_error_and_die(parser);
+
+    if(mm.is_set)
+    {
+        KLOG("kibble",1) << "m: " << mm() << std::endl;
+    }
 
     for(int v:l())
     	KLOG("kibble",1) << v << std::endl;
@@ -159,6 +164,6 @@ int main(int argc, char** argv)
     // return p1(argc, argv);
     // return p2(argc, argv);
     // return p3(argc, argv);
-    // return p4(argc, argv);
-    return p5(argc, argv);
+    return p4(argc, argv);
+    // return p5(argc, argv);
 }
