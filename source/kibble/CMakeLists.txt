@@ -33,6 +33,9 @@ cotire(kibble)
 # Install rules
 install(TARGETS kibble DESTINATION lib)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/assert/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/assert)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 
