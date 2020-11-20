@@ -33,6 +33,9 @@ cotire(kibble)
 # Install rules
 install(TARGETS kibble DESTINATION lib)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/argparse/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/assert/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/assert)
 
@@ -42,14 +45,20 @@ install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
-install(FILES ${H_LIB} DESTINATION include/kibble/time)
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/math)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/argparse/*.h")
-install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/time)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/string/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/string)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/util/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/util)
 
 ## More elegant, but DNW as dir is absolute
 # file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
