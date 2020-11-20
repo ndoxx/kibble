@@ -8,7 +8,10 @@
 #include <cstring>
 
 #include <catch2/catch_all.hpp>
-#include "memory/memory.inc"
+#include "logger/logger.h"
+#include "assert/assert.h"
+#include "memory/heap_area.h"
+#include "memory/memory.h"
 #include "memory/linear_allocator.h"
 #include "memory/pool_allocator.h"
 #include "memory/memory_utils.h"
@@ -70,7 +73,7 @@ protected:
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD non-aligned", "[mem]")
 {
-	POD* some_pod = W_NEW(POD, arena);
+	POD* some_pod = K_NEW(POD, arena);
 	some_pod->a = 0x42424242;
 	some_pod->b = 0xB16B00B5;
 	some_pod->c = 0xD0D0DADAD0D0DADA;
@@ -79,12 +82,12 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD non-aligned", "[mem]")
 	// Arena should write the complete allocation size just before user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod)-1) == sizeof(POD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE(some_pod, arena);
+	K_DELETE(some_pod, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
 {
-	POD* some_pod = W_NEW_ALIGN(POD, arena, 16);
+	POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
 	some_pod->a = 0x42424242;
 	some_pod->b = 0xB16B00B5;
 	some_pod->c = 0xD0D0DADAD0D0DADA;
@@ -95,17 +98,17 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
 	// Arena should write the complete allocation size just before user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod)-1) == sizeof(POD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE(some_pod, arena);
+	K_DELETE(some_pod, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[mem]")
 {
 	for(uint32_t ALIGNMENT=2; ALIGNMENT<=128; ALIGNMENT*=2)
 	{
-		POD* some_pod = W_NEW_ALIGN(POD, arena, ALIGNMENT);
+		POD* some_pod = K_NEW_ALIGN(POD, arena, ALIGNMENT);
 		some_pod->a = 0xB16B00B5;
 		REQUIRE(size_t(some_pod)%ALIGNMENT==0);
-		W_DELETE(some_pod, arena);
+		K_DELETE(some_pod, arena);
 	}
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(area.begin()), 512);
 }
@@ -114,7 +117,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array non-aligned", "[m
 {
 	const uint32_t N = 10;
 
-	POD* pod_array = W_NEW_ARRAY(POD[N], arena);
+	POD* pod_array = K_NEW_ARRAY(POD[N], arena);
 	for(uint32_t ii=0; ii<N; ++ii)
 	{
 		pod_array[ii].a = 0x42424242;
@@ -126,14 +129,14 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array non-aligned", "[m
 	// Arena should write the complete allocation size just before the user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array)-1) == N*sizeof(POD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE_ARRAY(pod_array, arena);
+	K_DELETE_ARRAY(pod_array, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]")
 {
 	const uint32_t N = 10;
 
-	POD* pod_array = W_NEW_ARRAY_ALIGN(POD[N], arena, 32);
+	POD* pod_array = K_NEW_ARRAY_ALIGN(POD[N], arena, 32);
 	for(uint32_t ii=0; ii<N; ++ii)
 	{
 		pod_array[ii].a = 0x42424242;
@@ -147,23 +150,23 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]"
 	// Arena should write the complete allocation size just before the user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array)-1) == N*sizeof(POD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE_ARRAY(pod_array, arena);
+	K_DELETE_ARRAY(pod_array, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD non-aligned", "[mem]")
 {
-	NonPOD* some_non_pod = W_NEW(NonPOD, arena)(10,8);
+	NonPOD* some_non_pod = K_NEW(NonPOD, arena)(10,8);
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_non_pod) - LinArena::BK_FRONT_SIZE, sizeof(NonPOD) + LinArena::DECORATION_SIZE);
 	
 	// Arena should write the complete allocation size just before user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod)-1) == sizeof(NonPOD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE(some_non_pod, arena);
+	K_DELETE(some_non_pod, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
 {
-	NonPOD* some_non_pod = W_NEW_ALIGN(NonPOD, arena, 32)(10,8);
+	NonPOD* some_non_pod = K_NEW_ALIGN(NonPOD, arena, 32)(10,8);
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_non_pod) - LinArena::BK_FRONT_SIZE, sizeof(NonPOD) + LinArena::DECORATION_SIZE);
 	
 	// Check that returned address is correctly 32 bytes aligned
@@ -171,14 +174,14 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
 	// Arena should write the complete allocation size just before user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod)-1) == sizeof(NonPOD) + LinArena::DECORATION_SIZE);
 
-	W_DELETE(some_non_pod, arena);
+	K_DELETE(some_non_pod, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array non-aligned", "[mem]")
 {
 	const uint32_t N = 4;
 
-	NonPOD* non_pod_array = W_NEW_ARRAY(NonPOD[N], arena);
+	NonPOD* non_pod_array = K_NEW_ARRAY(NonPOD[N], arena);
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(non_pod_array) - LinArena::BK_FRONT_SIZE - 4, N*sizeof(NonPOD) + LinArena::DECORATION_SIZE + 4);
 	
 	// Arena should write the number of instances before the returned user pointer
@@ -186,14 +189,14 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array non-aligned",
 	// Arena should write the complete allocation size just before the number of instances
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array)-2) == N*sizeof(NonPOD) + LinArena::DECORATION_SIZE + sizeof(SIZE_TYPE));
 
-	W_DELETE_ARRAY(non_pod_array, arena);
+	K_DELETE_ARRAY(non_pod_array, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[mem]")
 {
 	const uint32_t N = 4;
 
-	NonPOD* non_pod_array = W_NEW_ARRAY_ALIGN(NonPOD[N], arena, 16);
+	NonPOD* non_pod_array = K_NEW_ARRAY_ALIGN(NonPOD[N], arena, 16);
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(non_pod_array) - LinArena::BK_FRONT_SIZE - 4, N*sizeof(NonPOD) + LinArena::DECORATION_SIZE + 4);
 	
 	// Check that returned address is correctly 16 bytes aligned
@@ -203,7 +206,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[m
 	// Arena should write the complete allocation size just before the number of instances
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array)-2) == N*sizeof(NonPOD) + LinArena::DECORATION_SIZE + sizeof(SIZE_TYPE));
 
-	W_DELETE_ARRAY(non_pod_array, arena);
+	K_DELETE_ARRAY(non_pod_array, arena);
 }
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
@@ -212,27 +215,27 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
 	{
 		if(ii%3)
 		{
-			POD* some_pod = W_NEW_ALIGN(POD, arena, 16);
+			POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
 			some_pod->a = 0x42424242;
 			some_pod->b = 0xB16B00B5;
 			some_pod->c = 0xD0D0DADAD0D0DADA;
-			W_DELETE(some_pod, arena);
+			K_DELETE(some_pod, arena);
 		}
 		else
 		{
-			NonPOD* some_non_pod = W_NEW(NonPOD, arena)(10,8);
-			W_DELETE(some_non_pod, arena);
+			NonPOD* some_non_pod = K_NEW(NonPOD, arena)(10,8);
+			K_DELETE(some_non_pod, arena);
 		}
 		if(ii==5)
 		{
-			POD* pod_array = W_NEW_ARRAY_ALIGN(POD[10], arena, 32);
+			POD* pod_array = K_NEW_ARRAY_ALIGN(POD[10], arena, 32);
 			for(int jj=0; jj<10; ++jj)
 			{
 				pod_array[jj].a = 0x42424242;
 				pod_array[jj].b = 0xB16B00B5;
 				pod_array[jj].c = 0xD0D0DADAD0D0DADA;
 			}
-			W_DELETE_ARRAY(pod_array, arena);
+			K_DELETE_ARRAY(pod_array, arena);
 		}
 	}
 	// memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(area.begin()), 1_kB);
@@ -255,7 +258,7 @@ public:
 	
 	PoolArenaFixture():
 	area(3_kB),
-	arena(area, sizeof(POD) + PoolArena::DECORATION_SIZE, 32, "PoolArena")
+	arena(area, sizeof(POD) + PoolArena::DECORATION_SIZE, 32u, "PoolArena")
 	{
 
 	}
@@ -267,7 +270,7 @@ protected:
 
 TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD non-aligned", "[mem]")
 {
-	POD* some_pod = W_NEW(POD, arena);
+	POD* some_pod = K_NEW(POD, arena);
 	some_pod->a = 0x42424242;
 	some_pod->b = 0xB16B00B5;
 	some_pod->c = 0xD0D0DADAD0D0DADA;
@@ -276,7 +279,7 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD non-aligned", "[m
 	// Arena should write the complete allocation size just before user pointer
 	REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod)-1) == sizeof(POD) + PoolArena::DECORATION_SIZE);
 
-	W_DELETE(some_pod, arena);
+	K_DELETE(some_pod, arena);
 }
 
 /* // TODO: Test pool arena aligned allocations
@@ -311,20 +314,20 @@ typedef memory::MemoryArena<memory::PoolAllocator,
 	{
 		for(int ii=0; ii<8; ++ii)
 		{
-			Foo* foo = W_NEW_ALIGN(Foo, pool, 8);
+			Foo* foo = K_NEW_ALIGN(Foo, pool, 8);
 			foos.push_back(foo);
 		}
 		area.debug_hex_dump(std::cout, dump_size);
 
-		W_DELETE(foos[2], pool); foos[2] = std::move(foos.back()); foos.pop_back();
-		W_DELETE(foos[5], pool); foos[5] = std::move(foos.back()); foos.pop_back();
-		foos.push_back(W_NEW_ALIGN(Foo, pool, 16));
-		foos.push_back(W_NEW(Foo, pool));
+		K_DELETE(foos[2], pool); foos[2] = std::move(foos.back()); foos.pop_back();
+		K_DELETE(foos[5], pool); foos[5] = std::move(foos.back()); foos.pop_back();
+		foos.push_back(K_NEW_ALIGN(Foo, pool, 16));
+		foos.push_back(K_NEW(Foo, pool));
 		area.debug_hex_dump(std::cout, dump_size);
 
 		for(Foo* foo: foos)
 		{
-			W_DELETE(foo, pool);
+			K_DELETE(foo, pool);
 		}
 		area.debug_hex_dump(std::cout, dump_size);
 
