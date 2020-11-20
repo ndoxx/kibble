@@ -38,6 +38,7 @@ cotire(test_logger)
 set(SRC_KIBBLE_TEST
     catch_app.cpp
     test_ap.cpp
+    test_memory.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})

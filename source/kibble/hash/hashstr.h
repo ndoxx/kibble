@@ -39,29 +39,27 @@ template <typename T, typename... Rest> inline void hash_combine(std::size_t& se
         std::size_t operator()(const type& t) const                                                                    \
         {                                                                                                              \
             std::size_t ret = 0;                                                                                       \
-            erwin::detail::hash_combine(ret, __VA_ARGS__);                                                             \
+            kb::detail::hash_combine(ret, __VA_ARGS__);                                                                \
             return ret;                                                                                                \
         }                                                                                                              \
     };                                                                                                                 \
     }
 
 using hash_t = unsigned long long;
+} // namespace kb
+
 // compile-time hash
-static constexpr hash_t H_(const char* str) { return detail::hash_one(str[0], str + 1, detail::basis); }
+static constexpr kb::hash_t H_(const char* str) { return kb::detail::hash_one(str[0], str + 1, kb::detail::basis); }
 
 // string literal expression
-static constexpr hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
+[[maybe_unused]] static constexpr kb::hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
 
-inline hash_t HCOMBINE_(hash_t first, hash_t second) { return (first ^ second) * detail::prime; }
+inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second) { return (first ^ second) * kb::detail::prime; }
 
-inline hash_t HCOMBINE_(const std::vector<hash_t>& hashes)
+inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
 {
-    hash_t ret = hashes[0];
+    kb::hash_t ret = hashes[0];
     for(size_t ii = 1; ii < hashes.size(); ++ii)
         ret = HCOMBINE_(ret, hashes[ii]);
     return ret;
 }
-
-} // namespace kb
-
-// #include "core/intern_string.h" // for HRESOLVE

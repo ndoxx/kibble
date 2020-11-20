@@ -71,7 +71,7 @@ private:
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::NORMAL, (S))
+        get_log(H_((C)), kb::klog::MsgType::NORMAL, (S))
 #define KLOGI                                                                                                          \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
@@ -81,43 +81,43 @@ private:
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::RAW, 0)
+        get_log(H_((C)), kb::klog::MsgType::RAW, 0)
 #define KLOGN(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::NOTIFY, 0)
+        get_log(H_((C)), kb::klog::MsgType::NOTIFY, 0)
 #define KLOGW(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::WARNING, 1, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::WARNING, 1, __LINE__, __FILE__)
 #define KLOGE(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::ERROR, 2, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::ERROR, 2, __LINE__, __FILE__)
 #define KLOGF(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::FATAL, 3, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::FATAL, 3, __LINE__, __FILE__)
 #define KLOGG(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::GOOD, 3, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::GOOD, 3, __LINE__, __FILE__)
 #define KLOGB(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_((C)), kb::klog::MsgType::BAD, 3, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::BAD, 3, __LINE__, __FILE__)
 #define KBANG()                                                                                                        \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(kb::H_("core"), kb::klog::MsgType::BANG, 3) << __FILE__ << ":" << __LINE__ << std::endl
+        get_log(H_("core"), kb::klog::MsgType::BANG, 3) << __FILE__ << ":" << __LINE__ << std::endl
 
-#define KLOGR__(C) get_log(kb::H_((C)), kb::klog::MsgType::RAW, 0)
+#define KLOGR__(C) get_log(H_((C)), kb::klog::MsgType::RAW, 0)
 
 } // namespace kb

@@ -48,6 +48,11 @@ install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/math)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/memory/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/memory)
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/memory/*.inc")
+install(FILES ${H_LIB} DESTINATION include/kibble/memory)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
 
