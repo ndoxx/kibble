@@ -2,7 +2,12 @@
 	"folders":
 	[
 		{
-			"path": "source"
+			"name": "Kibble",
+			"path": "source/kibble"
+		},
+		{
+			"name": "Tests",
+			"path": "source/tests"
 		}
 	],
 	"settings":

@@ -1,0 +1,3 @@
+[submodule "source/vendor/atomic_queue"]
+	path = source/vendor/atomic_queue
+	url = https://github.com/max0x7ba/atomic_queue.git

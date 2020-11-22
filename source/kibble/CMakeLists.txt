@@ -12,6 +12,11 @@ target_include_directories(kibble
         "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
+target_include_directories(kibble
+    SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+    )
+
 set_target_properties(kibble
     PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
@@ -41,6 +46,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/assert)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/job/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/job)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
