@@ -35,4 +35,11 @@ void hex_dump_clear_highlights();
 void hex_dump(std::ostream& stream, const void* ptr, std::size_t size, const std::string& title = "");
 
 } // namespace memory
+
+// User literals for bytes multiples
+constexpr size_t operator"" _B(unsigned long long size) { return size; }
+constexpr size_t operator"" _kB(unsigned long long size) { return 1024 * size; }
+constexpr size_t operator"" _MB(unsigned long long size) { return 1048576 * size; }
+constexpr size_t operator"" _GB(unsigned long long size) { return 1073741824 * size; }
+
 } // namespace kb

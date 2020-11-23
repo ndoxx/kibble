@@ -29,7 +29,7 @@ class WorkerThread
 {
 public:
     WorkerThread(uint32_t tid, JobSystem::Storage& storage)
-        : tid_(tid), thread_(&WorkerThread::run, this), storage_(storage)
+        : tid_(tid), storage_(storage), thread_(&WorkerThread::run, this)
     {
         (void)tid_;
     }
@@ -39,12 +39,12 @@ public:
 
 private:
     uint32_t tid_;
-    std::thread thread_;
     JobSystem::Storage& storage_;
+    std::thread thread_;
     // std::vector<Job> wait_list_; // To store jobs that have unmet dependencies
 };
 
-static constexpr size_t k_max_jobs = 128;
+static constexpr size_t k_max_jobs = 256;
 static constexpr size_t k_hnd_guard_bits = 16;
 static constexpr size_t k_page_align = 64;
 static constexpr size_t k_job_max_align = k_page_align - 1;
@@ -61,6 +61,8 @@ template <typename T>
 using AtomicQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_contention, k_maximize_throughput,
                                               false, // TOTAL_ORDER
                                               k_SPSC>;
+
+#define DHND_( X ) HandlePool::unguard( X ) << '/' << HandlePool::guard_value( X )
 
 struct JobSystem::Storage
 {
@@ -102,14 +104,16 @@ void WorkerThread::run()
                 continue;
             }*/
 
-            // KLOG("thread",1) << "Thread " << tid_ << " took the job " << job->id << std::endl;
+            auto handle = job->handle;
+            KLOG("thread", 1) << 'T' << tid_ << " took job  " << DHND_(handle) << std::endl;
             job->function();
-            storage_.handle_pool.release(job->handle);
+            storage_.handle_pool.release(handle);
             job->alive = false;
+            K_DELETE(job, storage_.job_pool);
             // Notify main thread that the job is done
             storage_.status.fetch_add(1, std::memory_order_relaxed);
             storage_.cv_wait.notify_one();
-            // KLOG("thread",1) << "Thread " << tid_ << " finished the job " << job->id << std::endl;
+            KLOG("thread", 1) << 'T' << tid_ << " ended job " << DHND_(handle) << std::endl;
         }
         else // No job -> wait
         {
@@ -127,6 +131,8 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     storage_->threads_count = storage_->CPU_cores_count - 1;
 }
 
+JobSystem::~JobSystem() { shutdown(); }
+
 void JobSystem::spawn_workers()
 {
     KLOGN("thread") << "JobSystem: spawning worker threads." << std::endl;
@@ -137,6 +143,7 @@ void JobSystem::spawn_workers()
     storage_->running.store(true, std::memory_order_release);
     storage_->status.store(0, std::memory_order_release);
     storage_->current_status = 0;
+    storage_->threads.reserve(storage_->threads_count); // Avoids moving the workers later on
     for(uint32_t ii = 0; ii < storage_->threads_count; ++ii)
         storage_->threads.emplace_back(ii, *storage_);
 
@@ -156,11 +163,10 @@ void JobSystem::shutdown()
     for(auto&& thd : storage_->threads)
         thd.join();
 
-    cleanup();
-
     KLOG("thread", 1) << "done." << std::endl;
 }
 
+/*
 void JobSystem::cleanup()
 {
     // Return dead jobs to the pool
@@ -173,27 +179,26 @@ void JobSystem::cleanup()
         return false;
     });
 }
+*/
 
 JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 {
-    cleanup();
-
     JobHandle handle = storage_->handle_pool.acquire();
     ++storage_->current_status;
 
     // Enqueue new job
-    [[maybe_unused]] auto naked = HandlePool::k_handle_mask & handle;
-    [[maybe_unused]] auto guard = (HandlePool::k_guard_mask & handle) >> HandlePool::k_guard_shift;
-    KLOG("thread",1) << "Enqueuing job " << naked << " (guard=" << guard << ')' << std::endl;
+    KLOG("thread", 1) << "Enqueuing job " << DHND_(handle) << std::endl;
 
     Job* job = K_NEW_ALIGN(Job, storage_->job_pool, k_page_align){function, handle};
     storage_->jobs.push(job);
-    storage_->alive_jobs.push_back(job);
-
-    // Wake one worker thread
-    storage_->cv_wake.notify_one();
 
     return handle;
+}
+
+void JobSystem::update()
+{
+    // Wake all worker threads
+    storage_->cv_wake.notify_all();
 }
 
 bool JobSystem::is_busy() { return storage_->status.load(std::memory_order_relaxed) < storage_->current_status; }

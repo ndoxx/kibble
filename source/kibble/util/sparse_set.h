@@ -205,6 +205,9 @@ public:
 
     SecureSparsePool() : size_(0) { clear(); }
 
+    static inline T unguard(T handle) { return k_handle_mask & handle; }
+    static inline T guard_value(T handle) { return (k_guard_mask & handle) >> k_guard_shift; }
+
     inline iterator begin() { return dense.begin(); }
     inline iterator end() { return dense.begin() + size_; }
     inline const_iterator begin() const { return dense.begin(); }
@@ -214,8 +217,8 @@ public:
     inline bool empty() const { return size_ == 0; }
     inline bool is_valid(const T& val) const
     {
-        T unguarded = val & k_handle_mask;
-        T guard_val = (val & k_guard_mask) >> k_guard_shift;
+        T unguarded = unguard(val);
+        T guard_val = guard_value(val);
         return unguarded < SIZE && sparse[unguarded] < size_ && dense[sparse[unguarded]] == unguarded && guard_val == guard[unguarded];
     }
 

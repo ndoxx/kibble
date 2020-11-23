@@ -411,12 +411,6 @@ private:
 
 } // namespace memory
 
-// User literals for bytes multiples
-constexpr size_t operator"" _B(unsigned long long size) { return size; }
-constexpr size_t operator"" _kB(unsigned long long size) { return 1024 * size; }
-constexpr size_t operator"" _MB(unsigned long long size) { return 1048576 * size; }
-constexpr size_t operator"" _GB(unsigned long long size) { return 1073741824 * size; }
-
 #define K_NEW(TYPE, ARENA) new(ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
 #define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
     kb::memory::NewArray<kb::memory::TypeAndCount<TYPE>::type>(ARENA, kb::memory::TypeAndCount<TYPE>::count, 0, __FILE__, __LINE__)

@@ -35,8 +35,8 @@ public:
     // Hold execution on this thread till a particular job is processed
     void wait_for(JobHandle handle);
 
-    // Cleanup job pool. Called automatically at the start of schedule() and during shutdown
-    void cleanup();
+    // Call this regularly, all scheduled tasks will be performed
+    void update();
 
 private:
 	friend class WorkerThread;
