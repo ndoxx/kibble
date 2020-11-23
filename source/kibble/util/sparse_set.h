@@ -242,7 +242,7 @@ public:
 
     void release(T handle)
     {
-        K_ASSERT(is_valid(handle), "Cannot release unknown handle");
+        K_ASSERT_FMT(is_valid(handle), "Cannot release unknown handle %d/%d", unguard(handle), guard_value(handle));
 
         T unguarded = handle & k_handle_mask;
         T index = sparse[unguarded];

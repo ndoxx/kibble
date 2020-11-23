@@ -25,8 +25,8 @@ set_target_properties(kibble
         POSITION_INDEPENDENT_CODE ON
 )
 
-target_compile_definitions(kibble PRIVATE -DLOGGING_ANSI_3=0)
 target_compile_definitions(kibble PRIVATE -DLOGGING_ENABLED=1)
+target_compile_definitions(kibble PRIVATE -DK_ENABLE_ASSERT)
 
 target_link_libraries(kibble
     PRIVATE

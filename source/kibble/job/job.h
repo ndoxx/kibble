@@ -29,14 +29,15 @@ public:
     // Non-blockingly check if any worker threads are busy
     bool is_busy();
     // Non-blockingly check if a job is processed
-    bool is_work_done(JobHandle handle);
+    //bool is_work_done(JobHandle handle);
     // Hold execution on this thread till all jobs are processed
     void wait();
     // Hold execution on this thread till a particular job is processed
-    void wait_for(JobHandle handle);
+    //void wait_for(JobHandle handle);
 
     // Call this regularly, all scheduled tasks will be performed
     void update();
+    void cleanup();
 
 private:
 	friend class WorkerThread;
