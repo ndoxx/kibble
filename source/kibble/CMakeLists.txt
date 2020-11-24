@@ -50,9 +50,6 @@ install(FILES ${H_LIB} DESTINATION include/kibble/assert)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/job/*.h")
-install(FILES ${H_LIB} DESTINATION include/kibble/job)
-
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 
@@ -66,6 +63,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/memory)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/thread)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/time)

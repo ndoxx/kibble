@@ -3,7 +3,8 @@
 #include "logger/logger_thread.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "job/job.h"
+#include "thread/job.h"
+#include "time/clock.h"
 
 #include <regex>
 #include <string>
@@ -43,9 +44,9 @@ int main(int argc, char** argv)
     constexpr size_t len = 256;
     constexpr size_t njobs = 128;
 
+    microClock clk;
     for(size_t kk=0; kk<1000; ++kk)
     {
-
         std::vector<float> data(njobs*len);
         std::iota(data.begin(), data.end(), 0.f);
         std::array<float,njobs> means;
@@ -77,6 +78,9 @@ int main(int argc, char** argv)
 
         KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
     }
+
+    auto dur = clk.get_elapsed_time();
+    KLOG("nuclear",1) << "Execution time: " << dur.count() << "us" << std::endl;
 
     return 0;
 }

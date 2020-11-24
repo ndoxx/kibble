@@ -1,10 +1,12 @@
-#include "job/job.h"
+#include "thread/job.h"
+#include "thread/sync.h"
 
 #include "assert/assert.h"
 #include "logger/logger.h"
 #include "memory/heap_area.h"
 #include "memory/memory.h"
 #include "memory/pool_allocator.h"
+#include "time/clock.h"
 #include "util/sparse_set.h"
 
 #include "atomic_queue/atomic_queue.h"
@@ -17,6 +19,8 @@
 
 namespace kb
 {
+
+#define PROFILING
 
 struct Job
 {
@@ -45,16 +49,16 @@ using AtomicQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_con
                                               false, // TOTAL_ORDER
                                               k_SPSC>;
 
-static inline uint32_t get_tid(JobSystem::JobHandle handle) { return (handle & k_hnd_tw_mask) >> k_hnd_tw_shift; }
+static inline uint32_t to_tid(JobSystem::JobHandle handle) { return (handle & k_hnd_tw_mask) >> k_hnd_tw_shift; }
 
-static inline JobSystem::JobHandle get_pure_handle(JobSystem::JobHandle handle) { return handle & (~k_hnd_tw_mask); }
+static inline JobSystem::JobHandle to_pure_handle(JobSystem::JobHandle handle) { return handle & (~k_hnd_tw_mask); }
 
 struct DisplayHandle
 {
     DisplayHandle(JobSystem::JobHandle handle)
     {
-        auto pure_handle = get_pure_handle(handle);
-        tid = get_tid(handle);
+        auto pure_handle = to_pure_handle(handle);
+        tid = to_tid(handle);
         guard = HandlePool::guard_value(pure_handle);
         naked = HandlePool::unguard(pure_handle);
     }
@@ -85,6 +89,9 @@ class WorkerThread
 public:
     WorkerThread(uint32_t tid, memory::HeapArea& area, SharedState& ss)
         : tid_(tid), ss_(ss), thread_(&WorkerThread::run, this),
+#ifdef PROFILING
+          active_time_(0), idle_time_(0),
+#endif
           job_pool_(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs, "JobPool")
     {
         KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
@@ -94,32 +101,37 @@ public:
 
     void run();
     inline void join() { thread_.join(); }
+    inline uint32_t get_tid() const { return tid_; }
+
+#ifdef PROFILING
+    inline auto get_active_time() const { return active_time_; }
+    inline auto get_idle_time() const { return idle_time_; }
+#endif
 
     inline JobSystem::JobHandle acquire_handle()
     {
-    	// Mutex is not avoidable, handle operations can (and will) be called
-    	// concurrently, producing garbage handles.
-    	// This situation should be rare enough (in my use case) for this
-    	// synchronization not to matter too much performance-wise.
-    	// TODO: Maybe a spinlock would be faster?
-    	const std::lock_guard<std::mutex> lock(handle_mutex_);
+        // Synchronization is not avoidable, handle operations can (and will) be called
+        // concurrently, producing garbage handles.
+        // This situation should be rare enough (in my use case) and the operations
+        // fast enough, for a spinlock to be a good primitive candidate.
+        const std::lock_guard<SpinLock> lock(handle_lock_);
         // Add thread ID bits in front
         return handle_pool_.acquire() | (JobSystem::JobHandle(tid_) << k_hnd_tw_shift);
     }
 
     inline void release_handle(JobSystem::JobHandle handle)
     {
-    	const std::lock_guard<std::mutex> lock(handle_mutex_);
-        auto pure_handle = get_pure_handle(handle);
-        auto tid = get_tid(handle);
+        const std::lock_guard<SpinLock> lock(handle_lock_);
+        auto pure_handle = to_pure_handle(handle);
+        auto tid = to_tid(handle);
         K_ASSERT(tid == tid_, "Bad thread ID, cannot release this handle");
         handle_pool_.release(pure_handle);
     }
 
     inline bool is_valid(JobSystem::JobHandle handle) const
     {
-        auto pure_handle = get_pure_handle(handle);
-        auto tid = get_tid(handle);
+        auto pure_handle = to_pure_handle(handle);
+        auto tid = to_tid(handle);
         return (tid == tid_ && handle_pool_.is_valid(pure_handle));
     }
 
@@ -130,7 +142,13 @@ private:
     uint32_t tid_;
     SharedState& ss_;
     std::thread thread_;
-    std::mutex handle_mutex_;
+    SpinLock handle_lock_;
+
+#ifdef PROFILING
+    std::chrono::microseconds active_time_;
+    std::chrono::microseconds idle_time_;
+#endif
+
     PoolArena job_pool_;
     HandlePool handle_pool_;
     AtomicQueue<Job*> jobs_;
@@ -144,6 +162,9 @@ void WorkerThread::run()
         // Get a job you lazy bastard
         if(!jobs_.was_empty())
         {
+#ifdef PROFILING
+            microClock clk;
+#endif
             Job* job = jobs_.pop();
             auto handle = job->handle;
             KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
@@ -153,12 +174,21 @@ void WorkerThread::run()
             ss_.status.fetch_add(1, std::memory_order_relaxed);
             // ss_.cv_wait.notify_one();
             KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
+#ifdef PROFILING
+            active_time_ += clk.get_elapsed_time();
+#endif
         }
         else // No job -> wait
         {
+#ifdef PROFILING
+            microClock clk;
+#endif
             // TODO: Job stealing
             std::unique_lock<std::mutex> lck(ss_.wake_mutex);
             ss_.cv_wake.wait(lck); // Spurious wakeups have no effect because we check if the queue is empty
+#ifdef PROFILING
+            idle_time_ += clk.get_elapsed_time();
+#endif
         }
     }
 }
@@ -234,6 +264,16 @@ void JobSystem::shutdown()
     storage_->ss.cv_wake.notify_all();
     for(auto* thd : storage_->threads)
         thd->join();
+
+#ifdef PROFILING
+    for(auto* thd : storage_->threads)
+    {
+        KLOG("thread",1) << "Thread #" << thd->get_tid() << std::endl;
+        KLOGI << "Active: " << thd->get_active_time().count() << "us" << std::endl;
+        KLOGI << "Idle:   " << thd->get_idle_time().count() << "us" << std::endl;
+    }
+#endif
+
     for(auto* thd : storage_->threads)
         delete thd;
 
@@ -266,7 +306,7 @@ bool JobSystem::is_busy() { return storage_->ss.status.load(std::memory_order_re
 
 bool JobSystem::is_work_done(JobHandle handle)
 {
-    auto tid = get_tid(handle);
+    auto tid = to_tid(handle);
     K_ASSERT(tid < storage_->threads_count, "Invalid thread ID in is_work_done()");
     return !storage_->threads[tid]->is_valid(handle);
 }
