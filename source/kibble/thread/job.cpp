@@ -177,7 +177,7 @@ void WorkerThread::run()
             job->function();
             release_handle(handle);
             dead_jobs_.push(job);
-            ss_.status.fetch_add(1, std::memory_order_relaxed);
+            ss_.status.fetch_sub(1);
             // ss_.cv_wait.notify_one();
             KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
 #ifdef PROFILING
@@ -225,7 +225,6 @@ struct JobSystem::Storage
 {
     size_t CPU_cores_count = 0;
     size_t threads_count = 0;
-    uint64_t current_status = 0;
     size_t selected_worker = 0;
     std::vector<WorkerThread*> threads;
     SharedState ss;
@@ -236,7 +235,7 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     // Find the number of CPU cores
     storage_->CPU_cores_count = std::thread::hardware_concurrency();
     // Main thread already takes one core
-    storage_->threads_count = storage_->CPU_cores_count - 1;
+    storage_->threads_count = std::max(1ul, storage_->CPU_cores_count - 1ul);
 
     // Spawn workers
     KLOGN("thread") << "JobSystem: spawning worker threads." << std::endl;
@@ -244,7 +243,6 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     KLOG("thread", 0) << "Spawning " << WCC('v') << storage_->threads_count << WCC(0) << " worker threads."
                       << std::endl;
 
-    storage_->current_status = 0;
     storage_->threads.reserve(storage_->threads_count);
     for(uint32_t ii = 0; ii < storage_->threads_count; ++ii)
         storage_->threads.push_back(new WorkerThread(ii, area, storage_->ss));
@@ -296,7 +294,7 @@ void JobSystem::cleanup()
 JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 {
     // TMP: Round-robin worker selection
-    ++storage_->current_status;
+    storage_->ss.status.fetch_add(1);
     auto handle = storage_->threads[storage_->selected_worker]->enqueue(std::move(function));
     storage_->selected_worker = (storage_->selected_worker + 1) % storage_->threads_count;
     return handle;
@@ -309,7 +307,7 @@ void JobSystem::update()
     storage_->ss.cv_wake.notify_all();
 }
 
-bool JobSystem::is_busy() { return storage_->ss.status.load(std::memory_order_relaxed) < storage_->current_status; }
+bool JobSystem::is_busy() { return storage_->ss.status.load(std::memory_order_relaxed) > 0; }
 
 bool JobSystem::is_work_done(JobHandle handle)
 {
@@ -320,14 +318,14 @@ bool JobSystem::is_work_done(JobHandle handle)
 
 void JobSystem::wait()
 {
-    // Main thread increments current_status each time a job is pushed to the queue.
-    // Worker threads atomically increment status each time they finished a job.
-    // Then we just need to wait for status to catch up with current_status in order
+    // Main thread atomically increments status each time a job is pushed to the queue.
+    // Worker threads atomically decrement status each time they finished a job.
+    // Then we just need to wait for status to return to zero in order
     // to be sure all worker threads have finished.
 
     // BUG: Can deadlock (lost wakeups?)
-    // std::unique_lock<std::mutex> lock(storage_->wait_mutex);
-    // storage_->cv_wait.wait(lock, [this]() { return !is_busy(); });
+    // std::unique_lock<std::mutex> lock(storage_->ss.wait_mutex);
+    // storage_->ss.cv_wait.wait(lock, [this]() { return !is_busy(); });
 
     // TMP FIX: Use polling
     while(is_busy())
