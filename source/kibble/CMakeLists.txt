@@ -33,6 +33,7 @@ target_link_libraries(kibble
         project_options
         project_warnings
         pthread
+        atomic
         stdc++fs
 )
 

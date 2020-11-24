@@ -20,7 +20,7 @@ void init_logger()
     KLOGGER(create_channel("nuclear", 3));
     KLOGGER(create_channel("memory", 3));
     KLOGGER(create_channel("kibble", 3));
-    KLOGGER(create_channel("thread", 2));
+    KLOGGER(create_channel("thread", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_single_threaded(true));
     KLOGGER(set_backtrace_on_error(false));
@@ -40,12 +40,13 @@ int main(int argc, char** argv)
     memory::HeapArea area(512_kB);
     JobSystem js(area);
 
+    std::vector<float> experiments;
 
     constexpr size_t len = 256;
     constexpr size_t njobs = 128;
 
     microClock clk;
-    for(size_t kk=0; kk<1000; ++kk)
+    for(size_t kk=0; kk<1; ++kk)
     {
         std::vector<float> data(njobs*len);
         std::iota(data.begin(), data.end(), 0.f);
@@ -76,11 +77,23 @@ int main(int argc, char** argv)
             mean += means[ii];
         mean /= float(njobs);
 
-        KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
+        // KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
+        experiments.push_back(mean);
     }
 
     auto dur = clk.get_elapsed_time();
     KLOG("nuclear",1) << "Execution time: " << dur.count() << "us" << std::endl;
 
+/*
+    for(size_t kk=0; kk<10; ++kk)
+    {
+        js.schedule([]()
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        });
+    }
+    js.update();
+    js.wait();
+*/
     return 0;
 }

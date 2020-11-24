@@ -20,7 +20,7 @@
 namespace kb
 {
 
-#define PROFILING
+// #define PROFILING
 
 struct Job
 {
@@ -78,8 +78,8 @@ std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
 
 struct SharedState
 {
-    std::atomic<uint64_t> status;
-    std::atomic<bool> running;
+    std::atomic<uint64_t> status = {0};
+    std::atomic<bool> running = {true};
     std::condition_variable cv_wake; // To wake worker threads
     std::mutex wake_mutex;
 };
@@ -88,7 +88,7 @@ class WorkerThread
 {
 public:
     WorkerThread(uint32_t tid, memory::HeapArea& area, SharedState& ss)
-        : tid_(tid), ss_(ss), thread_(&WorkerThread::run, this),
+        : tid_(tid), ss_(ss),
 #ifdef PROFILING
           active_time_(0), idle_time_(0),
 #endif
@@ -99,6 +99,7 @@ public:
 
     ~WorkerThread() { KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl; }
 
+    void spawn();
     void run();
     inline void join() { thread_.join(); }
     inline uint32_t get_tid() const { return tid_; }
@@ -154,6 +155,11 @@ private:
     AtomicQueue<Job*> jobs_;
     AtomicQueue<Job*> dead_jobs_;
 };
+
+void WorkerThread::spawn()
+{
+    thread_ = std::thread(&WorkerThread::run, this);
+}
 
 void WorkerThread::run()
 {
@@ -238,12 +244,13 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     KLOG("thread", 0) << "Spawning " << WCC('v') << storage_->threads_count << WCC(0) << " worker threads."
                       << std::endl;
 
-    storage_->ss.running.store(true, std::memory_order_release);
-    storage_->ss.status.store(0, std::memory_order_release);
     storage_->current_status = 0;
     storage_->threads.reserve(storage_->threads_count);
     for(uint32_t ii = 0; ii < storage_->threads_count; ++ii)
         storage_->threads.push_back(new WorkerThread(ii, area, storage_->ss));
+    // Thread spawning is delayed to avoid a race condition of run() with tha atomic queue's ctor on memset
+    for(auto* thd : storage_->threads)
+        thd->spawn();
 
     KLOGI << "done" << std::endl;
 }
