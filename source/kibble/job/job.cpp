@@ -28,13 +28,13 @@ static constexpr size_t k_max_jobs = 128;
 static constexpr size_t k_hnd_tw_bits = 4;
 static constexpr size_t k_hnd_tw_shift = sizeof(JobSystem::JobHandle) * 8u - k_hnd_tw_bits;
 static constexpr JobSystem::JobHandle k_hnd_tw_mask = make_mask<JobSystem::JobHandle>(k_hnd_tw_shift);
-static constexpr size_t k_hnd_guard_bits = 16 - k_hnd_tw_bits;
+static constexpr size_t k_hnd_guard_bits = 48 - k_hnd_tw_bits;
 static constexpr size_t k_page_align = 64;
 static constexpr size_t k_job_max_align = k_page_align - 1;
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 static constexpr bool k_minimize_contention = true;
 static constexpr bool k_maximize_throughput = true;
-static constexpr bool k_SPSC = false;
+static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
 
 using HandlePool = SecureSparsePool<JobSystem::JobHandle, k_max_jobs, k_hnd_guard_bits>;
 using PoolArena =
@@ -62,8 +62,8 @@ struct DisplayHandle
     friend std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh);
 
     uint32_t tid;
-    uint32_t guard;
-    uint32_t naked;
+    size_t guard;
+    size_t naked;
 };
 
 std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
@@ -97,32 +97,40 @@ public:
 
     inline JobSystem::JobHandle acquire_handle()
     {
+    	// Mutex is not avoidable, handle operations can (and will) be called
+    	// concurrently, producing garbage handles.
+    	// This situation should be rare enough (in my use case) for this
+    	// synchronization not to matter too much performance-wise.
+    	// TODO: Maybe a spinlock would be faster?
+    	const std::lock_guard<std::mutex> lock(handle_mutex_);
         // Add thread ID bits in front
         return handle_pool_.acquire() | (JobSystem::JobHandle(tid_) << k_hnd_tw_shift);
     }
 
     inline void release_handle(JobSystem::JobHandle handle)
     {
+    	const std::lock_guard<std::mutex> lock(handle_mutex_);
         auto pure_handle = get_pure_handle(handle);
         auto tid = get_tid(handle);
         K_ASSERT(tid == tid_, "Bad thread ID, cannot release this handle");
         handle_pool_.release(pure_handle);
     }
 
-    inline bool is_valid(JobSystem::JobHandle handle)
+    inline bool is_valid(JobSystem::JobHandle handle) const
     {
         auto pure_handle = get_pure_handle(handle);
         auto tid = get_tid(handle);
         return (tid == tid_ && handle_pool_.is_valid(pure_handle));
     }
 
-    JobSystem::JobHandle enqueue(JobSystem::JobFunction function);
+    JobSystem::JobHandle enqueue(JobSystem::JobFunction&& function);
     void cleanup();
 
 private:
     uint32_t tid_;
     SharedState& ss_;
     std::thread thread_;
+    std::mutex handle_mutex_;
     PoolArena job_pool_;
     HandlePool handle_pool_;
     AtomicQueue<Job*> jobs_;
@@ -155,14 +163,14 @@ void WorkerThread::run()
     }
 }
 
-JobSystem::JobHandle WorkerThread::enqueue(JobSystem::JobFunction function)
+JobSystem::JobHandle WorkerThread::enqueue(JobSystem::JobFunction&& function)
 {
     auto handle = acquire_handle();
 
     // Enqueue new job
     KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(handle) << std::endl;
 
-    Job* job = K_NEW_ALIGN(Job, job_pool_, k_page_align){function, handle};
+    Job* job = K_NEW_ALIGN(Job, job_pool_, k_page_align){std::forward<JobSystem::JobFunction>(function), handle};
     jobs_.push(job);
 
     return handle;
@@ -242,7 +250,7 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 {
     // TMP: Round-robin worker selection
     ++storage_->current_status;
-    auto handle = storage_->threads[storage_->selected_worker]->enqueue(function);
+    auto handle = storage_->threads[storage_->selected_worker]->enqueue(std::move(function));
     storage_->selected_worker = (storage_->selected_worker + 1) % storage_->threads_count;
     return handle;
 }
@@ -270,7 +278,7 @@ void JobSystem::wait()
     // Then we just need to wait for status to catch up with current_status in order
     // to be sure all worker threads have finished.
 
-    // BUG: Can deadlock
+    // BUG: Can deadlock (lost wakeups?)
     // std::unique_lock<std::mutex> lock(storage_->wait_mutex);
     // storage_->cv_wait.wait(lock, [this]() { return !is_busy(); });
 

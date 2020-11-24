@@ -14,7 +14,7 @@ class JobSystem
 {
 public:
     using JobFunction = std::function<void(void)>;
-    using JobHandle = uint32_t;
+    using JobHandle = size_t;
 
     JobSystem(memory::HeapArea& area);
     ~JobSystem();
@@ -31,6 +31,8 @@ public:
     bool is_work_done(JobHandle handle);
     // Call this regularly, all scheduled tasks will be performed
     void update();
+
+private:
     // Return dead jobs to their respective pools
     void cleanup();
 
