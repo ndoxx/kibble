@@ -28,11 +28,8 @@ struct Job
     JobSystem::JobHandle handle;
 };
 
-static constexpr size_t k_max_jobs = 128;
-static constexpr size_t k_hnd_tw_bits = 4;
-static constexpr size_t k_hnd_tw_shift = sizeof(JobSystem::JobHandle) * 8u - k_hnd_tw_bits;
-static constexpr JobSystem::JobHandle k_hnd_tw_mask = make_mask<JobSystem::JobHandle>(k_hnd_tw_shift);
-static constexpr size_t k_hnd_guard_bits = 48 - k_hnd_tw_bits;
+static constexpr size_t k_max_jobs = 1024;
+static constexpr size_t k_hnd_guard_bits = 48;
 static constexpr size_t k_page_align = 64;
 static constexpr size_t k_job_max_align = k_page_align - 1;
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
@@ -49,30 +46,23 @@ using AtomicQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_con
                                               false, // TOTAL_ORDER
                                               k_SPSC>;
 
-static inline uint32_t to_tid(JobSystem::JobHandle handle) { return (handle & k_hnd_tw_mask) >> k_hnd_tw_shift; }
-
-static inline JobSystem::JobHandle to_pure_handle(JobSystem::JobHandle handle) { return handle & (~k_hnd_tw_mask); }
-
 struct DisplayHandle
 {
     DisplayHandle(JobSystem::JobHandle handle)
     {
-        auto pure_handle = to_pure_handle(handle);
-        tid = to_tid(handle);
-        guard = HandlePool::guard_value(pure_handle);
-        naked = HandlePool::unguard(pure_handle);
+        guard = HandlePool::guard_value(handle);
+        naked = HandlePool::unguard(handle);
     }
 
     friend std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh);
 
-    uint32_t tid;
     size_t guard;
     size_t naked;
 };
 
 std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
 {
-    stream << dh.tid << '/' << dh.naked << '/' << dh.guard;
+    stream << dh.naked << '/' << dh.guard;
     return stream;
 }
 
@@ -82,17 +72,20 @@ struct SharedState
     std::atomic<bool> running = {true};
     std::condition_variable cv_wake; // To wake worker threads
     std::mutex wake_mutex;
+
+    SpinLock handle_lock;
+    PoolArena job_pool;
+    HandlePool handle_pool;
 };
 
 class WorkerThread
 {
 public:
-    WorkerThread(uint32_t tid, memory::HeapArea& area, SharedState& ss)
-        : tid_(tid), ss_(ss),
+    WorkerThread(uint32_t tid, SharedState& ss)
+        : tid_(tid), ss_(ss)
 #ifdef PROFILING
-          active_time_(0), idle_time_(0),
+          ,active_time_(0), idle_time_(0)
 #endif
-          job_pool_(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs, "JobPool")
     {
         KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
     }
@@ -109,49 +102,30 @@ public:
     inline auto get_idle_time() const { return idle_time_; }
 #endif
 
-    inline JobSystem::JobHandle acquire_handle()
-    {
-        // Synchronization is not avoidable, handle operations can (and will) be called
-        // concurrently, producing garbage handles.
-        // This situation should be rare enough (in my use case) and the operations
-        // fast enough, for a spinlock to be a good primitive candidate.
-        const std::lock_guard<SpinLock> lock(handle_lock_);
-        // Add thread ID bits in front
-        return handle_pool_.acquire() | (JobSystem::JobHandle(tid_) << k_hnd_tw_shift);
-    }
-
     inline void release_handle(JobSystem::JobHandle handle)
     {
-        const std::lock_guard<SpinLock> lock(handle_lock_);
-        auto pure_handle = to_pure_handle(handle);
-        auto tid = to_tid(handle);
-        K_ASSERT(tid == tid_, "Bad thread ID, cannot release this handle");
-        handle_pool_.release(pure_handle);
+        const std::lock_guard<SpinLock> lock(ss_.handle_lock);
+        ss_.handle_pool.release(handle);
     }
 
-    inline bool is_valid(JobSystem::JobHandle handle) const
+    inline void enqueue(Job* job)
     {
-        auto pure_handle = to_pure_handle(handle);
-        auto tid = to_tid(handle);
-        return (tid == tid_ && handle_pool_.is_valid(pure_handle));
+        KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(job->handle) << std::endl;
+        jobs_.push(job);
     }
 
-    JobSystem::JobHandle enqueue(JobSystem::JobFunction&& function);
     void cleanup();
 
 private:
     uint32_t tid_;
     SharedState& ss_;
     std::thread thread_;
-    SpinLock handle_lock_;
 
 #ifdef PROFILING
     std::chrono::microseconds active_time_;
     std::chrono::microseconds idle_time_;
 #endif
 
-    PoolArena job_pool_;
-    HandlePool handle_pool_;
     AtomicQueue<Job*> jobs_;
     AtomicQueue<Job*> dead_jobs_;
 };
@@ -199,25 +173,12 @@ void WorkerThread::run()
     }
 }
 
-JobSystem::JobHandle WorkerThread::enqueue(JobSystem::JobFunction&& function)
-{
-    auto handle = acquire_handle();
-
-    // Enqueue new job
-    KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(handle) << std::endl;
-
-    Job* job = K_NEW_ALIGN(Job, job_pool_, k_page_align){std::forward<JobSystem::JobFunction>(function), handle};
-    jobs_.push(job);
-
-    return handle;
-}
-
 void WorkerThread::cleanup()
 {
     while(!dead_jobs_.was_empty())
     {
         Job* job = dead_jobs_.pop();
-        K_DELETE(job, job_pool_);
+        K_DELETE(job, ss_.job_pool);
     }
 }
 
@@ -243,9 +204,11 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     KLOG("thread", 0) << "Spawning " << WCC('v') << storage_->threads_count << WCC(0) << " worker threads."
                       << std::endl;
 
+    storage_->ss.job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs, "JobPool");
+
     storage_->threads.reserve(storage_->threads_count);
     for(uint32_t ii = 0; ii < storage_->threads_count; ++ii)
-        storage_->threads.push_back(new WorkerThread(ii, area, storage_->ss));
+        storage_->threads.push_back(new WorkerThread(ii, storage_->ss));
     // Thread spawning is delayed to avoid a race condition of run() with tha atomic queue's ctor on memset
     for(auto* thd : storage_->threads)
         thd->spawn();
@@ -293,10 +256,18 @@ void JobSystem::cleanup()
 
 JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 {
+    JobHandle handle;
+    {
+        const std::lock_guard<SpinLock> lock(storage_->ss.handle_lock);
+        handle = storage_->ss.handle_pool.acquire();
+    }
+
     // TMP: Round-robin worker selection
+    Job* job = K_NEW_ALIGN(Job, storage_->ss.job_pool, k_page_align){function, handle};
     storage_->ss.status.fetch_add(1);
-    auto handle = storage_->threads[storage_->selected_worker]->enqueue(std::move(function));
+    storage_->threads[storage_->selected_worker]->enqueue(job);
     storage_->selected_worker = (storage_->selected_worker + 1) % storage_->threads_count;
+
     return handle;
 }
 
@@ -311,9 +282,7 @@ bool JobSystem::is_busy() { return storage_->ss.status.load(std::memory_order_re
 
 bool JobSystem::is_work_done(JobHandle handle)
 {
-    auto tid = to_tid(handle);
-    K_ASSERT(tid < storage_->threads_count, "Invalid thread ID in is_work_done()");
-    return !storage_->threads[tid]->is_valid(handle);
+    return !storage_->ss.handle_pool.is_valid(handle);
 }
 
 void JobSystem::wait()
