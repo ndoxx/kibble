@@ -82,7 +82,7 @@ int main(int argc, char** argv)
     memory::HeapArea area(512_kB);
     JobSystem js(area);
 
-    // std::vector<float> experiments;
+    std::vector<float> experiments;
 
     constexpr size_t len = 256;
     constexpr size_t njobs = 128;
@@ -119,8 +119,8 @@ int main(int argc, char** argv)
             mean += means[ii];
         mean /= float(njobs);
 
-        KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
-        // experiments.push_back(mean);
+        // KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
+        experiments.push_back(mean);
     }
 
     auto dur = clk.get_elapsed_time();

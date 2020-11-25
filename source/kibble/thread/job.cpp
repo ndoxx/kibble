@@ -18,7 +18,7 @@
 #include <vector>
 
 #define ENABLE_WORK_STEALING 1
-#define PROFILING 0
+#define PROFILING 1
 
 namespace kb
 {
@@ -176,8 +176,7 @@ void WorkerThread::run()
             if(worker->tid_ != tid_)
             {
                 Job* job = nullptr;
-                jobs_.try_pop(job);
-                if(job)
+                if(worker->jobs_.try_pop(job))
                 {
                     KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"
                                       << worker->tid_ << std::endl;
