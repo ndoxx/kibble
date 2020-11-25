@@ -10,6 +10,7 @@ namespace memory
 class HeapArea;
 }
 
+class WorkerThread;
 class JobSystem
 {
 public:
@@ -33,11 +34,14 @@ public:
     void update();
 
 private:
+    friend class WorkerThread;
+
     // Return dead jobs to their respective pools
     void cleanup();
+    // Return a random worker thread
+    WorkerThread* random_worker() const;
 
 private:
-	friend class WorkerThread;
 	struct Storage;
 	std::shared_ptr<Storage> storage_;
 };

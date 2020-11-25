@@ -4,6 +4,7 @@
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
 #include "thread/job.h"
+#include "thread/atomic_queue.h"
 #include "time/clock.h"
 
 #include <regex>
@@ -37,6 +38,9 @@ int main(int argc, char** argv)
 
     KLOGN("nuclear") << "Start" << std::endl;
 
+    AtomicQueue<char*, 32> queue;
+
+/*
     memory::HeapArea area(512_kB);
     JobSystem js(area);
 
@@ -83,7 +87,7 @@ int main(int argc, char** argv)
 
     auto dur = clk.get_elapsed_time();
     KLOG("nuclear",1) << "Execution time: " << dur.count() << "us" << std::endl;
-
+*/
 /*
     for(size_t kk=0; kk<10; ++kk)
     {

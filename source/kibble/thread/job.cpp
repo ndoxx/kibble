@@ -14,6 +14,7 @@
 #include <bitset>
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -68,6 +69,7 @@ std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
 
 struct SharedState
 {
+    JobSystem* job_system;
     std::atomic<uint64_t> status = {0};
     std::atomic<bool> running = {true};
     std::condition_variable cv_wake; // To wake worker threads
@@ -84,7 +86,8 @@ public:
     WorkerThread(uint32_t tid, SharedState& ss)
         : tid_(tid), ss_(ss)
 #ifdef PROFILING
-          ,active_time_(0), idle_time_(0)
+          ,
+          active_time_(0), idle_time_(0)
 #endif
     {
         KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
@@ -114,6 +117,14 @@ public:
         jobs_.push(job);
     }
 
+    inline Job* steal()
+    {
+        // TODO: MUST steal in a FIFO fashion to avoid data race
+        Job* job = nullptr;
+        jobs_.try_pop(job);
+        return job;
+    }
+
     void cleanup();
 
 private:
@@ -130,36 +141,51 @@ private:
     AtomicQueue<Job*> dead_jobs_;
 };
 
-void WorkerThread::spawn()
-{
-    thread_ = std::thread(&WorkerThread::run, this);
-}
+void WorkerThread::spawn() { thread_ = std::thread(&WorkerThread::run, this); }
 
 void WorkerThread::run()
 {
+    auto execute = [this](Job* job) {
+#ifdef PROFILING
+            microClock clk;
+#endif
+        auto handle = job->handle;
+        KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
+        job->function();
+        release_handle(handle);
+        dead_jobs_.push(job);
+        ss_.status.fetch_sub(1);
+        // ss_.cv_wait.notify_one();
+        KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
+#ifdef PROFILING
+            active_time_ += clk.get_elapsed_time();
+#endif
+    };
+
     while(ss_.running.load(std::memory_order_acquire))
     {
         // Get a job you lazy bastard
         if(!jobs_.was_empty())
         {
-#ifdef PROFILING
-            microClock clk;
-#endif
-            Job* job = jobs_.pop();
-            auto handle = job->handle;
-            KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
-            job->function();
-            release_handle(handle);
-            dead_jobs_.push(job);
-            ss_.status.fetch_sub(1);
-            // ss_.cv_wait.notify_one();
-            KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
-#ifdef PROFILING
-            active_time_ += clk.get_elapsed_time();
-#endif
+            auto* job = jobs_.pop();
+            execute(job);
         }
-        else // No job -> wait
+        else
         {
+            // Try to steal a job
+            /*auto* worker = ss_.job_system->random_worker();
+            if(worker->tid_ != tid_)
+            {
+                auto* job = worker->steal();
+                if(job)
+                {
+                    KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"
+                                      << worker->tid_ << std::endl;
+                    execute(job);
+                    continue;
+                }
+            }*/
+
 #ifdef PROFILING
             microClock clk;
 #endif
@@ -187,6 +213,7 @@ struct JobSystem::Storage
     size_t CPU_cores_count = 0;
     size_t threads_count = 0;
     size_t selected_worker = 0;
+    std::random_device rd;
     std::vector<WorkerThread*> threads;
     SharedState ss;
 };
@@ -204,6 +231,7 @@ JobSystem::JobSystem(memory::HeapArea& area) : storage_(std::make_shared<Storage
     KLOG("thread", 0) << "Spawning " << WCC('v') << storage_->threads_count << WCC(0) << " worker threads."
                       << std::endl;
 
+    storage_->ss.job_system = this;
     storage_->ss.job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs, "JobPool");
 
     storage_->threads.reserve(storage_->threads_count);
@@ -236,7 +264,7 @@ void JobSystem::shutdown()
 #ifdef PROFILING
     for(auto* thd : storage_->threads)
     {
-        KLOG("thread",1) << "Thread #" << thd->get_tid() << std::endl;
+        KLOG("thread", 1) << "Thread #" << thd->get_tid() << std::endl;
         KLOGI << "Active: " << thd->get_active_time().count() << "us" << std::endl;
         KLOGI << "Idle:   " << thd->get_idle_time().count() << "us" << std::endl;
     }
@@ -280,10 +308,7 @@ void JobSystem::update()
 
 bool JobSystem::is_busy() { return storage_->ss.status.load(std::memory_order_relaxed) > 0; }
 
-bool JobSystem::is_work_done(JobHandle handle)
-{
-    return !storage_->ss.handle_pool.is_valid(handle);
-}
+bool JobSystem::is_work_done(JobHandle handle) { return !storage_->ss.handle_pool.is_valid(handle); }
 
 void JobSystem::wait()
 {
@@ -303,6 +328,12 @@ void JobSystem::wait()
         storage_->ss.cv_wake.notify_all(); // wake one worker thread
         std::this_thread::yield();         // allow this thread to be rescheduled
     }
+}
+
+WorkerThread* JobSystem::random_worker() const
+{
+    std::uniform_int_distribution<size_t> dist(0, storage_->threads_count - 1);
+    return storage_->threads[dist(storage_->rd)];
 }
 
 } // namespace kb
