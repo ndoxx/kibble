@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     constexpr size_t njobs = 128;
 
     microClock clk;
-    for(size_t kk=0; kk<100; ++kk)
+    for(size_t kk=0; kk<800; ++kk)
     {
         std::vector<float> data(njobs*len);
         std::iota(data.begin(), data.end(), 0.f);

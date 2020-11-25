@@ -38,16 +38,19 @@ public:
     inline bool was_empty() { return !was_size(); }
 
 private:
+	static constexpr T NIL = T{};
+
     alignas(k_cache_line_size) std::atomic<size_t> top_;
     alignas(k_cache_line_size) std::atomic<size_t> bottom_;
-    alignas(k_cache_line_size) std::array<T, N> elements_;
+    alignas(k_cache_line_size) std::array<std::atomic<T>, N> elements_;
 };
 
 template <typename T, size_t N> AtomicQueue<T, N>::AtomicQueue()
 {
+    K_ASSERT(std::atomic<T>{NIL}.is_lock_free(), "AtomicQueue only works with atomic elements.");
     top_.store(0, std::memory_order_release);
     bottom_.store(0, std::memory_order_release);
-    std::fill(elements_.begin(), elements_.end(), T(0));
+    std::fill(elements_.begin(), elements_.end(), NIL);
 }
 
 template <typename T, size_t N> bool AtomicQueue<T, N>::try_push(T element) noexcept
@@ -56,7 +59,7 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_push(T element) noex
 
     if(bottom < capacity())
     {
-        elements_[bottom] = element;
+        elements_[bottom].store(element, std::memory_order_release);
         // bottom_.store(bottom + 1, std::memory_order_release);
         bottom_.fetch_add(1, std::memory_order_release);
         return true;
@@ -67,14 +70,14 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_push(T element) noex
 
 template <typename T, size_t N> bool AtomicQueue<T, N>::try_pop(T& element) noexcept
 {
-    size_t bottom = bottom_.load(std::memory_order_acquire);
+    size_t bottom = bottom_.load(std::memory_order_relaxed);
     bottom = std::max(0ul, bottom - 1ul);
-    bottom_.store(bottom, std::memory_order_release);
-    size_t top = top_.load(std::memory_order_acquire);
+    bottom_.store(bottom, std::memory_order_seq_cst);
+    size_t top = top_.load(std::memory_order_seq_cst);
 
     if(top <= bottom)
     {
-        T elt = elements_[bottom];
+    	T elt = elements_[bottom].load(std::memory_order_relaxed);
 
         if(top != bottom)
         {
@@ -88,13 +91,13 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_pop(T& element) noex
             size_t desired_top = top + 1;
             bool success = true;
             // If this CAS fails, it means pop lost the race against a concurrent steal, abort
-            if(!top_.compare_exchange_weak(expected_top, desired_top, std::memory_order_acq_rel))
+            if(!top_.compare_exchange_strong(expected_top, desired_top, std::memory_order_relaxed))
             {
-                elt = T(0);
+                elt = NIL;
                 success = false;
             }
 
-            bottom_.store(top + 1, std::memory_order_release);
+            bottom_.store(top + 1, std::memory_order_relaxed);
             element = elt;
             return success;
         }
@@ -102,7 +105,7 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_pop(T& element) noex
     else
     {
         // Queue is empty
-        bottom_.store(top, std::memory_order_release);
+        bottom_.store(top, std::memory_order_relaxed);
         element = nullptr;
         return false;
     }
@@ -110,18 +113,20 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_pop(T& element) noex
 
 template <typename T, size_t N> bool AtomicQueue<T, N>::try_steal(T& element) noexcept
 {
-    size_t top = top_.load(std::memory_order_acquire);
-    size_t bottom = bottom_.load(std::memory_order_acquire);
+	// TODO: This never wraps, capacity shrinks each time an element is stolen...
+    size_t top = top_.load(std::memory_order_relaxed);
+    size_t bottom = bottom_.load(std::memory_order_seq_cst);
 
     if(top < bottom)
     {
         // Queue is non-empty
-        T* elt = elements_[top];
+    	// SHOULD BE an atomic array:
+    	T elt = elements_[bottom].load(std::memory_order_relaxed);
 
         size_t expected_top = top;
         size_t desired_top = top + 1;
         // If this CAS fails, it means steal lost the race against a concurrent steal/pop, abort
-        if(!top_.compare_exchange_weak(expected_top, desired_top, std::memory_order_acq_rel))
+        if(!top_.compare_exchange_weak(expected_top, desired_top, std::memory_order_seq_cst))
         {
             return false;
         }
@@ -144,7 +149,7 @@ template <typename T, size_t N> void AtomicQueue<T, N>::push(T element) noexcept
 
 template <typename T, size_t N> T AtomicQueue<T, N>::pop() noexcept
 {
-    T element = T(0);
+    T element = NIL;
     while(!try_pop(element))
         intrin::spin__();
     return element;

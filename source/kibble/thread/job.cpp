@@ -1,16 +1,13 @@
 #include "thread/job.h"
-#include "thread/atomic_queue.h"
-#include "thread/sync.h"
-
 #include "assert/assert.h"
 #include "logger/logger.h"
 #include "memory/heap_area.h"
 #include "memory/memory.h"
 #include "memory/pool_allocator.h"
+#include "thread/sync.h"
 #include "time/clock.h"
 #include "util/sparse_set.h"
 
-#include "atomic_queue/atomic_queue.h"
 #include <algorithm>
 #include <bitset>
 #include <condition_variable>
@@ -19,10 +16,17 @@
 #include <thread>
 #include <vector>
 
+#define PROFILING 0
+#define EXPERIMENTAL_WORK_STEALING 0
+
+#if EXPERIMENTAL_WORK_STEALING
+#include "thread/atomic_queue.h"
+#else
+#include "atomic_queue/atomic_queue.h"
+#endif
+
 namespace kb
 {
-
-// #define PROFILING
 
 struct Job
 {
@@ -41,7 +45,9 @@ using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
 
-#if 1
+#if EXPERIMENTAL_WORK_STEALING
+template <typename T> using LockFreeQueue = AtomicQueue<T, k_max_jobs>;
+#else
 static constexpr bool k_minimize_contention = true;
 static constexpr bool k_maximize_throughput = true;
 static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
@@ -50,9 +56,6 @@ template <typename T>
 using LockFreeQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_contention, k_maximize_throughput,
                                                 false, // TOTAL_ORDER
                                                 k_SPSC>;
-#else
-
-template <typename T> using LockFreeQueue = AtomicQueue<T, k_max_jobs>;
 #endif
 
 struct DisplayHandle
@@ -93,7 +96,7 @@ class WorkerThread
 public:
     WorkerThread(uint32_t tid, SharedState& ss)
         : tid_(tid), ss_(ss)
-#ifdef PROFILING
+#if PROFILING
           ,
           active_time_(0), idle_time_(0)
 #endif
@@ -108,7 +111,7 @@ public:
     inline void join() { thread_.join(); }
     inline uint32_t get_tid() const { return tid_; }
 
-#ifdef PROFILING
+#if PROFILING
     inline auto get_active_time() const { return active_time_; }
     inline auto get_idle_time() const { return idle_time_; }
 #endif
@@ -125,13 +128,14 @@ public:
         jobs_.push(job);
     }
 
+#if EXPERIMENTAL_WORK_STEALING
     inline Job* steal()
     {
-        // TODO: MUST steal in a FIFO fashion to avoid data race
         Job* job = nullptr;
-        jobs_.try_pop(job);
+        jobs_.try_steal(job);
         return job;
     }
+#endif
 
     void cleanup();
 
@@ -140,7 +144,7 @@ private:
     SharedState& ss_;
     std::thread thread_;
 
-#ifdef PROFILING
+#if PROFILING
     std::chrono::microseconds active_time_;
     std::chrono::microseconds idle_time_;
 #endif
@@ -154,7 +158,7 @@ void WorkerThread::spawn() { thread_ = std::thread(&WorkerThread::run, this); }
 void WorkerThread::run()
 {
     auto execute = [this](Job* job) {
-#ifdef PROFILING
+#if PROFILING
         microClock clk;
 #endif
         auto handle = job->handle;
@@ -165,7 +169,7 @@ void WorkerThread::run()
         ss_.status.fetch_sub(1);
         // ss_.cv_wait.notify_one();
         KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
-#ifdef PROFILING
+#if PROFILING
         active_time_ += clk.get_elapsed_time();
 #endif
     };
@@ -180,8 +184,9 @@ void WorkerThread::run()
         }
         else
         {
+#if EXPERIMENTAL_WORK_STEALING
             // Try to steal a job
-            /*auto* worker = ss_.job_system->random_worker();
+            auto* worker = ss_.job_system->random_worker();
             if(worker->tid_ != tid_)
             {
                 auto* job = worker->steal();
@@ -192,15 +197,16 @@ void WorkerThread::run()
                     execute(job);
                     continue;
                 }
-            }*/
+            }
+#endif
 
-#ifdef PROFILING
+#if PROFILING
             microClock clk;
 #endif
             // TODO: Job stealing
             std::unique_lock<std::mutex> lck(ss_.wake_mutex);
             ss_.cv_wake.wait(lck); // Spurious wakeups have no effect because we check if the queue is empty
-#ifdef PROFILING
+#if PROFILING
             idle_time_ += clk.get_elapsed_time();
 #endif
         }
@@ -269,7 +275,7 @@ void JobSystem::shutdown()
     for(auto* thd : storage_->threads)
         thd->join();
 
-#ifdef PROFILING
+#if PROFILING
     for(auto* thd : storage_->threads)
     {
         KLOG("thread", 1) << "Thread #" << thd->get_tid() << std::endl;
