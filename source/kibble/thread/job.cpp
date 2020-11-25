@@ -8,6 +8,7 @@
 #include "time/clock.h"
 #include "util/sparse_set.h"
 
+#include "atomic_queue/atomic_queue.h"
 #include <algorithm>
 #include <bitset>
 #include <condition_variable>
@@ -16,14 +17,8 @@
 #include <thread>
 #include <vector>
 
+#define ENABLE_WORK_STEALING 1
 #define PROFILING 0
-#define EXPERIMENTAL_WORK_STEALING 0
-
-#if EXPERIMENTAL_WORK_STEALING
-#include "thread/atomic_queue.h"
-#else
-#include "atomic_queue/atomic_queue.h"
-#endif
 
 namespace kb
 {
@@ -45,18 +40,18 @@ using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
 
-#if EXPERIMENTAL_WORK_STEALING
-template <typename T> using LockFreeQueue = AtomicQueue<T, k_max_jobs>;
-#else
 static constexpr bool k_minimize_contention = true;
 static constexpr bool k_maximize_throughput = true;
+#if ENABLE_WORK_STEALING
+static constexpr bool k_SPSC = false; // Each worker can steal from another worker's queue -> SPMC
+#else
 static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
+#endif
 
 template <typename T>
 using LockFreeQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_contention, k_maximize_throughput,
                                                 false, // TOTAL_ORDER
                                                 k_SPSC>;
-#endif
 
 struct DisplayHandle
 {
@@ -128,15 +123,6 @@ public:
         jobs_.push(job);
     }
 
-#if EXPERIMENTAL_WORK_STEALING
-    inline Job* steal()
-    {
-        Job* job = nullptr;
-        jobs_.try_steal(job);
-        return job;
-    }
-#endif
-
     void cleanup();
 
 private:
@@ -184,12 +170,13 @@ void WorkerThread::run()
         }
         else
         {
-#if EXPERIMENTAL_WORK_STEALING
+#if ENABLE_WORK_STEALING
             // Try to steal a job
             auto* worker = ss_.job_system->random_worker();
             if(worker->tid_ != tid_)
             {
-                auto* job = worker->steal();
+                Job* job = nullptr;
+                jobs_.try_pop(job);
                 if(job)
                 {
                     KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"

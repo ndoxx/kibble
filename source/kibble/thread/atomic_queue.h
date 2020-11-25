@@ -1,10 +1,11 @@
 #pragma once
 
 /*
+ * -------------- DO NOT USE --------------
  * Adapted from https://manu343726.github.io/2017-03-13-lock-free-job-stealing-task-system-with-modern-c/
  * -> Mimicks max0x7ba's atomic_queue API (https://github.com/max0x7ba/atomic_queue)
- * -> Highly experimental (meaning: bug-riddled junk)
  * -> Designed to implement (FIFO) work stealing later on
+ * -> Highly experimental (meaning: bug-riddled junk)
  */
 
 #include "thread/intrin.h"
