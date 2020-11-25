@@ -1,4 +1,5 @@
 #include "thread/job.h"
+#include "thread/atomic_queue.h"
 #include "thread/sync.h"
 
 #include "assert/assert.h"
@@ -34,18 +35,25 @@ static constexpr size_t k_hnd_guard_bits = 48;
 static constexpr size_t k_page_align = 64;
 static constexpr size_t k_job_max_align = k_page_align - 1;
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
-static constexpr bool k_minimize_contention = true;
-static constexpr bool k_maximize_throughput = true;
-static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
 
 using HandlePool = SecureSparsePool<JobSystem::JobHandle, k_max_jobs, k_hnd_guard_bits>;
 using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
+
+#if 1
+static constexpr bool k_minimize_contention = true;
+static constexpr bool k_maximize_throughput = true;
+static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
+
 template <typename T>
-using AtomicQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_contention, k_maximize_throughput,
-                                              false, // TOTAL_ORDER
-                                              k_SPSC>;
+using LockFreeQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, k_minimize_contention, k_maximize_throughput,
+                                                false, // TOTAL_ORDER
+                                                k_SPSC>;
+#else
+
+template <typename T> using LockFreeQueue = AtomicQueue<T, k_max_jobs>;
+#endif
 
 struct DisplayHandle
 {
@@ -137,8 +145,8 @@ private:
     std::chrono::microseconds idle_time_;
 #endif
 
-    AtomicQueue<Job*> jobs_;
-    AtomicQueue<Job*> dead_jobs_;
+    LockFreeQueue<Job*> jobs_;
+    LockFreeQueue<Job*> dead_jobs_;
 };
 
 void WorkerThread::spawn() { thread_ = std::thread(&WorkerThread::run, this); }
@@ -147,7 +155,7 @@ void WorkerThread::run()
 {
     auto execute = [this](Job* job) {
 #ifdef PROFILING
-            microClock clk;
+        microClock clk;
 #endif
         auto handle = job->handle;
         KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
@@ -158,7 +166,7 @@ void WorkerThread::run()
         // ss_.cv_wait.notify_one();
         KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
 #ifdef PROFILING
-            active_time_ += clk.get_elapsed_time();
+        active_time_ += clk.get_elapsed_time();
 #endif
     };
 

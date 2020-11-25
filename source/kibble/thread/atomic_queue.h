@@ -2,11 +2,14 @@
 
 /*
  * Adapted from https://manu343726.github.io/2017-03-13-lock-free-job-stealing-task-system-with-modern-c/
+ * -> Mimicks max0x7ba's atomic_queue API (https://github.com/max0x7ba/atomic_queue)
+ * -> Highly experimental (meaning: bug-riddled junk)
+ * -> Designed to implement (FIFO) work stealing later on
  */
 
+#include "thread/intrin.h"
 #include <array>
 #include <atomic>
-#include "thread/intrin.h"
 
 namespace kb
 {
@@ -21,12 +24,18 @@ public:
     bool try_push(T element) noexcept;
     bool try_pop(T& element) noexcept;
     bool try_steal(T& element) noexcept;
-    bool empty() const noexcept;
+    bool was_empty() const noexcept;
 
     void push(T element) noexcept;
     T pop() noexcept;
 
-    inline size_t size() const { return N; }
+    inline size_t capacity() const { return N; }
+    inline size_t was_size()
+    {
+        return size_t(std::max(int(bottom_.load(std::memory_order_relaxed)) - int(top_.load(std::memory_order_relaxed)), 0));
+    }
+    inline bool was_full() { return was_size() >= capacity(); }
+    inline bool was_empty() { return !was_size(); }
 
 private:
     alignas(k_cache_line_size) std::atomic<size_t> top_;
@@ -45,7 +54,7 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_push(T element) noex
 {
     size_t bottom = bottom_.load(std::memory_order_acquire);
 
-    if(bottom < size())
+    if(bottom < capacity())
     {
         elements_[bottom] = element;
         // bottom_.store(bottom + 1, std::memory_order_release);
@@ -65,7 +74,7 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_pop(T& element) noex
 
     if(top <= bottom)
     {
-        T* elt = elements_[bottom];
+        T elt = elements_[bottom];
 
         if(top != bottom)
         {
@@ -127,13 +136,6 @@ template <typename T, size_t N> bool AtomicQueue<T, N>::try_steal(T& element) no
     }
 }
 
-template <typename T, size_t N> bool AtomicQueue<T, N>::empty() const noexcept
-{
-    size_t top = top_.load(std::memory_order_acquire);
-    size_t bottom = bottom_.load(std::memory_order_acquire);
-    return bottom > top;
-}
-
 template <typename T, size_t N> void AtomicQueue<T, N>::push(T element) noexcept
 {
     while(!try_push(element))
@@ -142,7 +144,7 @@ template <typename T, size_t N> void AtomicQueue<T, N>::push(T element) noexcept
 
 template <typename T, size_t N> T AtomicQueue<T, N>::pop() noexcept
 {
-    T element;
+    T element = T(0);
     while(!try_pop(element))
         intrin::spin__();
     return element;

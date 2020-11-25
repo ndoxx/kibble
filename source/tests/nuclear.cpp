@@ -29,6 +29,12 @@ void init_logger()
     KLOGGER(sync());
 }
 
+struct Plop
+{
+    int a = 0;
+    int b = 42;
+};
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -38,9 +44,41 @@ int main(int argc, char** argv)
 
     KLOGN("nuclear") << "Start" << std::endl;
 
-    AtomicQueue<char*, 32> queue;
-
 /*
+    Plop* plops = new Plop[32];
+
+    AtomicQueue<Plop*, 32> queue;
+
+    for(size_t ii=0; ii<10; ++ii)
+    {
+        KLOG("nuclear",1) << "Push " << std::hex << reinterpret_cast<size_t>(&plops[ii]) << std::endl;
+        queue.push(&plops[ii]);
+        KLOG("nuclear",1) << "Size " << std::dec << queue.was_size() << std::endl;
+    }
+
+    auto run = [&queue]()
+    {
+        while(!queue.was_empty())
+        {
+            auto* plop = queue.pop();
+            KLOG("nuclear",1) << "Pop  " << std::hex << reinterpret_cast<size_t>(plop) << std::endl;
+            KLOG("nuclear",1) << "Size " << std::dec << queue.was_size() << std::endl;
+        }
+    };
+
+    std::vector<std::thread> thd;
+    thd.reserve(2);
+    for(size_t ii=0; ii<2; ++ii)
+    {
+        thd.push_back(std::thread(run));
+    }
+
+    for(size_t ii=0; ii<2; ++ii)
+        thd[ii].join();
+
+    delete[] plops;
+*/
+
     memory::HeapArea area(512_kB);
     JobSystem js(area);
 
@@ -50,7 +88,7 @@ int main(int argc, char** argv)
     constexpr size_t njobs = 128;
 
     microClock clk;
-    for(size_t kk=0; kk<1000; ++kk)
+    for(size_t kk=0; kk<100; ++kk)
     {
         std::vector<float> data(njobs*len);
         std::iota(data.begin(), data.end(), 0.f);
@@ -87,7 +125,7 @@ int main(int argc, char** argv)
 
     auto dur = clk.get_elapsed_time();
     KLOG("nuclear",1) << "Execution time: " << dur.count() << "us" << std::endl;
-*/
+
 /*
     for(size_t kk=0; kk<10; ++kk)
     {
