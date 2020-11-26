@@ -38,12 +38,15 @@ private:
 
     // Return dead jobs to their respective pools
     void cleanup();
-    // Return a random worker thread
-    WorkerThread* random_worker() const;
 
 private:
-	struct Storage;
-	std::shared_ptr<Storage> storage_;
+    size_t CPU_cores_count_ = 0;
+    size_t threads_count_ = 0;
+    size_t round_robin_ = 0;
+    std::vector<WorkerThread*> threads_;
+
+	struct SharedState;
+	std::shared_ptr<SharedState> ss_;
 };
 
 } // namespace kb
