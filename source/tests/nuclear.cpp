@@ -21,7 +21,7 @@ void init_logger()
     KLOGGER(create_channel("nuclear", 3));
     KLOGGER(create_channel("memory", 3));
     KLOGGER(create_channel("kibble", 3));
-    KLOGGER(create_channel("thread", 2));
+    KLOGGER(create_channel("thread", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_single_threaded(true));
     KLOGGER(set_backtrace_on_error(false));
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     constexpr size_t njobs = 128;
 
     microClock clk;
-    for(size_t kk=0; kk<1000; ++kk)
+    for(size_t kk=0; kk<1; ++kk)
     {
         std::vector<float> data(njobs*len);
         std::iota(data.begin(), data.end(), 0.f);

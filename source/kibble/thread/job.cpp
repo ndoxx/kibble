@@ -112,10 +112,9 @@ public:
           active_time_(0), idle_time_(0)
 #endif
     {
-        KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
     }
 
-    ~WorkerThread() { KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl; }
+    ~WorkerThread() { /*KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl;*/ }
 
     void spawn();
     void run();
@@ -135,7 +134,7 @@ public:
 
     inline void submit(Job* job)
     {
-        KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(job->handle) << std::endl;
+        // KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(job->handle) << std::endl;
         jobs_.push(job);
     }
 
@@ -163,19 +162,21 @@ void WorkerThread::spawn() { thread_ = std::thread(&WorkerThread::run, this); }
 
 void WorkerThread::run()
 {
+    // KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
+
     // Lambda to execute a job, update status and release its handle
     auto execute = [this](Job* job) {
 #if PROFILING
         microClock clk;
 #endif
         auto handle = job->handle;
-        KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
+        // KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
         job->function();
         release_handle(handle);
         dead_jobs_.push(job);
         ss_.status.fetch_sub(1);
         // ss_.cv_wait.notify_one();
-        KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
+        // KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
 #if PROFILING
         active_time_ += clk.get_elapsed_time();
 #endif
@@ -196,8 +197,8 @@ void WorkerThread::run()
             {
                 if(worker->jobs_.try_pop(job))
                 {
-                    KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"
-                                      << worker->tid_ << std::endl;
+                    /*KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"
+                                      << worker->tid_ << std::endl;*/
                     execute(job);
                     continue;
                 }
@@ -207,7 +208,6 @@ void WorkerThread::run()
 #if PROFILING
             microClock clk;
 #endif
-            // TODO: Job stealing
             std::unique_lock<std::mutex> lck(ss_.wake_mutex);
             ss_.cv_wake.wait(lck); // Spurious wakeups have no effect because we check if the queue is empty
 #if PROFILING
@@ -235,10 +235,9 @@ JobSystem::JobSystem(memory::HeapArea& area) : ss_(std::make_shared<SharedState>
     threads_count_ = std::min(k_max_threads, std::max(1ul, CPU_cores_count_ - 1ul));
 
     // Spawn workers
-    KLOGN("thread") << "JobSystem: spawning worker threads." << std::endl;
-    KLOG("thread", 0) << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
-    KLOG("thread", 0) << "Spawning " << WCC('v') << threads_count_ << WCC(0) << " worker threads."
-                      << std::endl;
+    KLOGN("thread") << "[JobSystem] Spawning worker threads." << std::endl;
+    KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
+    KLOGI << "Spawning " << WCC('v') << threads_count_ << WCC(0) << " worker threads." << std::endl;
 
     ss_->workers.fill(nullptr);
     ss_->workers_count = threads_count_;
@@ -255,17 +254,17 @@ JobSystem::JobSystem(memory::HeapArea& area) : ss_(std::make_shared<SharedState>
     for(auto* thd : threads_)
         thd->spawn();
 
-    KLOGI << "done" << std::endl;
+    KLOGG("thread") << "JobSystem ready." << std::endl;
 }
 
 JobSystem::~JobSystem() { shutdown(); }
 
 void JobSystem::shutdown()
 {
-    KLOGN("thread") << "Shutting down job system." << std::endl;
-    KLOG("thread", 0) << "Waiting for jobs to finish." << std::endl;
+    KLOGN("thread") << "[JobSystem] Shutting down." << std::endl;
+    KLOGI << "Waiting for jobs to finish." << std::endl;
     wait();
-    KLOG("thread", 0) << "All threads are joinable." << std::endl;
+    KLOGI << "All threads are joinable." << std::endl;
 
     cleanup();
 
@@ -287,7 +286,7 @@ void JobSystem::shutdown()
     for(auto* thd : threads_)
         delete thd;
 
-    KLOG("thread", 1) << "done." << std::endl;
+    KLOGG("thread") << "JobSystem shutdown complete." << std::endl;
 }
 
 void JobSystem::cleanup()
@@ -339,8 +338,8 @@ void JobSystem::wait()
     while(is_busy())
     {
         // Poll
-        ss_->cv_wake.notify_all(); // wake one worker thread
-        std::this_thread::yield();         // allow this thread to be rescheduled
+        ss_->cv_wake.notify_all(); // wake worker threads
+        std::this_thread::yield(); // allow this thread to be rescheduled
     }
 }
 

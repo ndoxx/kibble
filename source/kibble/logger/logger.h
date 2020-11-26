@@ -86,7 +86,7 @@ private:
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(H_((C)), kb::klog::MsgType::NOTIFY, 0)
+        get_log(H_((C)), kb::klog::MsgType::NOTIFY, 1)
 #define KLOGW(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
@@ -106,12 +106,12 @@ private:
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(H_((C)), kb::klog::MsgType::GOOD, 3, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::GOOD, 1, __LINE__, __FILE__)
 #define KLOGB(C)                                                                                                       \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
     else                                                                                                               \
-        get_log(H_((C)), kb::klog::MsgType::BAD, 3, __LINE__, __FILE__)
+        get_log(H_((C)), kb::klog::MsgType::BAD, 1, __LINE__, __FILE__)
 #define KBANG()                                                                                                        \
     if constexpr(!DO_LOG)                                                                                              \
         ;                                                                                                              \
