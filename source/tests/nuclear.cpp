@@ -3,14 +3,15 @@
 #include "logger/logger_thread.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "thread/job.h"
 #include "thread/atomic_queue.h"
+#include "thread/job.h"
 #include "time/clock.h"
 
+#include <numeric>
 #include <regex>
 #include <string>
 #include <vector>
-#include <numeric>
+#include <cmath>
 
 using namespace kb;
 
@@ -29,6 +30,16 @@ void init_logger()
     KLOGGER(sync());
 }
 
+std::pair<float,float> stats(const std::vector<long> durations)
+{
+    float mu = float(std::accumulate(durations.begin(), durations.end(), 0)) / float(durations.size());
+    float variance = 0.f;
+    for(long d: durations)
+        variance += (float(d)-mu)*(float(d)-mu);
+    variance /= float(durations.size());
+    return {mu, std::sqrt(variance)};
+}
+
 struct Plop
 {
     int a = 0;
@@ -44,63 +55,47 @@ int main(int argc, char** argv)
 
     KLOGN("nuclear") << "Start" << std::endl;
 
-/*
-    Plop* plops = new Plop[32];
-
-    AtomicQueue<Plop*, 32> queue;
-
-    for(size_t ii=0; ii<10; ++ii)
-    {
-        KLOG("nuclear",1) << "Push " << std::hex << reinterpret_cast<size_t>(&plops[ii]) << std::endl;
-        queue.push(&plops[ii]);
-        KLOG("nuclear",1) << "Size " << std::dec << queue.was_size() << std::endl;
-    }
-
-    auto run = [&queue]()
-    {
-        while(!queue.was_empty())
-        {
-            auto* plop = queue.pop();
-            KLOG("nuclear",1) << "Pop  " << std::hex << reinterpret_cast<size_t>(plop) << std::endl;
-            KLOG("nuclear",1) << "Size " << std::dec << queue.was_size() << std::endl;
-        }
-    };
-
-    std::vector<std::thread> thd;
-    thd.reserve(2);
-    for(size_t ii=0; ii<2; ++ii)
-    {
-        thd.push_back(std::thread(run));
-    }
-
-    for(size_t ii=0; ii<2; ++ii)
-        thd[ii].join();
-
-    delete[] plops;
-*/
-
     memory::HeapArea area(512_kB);
     JobSystem js(area);
 
-    std::vector<float> experiments;
-
-    constexpr size_t len = 256;
+    constexpr size_t nexp = 1000;
+    constexpr size_t len = 8192;
     constexpr size_t njobs = 128;
 
-    microClock clk;
-    for(size_t kk=0; kk<1; ++kk)
+    std::vector<long> durations(nexp);
+    std::vector<float> results(nexp);
+    std::vector<float> data(njobs * len);
+    std::iota(data.begin(), data.end(), 0.f);
+    std::array<float, njobs> means;
+
+    KLOG("nuclear", 1) << "Serial" << std::endl;
+    for(size_t kk = 0; kk < nexp; ++kk)
     {
-        std::vector<float> data(njobs*len);
-        std::iota(data.begin(), data.end(), 0.f);
-        std::array<float,njobs> means;
+        std::fill(means.begin(), means.end(), 0.f);
+        microClock clk;
+        float mean = 0.f;
+        for(float xx : data)
+            mean += xx;
+        mean /= float(data.size());
+        durations[kk] = clk.get_elapsed_time().count();
+
+        results[kk] = mean;
+    }
+
+    auto [smean, sstd] = stats(durations);
+    KLOGI << "Mean active time:   " << smean << "us" << std::endl;
+    KLOGI << "Standard deviation: " << sstd << "us" << std::endl;
+
+    KLOG("nuclear", 1) << "Parallel" << std::endl;
+    for(size_t kk = 0; kk < nexp; ++kk)
+    {
         std::fill(means.begin(), means.end(), 0.f);
         std::vector<JobSystem::JobHandle> handles;
 
-        for(size_t ii=0; ii<njobs; ++ii)
+        for(size_t ii = 0; ii < njobs; ++ii)
         {
-            auto handle = js.schedule([&data,&means,ii]()
-            {
-                for(size_t jj=ii*len; jj<(ii+1)*len; ++jj)
+            auto handle = js.schedule([&data, &means, ii]() {
+                for(size_t jj = ii * len; jj < (ii + 1) * len; ++jj)
                 {
                     means[ii] += data[jj];
                 }
@@ -109,33 +104,26 @@ int main(int argc, char** argv)
             handles.push_back(handle);
         }
 
-
+        microClock clk;
         js.update();
         // std::this_thread::sleep_for(std::chrono::milliseconds(50));
         js.wait();
 
         float mean = 0.f;
-        for(size_t ii=0; ii<njobs; ++ii)
+        for(size_t ii = 0; ii < njobs; ++ii)
             mean += means[ii];
         mean /= float(njobs);
-
-        // KLOGN("nuclear") << "iter=" << kk << " mean= " << mean << std::endl;
-        experiments.push_back(mean);
+        durations[kk] = clk.get_elapsed_time().count();
+        results[kk] = mean;
     }
 
-    auto dur = clk.get_elapsed_time();
-    KLOG("nuclear",1) << "Execution time: " << dur.count() << "us" << std::endl;
+    auto [pmean, pstd] = stats(durations);
+    KLOGI << "Mean active time:   " << pmean << "us" << std::endl;
+    KLOGI << "Standard deviation: " << pstd << "us" << std::endl;
 
-/*
-    for(size_t kk=0; kk<10; ++kk)
-    {
-        js.schedule([]()
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        });
-    }
-    js.update();
-    js.wait();
-*/
+
+    float gain_percent = 100.f * (smean - pmean) / smean;
+    KLOG("nuclear",1) << "Gain: " << gain_percent << '%' << std::endl;
+
     return 0;
 }

@@ -19,6 +19,8 @@
 
 // Allow idle workers to steal jobs from their siblings
 #define ENABLE_WORK_STEALING 1
+// Allow main thread to share some load with workers
+#define ENABLE_FOREGROUND_WORK 1
 // Attempt at reducing false sharing in shared state by page-aligning its members (TODO: measure this)
 #define ENABLE_SHARED_STATE_PAGE_ALIGN 0
 // Brief idle/active timing stats per worker thread
@@ -105,20 +107,28 @@ struct JobSystem::SharedState
 class WorkerThread
 {
 public:
-    WorkerThread(uint32_t tid, JobSystem::SharedState& ss)
-        : tid_(tid), ss_(ss), dist_(0, ss_.workers_count - 1)
+    WorkerThread(uint32_t tid, bool background, JobSystem::SharedState& ss)
+        : tid_(tid), background_(background), ss_(ss), dist_(0, ss_.workers_count - 1)
 #if PROFILING
           ,
           active_time_(0), idle_time_(0)
 #endif
-    {
+    {}
+
+    ~WorkerThread()
+    { /*KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl;*/
     }
 
-    ~WorkerThread() { /*KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl;*/ }
-
-    void spawn();
-    void run();
-    inline void join() { thread_.join(); }
+    inline void spawn()
+    {
+        if(background_)
+            thread_ = std::thread(&WorkerThread::run, this);
+    }
+    inline void join()
+    {
+        if(background_)
+            thread_.join();
+    }
     inline uint32_t get_tid() const { return tid_; }
 
 #if PROFILING
@@ -138,12 +148,25 @@ public:
         jobs_.push(job);
     }
 
-    inline auto* random_worker() { return ss_.workers[dist_(rd_)]; }
+    inline auto* random_worker()
+    {
+        size_t idx = dist_(rd_);
+        while(idx == tid_)
+            idx = dist_(rd_);
 
+        return ss_.workers[idx];
+    }
+
+    inline bool try_steal(Job*& job) { return random_worker()->jobs_.try_pop(job); }
+
+    void execute(Job* job);
+    void run();
+    void foreground_work();
     void cleanup();
 
 private:
     uint32_t tid_;
+    bool background_;
     JobSystem::SharedState& ss_;
     std::thread thread_;
     std::random_device rd_;
@@ -158,29 +181,27 @@ private:
     DeadJobQueue<Job*> dead_jobs_;
 };
 
-void WorkerThread::spawn() { thread_ = std::thread(&WorkerThread::run, this); }
+void WorkerThread::execute(Job* job)
+{
+#if PROFILING
+    microClock clk;
+#endif
+    auto handle = job->handle;
+    // KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
+    job->function();
+    release_handle(handle);
+    dead_jobs_.push(job);
+    ss_.status.fetch_sub(1);
+    // ss_.cv_wait.notify_one();
+    // KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
+#if PROFILING
+    active_time_ += clk.get_elapsed_time();
+#endif
+}
 
 void WorkerThread::run()
 {
     // KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
-
-    // Lambda to execute a job, update status and release its handle
-    auto execute = [this](Job* job) {
-#if PROFILING
-        microClock clk;
-#endif
-        auto handle = job->handle;
-        // KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
-        job->function();
-        release_handle(handle);
-        dead_jobs_.push(job);
-        ss_.status.fetch_sub(1);
-        // ss_.cv_wait.notify_one();
-        // KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
-#if PROFILING
-        active_time_ += clk.get_elapsed_time();
-#endif
-    };
 
     while(ss_.running.load(std::memory_order_acquire))
     {
@@ -192,16 +213,10 @@ void WorkerThread::run()
         {
 #if ENABLE_WORK_STEALING
             // Try to steal a job
-            auto* worker = random_worker();
-            if(worker->tid_ != tid_)
+            if(try_steal(job))
             {
-                if(worker->jobs_.try_pop(job))
-                {
-                    /*KLOG("thread", 0) << "T#" << tid_ << " stole job " << DisplayHandle(job->handle) << " from T#"
-                                      << worker->tid_ << std::endl;*/
-                    execute(job);
-                    continue;
-                }
+                execute(job);
+                continue;
             }
 #endif
 
@@ -215,6 +230,16 @@ void WorkerThread::run()
 #endif
         }
     }
+}
+
+void WorkerThread::foreground_work()
+{
+    K_ASSERT(!background_, "foreground_work() should not be called in a background thread.");
+    Job* job = nullptr;
+    while(jobs_.try_pop(job))
+        execute(job);
+    /*while(try_steal(job))
+        execute(job);*/
 }
 
 void WorkerThread::cleanup()
@@ -231,13 +256,21 @@ JobSystem::JobSystem(memory::HeapArea& area) : ss_(std::make_shared<SharedState>
 {
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
+
+#if ENABLE_FOREGROUND_WORK
+    threads_count_ = std::min(k_max_threads, std::max(1ul, CPU_cores_count_));
+#else
     // Main thread already takes one core
     threads_count_ = std::min(k_max_threads, std::max(1ul, CPU_cores_count_ - 1ul));
+#endif
 
     // Spawn workers
     KLOGN("thread") << "[JobSystem] Spawning worker threads." << std::endl;
     KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
     KLOGI << "Spawning " << WCC('v') << threads_count_ << WCC(0) << " worker threads." << std::endl;
+#if ENABLE_FOREGROUND_WORK
+    KLOGI << "Worker " << WCC('v') << 0 << WCC(0) << " is foreground." << std::endl;
+#endif
 
     ss_->workers.fill(nullptr);
     ss_->workers_count = threads_count_;
@@ -246,7 +279,7 @@ JobSystem::JobSystem(memory::HeapArea& area) : ss_(std::make_shared<SharedState>
     threads_.reserve(threads_count_);
     for(uint32_t ii = 0; ii < threads_count_; ++ii)
     {
-        auto* worker = new WorkerThread(ii, *ss_);
+        auto* worker = new WorkerThread(ii, (ii != 0) || (ENABLE_FOREGROUND_WORK == 0), *ss_);
         threads_.push_back(worker);
         ss_->workers[ii] = worker;
     }
@@ -315,6 +348,9 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 void JobSystem::update()
 {
     cleanup();
+#if ENABLE_FOREGROUND_WORK
+    threads_[0]->foreground_work();
+#endif
     // Wake all worker threads
     ss_->cv_wake.notify_all();
 }
