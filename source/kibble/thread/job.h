@@ -30,7 +30,7 @@ public:
     // Wait for all jobs to finish, join worker threads and destroy system storage
     void shutdown();
     // Enqueue a new job for asynchronous execution and return a handle for this job
-    JobHandle schedule(JobFunction function, bool force_async = false);
+    JobHandle schedule(JobFunction&& function, bool force_async = false);
     // Hold execution on this thread till all jobs are processed
     void wait();
     // Non-blockingly check if any worker threads are busy

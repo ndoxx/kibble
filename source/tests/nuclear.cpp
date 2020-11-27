@@ -1,18 +1,18 @@
+#include "argparse/argparse.h"
 #include "logger/logger.h"
 #include "logger/logger_sink.h"
 #include "logger/logger_thread.h"
-#include "argparse/argparse.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
 #include "thread/atomic_queue.h"
 #include "thread/job.h"
 #include "time/clock.h"
 
+#include <cmath>
 #include <numeric>
 #include <regex>
 #include <string>
 #include <vector>
-#include <cmath>
 
 using namespace kb;
 
@@ -40,12 +40,12 @@ void show_error_and_die(ap::ArgParse& parser)
     exit(0);
 }
 
-std::pair<float,float> stats(const std::vector<long> durations)
+std::pair<float, float> stats(const std::vector<long> durations)
 {
     float mu = float(std::accumulate(durations.begin(), durations.end(), 0)) / float(durations.size());
     float variance = 0.f;
-    for(long d: durations)
-        variance += (float(d)-mu)*(float(d)-mu);
+    for(long d : durations)
+        variance += (float(d) - mu) * (float(d) - mu);
     variance /= float(durations.size());
     return {mu, std::sqrt(variance)};
 }
@@ -65,7 +65,8 @@ int main(int argc, char** argv)
     const auto& foreground_work_disabled = parser.add_flag('F', "disable-fg-work", "Disable foreground work");
     const auto& nworkers = parser.add_variable<int>('j', "threads", "Number of worker threads", 0);
     bool success = parser.parse(argc, argv);
-    if(!success) show_error_and_die(parser);
+    if(!success)
+        show_error_and_die(parser);
 
     KLOGN("nuclear") << "Start" << std::endl;
 
@@ -78,26 +79,23 @@ int main(int argc, char** argv)
     JobSystem js(area, scheme);
 
     constexpr size_t nexp = 1000;
-    constexpr size_t len = 8192;
-    constexpr size_t njobs = 128;
+    constexpr size_t len = 8192*32;
+    constexpr size_t njobs = 256;
+    constexpr size_t tasklen = len / njobs;
 
     std::vector<long> durations(nexp);
     std::vector<float> results(nexp);
-    std::vector<float> data(njobs * len);
-    std::iota(data.begin(), data.end(), 0.f);
+    std::vector<float> data(len);
     std::array<float, njobs> means;
+    std::iota(data.begin(), data.end(), 1.f);
+    std::fill(means.begin(), means.end(), 0.f);
 
     KLOG("nuclear", 1) << "Serial" << std::endl;
     for(size_t kk = 0; kk < nexp; ++kk)
     {
-        std::fill(means.begin(), means.end(), 0.f);
         microClock clk;
-        float mean = 0.f;
-        for(float xx : data)
-            mean += xx;
-        mean /= float(data.size());
+        float mean = float(std::accumulate(data.begin(), data.end(), 0l)) / float(len);
         durations[kk] = clk.get_elapsed_time().count();
-
         results[kk] = mean;
     }
 
@@ -105,33 +103,24 @@ int main(int argc, char** argv)
     KLOGI << "Mean active time:   " << smean << "us" << std::endl;
     KLOGI << "Standard deviation: " << sstd << "us" << std::endl;
 
-    KLOG("nuclear", 1) << "Parallel" << std::endl;
     for(size_t kk = 0; kk < nexp; ++kk)
     {
-        std::fill(means.begin(), means.end(), 0.f);
-        std::vector<JobSystem::JobHandle> handles;
-
+        const auto& cdata = data;
         for(size_t ii = 0; ii < njobs; ++ii)
         {
-            auto handle = js.schedule([&data, &means, ii]() {
-                for(size_t jj = ii * len; jj < (ii + 1) * len; ++jj)
-                {
-                    means[ii] += data[jj];
-                }
-                means[ii] /= float(len);
-            }, false);
-            handles.push_back(handle);
+            js.schedule([&cdata, &means, ii]() {
+                means[ii] =
+                    float(std::accumulate(cdata.begin() + long(ii * tasklen), cdata.begin() + long((ii + 1) * tasklen), 0l)) /
+                    float(tasklen);
+            });
         }
 
         microClock clk;
         js.update();
-        // std::this_thread::sleep_for(std::chrono::milliseconds(50));
         js.wait();
 
-        float mean = 0.f;
-        for(size_t ii = 0; ii < njobs; ++ii)
-            mean += means[ii];
-        mean /= float(njobs);
+        float mean = float(std::accumulate(means.begin(), means.end(), 0l)) / float(njobs);
+        std::fill(means.begin(), means.end(), 0.f);
         durations[kk] = clk.get_elapsed_time().count();
         results[kk] = mean;
     }
@@ -140,9 +129,8 @@ int main(int argc, char** argv)
     KLOGI << "Mean active time:   " << pmean << "us" << std::endl;
     KLOGI << "Standard deviation: " << pstd << "us" << std::endl;
 
-
     float gain_percent = 100.f * (smean - pmean) / smean;
-    KLOG("nuclear",1) << "Gain: " << gain_percent << '%' << std::endl;
+    KLOG("nuclear", 1) << "Gain: " << gain_percent << '%' << std::endl;
 
     return 0;
 }

@@ -84,7 +84,7 @@ struct JobSystem::SharedState
 {
     PAGE_ALIGN std::array<WorkerThread*, k_max_threads> workers;
     PAGE_ALIGN size_t workers_count = 0;
-    PAGE_ALIGN std::atomic<uint64_t> status = {0};
+    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
     PAGE_ALIGN std::atomic<bool> running = {true};
     PAGE_ALIGN PoolArena job_pool;
     PAGE_ALIGN HandlePool handle_pool;
@@ -96,6 +96,13 @@ struct JobSystem::SharedState
 class WorkerThread
 {
 public:
+    enum class State : uint8_t
+    {
+        Idle,
+        Running,
+        Stopping
+    };
+
     WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem::SharedState& ss)
         : tid_(tid), background_(background), can_steal_(can_steal), ss_(ss), dist_(0, ss_.workers_count - 1)
 #if PROFILING
@@ -103,10 +110,6 @@ public:
           active_time_(0), idle_time_(0)
 #endif
     {}
-
-    ~WorkerThread()
-    { /*KLOG("thread", 0) << "Worker thread #" << tid_ << " destroyed" << std::endl;*/
-    }
 
     inline void spawn()
     {
@@ -127,15 +130,11 @@ public:
 
     inline void release_handle(JobSystem::JobHandle handle)
     {
-        const std::lock_guard<SpinLock> lock(ss_.handle_lock);
+        const std::scoped_lock<SpinLock> lock(ss_.handle_lock);
         ss_.handle_pool.release(handle);
     }
 
-    inline void submit(Job* job)
-    {
-        // KLOG("thread", 0) << "T#" << tid_ << ": Enqueuing job " << DisplayHandle(job->handle) << std::endl;
-        jobs_.push(job);
-    }
+    inline void submit(Job* job) { jobs_.push(job); }
 
     inline auto* random_worker()
     {
@@ -157,6 +156,7 @@ private:
     uint32_t tid_;
     bool background_;
     bool can_steal_;
+    std::atomic<State> state_;
     JobSystem::SharedState& ss_;
     std::thread thread_;
     std::random_device rd_;
@@ -177,13 +177,10 @@ void WorkerThread::execute(Job* job)
     microClock clk;
 #endif
     auto handle = job->handle;
-    // KLOG("thread", 0) << "T#" << tid_ << " -> " << DisplayHandle(handle) << std::endl;
     job->function();
     release_handle(handle);
     dead_jobs_.push(job);
-    ss_.status.fetch_sub(1);
-    // ss_.cv_wait.notify_one();
-    // KLOG("thread", 0) << "T#" << tid_ << " <- " << DisplayHandle(handle) << std::endl;
+    ss_.pending.fetch_sub(1);
 #if PROFILING
     active_time_ += clk.get_elapsed_time();
 #endif
@@ -192,10 +189,11 @@ void WorkerThread::execute(Job* job)
 void WorkerThread::run()
 {
     K_ASSERT(background_, "run() should not be called in the main thread.");
-    // KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
 
     while(ss_.running.load(std::memory_order_acquire))
     {
+        state_.store(State::Running, std::memory_order_release);
+
         // Get a job you lazy bastard
         Job* job = nullptr;
         if(jobs_.try_pop(job))
@@ -209,6 +207,7 @@ void WorkerThread::run()
                 continue;
             }
 
+            state_.store(State::Idle, std::memory_order_release);
 #if PROFILING
             microClock clk;
 #endif
@@ -219,16 +218,16 @@ void WorkerThread::run()
 #endif
         }
     }
+
+    state_.store(State::Stopping, std::memory_order_release);
 }
 
 void WorkerThread::foreground_work()
 {
     K_ASSERT(!background_, "foreground_work() should not be called in a background thread.");
     Job* job = nullptr;
-    while(jobs_.try_pop(job))
+    if(jobs_.try_pop(job))
         execute(job);
-    /*while(try_steal(job))
-        execute(job);*/
 }
 
 void WorkerThread::cleanup()
@@ -256,7 +255,8 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     // Spawn workers
     KLOGN("thread") << "[JobSystem] Spawning worker threads." << std::endl;
     KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
-    KLOGI << "Spawning " << WCC('v') << threads_count_ << WCC(0) << " worker threads." << std::endl;
+    KLOGI << "Spawning " << WCC('v') << threads_count_ - size_t(scheme_.enable_foreground_work) << WCC(0)
+          << " worker threads." << std::endl;
     if(scheme_.enable_foreground_work)
     {
         KLOGI << "Worker " << WCC('v') << 0 << WCC(0) << " is foreground." << std::endl;
@@ -329,17 +329,17 @@ WorkerThread* JobSystem::next_worker([[maybe_unused]] bool force_async)
     return worker;
 }
 
-JobSystem::JobHandle JobSystem::schedule(JobFunction function, bool force_async)
+JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, bool force_async)
 {
     JobHandle handle;
     {
-        const std::lock_guard<SpinLock> lock(ss_->handle_lock);
+        const std::scoped_lock<SpinLock> lock(ss_->handle_lock);
         handle = ss_->handle_pool.acquire();
     }
 
     // TMP: Round-robin worker selection
-    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size){function, handle};
-    ss_->status.fetch_add(1);
+    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size){std::move(function), handle};
+    ss_->pending.fetch_add(1);
     next_worker(force_async)->submit(job);
 
     return handle;
@@ -348,32 +348,34 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction function, bool force_async)
 void JobSystem::update()
 {
     cleanup();
-    if(scheme_.enable_foreground_work)
-        threads_[0]->foreground_work();
 
     // Wake all worker threads
     ss_->cv_wake.notify_all();
 }
 
-bool JobSystem::is_busy() { return ss_->status.load(std::memory_order_relaxed) > 0; }
+// Main thread atomically increments pending each time a job is pushed to the queue.
+// Worker threads atomically decrement pending each time they finished a job.
+// Then we just need to wait for pending to return to zero in order
+// to be sure all worker threads have finished.
+bool JobSystem::is_busy() { return ss_->pending.load(std::memory_order_relaxed) > 0; }
 
 bool JobSystem::is_work_done(JobHandle handle) { return !ss_->handle_pool.is_valid(handle); }
 
+// NOTE(ndx): Instead of busy-waiting I tried
+//      std::unique_lock<std::mutex> lock(ss_->wait_mutex);
+//      ss_->cv_wait.wait(lock, [this]() { return !is_busy(); });
+// and in WorkerThread::execute() I do this after the fetch_sub:
+//      ss_.cv_wait.notify_one();
+// But it deadlocks (lost wakeups?)
 void JobSystem::wait()
 {
-    // Main thread atomically increments status each time a job is pushed to the queue.
-    // Worker threads atomically decrement status each time they finished a job.
-    // Then we just need to wait for status to return to zero in order
-    // to be sure all worker threads have finished.
-
-    // BUG: Can deadlock (lost wakeups?)
-    // std::unique_lock<std::mutex> lock(ss_->wait_mutex);
-    // ss_->cv_wait.wait(lock, [this]() { return !is_busy(); });
-
-    // TMP FIX: Use polling
+    // Do some work
+    if(scheme_.enable_foreground_work)
+        while(is_busy())
+            threads_[0]->foreground_work();
+    // Poll
     while(is_busy())
     {
-        // Poll
         ss_->cv_wake.notify_all(); // wake worker threads
         std::this_thread::yield(); // allow this thread to be rescheduled
     }
