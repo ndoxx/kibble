@@ -17,14 +17,10 @@
 #include <thread>
 #include <vector>
 
-// Allow idle workers to steal jobs from their siblings
-#define ENABLE_WORK_STEALING 1
-// Allow main thread to share some load with workers
-#define ENABLE_FOREGROUND_WORK 1
 // Attempt at reducing false sharing in shared state by page-aligning its members (TODO: measure this)
 #define ENABLE_SHARED_STATE_PAGE_ALIGN 0
 // Brief idle/active timing stats per worker thread
-#define PROFILING 0
+#define PROFILING 1
 
 namespace kb
 {
@@ -59,14 +55,7 @@ using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
 
-// Job queue configuration
-#if ENABLE_WORK_STEALING
-static constexpr bool k_SPSC = false; // Each worker can steal from another worker's queue -> SPMC
-#else
-static constexpr bool k_SPSC = true; // Each worker thread has its own queue, only main thread enqueues jobs
-#endif
-
-template <typename T> using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, k_SPSC>;
+template <typename T> using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
 template <typename T> using DeadJobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, true>;
 
 // Helper struct to show a handle composition
@@ -107,8 +96,8 @@ struct JobSystem::SharedState
 class WorkerThread
 {
 public:
-    WorkerThread(uint32_t tid, bool background, JobSystem::SharedState& ss)
-        : tid_(tid), background_(background), ss_(ss), dist_(0, ss_.workers_count - 1)
+    WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem::SharedState& ss)
+        : tid_(tid), background_(background), can_steal_(can_steal), ss_(ss), dist_(0, ss_.workers_count - 1)
 #if PROFILING
           ,
           active_time_(0), idle_time_(0)
@@ -167,6 +156,7 @@ public:
 private:
     uint32_t tid_;
     bool background_;
+    bool can_steal_;
     JobSystem::SharedState& ss_;
     std::thread thread_;
     std::random_device rd_;
@@ -201,6 +191,7 @@ void WorkerThread::execute(Job* job)
 
 void WorkerThread::run()
 {
+    K_ASSERT(background_, "run() should not be called in the main thread.");
     // KLOG("thread", 0) << "Worker thread #" << tid_ << " ready" << std::endl;
 
     while(ss_.running.load(std::memory_order_acquire))
@@ -211,14 +202,12 @@ void WorkerThread::run()
             execute(job);
         else
         {
-#if ENABLE_WORK_STEALING
             // Try to steal a job
-            if(try_steal(job))
+            if(can_steal_ && try_steal(job))
             {
                 execute(job);
                 continue;
             }
-#endif
 
 #if PROFILING
             microClock clk;
@@ -252,34 +241,36 @@ void WorkerThread::cleanup()
     }
 }
 
-JobSystem::JobSystem(memory::HeapArea& area) : ss_(std::make_shared<SharedState>())
+JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
+    : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
-
-#if ENABLE_FOREGROUND_WORK
-    threads_count_ = std::min(k_max_threads, std::max(1ul, CPU_cores_count_));
-#else
-    // Main thread already takes one core
-    threads_count_ = std::min(k_max_threads, std::max(1ul, CPU_cores_count_ - 1ul));
-#endif
+    // Select worker count based on scheme and CPU cores
+    if(scheme_.max_threads == 0)
+        threads_count_ =
+            std::min(k_max_threads, std::max(1ul, CPU_cores_count_ - size_t(!scheme_.enable_foreground_work)));
+    else
+        threads_count_ = std::min(k_max_threads, scheme_.max_threads + size_t(scheme_.enable_foreground_work));
 
     // Spawn workers
     KLOGN("thread") << "[JobSystem] Spawning worker threads." << std::endl;
     KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
     KLOGI << "Spawning " << WCC('v') << threads_count_ << WCC(0) << " worker threads." << std::endl;
-#if ENABLE_FOREGROUND_WORK
-    KLOGI << "Worker " << WCC('v') << 0 << WCC(0) << " is foreground." << std::endl;
-#endif
+    if(scheme_.enable_foreground_work)
+    {
+        KLOGI << "Worker " << WCC('v') << 0 << WCC(0) << " is foreground." << std::endl;
+    }
 
     ss_->workers.fill(nullptr);
     ss_->workers_count = threads_count_;
-    ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs, "JobPool");
+    ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
 
     threads_.reserve(threads_count_);
     for(uint32_t ii = 0; ii < threads_count_; ++ii)
     {
-        auto* worker = new WorkerThread(ii, (ii != 0) || (ENABLE_FOREGROUND_WORK == 0), *ss_);
+        auto* worker =
+            new WorkerThread(ii, (ii != 0) || !scheme_.enable_foreground_work, scheme_.enable_work_stealing, *ss_);
         threads_.push_back(worker);
         ss_->workers[ii] = worker;
     }
@@ -328,7 +319,17 @@ void JobSystem::cleanup()
         thd->cleanup();
 }
 
-JobSystem::JobHandle JobSystem::schedule(JobFunction function)
+WorkerThread* JobSystem::next_worker([[maybe_unused]] bool force_async)
+{
+    if(scheme_.enable_foreground_work && force_async && round_robin_ == 0)
+        round_robin_ = (round_robin_ + 1) % threads_count_;
+
+    auto* worker = threads_[round_robin_];
+    round_robin_ = (round_robin_ + 1) % threads_count_;
+    return worker;
+}
+
+JobSystem::JobHandle JobSystem::schedule(JobFunction function, bool force_async)
 {
     JobHandle handle;
     {
@@ -339,8 +340,7 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction function)
     // TMP: Round-robin worker selection
     Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size){function, handle};
     ss_->status.fetch_add(1);
-    threads_[round_robin_]->submit(job);
-    round_robin_ = (round_robin_ + 1) % threads_count_;
+    next_worker(force_async)->submit(job);
 
     return handle;
 }
@@ -348,9 +348,9 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction function)
 void JobSystem::update()
 {
     cleanup();
-#if ENABLE_FOREGROUND_WORK
-    threads_[0]->foreground_work();
-#endif
+    if(scheme_.enable_foreground_work)
+        threads_[0]->foreground_work();
+
     // Wake all worker threads
     ss_->cv_wake.notify_all();
 }

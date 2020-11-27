@@ -70,7 +70,7 @@ void center(std::string& input, int size)
         return;
 
     size_t before = static_cast<size_t>(diff / 2);
-    size_t after  = static_cast<size_t>(before + diff % 2);
+    size_t after  = static_cast<size_t>(before + size_t(diff) % 2);
     input = std::string(before, ' ') + input + std::string(after, ' ');
 }
 

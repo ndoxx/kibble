@@ -1,6 +1,7 @@
 #include "logger/logger.h"
 #include "logger/logger_sink.h"
 #include "logger/logger_thread.h"
+#include "argparse/argparse.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
 #include "thread/atomic_queue.h"
@@ -30,6 +31,15 @@ void init_logger()
     KLOGGER(sync());
 }
 
+void show_error_and_die(ap::ArgParse& parser)
+{
+    for(const auto& msg : parser.get_errors())
+        KLOGW("kibble") << msg << std::endl;
+
+    KLOG("kibble", 1) << parser.usage() << std::endl;
+    exit(0);
+}
+
 std::pair<float,float> stats(const std::vector<long> durations)
 {
     float mu = float(std::accumulate(durations.begin(), durations.end(), 0)) / float(durations.size());
@@ -48,15 +58,24 @@ struct Plop
 
 int main(int argc, char** argv)
 {
-    (void)argc;
-    (void)argv;
-
     init_logger();
+
+    ap::ArgParse parser("nuclear", "0.1");
+    const auto& work_stealing_disabled = parser.add_flag('S', "disable-steal", "Disable work stealing");
+    const auto& foreground_work_disabled = parser.add_flag('F', "disable-fg-work", "Disable foreground work");
+    const auto& nworkers = parser.add_variable<int>('j', "threads", "Number of worker threads", 0);
+    bool success = parser.parse(argc, argv);
+    if(!success) show_error_and_die(parser);
 
     KLOGN("nuclear") << "Start" << std::endl;
 
-    memory::HeapArea area(512_kB);
-    JobSystem js(area);
+    JobSystemScheme scheme;
+    scheme.max_threads = size_t(nworkers());
+    scheme.enable_work_stealing = !work_stealing_disabled();
+    scheme.enable_foreground_work = !foreground_work_disabled();
+
+    memory::HeapArea area(1_MB);
+    JobSystem js(area, scheme);
 
     constexpr size_t nexp = 1000;
     constexpr size_t len = 8192;
@@ -100,7 +119,7 @@ int main(int argc, char** argv)
                     means[ii] += data[jj];
                 }
                 means[ii] /= float(len);
-            });
+            }, false);
             handles.push_back(handle);
         }
 
