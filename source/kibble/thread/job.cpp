@@ -319,17 +319,26 @@ void JobSystem::cleanup()
         thd->cleanup();
 }
 
-WorkerThread* JobSystem::next_worker([[maybe_unused]] bool force_async)
+WorkerThread* JobSystem::next_worker(ExecutionPolicy policy)
 {
-    if(scheme_.enable_foreground_work && force_async && round_robin_ == 0)
-        round_robin_ = (round_robin_ + 1) % threads_count_;
+    if(scheme_.enable_foreground_work)
+    {
+        if(policy == ExecutionPolicy::deferred)
+            return threads_[0];
+        else if((policy == ExecutionPolicy::async) && round_robin_ == 0)
+            round_robin_ = (round_robin_ + 1) % threads_count_;
+    }
+    else
+    {
+        K_ASSERT(policy != ExecutionPolicy::deferred, "Cannot execute job synchronously: foreground work is disabled.");
+    }
 
     auto* worker = threads_[round_robin_];
     round_robin_ = (round_robin_ + 1) % threads_count_;
     return worker;
 }
 
-JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, bool force_async)
+JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, ExecutionPolicy policy)
 {
     JobHandle handle;
     {
@@ -340,8 +349,15 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, bool force_asyn
     // TMP: Round-robin worker selection
     Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size){std::move(function), handle};
     ss_->pending.fetch_add(1);
-    next_worker(force_async)->submit(job);
+    next_worker(policy)->submit(job);
 
+    return handle;
+}
+
+JobSystem::JobHandle JobSystem::async(JobFunction&& function)
+{
+    auto handle = schedule(std::move(function), ExecutionPolicy::async);
+    ss_->cv_wake.notify_one();
     return handle;
 }
 
@@ -357,9 +373,9 @@ void JobSystem::update()
 // Worker threads atomically decrement pending each time they finished a job.
 // Then we just need to wait for pending to return to zero in order
 // to be sure all worker threads have finished.
-bool JobSystem::is_busy() { return ss_->pending.load(std::memory_order_relaxed) > 0; }
+bool JobSystem::is_busy() const { return ss_->pending.load(std::memory_order_relaxed) > 0; }
 
-bool JobSystem::is_work_done(JobHandle handle) { return !ss_->handle_pool.is_valid(handle); }
+bool JobSystem::is_work_done(JobHandle handle) const { return !ss_->handle_pool.is_valid(handle); }
 
 // NOTE(ndx): Instead of busy-waiting I tried
 //      std::unique_lock<std::mutex> lock(ss_->wait_mutex);
@@ -367,17 +383,35 @@ bool JobSystem::is_work_done(JobHandle handle) { return !ss_->handle_pool.is_val
 // and in WorkerThread::execute() I do this after the fetch_sub:
 //      ss_.cv_wait.notify_one();
 // But it deadlocks (lost wakeups?)
-void JobSystem::wait()
+void JobSystem::wait_untill(std::function<bool()> condition)
 {
     // Do some work
     if(scheme_.enable_foreground_work)
-        while(is_busy())
+        while(condition())
             threads_[0]->foreground_work();
     // Poll
-    while(is_busy())
+    while(condition())
     {
         ss_->cv_wake.notify_all(); // wake worker threads
         std::this_thread::yield(); // allow this thread to be rescheduled
+    }
+}
+
+void JobSystem::wait(std::function<bool()> condition)
+{
+    wait_untill([this, &condition]() { return is_busy() && condition(); });
+    if(!condition())
+    {
+        KLOG("thread", 0) << "[JobSystem] wait() exited early." << std::endl;
+    }
+}
+
+void JobSystem::wait_for(JobHandle handle, std::function<bool()> condition)
+{
+    wait_untill([this, &condition, handle]() { return !is_work_done(handle) && condition(); });
+    if(!condition())
+    {
+        KLOG("thread", 0) << "[JobSystem] wait_for() exited early." << std::endl;
     }
 }
 

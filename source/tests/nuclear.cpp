@@ -8,8 +8,12 @@
 #include "thread/job.h"
 #include "time/clock.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <iterator>
 #include <numeric>
+#include <random>
 #include <regex>
 #include <string>
 #include <vector>
@@ -50,16 +54,8 @@ std::pair<float, float> stats(const std::vector<long> durations)
     return {mu, std::sqrt(variance)};
 }
 
-struct Plop
+int p0(int argc, char** argv)
 {
-    int a = 0;
-    int b = 42;
-};
-
-int main(int argc, char** argv)
-{
-    init_logger();
-
     ap::ArgParse parser("nuclear", "0.1");
     const auto& work_stealing_disabled = parser.add_flag('S', "disable-steal", "Disable work stealing");
     const auto& foreground_work_disabled = parser.add_flag('F', "disable-fg-work", "Disable foreground work");
@@ -68,7 +64,7 @@ int main(int argc, char** argv)
     if(!success)
         show_error_and_die(parser);
 
-    KLOGN("nuclear") << "Start" << std::endl;
+    KLOGN("nuclear") << "[JobSystem Example] parallel for" << std::endl;
 
     JobSystemScheme scheme;
     scheme.max_threads = size_t(nworkers());
@@ -78,8 +74,8 @@ int main(int argc, char** argv)
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
-    constexpr size_t nexp = 1000;
-    constexpr size_t len = 8192*32;
+    constexpr size_t nexp = 100;
+    constexpr size_t len = 8192 * 32;
     constexpr size_t njobs = 256;
     constexpr size_t tasklen = len / njobs;
 
@@ -109,9 +105,9 @@ int main(int argc, char** argv)
         for(size_t ii = 0; ii < njobs; ++ii)
         {
             js.schedule([&cdata, &means, ii]() {
-                means[ii] =
-                    float(std::accumulate(cdata.begin() + long(ii * tasklen), cdata.begin() + long((ii + 1) * tasklen), 0l)) /
-                    float(tasklen);
+                means[ii] = float(std::accumulate(cdata.begin() + long(ii * tasklen),
+                                                  cdata.begin() + long((ii + 1) * tasklen), 0l)) /
+                            float(tasklen);
             });
         }
 
@@ -133,4 +129,65 @@ int main(int argc, char** argv)
     KLOG("nuclear", 1) << "Gain: " << gain_percent << '%' << std::endl;
 
     return 0;
+}
+
+template <typename T, typename Iter> void random_fill(Iter start, Iter end, T min, T max)
+{
+    static std::random_device rd;
+    std::uniform_int_distribution<T> dist(min, max);
+    std::generate(start, end, [&]() { return dist(rd); });
+}
+
+int p1(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    KLOGN("nuclear") << "[JobSystem Example] mock async loading" << std::endl;
+
+    JobSystemScheme scheme;
+    scheme.max_threads = 0;
+    scheme.enable_work_stealing = true;
+    scheme.enable_foreground_work = true;
+
+    memory::HeapArea area(1_MB);
+    JobSystem js(area, scheme);
+
+    constexpr size_t nexp = 5;
+    std::array<long, nexp> load_time;
+    random_fill(load_time.begin(), load_time.end(), 100l, 1500l);
+    long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
+
+    KLOG("nuclear", 1) << "Assets loading time:" << std::endl;
+    for(size_t ii = 0; ii < nexp; ++ii)
+    {
+        KLOGI << load_time[ii] << ' ';
+    }
+    KLOGI << std::endl;
+
+    milliClock clk;
+    for(size_t ii = 0; ii < nexp; ++ii)
+    {
+        js.async([&load_time, ii]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+            KLOG("nuclear", 1) << "Asset #" << ii << " loaded" << std::endl;
+        });
+    }
+    js.wait();
+    auto parallel_dur_ms = clk.get_elapsed_time().count();
+
+    float gain_percent = 100.f * float(serial_dur_ms - parallel_dur_ms) / float(serial_dur_ms);
+    KLOG("nuclear", 1) << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
+    KLOG("nuclear", 1) << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
+    KLOG("nuclear", 1) << "Gain:                  " << gain_percent << '%' << std::endl;
+
+    return 0;
+}
+
+int main(int argc, char** argv)
+{
+    init_logger();
+
+    // return p0(argc, argv);
+    return p1(argc, argv);
 }

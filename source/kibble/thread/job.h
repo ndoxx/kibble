@@ -10,11 +10,18 @@ namespace memory
 class HeapArea;
 }
 
+enum class ExecutionPolicy : uint8_t
+{
+    automatic, // Job may be executed synchronously during wait() or asynchronously
+    deferred,  // Job execution is synchronous and deferred to the next wait() call
+    async      // Job will be executed asynchronously
+};
+
 struct JobSystemScheme
 {
-    size_t max_threads = 0; // Maximum number of worker threads, if 0 => CPU_cores - 1
+    size_t max_threads = 0;             // Maximum number of worker threads, if 0 => CPU_cores - 1
     bool enable_foreground_work = true; // Allow main thread to share some load with workers
-    bool enable_work_stealing = true; // Allow idle workers to steal jobs from their siblings
+    bool enable_work_stealing = true;   // Allow idle workers to steal jobs from their siblings
 };
 
 class WorkerThread;
@@ -30,13 +37,19 @@ public:
     // Wait for all jobs to finish, join worker threads and destroy system storage
     void shutdown();
     // Enqueue a new job for asynchronous execution and return a handle for this job
-    JobHandle schedule(JobFunction&& function, bool force_async = false);
-    // Hold execution on this thread till all jobs are processed
-    void wait();
+    JobHandle schedule(JobFunction&& function, ExecutionPolicy policy = ExecutionPolicy::automatic);
+    // Immediate asynchronous execution
+    JobHandle async(JobFunction&& function);
+    // Wait for input condition to become false, synchronous work may be executed in the meantime
+    void wait_untill(std::function<bool()> condition);
+    // Hold execution on this thread untill all jobs are processed or predicate returns false
+    void wait(std::function<bool()> condition = []() { return true; });
+    // Hold execution on this thread untill a given job has been processed or predicate returns false
+    void wait_for(JobHandle handle, std::function<bool()> condition = []() { return true; });
     // Non-blockingly check if any worker threads are busy
-    bool is_busy();
+    bool is_busy() const;
     // Non-blockingly check if a job is processed
-    bool is_work_done(JobHandle handle);
+    bool is_work_done(JobHandle handle) const;
     // Call this regularly, all scheduled tasks will be performed
     void update();
 
@@ -46,17 +59,17 @@ private:
     // Return dead jobs to their respective pools
     void cleanup();
     // Round-robin worker selection
-    WorkerThread* next_worker(bool force_async);
+    WorkerThread* next_worker(ExecutionPolicy policy);
 
 private:
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
     size_t round_robin_ = 0;
-    JobSystemScheme scheme_; 
+    JobSystemScheme scheme_;
     std::vector<WorkerThread*> threads_;
 
-	struct SharedState;
-	std::shared_ptr<SharedState> ss_;
+    struct SharedState;
+    std::shared_ptr<SharedState> ss_;
 };
 
 } // namespace kb
