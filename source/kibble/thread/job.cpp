@@ -1,44 +1,12 @@
 #include "thread/job.h"
-#include "assert/assert.h"
-#include "logger/logger.h"
-#include "memory/heap_area.h"
-#include "memory/memory.h"
-#include "memory/pool_allocator.h"
-#include "thread/scheduler.h"
-#include "thread/sync.h"
-#include "time/clock.h"
-#include "util/sparse_set.h"
+#include "thread/impl/worker.h"
+#include "thread/impl/scheduler.h"
 
-#include "atomic_queue/atomic_queue.h"
 #include <algorithm>
-#include <bitset>
-#include <condition_variable>
-#include <mutex>
-#include <random>
-#include <thread>
-#include <vector>
-
-// Attempt at reducing false sharing in shared state by page-aligning its members (TODO: measure this)
-#define ENABLE_SHARED_STATE_PAGE_ALIGN 0
-// Brief idle/active timing stats per worker thread
-#define PROFILING 1
 
 namespace kb
 {
 
-struct Job
-{
-    JobSystem::JobFunction function = []() {};
-    JobSystem::JobHandle handle;
-    JobMetadata metadata;
-};
-
-// Maximum allowable number of worker threads
-static constexpr size_t k_max_threads = 32;
-// Maximum number of jobs per worker thread queue
-static constexpr size_t k_max_jobs = 1024;
-// Number of guard bits in a JobHandle
-static constexpr size_t k_hnd_guard_bits = 48;
 // Size of a cache line -> controlling alignment prevents false sharing
 static constexpr size_t k_cache_line_size = 64;
 // Maximal padding of a Job structure within the job pool
@@ -46,24 +14,10 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
-#if ENABLE_SHARED_STATE_PAGE_ALIGN
-#define PAGE_ALIGN alignas(k_cache_line_size)
-#else
-#define PAGE_ALIGN
-#endif
-
-using HandlePool = SecureSparsePool<JobSystem::JobHandle, k_max_jobs, k_hnd_guard_bits>;
-using PoolArena =
-    memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
-                        memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
-
-template <typename T> using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
-template <typename T> using DeadJobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, true>;
-
 // Helper struct to show a handle composition
 struct DisplayHandle
 {
-    DisplayHandle(JobSystem::JobHandle handle)
+    DisplayHandle(JobHandle handle)
     {
         guard = HandlePool::guard_value(handle);
         naked = HandlePool::unguard(handle);
@@ -81,158 +35,6 @@ std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
     return stream;
 }
 
-// Data common to all worker threads
-struct JobSystem::SharedState
-{
-    PAGE_ALIGN std::array<WorkerThread*, k_max_threads> workers;
-    PAGE_ALIGN size_t workers_count = 0;
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
-    PAGE_ALIGN std::atomic<bool> running = {true};
-    PAGE_ALIGN PoolArena job_pool;
-    PAGE_ALIGN HandlePool handle_pool;
-    PAGE_ALIGN std::condition_variable cv_wake; // To wake worker threads
-    PAGE_ALIGN std::mutex wake_mutex;
-    PAGE_ALIGN SpinLock handle_lock;
-};
-
-class WorkerThread
-{
-public:
-    enum class State : uint8_t
-    {
-        Idle,
-        Running,
-        Stopping
-    };
-
-    WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js)
-        : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_),
-          dist_(0, ss_.workers_count - 1)
-#if PROFILING
-          ,
-          active_time_us_(0), idle_time_us_(0)
-#endif
-    {
-        (void)js_;
-    }
-
-    inline void spawn()
-    {
-        if(background_)
-            thread_ = std::thread(&WorkerThread::run, this);
-    }
-    inline void join()
-    {
-        if(background_)
-            thread_.join();
-    }
-    inline uint32_t get_tid() const { return tid_; }
-
-#if PROFILING
-    inline auto get_active_time() const { return active_time_us_; }
-    inline auto get_idle_time() const { return idle_time_us_; }
-#endif
-
-    inline void release_handle(JobSystem::JobHandle handle)
-    {
-        const std::scoped_lock<SpinLock> lock(ss_.handle_lock);
-        ss_.handle_pool.release(handle);
-    }
-
-    inline void submit(Job* job) { jobs_.push(job); }
-
-    inline auto* random_worker()
-    {
-        size_t idx = dist_(rd_);
-        while(idx == tid_)
-            idx = dist_(rd_);
-
-        return ss_.workers[idx];
-    }
-
-    inline bool try_steal(Job*& job) { return random_worker()->jobs_.try_pop(job); }
-    inline bool try_pop_dead(Job*& job) { return dead_jobs_.try_pop(job); }
-
-    void execute(Job* job);
-    void run();
-    void foreground_work();
-
-private:
-    uint32_t tid_;
-    bool background_;
-    bool can_steal_;
-    std::atomic<State> state_;
-    JobSystem& js_;
-    JobSystem::SharedState& ss_;
-    std::thread thread_;
-    std::random_device rd_;
-    std::uniform_int_distribution<size_t> dist_;
-
-#if PROFILING
-    int64_t active_time_us_;
-    int64_t idle_time_us_;
-#endif
-
-    JobQueue<Job*> jobs_;
-    DeadJobQueue<Job*> dead_jobs_;
-};
-
-void WorkerThread::execute(Job* job)
-{
-    microClock clk;
-    job->function();
-    job->metadata.execution_time_us = clk.get_elapsed_time().count();
-    release_handle(job->handle);
-    dead_jobs_.push(job);
-    ss_.pending.fetch_sub(1);
-#if PROFILING
-    active_time_us_ += clk.get_elapsed_time().count();
-#endif
-}
-
-void WorkerThread::run()
-{
-    K_ASSERT(background_, "run() should not be called in the main thread.");
-
-    while(ss_.running.load(std::memory_order_acquire))
-    {
-        state_.store(State::Running, std::memory_order_release);
-
-        // Get a job you lazy bastard
-        Job* job = nullptr;
-        if(jobs_.try_pop(job))
-            execute(job);
-        else
-        {
-            // Try to steal a job
-            if(can_steal_ && try_steal(job))
-            {
-                execute(job);
-                continue;
-            }
-
-            state_.store(State::Idle, std::memory_order_release);
-#if PROFILING
-            microClock clk;
-#endif
-            std::unique_lock<std::mutex> lck(ss_.wake_mutex);
-            ss_.cv_wake.wait(lck); // Spurious wakeups have no effect because we check if the queue is empty
-#if PROFILING
-            idle_time_us_ += clk.get_elapsed_time().count();
-#endif
-        }
-    }
-
-    state_.store(State::Stopping, std::memory_order_release);
-}
-
-void WorkerThread::foreground_work()
-{
-    K_ASSERT(!background_, "foreground_work() should not be called in a background thread.");
-    Job* job = nullptr;
-    if(jobs_.try_pop(job))
-        execute(job);
-}
 
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
@@ -343,7 +145,7 @@ void JobSystem::cleanup()
     }
 }
 
-JobSystem::JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionPolicy policy)
+JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionPolicy policy)
 {
     JobHandle handle;
     {
@@ -370,7 +172,7 @@ JobSystem::JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label,
     return handle;
 }
 
-JobSystem::JobHandle JobSystem::async(JobFunction&& function, uint64_t label)
+JobHandle JobSystem::async(JobFunction&& function, uint64_t label)
 {
     cleanup();
     auto handle = dispatch(std::move(function), label, ExecutionPolicy::async);

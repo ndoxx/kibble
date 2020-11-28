@@ -10,6 +10,9 @@ namespace memory
 class HeapArea;
 }
 
+using JobFunction = std::function<void(void)>;
+using JobHandle = std::size_t;
+
 enum class ExecutionPolicy : uint8_t
 {
     automatic, // Job may be executed synchronously during wait() or asynchronously
@@ -31,20 +34,12 @@ struct JobSystemScheme
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 };
 
-struct JobMetadata
-{
-    uint64_t label = 0;
-    int64_t execution_time_us = 0;
-};
-
 class Scheduler;
 class WorkerThread;
+struct SharedState;
 class JobSystem
 {
 public:
-    using JobFunction = std::function<void(void)>;
-    using JobHandle = size_t;
-
     JobSystem(memory::HeapArea& area, const JobSystemScheme& = {});
     ~JobSystem();
 
@@ -84,8 +79,6 @@ private:
     JobSystemScheme scheme_;
     std::vector<WorkerThread*> threads_;
     Scheduler* scheduler_;
-
-    struct SharedState;
     std::shared_ptr<SharedState> ss_;
 };
 

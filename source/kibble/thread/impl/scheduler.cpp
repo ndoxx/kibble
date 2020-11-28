@@ -1,6 +1,6 @@
-#include "thread/scheduler.h"
-#include "logger/logger.h"
 #include "thread/job.h"
+#include "thread/impl/scheduler.h"
+#include "thread/impl/worker.h"
 
 #include <algorithm>
 

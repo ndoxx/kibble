@@ -1,5 +1,5 @@
 #include "thread/sync.h"
-#include "thread/intrin.h"
+#include "thread/impl/intrin.h"
 
 namespace kb
 {
