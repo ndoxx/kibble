@@ -104,7 +104,7 @@ int p0(int argc, char** argv)
         const auto& cdata = data;
         for(size_t ii = 0; ii < njobs; ++ii)
         {
-            js.schedule([&cdata, &means, ii]() {
+            js.dispatch([&cdata, &means, ii]() {
                 means[ii] = float(std::accumulate(cdata.begin() + long(ii * tasklen),
                                                   cdata.begin() + long((ii + 1) * tasklen), 0l)) /
                             float(tasklen);

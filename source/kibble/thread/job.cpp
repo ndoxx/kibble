@@ -1,4 +1,5 @@
 #include "thread/job.h"
+#include "thread/scheduler.h"
 #include "assert/assert.h"
 #include "logger/logger.h"
 #include "memory/heap_area.h"
@@ -243,6 +244,8 @@ void WorkerThread::cleanup()
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {
+    KLOGN("thread") << "[JobSystem] Initializing." << std::endl;
+
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
     // Select worker count based on scheme and CPU cores
@@ -252,8 +255,26 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     else
         threads_count_ = std::min(k_max_threads, scheme_.max_threads + size_t(scheme_.enable_foreground_work));
 
+    // Create scheduler
+    switch(scheme_.scheduling_algorithm)
+    {
+        case SchedulingAlgorithm::round_robin:
+            KLOG("thread",1) << "[JobSystem] Using round-robin scheduler." << std::endl;
+            scheduler_ = new RoundRobinScheduler(*this);
+            break;
+        default:
+            KLOGW("thread") << "Unknown scheduling algorithm, fallback: round-robin" << std::endl;
+            scheduler_ = new RoundRobinScheduler(*this);
+    }
+
+
     // Spawn workers
-    KLOGN("thread") << "[JobSystem] Spawning worker threads." << std::endl;
+    ss_->workers.fill(nullptr);
+    ss_->workers_count = threads_count_;
+    KLOG("thread",1) << "[JobSystem] Allocating job pool." << std::endl;
+    ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
+
+    KLOG("thread",1) << "[JobSystem] Spawning worker threads." << std::endl;
     KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
     KLOGI << "Spawning " << WCC('v') << threads_count_ - size_t(scheme_.enable_foreground_work) << WCC(0)
           << " worker threads." << std::endl;
@@ -261,10 +282,6 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     {
         KLOGI << "Worker " << WCC('v') << 0 << WCC(0) << " is foreground." << std::endl;
     }
-
-    ss_->workers.fill(nullptr);
-    ss_->workers_count = threads_count_;
-    ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
 
     threads_.reserve(threads_count_);
     for(uint32_t ii = 0; ii < threads_count_; ++ii)
@@ -310,6 +327,8 @@ void JobSystem::shutdown()
     for(auto* thd : threads_)
         delete thd;
 
+    delete scheduler_;
+
     KLOGG("thread") << "JobSystem shutdown complete." << std::endl;
 }
 
@@ -319,26 +338,7 @@ void JobSystem::cleanup()
         thd->cleanup();
 }
 
-WorkerThread* JobSystem::next_worker(ExecutionPolicy policy)
-{
-    if(scheme_.enable_foreground_work)
-    {
-        if(policy == ExecutionPolicy::deferred)
-            return threads_[0];
-        else if((policy == ExecutionPolicy::async) && round_robin_ == 0)
-            round_robin_ = (round_robin_ + 1) % threads_count_;
-    }
-    else
-    {
-        K_ASSERT(policy != ExecutionPolicy::deferred, "Cannot execute job synchronously: foreground work is disabled.");
-    }
-
-    auto* worker = threads_[round_robin_];
-    round_robin_ = (round_robin_ + 1) % threads_count_;
-    return worker;
-}
-
-JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, ExecutionPolicy policy)
+JobSystem::JobHandle JobSystem::dispatch(JobFunction&& function, ExecutionPolicy policy)
 {
     JobHandle handle;
     {
@@ -346,18 +346,26 @@ JobSystem::JobHandle JobSystem::schedule(JobFunction&& function, ExecutionPolicy
         handle = ss_->handle_pool.acquire();
     }
 
-    // TMP: Round-robin worker selection
     Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size){std::move(function), handle};
     ss_->pending.fetch_add(1);
-    next_worker(policy)->submit(job);
+
+    // Schedule job
+    K_ASSERT(!(!scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred)), "Cannot execute job synchronously: foreground work is disabled.");
+    WorkerThread* worker = nullptr;
+    if(scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred))
+        worker = threads_[0];
+    else
+        worker = scheduler_->select(static_cast<SchedulerExecutionPolicy>(policy));
+    worker->submit(job);
 
     return handle;
 }
 
 JobSystem::JobHandle JobSystem::async(JobFunction&& function)
 {
-    auto handle = schedule(std::move(function), ExecutionPolicy::async);
-    ss_->cv_wake.notify_one();
+    cleanup();
+    auto handle = dispatch(std::move(function), ExecutionPolicy::async);
+    ss_->cv_wake.notify_all();
     return handle;
 }
 
