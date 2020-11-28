@@ -14,12 +14,13 @@ enum class ExecutionPolicy : uint8_t
 {
     automatic, // Job may be executed synchronously during wait() or asynchronously
     deferred,  // Job execution is synchronous and deferred to the next wait() call
-    async      // Job will be executed asynchronously
+    async,     // Job will be executed asynchronously
 };
 
 enum class SchedulingAlgorithm : uint8_t
 {
     round_robin, // Round-robin selection of worker threads
+    associative, // Associate job labels to execution times for smarter future decisions
 };
 
 struct JobSystemScheme
@@ -28,6 +29,12 @@ struct JobSystemScheme
     bool enable_foreground_work = true; // Allow main thread to share some load with workers
     bool enable_work_stealing = true;   // Allow idle workers to steal jobs from their siblings
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
+};
+
+struct JobMetadata
+{
+    uint64_t label = 0;
+    int64_t execution_time_us = 0;
 };
 
 class Scheduler;
@@ -44,9 +51,9 @@ public:
     // Wait for all jobs to finish, join worker threads and destroy system storage
     void shutdown();
     // Enqueue a new job and return a handle
-    JobHandle dispatch(JobFunction&& function, ExecutionPolicy policy = ExecutionPolicy::automatic);
+    JobHandle dispatch(JobFunction&& function, uint64_t label = 0, ExecutionPolicy policy = ExecutionPolicy::automatic);
     // Immediate asynchronous execution
-    JobHandle async(JobFunction&& function);
+    JobHandle async(JobFunction&& function, uint64_t label = 0);
     // Wait for input condition to become false, synchronous work may be executed in the meantime
     void wait_untill(std::function<bool()> condition);
     // Hold execution on this thread untill all jobs are processed or predicate returns false
@@ -69,6 +76,7 @@ private:
 
     // Return dead jobs to their respective pools
     void cleanup();
+    inline Scheduler* get_scheduler() { return scheduler_; }
 
 private:
     size_t CPU_cores_count_ = 0;

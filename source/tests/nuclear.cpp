@@ -149,37 +149,45 @@ int p1(int argc, char** argv)
     scheme.max_threads = 0;
     scheme.enable_work_stealing = true;
     scheme.enable_foreground_work = true;
+    scheme.scheduling_algorithm = SchedulingAlgorithm::associative;
 
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
     constexpr size_t nexp = 5;
-    std::array<long, nexp> load_time;
-    random_fill(load_time.begin(), load_time.end(), 100l, 1500l);
+    constexpr size_t nloads = 10;
+    std::array<long, nloads> load_time;
+    random_fill(load_time.begin(), load_time.end(), 50l, 1000l);
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
     KLOG("nuclear", 1) << "Assets loading time:" << std::endl;
-    for(size_t ii = 0; ii < nexp; ++ii)
+    for(size_t ii = 0; ii < nloads; ++ii)
     {
         KLOGI << load_time[ii] << ' ';
     }
     KLOGI << std::endl;
 
-    milliClock clk;
-    for(size_t ii = 0; ii < nexp; ++ii)
+    for(size_t kk=0; kk<nexp; ++kk)
     {
-        js.async([&load_time, ii]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
-            KLOG("nuclear", 1) << "Asset #" << ii << " loaded" << std::endl;
-        });
-    }
-    js.wait();
-    auto parallel_dur_ms = clk.get_elapsed_time().count();
+        KLOG("nuclear", 1) << "Round " << kk << std::endl;
+        milliClock clk;
+        for(size_t ii = 0; ii < nloads; ++ii)
+        {
+            hash_t label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            js.dispatch([&load_time, ii]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+                // KLOG("nuclear", 1) << "Asset #" << ii << " loaded" << std::endl;
+            }, label);
+        }
+        js.update();
+        js.wait();
+        auto parallel_dur_ms = clk.get_elapsed_time().count();
 
-    float gain_percent = 100.f * float(serial_dur_ms - parallel_dur_ms) / float(serial_dur_ms);
-    KLOG("nuclear", 1) << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
-    KLOG("nuclear", 1) << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-    KLOG("nuclear", 1) << "Gain:                  " << gain_percent << '%' << std::endl;
+        float gain_percent = 100.f * float(serial_dur_ms - parallel_dur_ms) / float(serial_dur_ms);
+        KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
+        KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
+        KLOGI << "Gain:                  " << gain_percent << '%' << std::endl;
+    }
 
     return 0;
 }
