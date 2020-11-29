@@ -1,6 +1,7 @@
 #include "thread/job.h"
-#include "thread/impl/worker.h"
+#include "thread/impl/monitor.h"
 #include "thread/impl/scheduler.h"
+#include "thread/impl/worker.h"
 
 #include <algorithm>
 
@@ -35,7 +36,6 @@ std::ostream& operator<<(std::ostream& stream, const DisplayHandle& dh)
     return stream;
 }
 
-
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {
@@ -50,6 +50,9 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     else
         threads_count_ = std::min(k_max_threads, scheme_.max_threads + size_t(scheme_.enable_foreground_work));
 
+    // Create monitor
+    monitor_ = new Monitor(*this);
+
     // Create scheduler
     switch(scheme_.scheduling_algorithm)
     {
@@ -57,9 +60,9 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
         KLOG("thread", 1) << "[JobSystem] Using round-robin scheduler." << std::endl;
         scheduler_ = new RoundRobinScheduler(*this);
         break;
-    case SchedulingAlgorithm::associative:
-        KLOG("thread", 1) << "[JobSystem] Using associative dynamic scheduler." << std::endl;
-        scheduler_ = new AssociativeDynamicScheduler(*this);
+    case SchedulingAlgorithm::min_load:
+        KLOG("thread", 1) << "[JobSystem] Using minimum-load dynamic scheduler." << std::endl;
+        scheduler_ = new MininmumLoadScheduler(*this);
         break;
     default:
         KLOGW("thread") << "Unknown scheduling algorithm, fallback: round-robin" << std::endl;
@@ -122,6 +125,7 @@ void JobSystem::shutdown()
     for(auto* thd : threads_)
         delete thd;
 
+    delete monitor_;
     delete scheduler_;
 
     KLOGG("thread") << "JobSystem shutdown complete." << std::endl;
@@ -130,10 +134,12 @@ void JobSystem::shutdown()
 void JobSystem::cleanup()
 {
     Job* job = nullptr;
+    bool dynamic_scheduling = scheduler_->is_dynamic();
     while(ss_->dead_jobs.try_pop(job))
     {
-        // Inform scheduler about what happened with this job
-        scheduler_->report(job->metadata);
+        // Inform monitor about what happened with this job
+        if(dynamic_scheduling)
+            monitor_->report_job_execution(job->metadata);
         // Return job to the pool
         K_DELETE(job, ss_->job_pool);
     }
@@ -154,15 +160,10 @@ JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionP
     job->function = std::move(function);
     job->handle = handle;
     job->metadata.label = label;
+    job->metadata.execution_policy = static_cast<SchedulerExecutionPolicy>(policy);
     ss_->pending.fetch_add(1);
 
-    // Schedule job
-    WorkerThread* worker = nullptr;
-    if(scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred))
-        worker = threads_[0];
-    else
-        worker = scheduler_->select(label, static_cast<SchedulerExecutionPolicy>(policy));
-    worker->submit(job);
+    scheduler_->schedule(job);
 
     return handle;
 }
@@ -177,8 +178,10 @@ JobHandle JobSystem::async(JobFunction&& function, uint64_t label)
 
 void JobSystem::update()
 {
+    // Submit all scheduled jobs to workers
+    scheduler_->submit();
+    // Empty the dead job queue
     cleanup();
-
     // Wake all worker threads
     ss_->cv_wake.notify_all();
 }
@@ -219,7 +222,7 @@ void JobSystem::wait(std::function<bool()> condition)
         KLOG("thread", 0) << "[JobSystem] wait() exited early." << std::endl;
     }
     if(!is_busy())
-        scheduler_->reset();
+        monitor_->wrap();
 }
 
 void JobSystem::wait_for(JobHandle handle, std::function<bool()> condition)

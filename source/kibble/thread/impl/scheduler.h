@@ -7,28 +7,21 @@
 namespace kb
 {
 
-enum class SchedulerExecutionPolicy : uint8_t
-{
-    automatic, // Job may be executed synchronously during wait() or asynchronously
-    deferred,  // Job execution is synchronous and deferred to the next wait() call
-    async      // Job will be executed asynchronously
-};
-
-struct JobMetadata;
 class JobSystem;
 class WorkerThread;
+struct Job;
 class Scheduler
 {
 public:
     Scheduler(JobSystem& js);
     virtual ~Scheduler() = default;
-
-    virtual WorkerThread* select(uint64_t label, SchedulerExecutionPolicy policy) = 0;
-    virtual void report(const JobMetadata&) {}
-    virtual void reset() {}
+    void schedule(Job* job);
+    virtual void submit() = 0;
+    virtual bool is_dynamic() { return false; }
 
 protected:
     JobSystem& js_;
+    std::vector<Job*> scheduled_jobs_;
 };
 
 class RoundRobinScheduler : public Scheduler
@@ -36,27 +29,21 @@ class RoundRobinScheduler : public Scheduler
 public:
     RoundRobinScheduler(JobSystem& js);
     virtual ~RoundRobinScheduler() = default;
-
-    virtual WorkerThread* select(uint64_t label, SchedulerExecutionPolicy policy) override;
+    virtual void submit() override;
 
 private:
     std::size_t round_robin_ = 0;
 };
 
-class AssociativeDynamicScheduler : public Scheduler
+class MininmumLoadScheduler : public Scheduler
 {
 public:
-    AssociativeDynamicScheduler(JobSystem& js);
-    virtual ~AssociativeDynamicScheduler() = default;
-
-    virtual WorkerThread* select(uint64_t label, SchedulerExecutionPolicy policy) override;
-    virtual void report(const JobMetadata&) override;
-    virtual void reset() override;
-
+    MininmumLoadScheduler(JobSystem& js);
+    virtual ~MininmumLoadScheduler() = default;
+    virtual void submit() override;
+    virtual bool is_dynamic() override { return true; }
 private:
     std::size_t round_robin_ = 0;
-    std::map<uint64_t, int64_t> job_durations_;
-    std::vector<int64_t> loads_;
 };
 
 } // namespace kb

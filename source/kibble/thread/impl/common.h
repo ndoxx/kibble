@@ -50,6 +50,6 @@ using PoolArena =
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
 template <typename T> using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
 template <typename T>
-using DeadJobQueue = atomic_queue::AtomicQueue<T, k_max_jobs * k_max_threads, T{}, true, true, false, true>;
+using DeadJobQueue = atomic_queue::AtomicQueue<T, k_max_jobs * k_max_threads, T{}, true, true, false, false>;
 
 } // namespace kb

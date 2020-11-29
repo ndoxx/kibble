@@ -1,12 +1,13 @@
-#include "thread/job.h"
 #include "thread/impl/worker.h"
+#include "thread/job.h"
 #include "time/clock.h"
 
 namespace kb
 {
 
 WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js)
-    : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_), dist_(0, js_.get_threads_count() - 1)
+    : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_),
+      dist_(0, js_.get_threads_count() - 1)
 #if PROFILING
       ,
       active_time_us_(0), idle_time_us_(0)

@@ -10,10 +10,18 @@
 namespace kb
 {
 
+enum class SchedulerExecutionPolicy : uint8_t
+{
+    automatic, // Job may be executed synchronously during wait() or asynchronously
+    deferred,  // Job execution is synchronous and deferred to the next wait() call
+    async      // Job will be executed asynchronously
+};
+
 struct JobMetadata
 {
     uint64_t label = 0;
     int64_t execution_time_us = 0;
+    SchedulerExecutionPolicy execution_policy;
 };
 
 struct Job

@@ -73,7 +73,7 @@ int p0(int argc, char** argv)
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
-    constexpr size_t nexp = 1;
+    constexpr size_t nexp = 1000;
     constexpr size_t len = 8192 * 32;
     constexpr size_t njobs = 256;
     constexpr size_t tasklen = len / njobs;
@@ -98,6 +98,7 @@ int p0(int argc, char** argv)
     KLOGI << "Mean active time:   " << smean << "us" << std::endl;
     KLOGI << "Standard deviation: " << sstd << "us" << std::endl;
 
+    KLOG("nuclear", 1) << "Parallel" << std::endl;
     for(size_t kk = 0; kk < nexp; ++kk)
     {
         const auto& cdata = data;
@@ -124,8 +125,10 @@ int p0(int argc, char** argv)
     KLOGI << "Mean active time:   " << pmean << "us" << std::endl;
     KLOGI << "Standard deviation: " << pstd << "us" << std::endl;
 
-    float gain_percent = 100.f * (smean - pmean) / smean;
-    KLOG("nuclear", 1) << "Gain: " << gain_percent << '%' << std::endl;
+    float gain_percent = 100.f * (pmean - smean) / smean;
+    float factor = float(smean) / float(pmean);
+    KLOG("nuclear", 1) << "Factor: " << (factor>1 ? WCC('g') : WCC('b')) << factor << WCC(0) << std::endl;
+    KLOG("nuclear", 1) << "Gain:   " << (factor>1 ? WCC('g') : WCC('b')) << gain_percent << WCC(0) << '%' << std::endl;
 
     return 0;
 }
@@ -148,15 +151,15 @@ int p1(int argc, char** argv)
     scheme.max_threads = 0;
     scheme.enable_work_stealing = true;
     scheme.enable_foreground_work = true;
-    scheme.scheduling_algorithm = SchedulingAlgorithm::associative;
+    scheme.scheduling_algorithm = SchedulingAlgorithm::min_load;
 
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
-    constexpr size_t nexp = 1;
-    constexpr size_t nloads = 10;
+    constexpr size_t nexp = 4;
+    constexpr size_t nloads = 100;
     std::array<long, nloads> load_time;
-    random_fill(load_time.begin(), load_time.end(), 50l, 1000l);
+    random_fill(load_time.begin(), load_time.end(), 10l, 100l);
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
     KLOG("nuclear", 1) << "Assets loading time:" << std::endl;
@@ -182,10 +185,12 @@ int p1(int argc, char** argv)
         js.wait();
         auto parallel_dur_ms = clk.get_elapsed_time().count();
 
-        float gain_percent = 100.f * float(serial_dur_ms - parallel_dur_ms) / float(serial_dur_ms);
+        float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
+        float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
         KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-        KLOGI << "Gain:                  " << gain_percent << '%' << std::endl;
+        KLOGI << "Factor:                " << (factor>1 ? WCC('g') : WCC('b')) << factor << WCC(0) << std::endl;
+        KLOGI << "Gain:                  " << (factor>1 ? WCC('g') : WCC('b')) << gain_percent << WCC(0) << '%' << std::endl;
     }
 
     return 0;
@@ -195,6 +200,6 @@ int main(int argc, char** argv)
 {
     init_logger();
 
-    // return p0(argc, argv);
-    return p1(argc, argv);
+    return p0(argc, argv);
+    // return p1(argc, argv);
 }

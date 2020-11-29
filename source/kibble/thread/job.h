@@ -23,7 +23,7 @@ enum class ExecutionPolicy : uint8_t
 enum class SchedulingAlgorithm : uint8_t
 {
     round_robin, // Round-robin selection of worker threads
-    associative, // Associate job labels to execution times for smarter future decisions
+    min_load,    // Uses monitor's execution time database for smarter assignments
 };
 
 struct JobSystemScheme
@@ -35,6 +35,7 @@ struct JobSystemScheme
 };
 
 class Scheduler;
+class Monitor;
 class WorkerThread;
 struct SharedState;
 class JobSystem
@@ -54,7 +55,8 @@ public:
     // Hold execution on this thread untill all jobs are processed or predicate returns false
     void wait(std::function<bool()> condition = []() { return true; });
     // Hold execution on this thread untill a given job has been processed or predicate returns false
-    void wait_for(JobHandle handle, std::function<bool()> condition = []() { return true; });
+    void wait_for(
+        JobHandle handle, std::function<bool()> condition = []() { return true; });
     // Non-blockingly check if any worker threads are busy
     bool is_busy() const;
     // Non-blockingly check if a job is processed
@@ -65,13 +67,16 @@ public:
     inline const JobSystemScheme& get_scheme() const { return scheme_; }
     inline size_t get_threads_count() const { return threads_count_; }
     inline WorkerThread* get_worker(size_t idx) { return threads_[idx]; }
+    inline Monitor& get_monitor() { return *monitor_; }
+    inline const Monitor& get_monitor() const { return *monitor_; }
 
 private:
     friend class WorkerThread;
 
     // Return dead jobs to their respective pools
     void cleanup();
-    inline Scheduler* get_scheduler() { return scheduler_; }
+    inline Scheduler& get_scheduler() { return *scheduler_; }
+    inline const Scheduler& get_scheduler() const { return *scheduler_; }
 
 private:
     size_t CPU_cores_count_ = 0;
@@ -79,6 +84,7 @@ private:
     JobSystemScheme scheme_;
     std::vector<WorkerThread*> threads_;
     Scheduler* scheduler_;
+    Monitor* monitor_;
     std::shared_ptr<SharedState> ss_;
 };
 
