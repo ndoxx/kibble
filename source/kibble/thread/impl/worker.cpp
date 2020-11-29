@@ -6,7 +6,7 @@ namespace kb
 {
 
 WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js)
-    : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_), dist_(0, ss_.workers_count - 1)
+    : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_), dist_(0, js_.get_threads_count() - 1)
 #if PROFILING
       ,
       active_time_us_(0), idle_time_us_(0)
@@ -21,7 +21,7 @@ void WorkerThread::execute(Job* job)
     job->function();
     job->metadata.execution_time_us = clk.get_elapsed_time().count();
     release_handle(job->handle);
-    dead_jobs_.push(job);
+    ss_.dead_jobs.push(job);
     ss_.pending.fetch_sub(1);
 #if PROFILING
     active_time_us_ += clk.get_elapsed_time().count();
@@ -38,6 +38,7 @@ void WorkerThread::run()
 
         // Get a job you lazy bastard
         Job* job = nullptr;
+        ANNOTATE_HAPPENS_AFTER(&jobs_);
         if(jobs_.try_pop(job))
             execute(job);
         else
@@ -70,6 +71,15 @@ void WorkerThread::foreground_work()
     Job* job = nullptr;
     if(jobs_.try_pop(job))
         execute(job);
+}
+
+WorkerThread* WorkerThread::random_worker()
+{
+    size_t idx = dist_(rd_);
+    while(idx == tid_)
+        idx = dist_(rd_);
+
+    return js_.get_worker(idx);
 }
 
 } // namespace kb

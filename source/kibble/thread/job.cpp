@@ -67,8 +67,6 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     }
 
     // Spawn workers
-    ss_->workers.fill(nullptr);
-    ss_->workers_count = threads_count_;
     KLOG("thread", 1) << "[JobSystem] Allocating job pool." << std::endl;
     ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
 
@@ -87,7 +85,6 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
         auto* worker =
             new WorkerThread(ii, (ii != 0) || !scheme_.enable_foreground_work, scheme_.enable_work_stealing, *this);
         threads_.push_back(worker);
-        ss_->workers[ii] = worker;
     }
     // Thread spawning is delayed to avoid a race condition of run() with tha atomic queue's ctor on memset
     for(auto* thd : threads_)
@@ -105,13 +102,13 @@ void JobSystem::shutdown()
     wait();
     KLOGI << "All threads are joinable." << std::endl;
 
-    cleanup();
-
     // Notify all threads they are going to die
     ss_->running.store(false, std::memory_order_release);
     ss_->cv_wake.notify_all();
     for(auto* thd : threads_)
         thd->join();
+
+    cleanup();
 
 #if PROFILING
     for(auto* thd : threads_)
@@ -132,21 +129,21 @@ void JobSystem::shutdown()
 
 void JobSystem::cleanup()
 {
-    for(auto* thd : threads_)
+    Job* job = nullptr;
+    while(ss_->dead_jobs.try_pop(job))
     {
-        Job* job = nullptr;
-        while(thd->try_pop_dead(job))
-        {
-            // Inform scheduler about what happened with this job
-            scheduler_->report(job->metadata);
-            // Return job to the pool
-            K_DELETE(job, ss_->job_pool);
-        }
+        // Inform scheduler about what happened with this job
+        scheduler_->report(job->metadata);
+        // Return job to the pool
+        K_DELETE(job, ss_->job_pool);
     }
 }
 
 JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionPolicy policy)
 {
+    K_ASSERT(!(!scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred)),
+             "Cannot execute job synchronously: foreground work is disabled.");
+
     JobHandle handle;
     {
         const std::scoped_lock<SpinLock> lock(ss_->handle_lock);
@@ -160,8 +157,6 @@ JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionP
     ss_->pending.fetch_add(1);
 
     // Schedule job
-    K_ASSERT(!(!scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred)),
-             "Cannot execute job synchronously: foreground work is disabled.");
     WorkerThread* worker = nullptr;
     if(scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred))
         worker = threads_[0];

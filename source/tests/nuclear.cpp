@@ -73,7 +73,7 @@ int p0(int argc, char** argv)
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
-    constexpr size_t nexp = 100;
+    constexpr size_t nexp = 1;
     constexpr size_t len = 8192 * 32;
     constexpr size_t njobs = 256;
     constexpr size_t tasklen = len / njobs;
@@ -153,7 +153,7 @@ int p1(int argc, char** argv)
     memory::HeapArea area(1_MB);
     JobSystem js(area, scheme);
 
-    constexpr size_t nexp = 5;
+    constexpr size_t nexp = 1;
     constexpr size_t nloads = 10;
     std::array<long, nloads> load_time;
     random_fill(load_time.begin(), load_time.end(), 50l, 1000l);

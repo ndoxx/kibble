@@ -10,21 +10,6 @@
 namespace kb
 {
 
-class WorkerThread;
-// Data common to all worker threads
-struct SharedState
-{
-    PAGE_ALIGN std::array<WorkerThread*, k_max_threads> workers;
-    PAGE_ALIGN size_t workers_count = 0;
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
-    PAGE_ALIGN std::atomic<bool> running = {true};
-    PAGE_ALIGN PoolArena job_pool;
-    PAGE_ALIGN HandlePool handle_pool;
-    PAGE_ALIGN std::condition_variable cv_wake; // To wake worker threads
-    PAGE_ALIGN std::mutex wake_mutex;
-    PAGE_ALIGN SpinLock handle_lock;
-};
-
 struct JobMetadata
 {
     uint64_t label = 0;
@@ -36,6 +21,20 @@ struct Job
     JobFunction function = []() {};
     JobHandle handle;
     JobMetadata metadata;
+};
+
+class WorkerThread;
+// Data common to all worker threads
+struct SharedState
+{
+    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
+    PAGE_ALIGN std::atomic<bool> running = {true};
+    PAGE_ALIGN PoolArena job_pool;
+    PAGE_ALIGN HandlePool handle_pool;
+    PAGE_ALIGN std::condition_variable cv_wake; // To wake worker threads
+    PAGE_ALIGN std::mutex wake_mutex;
+    PAGE_ALIGN SpinLock handle_lock;
+    PAGE_ALIGN DeadJobQueue<Job*> dead_jobs;
 };
 
 class JobSystem;
@@ -74,23 +73,22 @@ public:
         ss_.handle_pool.release(handle);
     }
 
-    inline void submit(Job* job) { jobs_.push(job); }
-
-    inline auto* random_worker()
+    inline void submit(Job* job)
     {
-        size_t idx = dist_(rd_);
-        while(idx == tid_)
-            idx = dist_(rd_);
-
-        return ss_.workers[idx];
+        ANNOTATE_HAPPENS_BEFORE(&jobs_); // Avoid false positives with TSan
+        jobs_.push(job);
     }
-
-    inline bool try_steal(Job*& job) { return random_worker()->jobs_.try_pop(job); }
-    inline bool try_pop_dead(Job*& job) { return dead_jobs_.try_pop(job); }
+    inline bool try_steal(Job*& job)
+    {
+        auto* w = random_worker();
+        ANNOTATE_HAPPENS_AFTER(&w->jobs_); // Avoid false positives with TSan
+        return w->jobs_.try_pop(job);
+    }
 
     void execute(Job* job);
     void run();
     void foreground_work();
+    WorkerThread* random_worker();
 
 private:
     uint32_t tid_;
@@ -109,7 +107,6 @@ private:
 #endif
 
     JobQueue<Job*> jobs_;
-    DeadJobQueue<Job*> dead_jobs_;
 };
 
 } // namespace kb
