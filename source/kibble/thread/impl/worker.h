@@ -80,7 +80,6 @@ public:
         const std::scoped_lock<SpinLock> lock(ss_.handle_lock);
         ss_.handle_pool.release(handle);
     }
-
     inline void submit(Job* job)
     {
         ANNOTATE_HAPPENS_BEFORE(&jobs_); // Avoid false positives with TSan
@@ -92,7 +91,9 @@ public:
         ANNOTATE_HAPPENS_AFTER(&w->jobs_); // Avoid false positives with TSan
         return w->jobs_.try_pop(job);
     }
-
+    inline State get_state() const { return state_.load(std::memory_order_relaxed); }
+    inline size_t get_queue_size() const { return jobs_.was_size(); }
+    
     void execute(Job* job);
     void run();
     void foreground_work();

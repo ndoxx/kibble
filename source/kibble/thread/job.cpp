@@ -178,10 +178,10 @@ JobHandle JobSystem::async(JobFunction&& function, uint64_t label)
 
 void JobSystem::update()
 {
-    // Submit all scheduled jobs to workers
-    scheduler_->submit();
     // Empty the dead job queue
     cleanup();
+    // Submit all scheduled jobs to workers
+    scheduler_->submit();
     // Wake all worker threads
     ss_->cv_wake.notify_all();
 }

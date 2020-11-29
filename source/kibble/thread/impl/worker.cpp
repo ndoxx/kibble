@@ -56,7 +56,12 @@ void WorkerThread::run()
             microClock clk;
 #endif
             std::unique_lock<std::mutex> lck(ss_.wake_mutex);
-            ss_.cv_wake.wait(lck); // Spurious wakeups have no effect because we check if the queue is empty
+            // The first condition in passed lambda avoids a possible deadlock, where a worker can 
+            // go to sleep with a non-empty queue and never wakes up, while the main thread waits for
+            // the pending jobs it holds.
+            // The second condition forces workers to wake up when the job system wants to shutdown
+            // and sets 'running' to false. This avoids another deadlock on exit.
+            ss_.cv_wake.wait(lck, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
 #if PROFILING
             idle_time_us_ += clk.get_elapsed_time().count();
 #endif
