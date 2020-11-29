@@ -71,12 +71,16 @@ void WorkerThread::run()
     state_.store(State::Stopping, std::memory_order_release);
 }
 
-void WorkerThread::foreground_work()
+bool WorkerThread::foreground_work()
 {
     K_ASSERT(!background_, "foreground_work() should not be called in a background thread.");
     Job* job = nullptr;
     if(jobs_.try_pop(job))
+    {
         execute(job);
+        return true;
+    }
+    return false;
 }
 
 WorkerThread* WorkerThread::random_worker()

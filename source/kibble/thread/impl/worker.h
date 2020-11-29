@@ -96,7 +96,7 @@ public:
     
     void execute(Job* job);
     void run();
-    void foreground_work();
+    bool foreground_work();
     WorkerThread* random_worker();
 
 private:

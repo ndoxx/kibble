@@ -205,7 +205,8 @@ void JobSystem::wait_untill(std::function<bool()> condition)
     // Do some work
     if(scheme_.enable_foreground_work)
         while(condition())
-            threads_[0]->foreground_work();
+            if(!threads_[0]->foreground_work())
+                break;
     // Poll
     while(condition())
     {

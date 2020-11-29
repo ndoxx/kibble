@@ -200,6 +200,6 @@ int main(int argc, char** argv)
 {
     init_logger();
 
-    return p0(argc, argv);
-    // return p1(argc, argv);
+    // return p0(argc, argv);
+    return p1(argc, argv);
 }
