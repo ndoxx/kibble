@@ -1,8 +1,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "logger.h"
-#include "logger_thread.h"
+#include "logger/logger.h"
+#include "logger/dispatcher.h"
 
 namespace kb
 {
@@ -56,7 +56,7 @@ void LoggerStream::prepare(hash_t channel, MsgType msg_type, uint8_t severity, i
 void LoggerStream::submit(const std::string& message)
 {
     stmt_.message = message;
-    Logger::LOGGER_THREAD->enqueue(stmt_);
+    Logger::DISPATCHER->dispatch(stmt_);
 }
 
 } // namespace klog

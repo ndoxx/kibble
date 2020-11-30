@@ -1,7 +1,7 @@
 #include <map>
 #include <string>
 
-#include "logger_common.h"
+#include "logger/common.h"
 
 namespace kb
 {

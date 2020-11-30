@@ -1,5 +1,5 @@
-#include "logger_sink.h"
-#include "logger_common.h"
+#include "logger/sink.h"
+#include "logger/common.h"
 
 #include <fstream>
 #include <iomanip>

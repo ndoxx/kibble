@@ -1,6 +1,6 @@
 #pragma once
 
-#include "logger_common.h"
+#include "common.h"
 
 // LOGGING_ENABLED is defined via CMake
 // The following lines make my code linter-friendly

@@ -1,5 +1,5 @@
 #include "memory/memory_utils.h"
-#include "logger/logger_common.h"
+#include "logger/common.h"
 #include "string/string.h"
 
 #include <cstdint>

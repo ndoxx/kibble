@@ -3,8 +3,8 @@
 #include <string_view>
 
 #include "logger/logger.h"
-#include "logger/logger_sink.h"
-#include "logger/logger_thread.h"
+#include "logger/sink.h"
+#include "logger/dispatcher.h"
 
 #include "time/clock.h"
 
@@ -39,10 +39,7 @@ void init_logger()
 	}
 
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_single_threaded(true));
     KLOGGER(set_backtrace_on_error(false));
-    KLOGGER(spawn());
-    KLOGGER(sync());
 }
 
 int main()
