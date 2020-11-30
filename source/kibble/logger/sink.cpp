@@ -1,5 +1,8 @@
 #include "logger/sink.h"
 #include "logger/common.h"
+#include "net/tcp_connector.h"
+#include "net/tcp_stream.h"
+#include "string/string.h"
 
 #include <fstream>
 #include <iomanip>
@@ -87,6 +90,65 @@ void LogFileSink::finish()
 
     std::cout << "\033[1;39mSaved log file: " << k_log_files_style << filename_ << "\n";
 }
+
+NetSink::~NetSink()
+{
+    if(stream_)
+    {
+        // Notify server before closing connection
+        stream_->send("{\"action\":\"disconnect\"}");
+        delete stream_;
+    }
+}
+
+bool NetSink::connect(const std::string& server, uint16_t port)
+{
+    server_ = server;
+    stream_ = kb::net::TCPConnector::connect(server, port);
+    return (stream_ != nullptr);
+}
+
+void NetSink::on_attach()
+{
+    if(stream_ != nullptr)
+    {
+        std::stringstream ss;
+        // Notify new connection
+        ss << "{\"action\":\"connect\", "
+           << "\"peer_ip\":\""   << stream_->get_peer_ip() << "\", "
+           << "\"peer_port\":\"" << uint32_t(stream_->get_peer_port()) << "\"}";
+        stream_->send(ss.str());
+
+        // Send subscribed channels to server
+        ss.str("");
+        ss << "{\"action\":\"set_channels\", \"channels\":["; 
+        for(size_t ii=0; ii<subscriptions_.size(); ++ii)
+        {
+            const auto& desc = subscriptions_[ii];
+            ss << '\"' << desc.name << '\"';
+            if(ii<subscriptions_.size()-1)
+                ss << ',';
+        }
+        ss << "]}";
+        stream_->send(ss.str());
+    }
+}
+
+void NetSink::send(const kb::klog::LogStatement& stmt, const kb::klog::LogChannel& chan)
+{
+    // Send JSON formatted message
+    std::stringstream ss;
+    ss << "{\"action\":\"msg\", \"channel\":\"" << chan.name 
+       << "\", \"type\":\"" << uint32_t(stmt.msg_type)
+       << "\", \"severity\":\"" << uint32_t(stmt.severity) 
+       << "\", \"timestamp\":\"" << std::chrono::duration_cast<std::chrono::duration<float>>(stmt.timestamp).count() 
+       << "\", \"line\":\"" << stmt.code_line 
+       << "\", \"file\":\"" << stmt.code_file 
+       << "\", \"message\":\"" << su::base64_encode(stmt.message + "\033[0m") << "\"}";
+    stream_->send(ss.str());
+}
+
+void NetSink::send_raw(const std::string& message) { stream_->send(message); }
 
 } // namespace klog
 } // namespace kb

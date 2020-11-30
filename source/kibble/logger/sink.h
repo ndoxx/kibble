@@ -7,6 +7,11 @@
 
 namespace kb
 {
+namespace net
+{
+class TCPStream;
+}
+
 namespace klog
 {
 
@@ -70,6 +75,21 @@ private:
     std::string filename_;
     std::stringstream ss_;
     std::vector<std::string> entries_;
+};
+
+// This sink writes to a TCP socket
+class NetSink: public Sink
+{
+public:
+    virtual ~NetSink();
+    virtual void send(const LogStatement& stmt, const LogChannel& chan) override;
+    virtual void send_raw(const std::string& message) override;
+    virtual void on_attach() override;
+    bool connect(const std::string& server, uint16_t port);
+
+private:
+    std::string server_;
+    kb::net::TCPStream* stream_ = nullptr;
 };
 
 } // namespace klog
