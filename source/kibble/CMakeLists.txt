@@ -12,6 +12,11 @@ target_include_directories(kibble
         "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
+target_include_directories(kibble
+    SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+    )
+
 set_target_properties(kibble
     PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
@@ -20,11 +25,15 @@ set_target_properties(kibble
         POSITION_INDEPENDENT_CODE ON
 )
 
+target_compile_definitions(kibble PRIVATE -DLOGGING_ENABLED=1)
+target_compile_definitions(kibble PRIVATE -DK_ENABLE_ASSERT)
+
 target_link_libraries(kibble
     PRIVATE
         project_options
         project_warnings
         pthread
+        atomic
         stdc++fs
 )
 
@@ -55,6 +64,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/memory)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
+
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/thread)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/time)
