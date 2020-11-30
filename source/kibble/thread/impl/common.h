@@ -36,6 +36,7 @@ extern "C" void AnnotateHappensAfter(const char* f, int l, void* addr);
 
 using JobHandle = std::size_t;
 using JobFunction = std::function<void(void)>;
+using tid_t = uint32_t;
 
 // Maximum allowable number of worker threads
 [[maybe_unused]] static constexpr size_t k_max_threads = 8;
@@ -43,6 +44,8 @@ using JobFunction = std::function<void(void)>;
 [[maybe_unused]] static constexpr size_t k_max_jobs = 1024;
 // Number of guard bits in a JobHandle
 [[maybe_unused]] static constexpr size_t k_hnd_guard_bits = 48;
+// Maximum number of stats packets in the monitor queue 
+[[maybe_unused]] static constexpr size_t k_stats_queue_capacity = 128;
 
 using HandlePool = SecureSparsePool<JobHandle, k_max_jobs, k_hnd_guard_bits>;
 using PoolArena =
@@ -51,5 +54,24 @@ using PoolArena =
 template <typename T> using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
 template <typename T>
 using DeadJobQueue = atomic_queue::AtomicQueue<T, k_max_jobs * k_max_threads, T{}, true, true, false, false>;
+template <typename T>
+using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;
+
+struct WorkerActivity
+{
+    int64_t active_time_us = 0;
+    int64_t idle_time_us = 0;
+    size_t executed = 0;
+    size_t stolen = 0;
+    tid_t tid = 0;
+
+    inline void reset()
+    {
+    	active_time_us = 0;
+    	idle_time_us = 0;
+    	executed = 0;
+    	stolen = 0;
+    }
+};
 
 } // namespace kb

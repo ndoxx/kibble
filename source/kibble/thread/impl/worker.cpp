@@ -1,4 +1,5 @@
 #include "thread/impl/worker.h"
+#include "thread/impl/monitor.h"
 #include "thread/job.h"
 #include "time/clock.h"
 
@@ -8,12 +9,10 @@ namespace kb
 WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js)
     : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_),
       dist_(0, js_.get_threads_count() - 1)
-#if PROFILING
-      ,
-      active_time_us_(0), idle_time_us_(0)
-#endif
 {
-    (void)js_;
+#if PROFILING
+    activity_.tid = tid_;
+#endif
 }
 
 void WorkerThread::execute(Job* job)
@@ -25,7 +24,8 @@ void WorkerThread::execute(Job* job)
     ss_.dead_jobs.push(job);
     ss_.pending.fetch_sub(1);
 #if PROFILING
-    active_time_us_ += clk.get_elapsed_time().count();
+    activity_.active_time_us += clk.get_elapsed_time().count();
+    ++activity_.executed;
 #endif
 }
 
@@ -47,6 +47,9 @@ void WorkerThread::run()
             // Try to steal a job
             if(can_steal_ && try_steal(job))
             {
+#if PROFILING
+                ++activity_.stolen;
+#endif
                 execute(job);
                 continue;
             }
@@ -63,7 +66,9 @@ void WorkerThread::run()
             // and sets 'running' to false. This avoids another deadlock on exit.
             ss_.cv_wake.wait(lck, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
 #if PROFILING
-            idle_time_us_ += clk.get_elapsed_time().count();
+            activity_.idle_time_us += clk.get_elapsed_time().count();
+            js_.get_monitor().report_thread_activity(activity_);
+            activity_.reset();
 #endif
         }
     }

@@ -115,11 +115,7 @@ void JobSystem::shutdown()
 
 #if PROFILING
     for(auto* thd : threads_)
-    {
-        KLOG("thread", 1) << "Thread #" << thd->get_tid() << std::endl;
-        KLOGI << "Active: " << thd->get_active_time() << "us" << std::endl;
-        KLOGI << "Idle:   " << thd->get_idle_time() << "us" << std::endl;
-    }
+        monitor_->log_statistics(thd->get_tid());
 #endif
 
     for(auto* thd : threads_)
@@ -207,12 +203,26 @@ void JobSystem::wait_untill(std::function<bool()> condition)
         while(condition())
             if(!threads_[0]->foreground_work())
                 break;
+
+#if PROFILING
+    microClock clk;
+#endif
     // Poll
     while(condition())
     {
         ss_->cv_wake.notify_all(); // wake worker threads
         std::this_thread::yield(); // allow this thread to be rescheduled
     }
+#if PROFILING
+    if(scheme_.enable_foreground_work)
+    {
+        auto& activity = threads_[0]->get_activity();
+        activity.idle_time_us += clk.get_elapsed_time().count();
+        monitor_->report_thread_activity(activity);
+        activity.reset();
+    }
+    monitor_->update_statistics();
+#endif
 }
 
 void JobSystem::wait(std::function<bool()> condition)

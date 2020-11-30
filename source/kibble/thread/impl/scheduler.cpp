@@ -40,15 +40,15 @@ void MininmumLoadScheduler::submit()
             auto findit = job_size.find(job->metadata.label);
             if(findit != job_size.end())
             {
+                size_t offset = 0;
+                if(js_.get_scheme().enable_foreground_work &&
+                   job->metadata.execution_policy == SchedulerExecutionPolicy::async)
+                    offset = 1;
+
                 // Find worker with minimal load and assign it the job
                 const auto& load = js_.get_monitor().get_load();
-                auto min_load_it = std::min_element(load.begin(), load.end());
+                auto min_load_it = std::min_element(load.begin() + offset, load.begin() + js_.get_threads_count());
                 size_t min_load_idx = size_t(std::distance(load.begin(), min_load_it));
-
-                if(js_.get_scheme().enable_foreground_work &&
-                   (job->metadata.execution_policy == SchedulerExecutionPolicy::async) && (min_load_idx == 0))
-                    min_load_it = std::min_element(load.begin() + 1, load.end());
-
                 js_.get_monitor().add_load(min_load_idx, findit->second);
                 js_.get_worker(min_load_idx)->submit(job);
                 continue;

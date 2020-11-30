@@ -56,7 +56,7 @@ public:
         Stopping
     };
 
-    WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js);
+    WorkerThread(tid_t tid, bool background, bool can_steal, JobSystem& js);
 
     inline void spawn()
     {
@@ -68,11 +68,11 @@ public:
         if(background_)
             thread_.join();
     }
-    inline uint32_t get_tid() const { return tid_; }
+    inline tid_t get_tid() const { return tid_; }
 
 #if PROFILING
-    inline auto get_active_time() const { return active_time_us_; }
-    inline auto get_idle_time() const { return idle_time_us_; }
+    inline const auto& get_activity() const { return activity_; }
+    inline auto& get_activity() { return activity_; }
 #endif
 
     inline void release_handle(JobHandle handle)
@@ -100,7 +100,7 @@ public:
     WorkerThread* random_worker();
 
 private:
-    uint32_t tid_;
+    tid_t tid_;
     bool background_;
     bool can_steal_;
     std::atomic<State> state_;
@@ -111,8 +111,7 @@ private:
     std::uniform_int_distribution<size_t> dist_;
 
 #if PROFILING
-    int64_t active_time_us_;
-    int64_t idle_time_us_;
+    WorkerActivity activity_;
 #endif
 
     JobQueue<Job*> jobs_;
