@@ -102,6 +102,7 @@ void JobSystem::shutdown()
 {
     KLOGN("thread") << "[JobSystem] Shutting down." << std::endl;
     KLOGI << "Waiting for jobs to finish." << std::endl;
+    update();
     wait();
     KLOGI << "All threads are joinable." << std::endl;
 
@@ -114,6 +115,7 @@ void JobSystem::shutdown()
     cleanup();
 
 #if PROFILING
+    monitor_->update_statistics();
     for(auto* thd : threads_)
         monitor_->log_statistics(thd->get_tid());
 #endif
@@ -131,6 +133,7 @@ void JobSystem::cleanup()
 {
     Job* job = nullptr;
     bool dynamic_scheduling = scheduler_->is_dynamic();
+    ANNOTATE_HAPPENS_AFTER(&ss_->dead_jobs);
     while(ss_->dead_jobs.try_pop(job))
     {
         // Inform monitor about what happened with this job

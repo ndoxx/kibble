@@ -159,7 +159,7 @@ int p1(int argc, char** argv)
     constexpr size_t nexp = 4;
     constexpr size_t nloads = 100;
     std::array<long, nloads> load_time;
-    random_fill(load_time.begin(), load_time.end(), 10l, 100l);
+    random_fill(load_time.begin(), load_time.end(), 1l, 100l);
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
     KLOG("nuclear", 1) << "Assets loading time:" << std::endl;

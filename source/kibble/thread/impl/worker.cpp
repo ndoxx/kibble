@@ -21,6 +21,7 @@ void WorkerThread::execute(Job* job)
     job->function();
     job->metadata.execution_time_us = clk.get_elapsed_time().count();
     release_handle(job->handle);
+    ANNOTATE_HAPPENS_BEFORE(&ss_.dead_jobs);
     ss_.dead_jobs.push(job);
     ss_.pending.fetch_sub(1);
 #if PROFILING

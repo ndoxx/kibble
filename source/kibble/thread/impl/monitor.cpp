@@ -49,6 +49,7 @@ void Monitor::log_statistics(tid_t tid) const
     float jobs_per_cycle = float(stats.total_executed) / float(stats.cycles);
     
     KLOG("thread", 1) << WCC('i') << "Thread #" << tid << std::endl;
+    KLOGI << "Sleep cycles:         " << stats.cycles << std::endl;
     KLOGI << "Mean active time:     " << mean_active_ms << "ms" << std::endl;
     KLOGI << "Mean idle time:       " << mean_idle_ms << "ms" << std::endl;
     KLOGI << "Mean activity ratio:  " << mean_activity << '%' << std::endl;
