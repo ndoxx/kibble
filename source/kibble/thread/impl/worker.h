@@ -92,6 +92,7 @@ public:
 #endif
 
 private:
+    bool get_job(Job*& job);
     // Execute a job
     void process(Job* job);
     // Thread loop
@@ -122,6 +123,7 @@ private:
     tid_t tid_;
     bool background_;
     bool can_steal_;
+    size_t push_pop_loop_detector_;
     std::atomic<State> state_;
     JobSystem& js_;
     SharedState& ss_;

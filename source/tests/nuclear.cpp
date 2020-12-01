@@ -197,7 +197,7 @@ int p1(int argc, char** argv)
 
 void push_random_jobs(th::JobSystem& js)
 {
-    for(size_t ii=0; ii<32; ++ii)
+    for(size_t ii=0; ii<1; ++ii)
     {
         js.dispatch([]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));

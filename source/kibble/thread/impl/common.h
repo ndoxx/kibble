@@ -48,6 +48,8 @@ using tid_t = uint32_t;
 [[maybe_unused]] static constexpr size_t k_hnd_guard_bits = 48;
 // Maximum number of stats packets in the monitor queue
 [[maybe_unused]] static constexpr size_t k_stats_queue_capacity = 128;
+// Maximum consecutive job resubmits due to pending parent, before thread is allowed to be rescheduled
+[[maybe_unused]] static constexpr size_t k_max_push_pop_loop = 16;
 
 using HandlePool = SecureSparsePool<JobHandle, k_max_jobs, k_hnd_guard_bits>;
 using PoolArena =
@@ -65,7 +67,7 @@ struct WorkerActivity
     int64_t idle_time_us = 0;
     size_t executed = 0;
     size_t stolen = 0;
-    size_t rescheduled = 0;
+    size_t resubmit = 0;
     tid_t tid = 0;
 
     inline void reset()
@@ -74,7 +76,7 @@ struct WorkerActivity
         idle_time_us = 0;
         executed = 0;
         stolen = 0;
-        rescheduled = 0;
+        resubmit = 0;
     }
 };
 
