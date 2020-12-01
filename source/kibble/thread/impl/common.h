@@ -10,6 +10,8 @@
 
 namespace kb
 {
+namespace th
+{
 
 // Brief idle/active timing stats per worker thread
 #define PROFILING 1
@@ -35,7 +37,7 @@ extern "C" void AnnotateHappensAfter(const char* f, int l, void* addr);
 #endif
 
 using JobHandle = std::size_t;
-using JobFunction = std::function<void(void)>;
+using JobKernel = std::function<void(void)>;
 using tid_t = uint32_t;
 
 // Maximum allowable number of worker threads
@@ -44,7 +46,7 @@ using tid_t = uint32_t;
 [[maybe_unused]] static constexpr size_t k_max_jobs = 1024;
 // Number of guard bits in a JobHandle
 [[maybe_unused]] static constexpr size_t k_hnd_guard_bits = 48;
-// Maximum number of stats packets in the monitor queue 
+// Maximum number of stats packets in the monitor queue
 [[maybe_unused]] static constexpr size_t k_stats_queue_capacity = 128;
 
 using HandlePool = SecureSparsePool<JobHandle, k_max_jobs, k_hnd_guard_bits>;
@@ -67,11 +69,12 @@ struct WorkerActivity
 
     inline void reset()
     {
-    	active_time_us = 0;
-    	idle_time_us = 0;
-    	executed = 0;
-    	stolen = 0;
+        active_time_us = 0;
+        idle_time_us = 0;
+        executed = 0;
+        stolen = 0;
     }
 };
 
+} // namespace th
 } // namespace kb

@@ -5,6 +5,8 @@
 
 namespace kb
 {
+namespace th
+{
 
 WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSystem& js)
     : tid_(tid), background_(background), can_steal_(can_steal), js_(js), ss_(*js.ss_),
@@ -18,7 +20,7 @@ WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSys
 void WorkerThread::execute(Job* job)
 {
     microClock clk;
-    job->function();
+    job->kernel();
     job->metadata.execution_time_us = clk.get_elapsed_time().count();
     release_handle(job->handle);
     ANNOTATE_HAPPENS_BEFORE(&ss_.dead_jobs);
@@ -60,12 +62,13 @@ void WorkerThread::run()
             microClock clk;
 #endif
             std::unique_lock<std::mutex> lck(ss_.wake_mutex);
-            // The first condition in passed lambda avoids a possible deadlock, where a worker can 
+            // The first condition in passed lambda avoids a possible deadlock, where a worker can
             // go to sleep with a non-empty queue and never wakes up, while the main thread waits for
             // the pending jobs it holds.
             // The second condition forces workers to wake up when the job system wants to shutdown
             // and sets 'running' to false. This avoids another deadlock on exit.
-            ss_.cv_wake.wait(lck, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
+            ss_.cv_wake.wait(lck,
+                             [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
 #if PROFILING
             activity_.idle_time_us += clk.get_elapsed_time().count();
             js_.get_monitor().report_thread_activity(activity_);
@@ -98,4 +101,5 @@ WorkerThread* WorkerThread::random_worker()
     return js_.get_worker(idx);
 }
 
+} // namespace th
 } // namespace kb

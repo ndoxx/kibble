@@ -7,6 +7,8 @@
 
 namespace kb
 {
+namespace th
+{
 
 Scheduler::Scheduler(JobSystem& js) : js_(js) { scheduled_jobs_.reserve(k_max_jobs * k_max_threads); }
 
@@ -40,6 +42,7 @@ void MininmumLoadScheduler::submit()
             auto findit = job_size.find(job->metadata.label);
             if(findit != job_size.end())
             {
+                // Constrain possible TIDs set if foreground work is enabled and job is async
                 size_t offset = 0;
                 if(js_.get_scheme().enable_foreground_work &&
                    job->metadata.execution_policy == SchedulerExecutionPolicy::async)
@@ -66,4 +69,5 @@ void MininmumLoadScheduler::submit()
     scheduled_jobs_.clear();
 }
 
+} // namespace th
 } // namespace kb

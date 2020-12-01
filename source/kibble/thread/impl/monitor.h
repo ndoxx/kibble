@@ -1,20 +1,25 @@
 #pragma once
 
-#include <map>
 #include <array>
+#include <filesystem>
+#include <map>
 
 #include "thread/impl/common.h"
 
+namespace fs = std::filesystem;
+
 namespace kb
+{
+namespace th
 {
 
 struct WorkerStats
 {
-	double active_time_ms = 0.0;
-	double idle_time_ms = 0.0;
-	unsigned long long total_executed = 0;
-	unsigned long long total_stolen = 0;
-	size_t cycles = 0;
+    double active_time_ms = 0.0;
+    double idle_time_ms = 0.0;
+    unsigned long long total_executed = 0;
+    unsigned long long total_stolen = 0;
+    size_t cycles = 0;
 };
 
 class JobSystem;
@@ -23,15 +28,26 @@ class Monitor
 {
 public:
     Monitor(JobSystem& js);
+
+    // Export a file containing monitoring information for labeled jobs
+    void export_job_profiles(const fs::path& filepath);
+    // Load a job profile information file
+    void load_job_profiles(const fs::path& filepath);
+    // Call after a job has been executed to report its execution profile
     void report_job_execution(const JobMetadata&);
+    // Process all worker activity reports in the queue
     void update_statistics();
+    // Show a worker's statistics
     void log_statistics(tid_t tid) const;
+    // Reset workers load info
     void wrap();
 
     inline const auto& get_job_size() const { return job_size_; }
     inline const auto& get_load() const { return load_; }
     inline const auto& get_statistics(tid_t tid) const { return stats_[tid]; }
     inline void add_load(size_t idx, int64_t job_size) { load_[idx] += job_size; }
+
+    // Called by workers when they wake up to submit their activity reports
     inline void report_thread_activity(WorkerActivity activity)
     {
         ANNOTATE_HAPPENS_BEFORE(&activity_queue_); // Avoid false positives with TSan
@@ -53,4 +69,5 @@ private:
     ActivityQueue<WorkerActivity> activity_queue_;
 };
 
+} // namespace th
 } // namespace kb

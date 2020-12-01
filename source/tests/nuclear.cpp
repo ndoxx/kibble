@@ -62,13 +62,13 @@ int p0(int argc, char** argv)
 
     KLOGN("nuclear") << "[JobSystem Example] parallel for" << std::endl;
 
-    JobSystemScheme scheme;
+    th::JobSystemScheme scheme;
     scheme.max_threads = size_t(nworkers());
     scheme.enable_work_stealing = !work_stealing_disabled();
     scheme.enable_foreground_work = !foreground_work_disabled();
 
     memory::HeapArea area(1_MB);
-    JobSystem js(area, scheme);
+    th::JobSystem js(area, scheme);
 
     constexpr size_t nexp = 1000;
     constexpr size_t len = 8192 * 32;
@@ -130,11 +130,11 @@ int p0(int argc, char** argv)
     return 0;
 }
 
-template <typename T, typename Iter> void random_fill(Iter start, Iter end, T min, T max)
+template <typename T, typename Iter> void random_fill(Iter start, Iter end, T min, T max, uint64_t seed = 0)
 {
-    static std::random_device rd;
+    static std::default_random_engine eng(seed);
     std::uniform_int_distribution<T> dist(min, max);
-    std::generate(start, end, [&]() { return dist(rd); });
+    std::generate(start, end, [&]() { return dist(eng); });
 }
 
 int p1(int argc, char** argv)
@@ -144,19 +144,20 @@ int p1(int argc, char** argv)
 
     KLOGN("nuclear") << "[JobSystem Example] mock async loading" << std::endl;
 
-    JobSystemScheme scheme;
+    th::JobSystemScheme scheme;
     scheme.max_threads = 0;
     scheme.enable_work_stealing = true;
     scheme.enable_foreground_work = true;
-    scheme.scheduling_algorithm = SchedulingAlgorithm::min_load;
+    scheme.scheduling_algorithm = th::SchedulingAlgorithm::min_load;
 
     memory::HeapArea area(1_MB);
-    JobSystem js(area, scheme);
+    th::JobSystem js(area, scheme);
+    js.use_persistence_file("p1.jpp");
 
     constexpr size_t nexp = 4;
     constexpr size_t nloads = 100;
     std::array<long, nloads> load_time;
-    random_fill(load_time.begin(), load_time.end(), 1l, 100l);
+    random_fill(load_time.begin(), load_time.end(), 1l, 100l, 42);
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
     KLOG("nuclear", 1) << "Assets loading time:" << std::endl;
@@ -172,7 +173,8 @@ int p1(int argc, char** argv)
         milliClock clk;
         for(size_t ii = 0; ii < nloads; ++ii)
         {
-            hash_t label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            // hash_t label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            hash_t label = uint64_t(ii+1);
             js.dispatch([&load_time, ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
                 // KLOG("nuclear", 1) << "Asset #" << ii << " loaded" << std::endl;

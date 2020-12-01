@@ -1,8 +1,10 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 
+namespace fs = std::filesystem;
 namespace kb
 {
 namespace memory
@@ -10,7 +12,9 @@ namespace memory
 class HeapArea;
 }
 
-using JobFunction = std::function<void(void)>;
+namespace th
+{
+using JobKernel = std::function<void(void)>;
 using JobHandle = std::size_t;
 
 enum class ExecutionPolicy : uint8_t
@@ -44,12 +48,15 @@ public:
     JobSystem(memory::HeapArea& area, const JobSystemScheme& = {});
     ~JobSystem();
 
+    // Setup a job profile persistence file to load/store monitor data
+    void use_persistence_file(const fs::path& filepath);
+
     // Wait for all jobs to finish, join worker threads and destroy system storage
     void shutdown();
     // Enqueue a new job and return a handle
-    JobHandle dispatch(JobFunction&& function, uint64_t label = 0, ExecutionPolicy policy = ExecutionPolicy::automatic);
+    JobHandle dispatch(JobKernel&& kernel, uint64_t label = 0, ExecutionPolicy policy = ExecutionPolicy::automatic);
     // Immediate asynchronous execution
-    JobHandle async(JobFunction&& function, uint64_t label = 0);
+    JobHandle async(JobKernel&& kernel, uint64_t label = 0);
     // Wait for input condition to become false, synchronous work may be executed in the meantime
     void wait_untill(std::function<bool()> condition);
     // Hold execution on this thread untill all jobs are processed or predicate returns false
@@ -86,6 +93,9 @@ private:
     Scheduler* scheduler_;
     Monitor* monitor_;
     std::shared_ptr<SharedState> ss_;
+    fs::path persistence_file_;
+    bool use_persistence_file_ = false;
 };
 
+} // namespace th
 } // namespace kb
