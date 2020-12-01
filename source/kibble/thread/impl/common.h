@@ -65,6 +65,7 @@ struct WorkerActivity
     int64_t idle_time_us = 0;
     size_t executed = 0;
     size_t stolen = 0;
+    size_t rescheduled = 0;
     tid_t tid = 0;
 
     inline void reset()
@@ -73,6 +74,7 @@ struct WorkerActivity
         idle_time_us = 0;
         executed = 0;
         stolen = 0;
+        rescheduled = 0;
     }
 };
 

@@ -108,7 +108,6 @@ void JobSystem::shutdown()
 {
     KLOGN("thread") << "[JobSystem] Shutting down." << std::endl;
     KLOGI << "Waiting for jobs to finish." << std::endl;
-    update();
     wait();
     KLOGI << "All threads are joinable." << std::endl;
 
@@ -118,7 +117,7 @@ void JobSystem::shutdown()
     for(auto* thd : threads_)
         thd->join();
 
-    cleanup();
+    update();
 
 #if PROFILING
     monitor_->update_statistics();
@@ -139,24 +138,9 @@ void JobSystem::shutdown()
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
 
-void JobSystem::cleanup()
+JobHandle JobSystem::dispatch(JobKernel&& kernel, const JobDescriptor& desc)
 {
-    Job* job = nullptr;
-    bool dynamic_scheduling = scheduler_->is_dynamic();
-    ANNOTATE_HAPPENS_AFTER(&ss_->dead_jobs);
-    while(ss_->dead_jobs.try_pop(job))
-    {
-        // Inform monitor about what happened with this job
-        if(dynamic_scheduling)
-            monitor_->report_job_execution(job->metadata);
-        // Return job to the pool
-        K_DELETE(job, ss_->job_pool);
-    }
-}
-
-JobHandle JobSystem::dispatch(JobKernel&& kernel, uint64_t label, ExecutionPolicy policy)
-{
-    K_ASSERT(!(!scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred)),
+    K_ASSERT(!(!scheme_.enable_foreground_work && (desc.policy == ExecutionPolicy::deferred)),
              "Cannot execute job synchronously: foreground work is disabled.");
 
     JobHandle handle;
@@ -168,35 +152,30 @@ JobHandle JobSystem::dispatch(JobKernel&& kernel, uint64_t label, ExecutionPolic
     Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
     job->handle = handle;
-    job->metadata.label = label;
-    job->metadata.execution_policy = static_cast<SchedulerExecutionPolicy>(policy);
+    job->parent = desc.parent;
+    job->metadata.label = desc.label;
+    job->metadata.execution_policy = static_cast<SchedulerExecutionPolicy>(desc.policy);
     ss_->pending.fetch_add(1);
 
     scheduler_->schedule(job);
-
-    return handle;
-}
-
-JobHandle JobSystem::async(JobKernel&& kernel, uint64_t label)
-{
-    cleanup();
-    auto handle = dispatch(std::move(kernel), label, ExecutionPolicy::async);
-    scheduler_->submit();
     ss_->cv_wake.notify_all();
+
     return handle;
 }
 
 void JobSystem::update()
 {
-    // Empty the dead job queue
-    cleanup();
-    // Avoid waking up workers if no task has been scheduled
-    if(is_busy())
+    // Process the dead job queue
+    Job* job = nullptr;
+    bool dynamic_scheduling = scheduler_->is_dynamic();
+    ANNOTATE_HAPPENS_AFTER(&ss_->dead_jobs);
+    while(ss_->dead_jobs.try_pop(job))
     {
-        // Submit all scheduled jobs to workers
-        scheduler_->submit();
-        // Wake all worker threads
-        ss_->cv_wake.notify_all();
+        // Inform monitor about what happened with this job
+        if(dynamic_scheduling)
+            monitor_->report_job_execution(job->metadata);
+        // Return job to the pool
+        K_DELETE(job, ss_->job_pool);
     }
 }
 

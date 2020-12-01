@@ -40,6 +40,7 @@ void Monitor::update_statistics()
         stats_[tid].idle_time_ms += double(activity.idle_time_us) / 1000.0;
         stats_[tid].total_executed += activity.executed;
         stats_[tid].total_stolen += activity.stolen;
+        stats_[tid].total_rescheduled += activity.rescheduled;
         ++stats_[tid].cycles;
     }
 }
@@ -61,6 +62,7 @@ void Monitor::log_statistics(tid_t tid) const
     KLOGI << "Mean activity ratio:  " << mean_activity << '%' << std::endl;
     KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "") << std::endl;
     KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "") << std::endl;
+    KLOGI << "Total rescheduled:    " << stats.total_rescheduled << " job" << ((stats.total_rescheduled > 1) ? "s" : "") << std::endl;
     KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
 }
 

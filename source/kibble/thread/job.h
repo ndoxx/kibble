@@ -38,6 +38,13 @@ struct JobSystemScheme
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 };
 
+struct JobDescriptor
+{
+    uint64_t label = 0;
+    JobHandle parent = 0;
+    ExecutionPolicy policy = ExecutionPolicy::automatic;
+};
+
 class Scheduler;
 class Monitor;
 class WorkerThread;
@@ -50,25 +57,21 @@ public:
 
     // Setup a job profile persistence file to load/store monitor data
     void use_persistence_file(const fs::path& filepath);
-
     // Wait for all jobs to finish, join worker threads and destroy system storage
     void shutdown();
     // Enqueue a new job and return a handle
-    JobHandle dispatch(JobKernel&& kernel, uint64_t label = 0, ExecutionPolicy policy = ExecutionPolicy::automatic);
-    // Immediate asynchronous execution
-    JobHandle async(JobKernel&& kernel, uint64_t label = 0);
+    JobHandle dispatch(JobKernel&& kernel, const JobDescriptor& desc = JobDescriptor{});
     // Wait for input condition to become false, synchronous work may be executed in the meantime
     void wait_untill(std::function<bool()> condition);
     // Hold execution on this thread untill all jobs are processed or predicate returns false
     void wait(std::function<bool()> condition = []() { return true; });
     // Hold execution on this thread untill a given job has been processed or predicate returns false
-    void wait_for(
-        JobHandle handle, std::function<bool()> condition = []() { return true; });
+    void wait_for(JobHandle handle, std::function<bool()> condition = []() { return true; });
     // Non-blockingly check if any worker threads are busy
     bool is_busy() const;
     // Non-blockingly check if a job is processed
     bool is_work_done(JobHandle handle) const;
-    // Call this regularly, all scheduled tasks will be performed
+    // Call this regularly
     void update();
 
     inline const JobSystemScheme& get_scheme() const { return scheme_; }
@@ -80,8 +83,6 @@ public:
 private:
     friend class WorkerThread;
 
-    // Return dead jobs to their respective pools
-    void cleanup();
     inline Scheduler& get_scheduler() { return *scheduler_; }
     inline const Scheduler& get_scheduler() const { return *scheduler_; }
 

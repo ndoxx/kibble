@@ -28,7 +28,8 @@ struct JobMetadata
 struct Job
 {
     JobKernel kernel = []() {}; // The function to execute
-    JobHandle handle;           // Handle associated to this job
+    JobHandle handle = 0;       // Handle associated to this job
+    JobHandle parent = 0;       // Handle associated to this job
     JobMetadata metadata;       // Additional job info
 };
 
@@ -92,7 +93,7 @@ public:
 
 private:
     // Execute a job
-    void execute(Job* job);
+    void process(Job* job);
     // Thread loop
     void run();
     // Select a (different) worker at random
@@ -109,6 +110,12 @@ private:
     {
         const std::scoped_lock<SpinLock> lock(ss_.handle_lock);
         ss_.handle_pool.release(handle);
+    }
+    // Check if a job is still pending
+    inline bool is_pending(JobHandle handle) const
+    {
+        const std::scoped_lock<SpinLock> lock(ss_.handle_lock);
+        return ss_.handle_pool.is_valid(handle);
     }
 
 private:

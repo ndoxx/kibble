@@ -19,6 +19,7 @@ struct WorkerStats
     double idle_time_ms = 0.0;
     unsigned long long total_executed = 0;
     unsigned long long total_stolen = 0;
+    unsigned long long total_rescheduled = 0;
     size_t cycles = 0;
 };
 

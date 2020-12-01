@@ -17,8 +17,18 @@ WorkerThread::WorkerThread(uint32_t tid, bool background, bool can_steal, JobSys
 #endif
 }
 
-void WorkerThread::execute(Job* job)
+void WorkerThread::process(Job* job)
 {
+    // If job has a pending parent, push it back to the queue
+    if(job->parent && is_pending(job->parent))
+    {
+        submit(job);
+#if PROFILING
+        ++activity_.rescheduled;
+#endif
+        return;
+    }
+
     microClock clk;
     job->kernel();
     job->metadata.execution_time_us = clk.get_elapsed_time().count();
@@ -44,7 +54,7 @@ void WorkerThread::run()
         Job* job = nullptr;
         ANNOTATE_HAPPENS_AFTER(&jobs_);
         if(jobs_.try_pop(job))
-            execute(job);
+            process(job);
         else
         {
             // Try to steal a job
@@ -53,7 +63,7 @@ void WorkerThread::run()
 #if PROFILING
                 ++activity_.stolen;
 #endif
-                execute(job);
+                process(job);
                 continue;
             }
 
@@ -86,7 +96,7 @@ bool WorkerThread::foreground_work()
     Job* job = nullptr;
     if(jobs_.try_pop(job))
     {
-        execute(job);
+        process(job);
         return true;
     }
     return false;
