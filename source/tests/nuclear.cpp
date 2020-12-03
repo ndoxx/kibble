@@ -4,7 +4,7 @@
 #include "logger/dispatcher.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "thread/job.h"
+#include "thread/job/job.h"
 #include "time/clock.h"
 
 #include <algorithm>

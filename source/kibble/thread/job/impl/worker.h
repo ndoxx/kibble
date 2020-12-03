@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thread/impl/common.h"
+#include "thread/job/impl/common.h"
 #include "thread/sync.h"
 #include <condition_variable>
 #include <mutex>

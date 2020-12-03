@@ -8,7 +8,7 @@
  * -> Highly experimental (meaning: bug-riddled junk)
  */
 
-#include "thread/intrin.h"
+#include "thread/impl/intrin.h"
 #include <array>
 #include <atomic>
 

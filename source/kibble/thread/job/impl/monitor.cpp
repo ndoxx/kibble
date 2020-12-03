@@ -1,6 +1,6 @@
-#include "thread/impl/monitor.h"
-#include "thread/impl/worker.h"
-#include "thread/job.h"
+#include "thread/job/impl/monitor.h"
+#include "thread/job/impl/worker.h"
+#include "thread/job/job.h"
 
 #include <fstream>
 

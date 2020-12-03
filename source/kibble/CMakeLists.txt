@@ -67,6 +67,8 @@ install(FILES ${H_LIB} DESTINATION include/kibble/net)
 
 file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/thread)
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/job/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/thread/job)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/time)
