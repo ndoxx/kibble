@@ -1,13 +1,14 @@
-#include "thread/job.h"
-#include "thread/impl/monitor.h"
-#include "thread/impl/scheduler.h"
-#include "thread/impl/worker.h"
+#include "thread/job/job.h"
+#include "thread/job/impl/monitor.h"
+#include "thread/job/impl/scheduler.h"
+#include "thread/job/impl/worker.h"
 
 #include <algorithm>
 
 namespace kb
 {
-
+namespace th
+{
 // Size of a cache line -> controlling alignment prevents false sharing
 static constexpr size_t k_cache_line_size = 64;
 // Maximal padding of a Job structure within the job pool
@@ -53,27 +54,32 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     // Create monitor
     monitor_ = new Monitor(*this);
 
+    KLOG("thread", 0) << "Detail:" << std::endl;
+    KLOGI << "Work stealing:   " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
+    KLOGI << "Foreground help: " << (scheme_.enable_foreground_work ? "enabled" : "disabled") << std::endl;
+
     // Create scheduler
+    KLOGI << "Scheduler:       ";
     switch(scheme_.scheduling_algorithm)
     {
     case SchedulingAlgorithm::round_robin:
-        KLOG("thread", 1) << "[JobSystem] Using round-robin scheduler." << std::endl;
+        KLOGI << "round-robin" << std::endl;
         scheduler_ = new RoundRobinScheduler(*this);
         break;
     case SchedulingAlgorithm::min_load:
-        KLOG("thread", 1) << "[JobSystem] Using minimum-load dynamic scheduler." << std::endl;
+        KLOGI << "minimum-load (dynamic)" << std::endl;
         scheduler_ = new MininmumLoadScheduler(*this);
         break;
     default:
-        KLOGW("thread") << "Unknown scheduling algorithm, fallback: round-robin" << std::endl;
+        KLOGI << "round-robin (fallback)" << std::endl;
         scheduler_ = new RoundRobinScheduler(*this);
     }
 
     // Spawn workers
-    KLOG("thread", 1) << "[JobSystem] Allocating job pool." << std::endl;
+    KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
     ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
 
-    KLOG("thread", 1) << "[JobSystem] Spawning worker threads." << std::endl;
+    KLOG("thread", 0) << "[JobSystem] Spawning worker threads." << std::endl;
     KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
     KLOGI << "Spawning " << WCC('v') << threads_count_ - size_t(scheme_.enable_foreground_work) << WCC(0)
           << " worker threads." << std::endl;
@@ -89,11 +95,11 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
             new WorkerThread(ii, (ii != 0) || !scheme_.enable_foreground_work, scheme_.enable_work_stealing, *this);
         threads_.push_back(worker);
     }
-    // Thread spawning is delayed to avoid a race condition of run() with tha atomic queue's ctor on memset
+    // Thread spawning is delayed to avoid a race condition of run() with the atomic queue's ctor on memset
     for(auto* thd : threads_)
         thd->spawn();
 
-    KLOGG("thread") << "JobSystem ready." << std::endl;
+    KLOGG("thread") << "[JobSystem] Ready." << std::endl;
 }
 
 JobSystem::~JobSystem() { shutdown(); }
@@ -102,7 +108,6 @@ void JobSystem::shutdown()
 {
     KLOGN("thread") << "[JobSystem] Shutting down." << std::endl;
     KLOGI << "Waiting for jobs to finish." << std::endl;
-    update();
     wait();
     KLOGI << "All threads are joinable." << std::endl;
 
@@ -112,13 +117,17 @@ void JobSystem::shutdown()
     for(auto* thd : threads_)
         thd->join();
 
-    cleanup();
+    update();
 
 #if PROFILING
     monitor_->update_statistics();
+    KLOGN("thread") << "[JobSystem] Thread statistics:" << std::endl;
     for(auto* thd : threads_)
         monitor_->log_statistics(thd->get_tid());
 #endif
+
+    if(use_persistence_file_)
+        monitor_->export_job_profiles(persistence_file_);
 
     for(auto* thd : threads_)
         delete thd;
@@ -126,11 +135,37 @@ void JobSystem::shutdown()
     delete monitor_;
     delete scheduler_;
 
-    KLOGG("thread") << "JobSystem shutdown complete." << std::endl;
+    KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
 
-void JobSystem::cleanup()
+JobHandle JobSystem::dispatch(JobKernel&& kernel, const JobDescriptor& desc)
 {
+    K_ASSERT(!(!scheme_.enable_foreground_work && (desc.policy == ExecutionPolicy::deferred)),
+             "Cannot execute job synchronously: foreground work is disabled.");
+
+    JobHandle handle;
+    {
+        const std::scoped_lock<SpinLock> lock(ss_->handle_lock);
+        handle = ss_->handle_pool.acquire();
+    }
+
+    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
+    job->kernel = std::move(kernel);
+    job->handle = handle;
+    job->parent = desc.parent;
+    job->metadata.label = desc.label;
+    job->metadata.execution_policy = static_cast<SchedulerExecutionPolicy>(desc.policy);
+    ss_->pending.fetch_add(1);
+
+    scheduler_->schedule(job);
+    ss_->cv_wake.notify_all();
+
+    return handle;
+}
+
+void JobSystem::update()
+{
+    // Process the dead job queue
     Job* job = nullptr;
     bool dynamic_scheduling = scheduler_->is_dynamic();
     ANNOTATE_HAPPENS_AFTER(&ss_->dead_jobs);
@@ -142,47 +177,6 @@ void JobSystem::cleanup()
         // Return job to the pool
         K_DELETE(job, ss_->job_pool);
     }
-}
-
-JobHandle JobSystem::dispatch(JobFunction&& function, uint64_t label, ExecutionPolicy policy)
-{
-    K_ASSERT(!(!scheme_.enable_foreground_work && (policy == ExecutionPolicy::deferred)),
-             "Cannot execute job synchronously: foreground work is disabled.");
-
-    JobHandle handle;
-    {
-        const std::scoped_lock<SpinLock> lock(ss_->handle_lock);
-        handle = ss_->handle_pool.acquire();
-    }
-
-    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
-    job->function = std::move(function);
-    job->handle = handle;
-    job->metadata.label = label;
-    job->metadata.execution_policy = static_cast<SchedulerExecutionPolicy>(policy);
-    ss_->pending.fetch_add(1);
-
-    scheduler_->schedule(job);
-
-    return handle;
-}
-
-JobHandle JobSystem::async(JobFunction&& function, uint64_t label)
-{
-    cleanup();
-    auto handle = dispatch(std::move(function), label, ExecutionPolicy::async);
-    ss_->cv_wake.notify_all();
-    return handle;
-}
-
-void JobSystem::update()
-{
-    // Empty the dead job queue
-    cleanup();
-    // Submit all scheduled jobs to workers
-    scheduler_->submit();
-    // Wake all worker threads
-    ss_->cv_wake.notify_all();
 }
 
 // Main thread atomically increments pending each time a job is pushed to the queue.
@@ -248,4 +242,12 @@ void JobSystem::wait_for(JobHandle handle, std::function<bool()> condition)
     }
 }
 
+void JobSystem::use_persistence_file(const fs::path& filepath)
+{
+    persistence_file_ = filepath;
+    use_persistence_file_ = true;
+    monitor_->load_job_profiles(persistence_file_);
+}
+
+} // namespace th
 } // namespace kb

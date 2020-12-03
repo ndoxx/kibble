@@ -10,6 +10,8 @@
 
 namespace kb
 {
+namespace th
+{
 
 // Brief idle/active timing stats per worker thread
 #define PROFILING 1
@@ -35,7 +37,7 @@ extern "C" void AnnotateHappensAfter(const char* f, int l, void* addr);
 #endif
 
 using JobHandle = std::size_t;
-using JobFunction = std::function<void(void)>;
+using JobKernel = std::function<void(void)>;
 using tid_t = uint32_t;
 
 // Maximum allowable number of worker threads
@@ -44,8 +46,10 @@ using tid_t = uint32_t;
 [[maybe_unused]] static constexpr size_t k_max_jobs = 1024;
 // Number of guard bits in a JobHandle
 [[maybe_unused]] static constexpr size_t k_hnd_guard_bits = 48;
-// Maximum number of stats packets in the monitor queue 
+// Maximum number of stats packets in the monitor queue
 [[maybe_unused]] static constexpr size_t k_stats_queue_capacity = 128;
+// Maximum consecutive job resubmits due to pending parent, before thread is allowed to be rescheduled
+[[maybe_unused]] static constexpr size_t k_max_push_pop_loop = 16;
 
 using HandlePool = SecureSparsePool<JobHandle, k_max_jobs, k_hnd_guard_bits>;
 using PoolArena =
@@ -63,15 +67,18 @@ struct WorkerActivity
     int64_t idle_time_us = 0;
     size_t executed = 0;
     size_t stolen = 0;
+    size_t resubmit = 0;
     tid_t tid = 0;
 
     inline void reset()
     {
-    	active_time_us = 0;
-    	idle_time_us = 0;
-    	executed = 0;
-    	stolen = 0;
+        active_time_us = 0;
+        idle_time_us = 0;
+        executed = 0;
+        stolen = 0;
+        resubmit = 0;
     }
 };
 
+} // namespace th
 } // namespace kb
