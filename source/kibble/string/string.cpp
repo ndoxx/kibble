@@ -11,6 +11,17 @@ static constexpr char s_base64_chars[] = {
     'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
     's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
 
+static constexpr int s_base64_decode_vals[] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+    -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, -1, -1, -1, -1, -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
+    45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+
 // Tokenize an input string into a vector of strings, specifying a delimiter
 std::vector<std::string> tokenize(const std::string& str, char delimiter)
 {
@@ -85,36 +96,46 @@ void center(std::string& input, int size)
 
 std::string base64_encode(const std::string data)
 {
-    size_t in_len = data.size();
-    size_t out_len = 4 * ((in_len + 2) / 3);
-    std::string ret(out_len, '\0');
-    size_t ii;
-    char* p = const_cast<char*>(ret.c_str());
+    std::string out;
 
-    for(ii = 0; ii < in_len - 2; ii += 3)
+    unsigned val = 0;
+    int valb = -6;
+    for(char c : data)
     {
-        *p++ = s_base64_chars[(data[ii] >> 2) & 0x3F];
-        *p++ = s_base64_chars[((data[ii] & 0x3) << 4) | (static_cast<int>(data[ii + 1] & 0xF0) >> 4)];
-        *p++ = s_base64_chars[((data[ii + 1] & 0xF) << 2) | (static_cast<int>(data[ii + 2] & 0xC0) >> 6)];
-        *p++ = s_base64_chars[data[ii + 2] & 0x3F];
-    }
-    if(ii < in_len)
-    {
-        *p++ = s_base64_chars[(data[ii] >> 2) & 0x3F];
-        if(ii == (in_len - 1))
+        val = (val << 8) + static_cast<unsigned char>(c);
+        valb += 8;
+        while(valb >= 0)
         {
-            *p++ = s_base64_chars[((data[ii] & 0x3) << 4)];
-            *p++ = '=';
+            out.push_back(s_base64_chars[(val >> valb) & 0x3F]);
+            valb -= 6;
         }
-        else
-        {
-            *p++ = s_base64_chars[((data[ii] & 0x3) << 4) | (static_cast<int>(data[ii + 1] & 0xF0) >> 4)];
-            *p++ = s_base64_chars[((data[ii + 1] & 0xF) << 2)];
-        }
-        *p++ = '=';
     }
+    if(valb > -6)
+        out.push_back(s_base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+    while(out.size() % 4)
+        out.push_back('=');
+    return out;
+}
 
-    return ret;
+std::string base64_decode(const std::string data)
+{
+    std::string out;
+
+    unsigned val = 0;
+    int valb = -8;
+    for(char c : data)
+    {
+        if(s_base64_decode_vals[size_t(c)] == -1)
+            break;
+        val = (val << 6) + static_cast<unsigned int>(s_base64_decode_vals[size_t(c)]);
+        valb += 6;
+        if(valb >= 0)
+        {
+            out.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return out;
 }
 
 } // namespace su

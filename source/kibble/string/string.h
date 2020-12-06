@@ -92,6 +92,8 @@ template <class Container> static inline void split_string(const std::string& st
 
 // Base64-encode a string
 std::string base64_encode(const std::string data);
+// Decode a Base64-encoded string
+std::string base64_decode(const std::string data);
 
 namespace rx
 {
