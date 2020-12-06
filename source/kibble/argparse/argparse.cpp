@@ -84,7 +84,7 @@ ArgParse::ArgParse(const std::string& program_name, const std::string& ver_strin
         if(exit_on_special_command_)
             exit(0);
     });
-    set_trigger('?', [this]() {
+    set_trigger('h', [this]() {
         output_(usage());
         if(exit_on_special_command_)
             exit(0);
