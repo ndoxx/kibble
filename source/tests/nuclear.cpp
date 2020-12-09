@@ -1,10 +1,10 @@
 #include "argparse/argparse.h"
+#include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
-#include "logger/dispatcher.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "thread/job2/task_system.h"
+#include "thread/job2/job_system.h"
 #include "time/clock.h"
 
 #include <algorithm>
@@ -45,11 +45,20 @@ int p0(int argc, char** argv)
     (void)argc;
     (void)argv;
 
+    th2::JobSystemScheme scheme;
+    scheme.enable_work_stealing = true;
+
+    memory::HeapArea area(1_MB);
+    th2::JobSystem js(area, scheme);
+
     return 0;
 }
 
 int main(int argc, char** argv)
 {
+    (void)argc;
+    (void)argv;
+
     init_logger();
 
     return p0(argc, argv);
