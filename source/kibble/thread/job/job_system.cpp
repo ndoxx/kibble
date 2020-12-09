@@ -68,11 +68,12 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     for(uint32_t ii = 0; ii < threads_count_; ++ii)
     {
         // TODO: Use K_NEW
-        WorkerDescriptor desc;
-        desc.is_background = (ii != 0);
-        desc.can_steal = (ii != 0) && scheme_.enable_work_stealing;
-        desc.tid = ii;
-        workers_[ii] = new WorkerThread(desc, *this);
+        WorkerProperties props;
+        props.is_background = (ii != 0);
+        props.can_steal = scheme_.enable_work_stealing;
+        props.max_stealing_attempts = scheme_.max_stealing_attempts;
+        props.tid = ii;
+        workers_[ii] = new WorkerThread(props, *this);
     }
     // Thread spawning is delayed to avoid a race condition of run() with other workers ctors
     for(auto* worker : workers_)

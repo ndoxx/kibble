@@ -11,10 +11,11 @@ namespace kb
 namespace th
 {
 
-struct WorkerDescriptor
+struct WorkerProperties
 {
     bool is_background = false;
     bool can_steal = false;
+    size_t max_stealing_attempts = 16;
     tid_t tid;
 };
 
@@ -40,7 +41,7 @@ public:
         Stopping
     };
 
-    WorkerThread(const WorkerDescriptor&, JobSystem&);
+    WorkerThread(const WorkerProperties&, JobSystem&);
 
     // Spawn a thread for this worker
     void spawn();
@@ -52,7 +53,7 @@ public:
     // Returns true if the pop operation succeeded, false otherwise
     bool foreground_work();
 
-    inline tid_t get_tid() const { return tid_; }
+    inline tid_t get_tid() const { return props_.tid; }
     inline State query_state() const { return state_.load(std::memory_order_relaxed); }
 #if PROFILING
     inline const auto& get_activity() const { return activity_; }
@@ -66,19 +67,13 @@ private:
     bool get_job(Job*& job);
     // Execute a job
     void process(Job* job);
-    // Select a (different) worker at random
-    WorkerThread& random_worker();
 
 private:
-    tid_t tid_;
-    bool can_steal_;
-    bool is_background_;
+    WorkerProperties props_;
     JobSystem& js_;
     SharedState& ss_;
     std::atomic<State> state_;
     std::thread thread_;
-    std::random_device rd_;
-    std::uniform_int_distribution<size_t> dist_;
 
 #if PROFILING
     WorkerActivity activity_;

@@ -4,6 +4,7 @@
 #include "thread/job/job_system.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace kb
 {
@@ -16,8 +17,7 @@ RoundRobinScheduler::RoundRobinScheduler(JobSystem& js) : Scheduler(js) {}
 
 void RoundRobinScheduler::dispatch(Job* job)
 {
-    worker_affinity_t next_worker_mask = 1 << round_robin_;
-    while((job->meta.worker_affinity & next_worker_mask) == 0)
+    while((job->meta.worker_affinity & (1 << round_robin_)) == 0)
         round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
 
     js_.get_worker(round_robin_).submit(job);
@@ -28,16 +28,8 @@ MininmumLoadScheduler::MininmumLoadScheduler(JobSystem& js) : Scheduler(js) {}
 
 void MininmumLoadScheduler::dispatch(Job* job)
 {
-    // If affinity is specified, find worker
-    if(job->meta.worker_affinity != WORKER_AFFINITY_ANY)
-    {
-        size_t idx = 0;
-        while((job->meta.worker_affinity & (1 << idx)) == 0)
-            ++idx;
-        K_ASSERT(idx < js_.get_threads_count(), "Bad worker affinity.");
-        js_.get_worker(idx).submit(job);
-    }
-
+    // Create a vector of viable worker candidates based on affinity,
+    // and select worker with minimal load
     if(job->meta.label != 0)
     {
         const auto& job_size = js_.get_monitor().get_job_size();
@@ -46,8 +38,16 @@ void MininmumLoadScheduler::dispatch(Job* job)
         {
             // Find worker with minimal load and assign it the job
             const auto& load = js_.get_monitor().get_load();
-            auto min_load_it = std::min_element(load.begin(), load.begin() + js_.get_threads_count());
-            size_t min_load_idx = size_t(std::distance(load.begin(), min_load_it));
+            long min_load = std::numeric_limits<long>::max();
+            size_t min_load_idx = 0;
+            for(size_t ii = 0; ii < js_.get_threads_count(); ++ii)
+            {
+                if((job->meta.worker_affinity & (1 << ii)) != 0 && load[ii] < min_load)
+                {
+                    min_load = load[ii];
+                    min_load_idx = ii;
+                }
+            }
             js_.get_monitor().add_load(min_load_idx, findit->second);
             js_.get_worker(min_load_idx).submit(job);
             return;
@@ -55,6 +55,9 @@ void MininmumLoadScheduler::dispatch(Job* job)
     }
 
     // Fallback to round-robin selection
+    while((job->meta.worker_affinity & (1 << round_robin_)) == 0)
+        round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
+
     js_.get_worker(round_robin_).submit(job);
     round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
 }

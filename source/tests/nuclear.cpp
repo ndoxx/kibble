@@ -67,8 +67,8 @@ int p1(int argc, char** argv)
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
     scheme.enable_work_stealing = true;
-    scheme.scheduling_algorithm = th::SchedulingAlgorithm::min_load;
-    // scheme.scheduling_algorithm = th::SchedulingAlgorithm::round_robin;
+    // scheme.scheduling_algorithm = th::SchedulingAlgorithm::min_load;
+    scheme.scheduling_algorithm = th::SchedulingAlgorithm::round_robin;
 
     memory::HeapArea area(1_MB);
     th::JobSystem js(area, scheme);
@@ -96,6 +96,11 @@ int p1(int argc, char** argv)
         {
             th::JobMetadata meta;
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            if(ii<70)
+                meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
+            else
+                meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+
             auto* job = js.create_job(
                 [&load_time, ii]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));

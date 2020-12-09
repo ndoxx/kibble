@@ -26,6 +26,7 @@ using label_t = uint64_t;
 
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ANY = std::numeric_limits<worker_affinity_t>::max();
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_MAIN = 1;
+[[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ASYNC = WORKER_AFFINITY_ANY & ~WORKER_AFFINITY_MAIN;
 
 struct JobMetadata
 {
@@ -55,8 +56,9 @@ enum class SchedulingAlgorithm : uint8_t
 
 struct JobSystemScheme
 {
-    size_t max_workers = 0;           // Maximum number of worker threads, if 0 => CPU_cores - 1
-    bool enable_work_stealing = true; // Allow idle workers to steal jobs from their siblings
+    size_t max_workers = 0;            // Maximum number of worker threads, if 0 => CPU_cores - 1
+    size_t max_stealing_attempts = 16; // Maximum number of stealing attempts before moving to the next worker
+    bool enable_work_stealing = true;  // Allow idle workers to steal jobs from their siblings
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 };
 

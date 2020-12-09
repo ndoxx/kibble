@@ -8,25 +8,24 @@ namespace kb
 namespace th
 {
 
-WorkerThread::WorkerThread(const WorkerDescriptor& desc, JobSystem& jobsys)
-    : tid_(desc.tid), can_steal_(desc.can_steal), is_background_(desc.is_background), js_(jobsys),
-      ss_(js_.get_shared_state()), dist_(0, js_.get_threads_count() - 1)
+WorkerThread::WorkerThread(const WorkerProperties& props, JobSystem& jobsys)
+    : props_(props), js_(jobsys),
+      ss_(js_.get_shared_state())
 {
-    (void)tid_;
 #if PROFILING
-    activity_.tid = tid_;
+    activity_.tid = props_.tid;
 #endif
 }
 
 void WorkerThread::spawn()
 {
-    if(is_background_)
+    if(props_.is_background)
         thread_ = std::thread(&WorkerThread::run, this);
 }
 
 void WorkerThread::join()
 {
-    if(is_background_)
+    if(props_.is_background)
         thread_.join();
 }
 
@@ -38,7 +37,7 @@ void WorkerThread::submit(Job* job)
 
 void WorkerThread::run()
 {
-    K_ASSERT(is_background_, "run() should not be called in the main thread.");
+    K_ASSERT(props_.is_background, "run() should not be called in the main thread.");
 
     while(ss_.running.load(std::memory_order_relaxed))
     {
@@ -79,21 +78,37 @@ bool WorkerThread::get_job(Job*& job)
     bool has_job = jobs_.try_pop(job);
 
     // If queue is empty, try to steal a job
-    if(!has_job && can_steal_)
+    if(!has_job && props_.can_steal)
     {
-        // TODO: random shuffle
-        const auto& workers = js_.get_workers();
-        for(size_t ii = 0; ii < workers.size() && has_job == false; ++ii)
+        // Random shuffle on candidate workers to avoid always stealing from the same worker(s)
+        std::vector<WorkerThread*> random_workers(js_.get_workers());
+        std::random_shuffle(random_workers.begin(), random_workers.end());
+        for(size_t ii = 0; ii < random_workers.size() && has_job == false; ++ii)
         {
-            if(ii == tid_)
+            // Thou shalt not steal from yourself
+            if(ii == props_.tid)
                 continue;
-            auto& worker = *workers[ii];
+
+            auto& worker = *random_workers[ii];
             ANNOTATE_HAPPENS_AFTER(&worker.jobs_); // Avoid false positives with TSan
-            has_job = worker.jobs_.try_pop(job);
+
+            for(size_t jj=0; jj<props_.max_stealing_attempts; ++jj)
+            {
+                has_job = worker.jobs_.try_pop(job);
+                // If job has incompatible affinity, resubmit it
+                if(has_job && (job->meta.worker_affinity & (1<<props_.tid)) == 0)
+                {
+                    worker.jobs_.push(job);
+                    has_job = false;
+#if PROFILING
+                    ++activity_.resubmit;
+#endif
+                    continue;
+                }
+                else
+                    break;
+            }
         }
-        /*auto& worker = random_worker();
-        ANNOTATE_HAPPENS_AFTER(&worker.jobs_); // Avoid false positives with TSan
-        has_job = worker.jobs_.try_pop(job);*/
 #if PROFILING
         if(has_job)
             ++activity_.stolen;
@@ -118,23 +133,14 @@ void WorkerThread::process(Job* job)
 
 bool WorkerThread::foreground_work()
 {
-    K_ASSERT(!is_background_, "foreground_work() should not be called in a background thread.");
+    K_ASSERT(!props_.is_background, "foreground_work() should not be called in a background thread.");
     Job* job = nullptr;
-    if(jobs_.try_pop(job))
+    if(get_job(job))
     {
         process(job);
         return true;
     }
     return false;
-}
-
-WorkerThread& WorkerThread::random_worker()
-{
-    size_t idx = dist_(rd_);
-    while(idx == tid_)
-        idx = dist_(rd_);
-
-    return js_.get_worker(idx);
 }
 
 } // namespace th
