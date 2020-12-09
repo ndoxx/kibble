@@ -17,7 +17,7 @@ namespace memory
 class HeapArea;
 } // namespace memory
 
-namespace th2
+namespace th
 {
 
 using JobKernel = std::function<void(void)>;
@@ -31,6 +31,7 @@ struct JobMetadata
 {
     label_t label = 0;
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
+    int64_t execution_time_us = 0;
 };
 
 struct Job
@@ -41,8 +42,7 @@ struct Job
 
     // State
     std::atomic<size_t> dependency_count = {0}; // Job can be executed when this reaches 0
-    // std::atomic<bool> ready = {false};			// Set to true when this job can be scheduled
-    std::atomic<bool> finished = {false}; // Set to true when this job has been processed
+    std::atomic<bool> finished = {false};       // Set to true when this job has been processed
 
     void add_child(Job* child);
 };
@@ -76,8 +76,21 @@ public:
     void shutdown();
     // Create a new job
     Job* create_job(JobKernel&& kernel, const JobMetadata& meta = JobMetadata{});
+    // Return job to the pool
+    void release_job(Job* job);
     // Schedule job execution
     void schedule(Job* job);
+    // Non-blockingly check if any worker threads are busy
+    bool is_busy() const;
+    // Non-blockingly check if a job is processed
+    bool is_work_done(Job* job) const;
+    // Wait for input condition to become false, synchronous work may be executed in the meantime
+    void wait_untill(std::function<bool()> condition);
+    // Hold execution on this thread untill all jobs are processed or predicate returns false
+    void wait(std::function<bool()> condition = []() { return true; });
+    // Hold execution on this thread untill a given job has been processed or predicate returns false
+    void wait_for(
+        Job* job, std::function<bool()> condition = []() { return true; });
 
     inline size_t get_threads_count() const { return threads_count_; }
     inline size_t get_CPU_cores_count() const { return CPU_cores_count_; }
@@ -105,5 +118,5 @@ private:
     bool use_persistence_file_ = false;
 };
 
-} // namespace th2
+} // namespace th
 } // namespace kb
