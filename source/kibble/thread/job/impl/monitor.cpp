@@ -1,6 +1,6 @@
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/worker.h"
-#include "thread/job/job.h"
+#include "thread/job/job_system.h"
 
 #include <fstream>
 
@@ -60,9 +60,12 @@ void Monitor::log_statistics(tid_t tid) const
     KLOGI << "Mean active time:     " << mean_active_ms << "ms" << std::endl;
     KLOGI << "Mean idle time:       " << mean_idle_ms << "ms" << std::endl;
     KLOGI << "Mean activity ratio:  " << mean_activity << '%' << std::endl;
-    KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "") << std::endl;
-    KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "") << std::endl;
-    KLOGI << "Total resubmitted:    " << stats.total_resubmit << " job" << ((stats.total_resubmit > 1) ? "s" : "") << std::endl;
+    KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "")
+          << std::endl;
+    KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "")
+          << std::endl;
+    KLOGI << "Total resubmitted:    " << stats.total_resubmit << " job" << ((stats.total_resubmit > 1) ? "s" : "")
+          << std::endl;
     KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
 }
 
@@ -81,53 +84,53 @@ struct JPPHeader
 
 void Monitor::export_job_profiles(const fs::path& filepath)
 {
-	KLOGN("thread") << "[Monitor] Exporting persistence file:" << std::endl;
-	KLOGI << WCC('p') << filepath << std::endl;
+    KLOGN("thread") << "[Monitor] Exporting persistence file:" << std::endl;
+    KLOGI << WCC('p') << filepath << std::endl;
 
-	JPPHeader header;
-	header.magic = JPP_MAGIC;
-	header.version_major = JPP_VERSION_MAJOR;
-	header.version_minor = JPP_VERSION_MINOR;
-	header.label_count = job_size_.size();
+    JPPHeader header;
+    header.magic = JPP_MAGIC;
+    header.version_major = JPP_VERSION_MAJOR;
+    header.version_minor = JPP_VERSION_MINOR;
+    header.label_count = job_size_.size();
 
     auto ofs = std::ofstream(filepath, std::ios::binary);
     ofs.write(reinterpret_cast<const char*>(&header), sizeof(JPPHeader));
-    for(auto&& [label, size]: job_size_)
+    for(auto&& [label, size] : job_size_)
     {
-    	ofs.write(reinterpret_cast<const char*>(&label), sizeof(uint64_t));
-    	ofs.write(reinterpret_cast<const char*>(&size), sizeof(int64_t));
+        ofs.write(reinterpret_cast<const char*>(&label), sizeof(uint64_t));
+        ofs.write(reinterpret_cast<const char*>(&size), sizeof(int64_t));
     }
     ofs.close();
 }
 
 void Monitor::load_job_profiles(const fs::path& filepath)
 {
-	if(!fs::exists(filepath))
-	{
-		KLOGW("thread") << "[Monitor] File does not exist:" << std::endl;
-		KLOGI << WCC('p') << filepath << std::endl;
-		KLOGI << "Skipping persistence file loading." << std::endl;
-		return;
-	}
+    if(!fs::exists(filepath))
+    {
+        KLOGW("thread") << "[Monitor] File does not exist:" << std::endl;
+        KLOGI << WCC('p') << filepath << std::endl;
+        KLOGI << "Skipping persistence file loading." << std::endl;
+        return;
+    }
 
-	KLOGN("thread") << "[Monitor] Loading persistence file:" << std::endl;
-	KLOGI << WCC('p') << filepath << std::endl;
+    KLOGN("thread") << "[Monitor] Loading persistence file:" << std::endl;
+    KLOGI << WCC('p') << filepath << std::endl;
     auto ifs = std::ifstream(filepath, std::ios::binary);
 
     // Read header & sanity check
-	JPPHeader header;
+    JPPHeader header;
     ifs.read(reinterpret_cast<char*>(&header), sizeof(JPPHeader));
     K_ASSERT(header.magic == JPP_MAGIC, "Invalid JPP file: magic number mismatch.");
     K_ASSERT(header.version_major == JPP_VERSION_MAJOR, "Invalid JPP file: version (major) mismatch.");
     K_ASSERT(header.version_minor == JPP_VERSION_MINOR, "Invalid JPP file: version (minor) mismatch.");
 
-    for(size_t ii=0; ii<header.label_count; ++ii)
+    for(size_t ii = 0; ii < header.label_count; ++ii)
     {
-    	uint64_t label = 0;
-    	int64_t size = 0;
-    	ifs.read(reinterpret_cast<char*>(&label), sizeof(uint64_t));
-    	ifs.read(reinterpret_cast<char*>(&size), sizeof(int64_t));
-    	job_size_.insert({label, size});
+        uint64_t label = 0;
+        int64_t size = 0;
+        ifs.read(reinterpret_cast<char*>(&label), sizeof(uint64_t));
+        ifs.read(reinterpret_cast<char*>(&size), sizeof(int64_t));
+        job_size_.insert({label, size});
     }
     ifs.close();
 }
