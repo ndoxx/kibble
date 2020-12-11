@@ -17,6 +17,9 @@
 #include <string>
 #include <type_traits>
 
+#include "../logger/logger.h"
+#include "../assert/assert.h"
+
 // Useful to avoid uninitialized reads with Valgrind during hexdumps
 // Disable for retail build
 #ifdef K_DEBUG
@@ -247,7 +250,7 @@ private:
 
 template <typename T, class ArenaT> T* NewArray(ArenaT& arena, size_t N, size_t alignment, const char* file, int line)
 {
-    if constexpr(std::is_pod<T>::value)
+    if constexpr(std::is_standard_layout_v<T> && std::is_trivial_v<T>)
     {
         return static_cast<T*>(arena.allocate(sizeof(T) * N, alignment, 0, file, line));
     }
@@ -273,7 +276,7 @@ template <typename T, class ArenaT> T* NewArray(ArenaT& arena, size_t N, size_t 
 // No "placement-delete" in C++, so we define this helper deleter
 template <typename T, class ArenaT> void Delete(T* object, ArenaT& arena)
 {
-    if constexpr(!std::is_pod_v<T>)
+    if constexpr(!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
         object->~T();
 
     // BUG/HACK:
@@ -295,7 +298,7 @@ template <typename T, class ArenaT> void Delete(T* object, ArenaT& arena)
 
 template <typename T, class ArenaT> void DeleteArray(T* object, ArenaT& arena)
 {
-    if constexpr(std::is_pod<T>::value)
+    if constexpr(std::is_standard_layout_v<T> && std::is_trivial_v<T>)
     {
         arena.deallocate(object);
     }

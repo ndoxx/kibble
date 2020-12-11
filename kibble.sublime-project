@@ -8,6 +8,10 @@
 		{
 			"name": "Tests",
 			"path": "source/tests"
+		},
+		{
+			"name": "Data",
+			"path": "data"
 		}
 	],
 	"settings":

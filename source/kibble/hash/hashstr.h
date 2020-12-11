@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <vector>
+#include <string>
 
 namespace kb
 {
@@ -49,10 +50,11 @@ using hash_t = unsigned long long;
 } // namespace kb
 
 // compile-time hash
-static constexpr kb::hash_t H_(const char* str) { return kb::detail::hash_one(str[0], str + 1, kb::detail::basis); }
+constexpr kb::hash_t H_(const char* str) { return kb::detail::hash_one(str[0], str + 1, kb::detail::basis); }
+constexpr kb::hash_t H_(const std::string& str) { return H_(str.c_str()); }
 
 // string literal expression
-[[maybe_unused]] static constexpr kb::hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
+constexpr kb::hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
 
 inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second) { return (first ^ second) * kb::detail::prime; }
 

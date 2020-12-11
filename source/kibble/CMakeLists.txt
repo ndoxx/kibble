@@ -15,6 +15,7 @@ target_include_directories(kibble
 target_include_directories(kibble
     SYSTEM PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
     )
 
 set_target_properties(kibble
@@ -47,6 +48,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/assert/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/assert)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/config/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/config)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)

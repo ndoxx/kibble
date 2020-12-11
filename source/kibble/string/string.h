@@ -8,6 +8,8 @@
 #include <sstream>
 #include <string>
 
+#include "../hash/hashstr.h"
+
 namespace kb
 {
 
@@ -16,51 +18,51 @@ template <typename T> std::string to_string(const T& x) { return std::to_string(
 namespace su
 {
 // Trim from start (in place)
-[[maybe_unused]] static inline void ltrim(std::string& s)
+inline void ltrim(std::string& s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) { return !std::isspace(ch); }));
 }
 
 // Trim from end (in place)
-[[maybe_unused]] static inline void rtrim(std::string& s)
+inline void rtrim(std::string& s)
 {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
 // Trim from both ends (in place)
-[[maybe_unused]] static inline void trim(std::string& s)
+inline void trim(std::string& s)
 {
     ltrim(s);
     rtrim(s);
 }
 
 // Trim from start (copying)
-[[maybe_unused]] static inline std::string ltrim_copy(std::string s)
+inline std::string ltrim_copy(std::string s)
 {
     ltrim(s);
     return s;
 }
 
 // Trim from end (copying)
-[[maybe_unused]] static inline std::string rtrim_copy(std::string s)
+inline std::string rtrim_copy(std::string s)
 {
     rtrim(s);
     return s;
 }
 
 // Trim from both ends (copying)
-[[maybe_unused]] static inline std::string trim_copy(std::string s)
+inline std::string trim_copy(std::string s)
 {
     trim(s);
     return s;
 }
 
-[[maybe_unused]] static inline void to_lower(std::string& str)
+inline void to_lower(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
 }
 
-[[maybe_unused]] static inline void to_upper(std::string& str)
+inline void to_upper(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::toupper(c); });
 }
@@ -80,7 +82,7 @@ std::string size_to_string(size_t size);
 // Space-pad a string left and right to make it centered
 void center(std::string& input, int size);
 
-template <class Container> static inline void split_string(const std::string& str, Container& cont, char delim = ' ')
+template <class Container> inline void split_string(const std::string& str, Container& cont, char delim = ' ')
 {
     std::stringstream ss(str);
     std::string token;
@@ -94,6 +96,19 @@ template <class Container> static inline void split_string(const std::string& st
 std::string base64_encode(const std::string data);
 // Decode a Base64-encoded string
 std::string base64_decode(const std::string data);
+
+// Concatenate multiple arguments of different types into a string
+template <typename ...Args>
+std::string concat(Args&&... args)
+{
+    std::stringstream ss;
+    (ss << ... << args);
+    return ss.str();
+}
+
+// Same as before, but return a string hash instead
+template <typename ...Args>
+inline hash_t h_concat(Args&&... args) { return H_(concat(std::forward<Args>(args)...)); }
 
 namespace rx
 {
