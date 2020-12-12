@@ -1,6 +1,7 @@
 #include "filesystem/filesystem.h"
 #include "assert/assert.h"
 #include "logger/logger.h"
+#include "string/string.h"
 
 #include <regex>
 
@@ -23,17 +24,14 @@ static const std::regex r_alias("^(.+?)://(.+)");
 FileSystem::FileSystem()
 {
     // Localize binary
-    self_directory_ = fs::absolute(retrieve_self_path().parent_path()).lexically_normal();
+    self_directory_ = fs::canonical(retrieve_self_path().parent_path());
     K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
 }
 
 bool FileSystem::add_directory_alias(const fs::path& _dir_path, const std::string& alias)
 {
-    // Maybe the path was specified with proximate syntax (../) -> make it normal
-    fs::path dir_path(_dir_path.lexically_normal());
-    // Make it an absolute path
-    if(!dir_path.is_absolute())
-        dir_path = fs::absolute(dir_path);
+    // Maybe the path was specified with proximate syntax (../) -> make it lexically normal and absolute
+    fs::path dir_path(fs::canonical(_dir_path));
 
     if(!fs::exists(dir_path))
     {
@@ -42,13 +40,13 @@ bool FileSystem::add_directory_alias(const fs::path& _dir_path, const std::strin
         return false;
     }
 
-    aliases_.insert({H_(alias), dir_path});
+    aliases_.insert({H_(alias), {alias, dir_path}});
     KLOG("ios", 0) << "Added directory alias:" << std::endl;
-    KLOGI << alias << "://  <=>  " << WCC('p') << dir_path << '/' << std::endl;
+    KLOGI << alias << "://  <=>  " << WCC('p') << dir_path << std::endl;
     return true;
 }
 
-const fs::path& FileSystem::get_aliased_directory(hash_t alias_hash) const
+const DirectoryAlias& FileSystem::get_aliased_directory_entry(hash_t alias_hash) const
 {
     auto findit = aliases_.find(alias_hash);
     K_ASSERT(findit != aliases_.end(), "Unknown alias.");
@@ -61,12 +59,21 @@ fs::path FileSystem::universal_path(const std::string& unipath) const
     std::smatch match;
     if(std::regex_search(unipath, match, r_alias))
     {
-        // Unalias directory and return a normal absolute path
+        // Unalias directory and return a canonical path
         hash_t alias_hash = H_(match[1].str());
-        return fs::absolute((get_aliased_directory(alias_hash) / match[2].str()).lexically_normal());
+        return fs::canonical((get_aliased_directory(alias_hash) / match[2].str()));
     }
-    // Simply return a normal absolute path
-    return fs::absolute(fs::path(unipath).lexically_normal());
+    // Simply return a canonical path
+    return fs::canonical(fs::path(unipath));
+}
+
+std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_hash) const
+{
+    // Make path relative to the aliased directory
+    const auto& base_alias = get_aliased_directory_entry(base_alias_hash);
+    auto rel_path = fs::relative(path, base_alias.path);
+
+    return su::concat(base_alias.alias, "://", rel_path.string());
 }
 
 IStreamPtr FileSystem::input_stream(const std::string& unipath, bool binary) const

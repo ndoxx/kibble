@@ -42,30 +42,8 @@ int main(int argc, char** argv)
 
     kfs::FileSystem filesystem;
     const auto& self_dir = filesystem.get_self_directory();
-
-    KLOG("nuclear",1) << "Self directory:" << std::endl;
-    KLOGI << WCC('p') << self_dir << std::endl;
-
     filesystem.add_directory_alias(self_dir / "../../data", "data");
-    KLOG("nuclear",1) << "Retrieving aliased directory:" << std::endl;
-    KLOGI << WCC('p') << filesystem.get_aliased_directory("data"_h) << std::endl;
 
-    auto client_cfg_filepath = filesystem.universal_path("data://config/client.toml");
-    KLOG("nuclear",1) << "Retrieving file path using a universal path string:" << std::endl;
-    KLOGI << WCC('p') << client_cfg_filepath << std::endl;
-
-    auto client_cfg_str = filesystem.get_file_as_string("data://config/client.toml");
-    KLOG("nuclear",1) << "Getting a file as a string:" << std::endl;
-    KLOGR("nuclear") << WCC('v') << client_cfg_str.substr(0,64) << "..." << std::endl;
-
-    auto client_cfg_uint8 = filesystem.get_file_as_vector<uint8_t>("data://config/client.toml");
-    KLOG("nuclear",1) << "Getting a file as a vector:" << std::endl;
-    KLOGR("nuclear") << WCC('v');
-    for(size_t ii=0; ii<64; ++ii)
-    {
-        KLOGR("nuclear") << char(client_cfg_uint8[ii]);
-    }
-    KLOGR("nuclear") << "..." << std::endl;
 
     return 0;
 }

@@ -8,7 +8,7 @@ namespace tc
 {
 
 // TODO: Should not split if space is within quotes
-std::vector<std::string> tokenize(const char* data, size_t size)
+static std::vector<std::string> tokenize(const char* data, size_t size)
 {
     std::string str(data, size);
     std::regex reg("\\s+");
@@ -21,7 +21,7 @@ std::vector<std::string> tokenize(const char* data, size_t size)
 
 inline std::vector<std::string> tokenize(const std::string& str) { return tokenize(str.data(), str.size()); }
 
-std::vector<const char*> make_argv(const std::vector<std::string>& arguments)
+[[maybe_unused]] static std::vector<const char*> make_argv(const std::vector<std::string>& arguments)
 {
     std::vector<const char*> argv;
     for(const auto& arg : arguments)

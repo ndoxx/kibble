@@ -40,6 +40,7 @@ set(SRC_KIBBLE_TEST
     test_ap.cpp
     test_memory.cpp
     test_job.cpp
+    test_fs.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})
@@ -51,7 +52,7 @@ target_include_directories(test_kibble
     )
 
 target_compile_definitions(test_kibble PRIVATE -DLOGGING_ANSI_3=0)
-target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=1)
+target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=0)
 
 set_target_properties(test_kibble
     PROPERTIES

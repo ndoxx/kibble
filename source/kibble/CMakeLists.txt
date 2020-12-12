@@ -52,6 +52,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/assert)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/config/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/config)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/filesystem/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/filesystem)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 

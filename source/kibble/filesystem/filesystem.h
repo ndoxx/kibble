@@ -25,6 +25,12 @@ namespace kfs
 using IStreamPtr = std::shared_ptr<std::istream>;
 using OStreamPtr = std::shared_ptr<std::ostream>;
 
+struct DirectoryAlias
+{
+    std::string alias;
+    fs::path path;
+};
+
 class FileSystem
 {
 public:
@@ -35,12 +41,12 @@ public:
     bool add_directory_alias(const fs::path& dir_path, const std::string& alias);
     // Return an absolute lexically normal path to a file referenced by a universal path string
     fs::path universal_path(const std::string& unipath) const;
+    // Return a universal path string given a path and a base directory alias
+    std::string make_universal(const fs::path& path, hash_t base_alias_hash) const;
+    inline std::string make_universal(const fs::path& path, const std::string& base_alias) const;
     // Return the absolute lexically normal path to the aliased directory
-    const fs::path& get_aliased_directory(hash_t alias_hash) const;
-    inline const fs::path& get_aliased_directory(const std::string& alias) const
-    {
-        return get_aliased_directory(H_(alias));
-    }
+    inline const fs::path& get_aliased_directory(hash_t alias_hash) const;
+    inline const fs::path& get_aliased_directory(const std::string& alias) const;
     // Return the absolute lexically normal path to this binary's parent directory
     inline const fs::path& get_self_directory() const { return self_directory_; }
 
@@ -49,8 +55,8 @@ public:
     // Return an output stream to a file
     OStreamPtr output_stream(const std::string& unipath, bool binary = true) const;
     // Return content of a file as a vector of chosen integral type
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
-    std::vector<T> get_file_as_vector(const std::string& unipath) const;
+    template<typename CharT, typename Traits = std::char_traits<CharT>>
+    std::vector<CharT> get_file_as_vector(const std::string& unipath) const;
     // Return content of a file as a string
     inline std::string get_file_as_string(const std::string& unipath) const;
 
@@ -58,17 +64,34 @@ public:
     static inline hash_t extension_hash(const fs::path& filepath) { return H_(filepath.extension().string()); }
 
 private:
+    const DirectoryAlias& get_aliased_directory_entry(hash_t alias_hash) const;
+
     static fs::path retrieve_self_path();
 
 private:
     fs::path self_directory_;
-    std::map<hash_t, fs::path> aliases_;
+    std::map<hash_t, DirectoryAlias> aliases_;
 };
 
-template <typename T, typename> std::vector<T> FileSystem::get_file_as_vector(const std::string& unipath) const
+inline const fs::path& FileSystem::get_aliased_directory(hash_t alias_hash) const
+{
+    return get_aliased_directory_entry(alias_hash).path;
+}
+
+inline const fs::path& FileSystem::get_aliased_directory(const std::string& alias) const
+{
+    return get_aliased_directory(H_(alias));
+}
+
+inline std::string FileSystem::make_universal(const fs::path& path, const std::string& base_alias) const
+{
+    return make_universal(path, H_(base_alias));
+}
+
+template<typename CharT, typename> std::vector<CharT> FileSystem::get_file_as_vector(const std::string& unipath) const
 {
     auto ifs = input_stream(unipath);
-    return std::vector<T>(std::istream_iterator<T>(*ifs), std::istream_iterator<T>());
+    return std::vector<CharT>(std::istreambuf_iterator<CharT>(*ifs), std::istreambuf_iterator<CharT>());
 }
 
 inline std::string FileSystem::get_file_as_string(const std::string& unipath) const
