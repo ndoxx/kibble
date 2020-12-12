@@ -57,16 +57,62 @@ const fs::path& FileSystem::get_aliased_directory(hash_t alias_hash) const
 
 fs::path FileSystem::universal_path(const std::string& unipath) const
 {
-	// Try to regex match an aliasing of the form "alias://path/to/file"
+    // Try to regex match an aliasing of the form "alias://path/to/file"
     std::smatch match;
     if(std::regex_search(unipath, match, r_alias))
     {
-    	// Unalias directory and return a normal absolute path
-    	hash_t alias_hash = H_(match[1].str());
-    	return fs::absolute((get_aliased_directory(alias_hash) / match[2].str()).lexically_normal());
+        // Unalias directory and return a normal absolute path
+        hash_t alias_hash = H_(match[1].str());
+        return fs::absolute((get_aliased_directory(alias_hash) / match[2].str()).lexically_normal());
     }
     // Simply return a normal absolute path
     return fs::absolute(fs::path(unipath).lexically_normal());
+}
+
+IStreamPtr FileSystem::input_stream(const std::string& unipath, bool binary) const
+{
+    auto filepath = universal_path(unipath);
+    K_ASSERT(fs::exists(filepath), "File does not exist.");
+    K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
+
+    auto mode = std::ios::out;
+    if(binary)
+        mode |= std::ios::binary;
+
+    std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
+
+    // Sanity check
+    if(!pifs->is_open())
+    {
+        KLOGE("ios") << "Unable to open input file:" << std::endl;
+        KLOGI << WCC('p') << filepath << std::endl;
+        return nullptr;
+    }
+
+    return pifs;
+}
+
+OStreamPtr FileSystem::output_stream(const std::string& unipath, bool binary) const
+{
+    auto filepath = universal_path(unipath);
+    K_ASSERT(fs::exists(filepath.parent_path()), "Parent directory does not exist.");
+    K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
+
+    auto mode = std::ios::out;
+    if(binary)
+        mode |= std::ios::binary;
+
+    std::shared_ptr<std::ofstream> pofs(new std::ofstream(filepath, mode));
+
+    // Sanity check
+    if(!pofs->is_open())
+    {
+        KLOGE("ios") << "Unable to open output file:" << std::endl;
+        KLOGI << WCC('p') << filepath << std::endl;
+        return nullptr;
+    }
+
+    return pofs;
 }
 
 fs::path FileSystem::retrieve_self_path()
