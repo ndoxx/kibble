@@ -1,10 +1,10 @@
 #include "argparse/argparse.h"
+#include "filesystem/filesystem.h"
+#include "filesystem/resource_pack.h"
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
 #include "string/string.h"
-#include "filesystem/filesystem.h"
-#include "filesystem/resource_pack.h"
 
 #include <algorithm>
 #include <array>
@@ -34,9 +34,9 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-void print_entry(const kfs::IndexTableEntry& entry)
+void print_entry(const kfs::PackLocalEntry& entry)
 {
-    KLOG("nuclear",1) << WCC('p') << entry.path << std::endl;
+    KLOG("nuclear", 1) << WCC('p') << entry.path << std::endl;
     KLOGI << "Offset: " << entry.offset << std::endl;
     KLOGI << "Size:   " << entry.size << std::endl;
 }
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.add_directory_alias(self_dir / "../../data", "data");
 
-    kfs::pack_directory(filesystem.universal_path("data://iotest/resources"), 
+    kfs::pack_directory(filesystem.universal_path("data://iotest/resources"),
                         filesystem.universal_path("data://iotest/resources.kpak"));
 
     kfs::PackFile pack(filesystem.universal_path("data://iotest/resources.kpak"));
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     ifs.read(retrieved.data(), default_texture_entry.size);
     ifs.close();
 
-    KLOG("nuclear",1) << WCC('v') << std::boolalpha << (retrieved == expected) << std::endl;
+    KLOG("nuclear", 1) << WCC('v') << std::boolalpha << (retrieved == expected) << std::endl;
 
     return 0;
 }

@@ -65,8 +65,7 @@ TEST_CASE_METHOD(ReadWriteFixture, "Getting a file as a std::vector<char>", "[rw
 class KpakFixture
 {
 public:
-    KpakFixture():
-    expected_data(256)
+    KpakFixture() : expected_data(256)
     {
         // Create temporary directory with data
         fs::create_directory("/tmp/kibble_test");
@@ -102,14 +101,14 @@ protected:
 
 TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack", "[kpak]")
 {
-    kfs::pack_directory(filesystem.universal_path("test://resources"), 
+    kfs::pack_directory(filesystem.universal_path("test://resources"),
                         filesystem.universal_path("test://resources.kpak"));
 
     REQUIRE(fs::exists(filesystem.universal_path("test://resources.kpak")));
-    
+
     kfs::PackFile pack(filesystem.universal_path("test://resources.kpak"));
     std::ifstream ifs(filesystem.universal_path("test://resources.kpak"), std::ios::binary);
-    
+
     {
         const auto& text_file_entry = pack.get_entry("text_file.txt");
         std::string retrieved;

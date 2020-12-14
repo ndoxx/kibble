@@ -76,30 +76,21 @@ std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_h
     return su::concat(base_alias.alias, "://", rel_path.string());
 }
 
-IStreamPtr FileSystem::input_stream(const std::string& unipath, bool binary) const
+void FileSystem::get_input_stream(std::ifstream& stream, const std::string& unipath, bool binary) const
 {
     auto filepath = universal_path(unipath);
     K_ASSERT(fs::exists(filepath), "File does not exist.");
     K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
 
-    auto mode = std::ios::out;
+    auto mode = std::ios::in;
     if(binary)
         mode |= std::ios::binary;
 
-    std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
-
-    // Sanity check
-    if(!pifs->is_open())
-    {
-        KLOGE("ios") << "Unable to open input file:" << std::endl;
-        KLOGI << WCC('p') << filepath << std::endl;
-        return nullptr;
-    }
-
-    return pifs;
+    stream.open(filepath, mode);
+    K_ASSERT(stream.is_open(), "Unable to open input file.");
 }
 
-OStreamPtr FileSystem::output_stream(const std::string& unipath, bool binary) const
+void FileSystem::get_output_stream(std::ofstream& stream, const std::string& unipath, bool binary) const
 {
     auto filepath = universal_path(unipath);
     K_ASSERT(fs::exists(filepath.parent_path()), "Parent directory does not exist.");
@@ -109,17 +100,8 @@ OStreamPtr FileSystem::output_stream(const std::string& unipath, bool binary) co
     if(binary)
         mode |= std::ios::binary;
 
-    std::shared_ptr<std::ofstream> pofs(new std::ofstream(filepath, mode));
-
-    // Sanity check
-    if(!pofs->is_open())
-    {
-        KLOGE("ios") << "Unable to open output file:" << std::endl;
-        KLOGI << WCC('p') << filepath << std::endl;
-        return nullptr;
-    }
-
-    return pofs;
+    stream.open(filepath, mode);
+    K_ASSERT(stream.is_open(), "Unable to open output file.");
 }
 
 fs::path FileSystem::retrieve_self_path()

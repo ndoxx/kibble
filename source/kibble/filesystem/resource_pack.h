@@ -13,23 +13,29 @@ namespace kfs
 
 bool pack_directory(const fs::path& dir_path, const fs::path& archive_path);
 
-struct IndexTableEntry
+struct PackLocalEntry
 {
-	uint32_t offset;
-	uint32_t size;
-	std::string path;
+    uint32_t offset;
+    uint32_t size;
+    std::string path;
+
+    static constexpr size_t k_serialized_size = 3 * sizeof(uint32_t);
+
+    void write(std::ostream& stream);
+    void read(std::istream& stream);
+    // bool get_input_stream(PackInputStream& stream);
 };
 
 class PackFile
 {
 public:
-	PackFile(const fs::path& filepath);
+    PackFile(const fs::path& filepath);
 
-	const IndexTableEntry& get_entry(const std::string& path);
+    const PackLocalEntry& get_entry(const std::string& path);
 
 private:
-	fs::path filepath_;
-	std::map<hash_t, IndexTableEntry> index_;
+    fs::path filepath_;
+    std::map<hash_t, PackLocalEntry> index_;
 };
 
 } // namespace kfs
