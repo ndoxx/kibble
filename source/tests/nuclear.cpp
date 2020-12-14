@@ -34,6 +34,13 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
+void print_entry(const kfs::IndexTableEntry& entry)
+{
+    KLOG("nuclear",1) << WCC('p') << entry.path << std::endl;
+    KLOGI << "Offset: " << entry.offset << std::endl;
+    KLOGI << "Size:   " << entry.size << std::endl;
+}
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -47,6 +54,24 @@ int main(int argc, char** argv)
 
     kfs::pack_directory(filesystem.universal_path("data://iotest/resources"), 
                         filesystem.universal_path("data://iotest/resources.kpak"));
+
+    kfs::PackFile pack(filesystem.universal_path("data://iotest/resources.kpak"));
+
+    const auto& text_file_entry = pack.get_entry("text_file.txt");
+    print_entry(text_file_entry);
+    const auto& default_texture_entry = pack.get_entry("textures/default.dat");
+    print_entry(default_texture_entry);
+
+    std::vector<char> retrieved(default_texture_entry.size);
+    std::vector<char> expected(256);
+    std::iota(expected.begin(), expected.end(), 0);
+
+    std::ifstream ifs(filesystem.universal_path("data://iotest/resources.kpak"), std::ios::binary);
+    ifs.seekg(default_texture_entry.offset);
+    ifs.read(retrieved.data(), default_texture_entry.size);
+    ifs.close();
+
+    KLOG("nuclear",1) << WCC('v') << std::boolalpha << (retrieved == expected) << std::endl;
 
     return 0;
 }
