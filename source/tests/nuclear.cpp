@@ -4,6 +4,7 @@
 #include "logger/sink.h"
 #include "string/string.h"
 #include "filesystem/filesystem.h"
+#include "filesystem/resource_pack.h"
 
 #include <algorithm>
 #include <array>
@@ -44,6 +45,8 @@ int main(int argc, char** argv)
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.add_directory_alias(self_dir / "../../data", "data");
 
+    kfs::pack_directory(filesystem.universal_path("data://iotest/resources"), 
+                        filesystem.universal_path("data://iotest/resources.kpak"));
 
     return 0;
 }

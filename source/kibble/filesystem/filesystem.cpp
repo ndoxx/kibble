@@ -61,10 +61,10 @@ fs::path FileSystem::universal_path(const std::string& unipath) const
     {
         // Unalias directory and return a canonical path
         hash_t alias_hash = H_(match[1].str());
-        return fs::canonical((get_aliased_directory(alias_hash) / match[2].str()));
+        return fs::absolute((get_aliased_directory(alias_hash) / match[2].str())).lexically_normal();
     }
     // Simply return a canonical path
-    return fs::canonical(fs::path(unipath));
+    return fs::absolute(fs::path(unipath)).lexically_normal();
 }
 
 std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_hash) const

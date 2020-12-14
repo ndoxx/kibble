@@ -22,7 +22,7 @@
             "-I/usr/lib/clang/$clang_version/include",
         ],
         "ecc_lang_flags": {
-            "CPP": ["-std=c++17"],
+            "CPP": ["-std=c++20"],
         },
         "ecc_flags_sources":
         [
