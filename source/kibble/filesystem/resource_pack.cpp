@@ -3,6 +3,7 @@
 #include "logger/logger.h"
 #include "string/string.h"
 
+#include <array>
 #include <fstream>
 #include <vector>
 
@@ -10,6 +11,39 @@ namespace kb
 {
 namespace kfs
 {
+
+class PackInputStreambuf : public std::streambuf
+{
+public:
+    PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry);
+
+protected:
+    virtual int_type underflow() override;
+
+private:
+    std::ifstream ifs_;
+    std::array<char, 1024> data_;
+    std::streampos begin_ = 0;
+    std::streamsize remaining_ = 0;
+};
+
+PackInputStreambuf::PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry)
+    : ifs_(filepath, std::ios::binary), begin_(entry.offset), remaining_(entry.size)
+{
+    ifs_.seekg(entry.offset);
+}
+
+std::streambuf::int_type PackInputStreambuf::underflow()
+{
+    if(remaining_ <= 0)
+        return traits_type::eof();
+
+    std::streamsize max_avail = std::min(long(data_.size()), remaining_);
+    std::streamsize count = ifs_.readsome(&data_[0], max_avail);
+    setg(&data_[0], &data_[0], &data_[size_t(count)]);
+    remaining_ -= count;
+    return traits_type::to_int_type(*gptr());
+}
 
 struct PAKHeader
 {
@@ -109,8 +143,8 @@ bool pack_directory(const fs::path& dir_path, const fs::path& archive_path)
 
 PackFile::PackFile(const fs::path& filepath) : filepath_(filepath)
 {
-    K_ASSERT(fs::exists(filepath), "Pack file does not exist.");
-    std::ifstream ifs(filepath, std::ios::binary);
+    K_ASSERT(fs::exists(filepath_), "Pack file does not exist.");
+    std::ifstream ifs(filepath_, std::ios::binary);
 
     // Read header & sanity check
     PAKHeader h;
@@ -134,6 +168,11 @@ const PackLocalEntry& PackFile::get_entry(const std::string& path)
     auto findit = index_.find(hname);
     K_ASSERT(findit != index_.end(), "Unknown entry.");
     return findit->second;
+}
+
+std::shared_ptr<std::streambuf> PackFile::get_input_streambuf(const std::string& path)
+{
+    return std::make_shared<PackInputStreambuf>(filepath_, get_entry(path));
 }
 
 } // namespace kfs

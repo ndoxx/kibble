@@ -59,19 +59,25 @@ int main(int argc, char** argv)
 
     const auto& text_file_entry = pack.get_entry("text_file.txt");
     print_entry(text_file_entry);
-    const auto& default_texture_entry = pack.get_entry("textures/default.dat");
-    print_entry(default_texture_entry);
 
-    std::vector<char> retrieved(default_texture_entry.size);
-    std::vector<char> expected(256);
-    std::iota(expected.begin(), expected.end(), 0);
+    {
+        auto pbuf = pack.get_input_streambuf("text_file.txt");
+        std::istream stream(pbuf.get());
+        auto tmp = std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+        KLOGR("nuclear") << tmp << std::endl;
+    }
 
-    std::ifstream ifs(filesystem.universal_path("data://iotest/resources.kpak"), std::ios::binary);
-    ifs.seekg(default_texture_entry.offset);
-    ifs.read(retrieved.data(), default_texture_entry.size);
-    ifs.close();
-
-    KLOG("nuclear", 1) << WCC('v') << std::boolalpha << (retrieved == expected) << std::endl;
+    {
+        auto pbuf = pack.get_input_streambuf("textures/default.dat");
+        std::istream stream(pbuf.get());
+        auto tmp = std::vector<char>((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+        KLOG("nuclear",1) << WCC('v');
+        for(size_t ii=0; ii<tmp.size(); ++ii)
+        {
+            KLOG("nuclear",1) << std::setw(4) << int(static_cast<unsigned char>(tmp[ii])) << ' ';
+        }
+        KLOG("nuclear",1) << std::endl;
+    }
 
     return 0;
 }

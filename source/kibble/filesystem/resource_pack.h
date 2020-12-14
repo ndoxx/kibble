@@ -23,7 +23,6 @@ struct PackLocalEntry
 
     void write(std::ostream& stream);
     void read(std::istream& stream);
-    // bool get_input_stream(PackInputStream& stream);
 };
 
 class PackFile
@@ -32,6 +31,7 @@ public:
     PackFile(const fs::path& filepath);
 
     const PackLocalEntry& get_entry(const std::string& path);
+    std::shared_ptr<std::streambuf> get_input_streambuf(const std::string& path);
 
 private:
     fs::path filepath_;

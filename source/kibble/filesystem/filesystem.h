@@ -11,6 +11,7 @@
 #include <ostream>
 #include <type_traits>
 #include <vector>
+#include <memory>
 
 #include "../hash/hashstr.h"
 
@@ -25,6 +26,8 @@ struct DirectoryAlias
     std::string alias;
     fs::path path;
 };
+
+using IStreamPtr = std::shared_ptr<std::istream>;
 
 class FileSystem
 {
@@ -46,9 +49,7 @@ public:
     inline const fs::path& get_self_directory() const { return self_directory_; }
 
     // Return an input stream to a file
-    void get_input_stream(std::ifstream& stream, const std::string& unipath, bool binary = true) const;
-    // Return an output stream to a file
-    void get_output_stream(std::ofstream& stream, const std::string& unipath, bool binary = true) const;
+    IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
     // Return content of a file as a vector of chosen integral type
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     std::vector<CharT> get_file_as_vector(const std::string& unipath) const;
@@ -85,16 +86,14 @@ inline std::string FileSystem::make_universal(const fs::path& path, const std::s
 
 template <typename CharT, typename> std::vector<CharT> FileSystem::get_file_as_vector(const std::string& unipath) const
 {
-    std::ifstream ifs;
-    get_input_stream(ifs, unipath);
-    return std::vector<CharT>(std::istreambuf_iterator<CharT>(ifs), std::istreambuf_iterator<CharT>());
+    auto pis = get_input_stream(unipath);
+    return std::vector<CharT>(std::istreambuf_iterator<CharT>(*pis), std::istreambuf_iterator<CharT>());
 }
 
 inline std::string FileSystem::get_file_as_string(const std::string& unipath) const
 {
-    std::ifstream ifs;
-    get_input_stream(ifs, unipath);
-    return std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    auto pis = get_input_stream(unipath);
+    return std::string((std::istreambuf_iterator<char>(*pis)), std::istreambuf_iterator<char>());
 }
 
 } // namespace kfs

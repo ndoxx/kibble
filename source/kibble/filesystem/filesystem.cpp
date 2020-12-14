@@ -76,7 +76,7 @@ std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_h
     return su::concat(base_alias.alias, "://", rel_path.string());
 }
 
-void FileSystem::get_input_stream(std::ifstream& stream, const std::string& unipath, bool binary) const
+IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary) const
 {
     auto filepath = universal_path(unipath);
     K_ASSERT(fs::exists(filepath), "File does not exist.");
@@ -86,22 +86,9 @@ void FileSystem::get_input_stream(std::ifstream& stream, const std::string& unip
     if(binary)
         mode |= std::ios::binary;
 
-    stream.open(filepath, mode);
-    K_ASSERT(stream.is_open(), "Unable to open input file.");
-}
-
-void FileSystem::get_output_stream(std::ofstream& stream, const std::string& unipath, bool binary) const
-{
-    auto filepath = universal_path(unipath);
-    K_ASSERT(fs::exists(filepath.parent_path()), "Parent directory does not exist.");
-    K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
-
-    auto mode = std::ios::out;
-    if(binary)
-        mode |= std::ios::binary;
-
-    stream.open(filepath, mode);
-    K_ASSERT(stream.is_open(), "Unable to open output file.");
+    std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
+    K_ASSERT(pifs->is_open(), "Unable to open input file.");
+    return pifs;
 }
 
 fs::path FileSystem::retrieve_self_path()
