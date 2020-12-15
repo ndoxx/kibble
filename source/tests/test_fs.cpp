@@ -9,7 +9,7 @@ using namespace kb;
 class PathFixture
 {
 public:
-    PathFixture() { filesystem.add_directory_alias(filesystem.get_self_directory() / "../../data", "data"); }
+    PathFixture() { filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data"); }
 
 protected:
     kfs::FileSystem filesystem;
@@ -28,14 +28,14 @@ TEST_CASE_METHOD(PathFixture, "Retrieving aliased directory", "[path]")
 
 TEST_CASE_METHOD(PathFixture, "Retrieving file path using a universal path string", "[path]")
 {
-    auto client_cfg_filepath = filesystem.universal_path("data://config/client.toml");
+    auto client_cfg_filepath = filesystem.regular_path("data://config/client.toml");
     const auto& dir = filesystem.get_aliased_directory("data"_h);
     REQUIRE(fs::equivalent(client_cfg_filepath, dir / "config/client.toml"));
 }
 
 TEST_CASE_METHOD(PathFixture, "Making a universal path string from a path and a directory alias", "[path]")
 {
-    auto client_cfg_filepath = filesystem.universal_path("data://config/client.toml");
+    auto client_cfg_filepath = filesystem.regular_path("data://config/client.toml");
     auto upath = filesystem.make_universal(client_cfg_filepath, "data"_h);
     REQUIRE(!upath.compare("data://config/client.toml"));
 }
@@ -45,9 +45,9 @@ class ReadWriteFixture
 public:
     ReadWriteFixture() : data(256)
     {
-        filesystem.add_directory_alias(filesystem.get_self_directory() / "../../data", "data");
+        filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data");
         std::iota(data.begin(), data.end(), 0);
-        std::ofstream ofs(filesystem.universal_path("data://iotest/data.dat"), std::ios::binary);
+        std::ofstream ofs(filesystem.regular_path("data://iotest/data.dat"), std::ios::binary);
         ofs.write(reinterpret_cast<char*>(data.data()), long(data.size() * sizeof(char)));
     }
 
@@ -71,7 +71,7 @@ public:
         fs::create_directory("/tmp/kibble_test");
         fs::create_directory("/tmp/kibble_test/resources");
         fs::create_directory("/tmp/kibble_test/resources/textures");
-        filesystem.add_directory_alias("/tmp/kibble_test", "test");
+        filesystem.alias_directory("/tmp/kibble_test", "test");
 
         std::iota(expected_data_1.begin(), expected_data_1.end(), 0);
         for(size_t ii = 0; ii < 256; ++ii)
@@ -112,13 +112,12 @@ public:
         ofs.close();
 
         // Pack the directory
-        kfs::pack_directory(filesystem.universal_path("test://resources"),
-                            filesystem.universal_path("test://resources.kpak"));
-
+        kfs::pack_directory(filesystem.regular_path("test://resources"),
+                            filesystem.regular_path("test://resources.kpak"));
 
         // Alias the resources directory AND the resource pack
-        filesystem.add_directory_alias("/tmp/kibble_test/resources", "resources");
-        filesystem.add_pack_alias(filesystem.universal_path("test://resources.kpak"), "resources");
+        filesystem.alias_directory("/tmp/kibble_test/resources", "resources");
+        filesystem.alias_packfile(filesystem.regular_path("test://resources.kpak"), "resources");
 
         fs::remove("/tmp/kibble_test/resources/only_in_pack.txt");
 
@@ -141,10 +140,10 @@ protected:
 
 TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak]")
 {
-    REQUIRE(fs::exists(filesystem.universal_path("test://resources.kpak")));
+    REQUIRE(fs::exists(filesystem.regular_path("test://resources.kpak")));
 
-    kfs::PackFile pack(filesystem.universal_path("test://resources.kpak"));
-    std::ifstream ifs(filesystem.universal_path("test://resources.kpak"), std::ios::binary);
+    kfs::PackFile pack(filesystem.regular_path("test://resources.kpak"));
+    std::ifstream ifs(filesystem.regular_path("test://resources.kpak"), std::ios::binary);
 
     {
         const auto& text_file_entry = pack.get_entry("text_file.txt");
@@ -176,7 +175,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak
 
 TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, custom stream", "[kpak]")
 {
-    kfs::PackFile pack(filesystem.universal_path("test://resources.kpak"));
+    kfs::PackFile pack(filesystem.regular_path("test://resources.kpak"));
 
     {
         auto pstream = pack.get_input_stream("text_file.txt");

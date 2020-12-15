@@ -1,5 +1,6 @@
 #include "filesystem/filesystem.h"
 #include "assert/assert.h"
+#include "filesystem/resource_pack.h"
 #include "logger/logger.h"
 #include "string/string.h"
 
@@ -21,10 +22,10 @@ namespace kfs
 
 static const std::regex r_alias("^(.+?)://(.+)");
 
-struct UnipathResult
+struct UpathParsingResult
 {
     const DirectoryAlias* alias_entry = nullptr;
-    std::string path;
+    std::string path_component;
 };
 
 FileSystem::FileSystem()
@@ -36,12 +37,12 @@ FileSystem::FileSystem()
 
 FileSystem::~FileSystem()
 {
-    for(auto&& [key, entry]: aliases_)
-        if(entry.packfile)
-            delete entry.packfile;
+    for(auto&& [key, entry] : aliases_)
+        for(auto* packfile : entry.packfiles)
+            delete packfile;
 }
 
-bool FileSystem::add_directory_alias(const fs::path& _dir_path, const std::string& alias)
+bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& alias)
 {
     // Maybe the path was specified with proximate syntax (../) -> make it lexically normal and absolute
     fs::path dir_path(fs::canonical(_dir_path));
@@ -52,6 +53,7 @@ bool FileSystem::add_directory_alias(const fs::path& _dir_path, const std::strin
         KLOGI << WCC('p') << dir_path << std::endl;
         return false;
     }
+    K_ASSERT(fs::is_directory(dir_path), "Not a directory.");
 
     hash_t alias_hash = H_(alias);
     auto findit = aliases_.find(alias_hash);
@@ -59,19 +61,20 @@ bool FileSystem::add_directory_alias(const fs::path& _dir_path, const std::strin
     {
         auto& entry = findit->second;
         entry.alias = alias;
-        entry.path = dir_path;
+        entry.base = dir_path;
+        KLOG("ios", 0) << "Overloaded directory alias:" << std::endl;
     }
     else
     {
-        aliases_.insert({alias_hash, {alias, dir_path, nullptr}});
+        KLOG("ios", 0) << "Added directory alias:" << std::endl;
+        aliases_.insert({alias_hash, {alias, dir_path, {}}});
     }
 
-    KLOG("ios", 0) << "Added directory alias:" << std::endl;
     KLOGI << alias << "://  <=>  " << WCC('p') << dir_path << std::endl;
     return true;
 }
 
-bool FileSystem::add_pack_alias(const fs::path& pack_path, const std::string& alias)
+bool FileSystem::alias_packfile(const fs::path& pack_path, const std::string& alias)
 {
     if(!fs::exists(pack_path))
     {
@@ -79,55 +82,44 @@ bool FileSystem::add_pack_alias(const fs::path& pack_path, const std::string& al
         KLOGI << WCC('p') << pack_path << std::endl;
         return false;
     }
+    K_ASSERT(fs::is_regular_file(pack_path), "Not a file.");
 
     hash_t alias_hash = H_(alias);
     auto findit = aliases_.find(alias_hash);
     if(findit != aliases_.end())
     {
         auto& entry = findit->second;
-        entry.packfile = new PackFile(pack_path);
+        entry.packfiles.push_back(new PackFile(pack_path));
     }
     else
     {
-        aliases_.insert({alias_hash, {alias, pack_path.parent_path() / pack_path.stem(), new PackFile(pack_path)}});
+        // By default, physical directory has the same (stem) name as the pack and is located in the
+        // same parent directory
+        // e.g. parent/resources.kpak <=> parent/resources
+        aliases_.insert({alias_hash, {alias, pack_path.parent_path() / pack_path.stem(), {new PackFile(pack_path)}}});
     }
 
     KLOG("ios", 0) << "Added pack alias:" << std::endl;
-    KLOGI << alias << "://  <=>  @" << WCC('p') << pack_path << std::endl;
+    KLOGI << alias << "://  <=> " << WCC('p') << '@' << pack_path << std::endl;
     return true;
 }
 
-const DirectoryAlias& FileSystem::get_aliased_directory_entry(hash_t alias_hash) const
+fs::path FileSystem::regular_path(const std::string& unipath) const
 {
-    auto findit = aliases_.find(alias_hash);
-    K_ASSERT(findit != aliases_.end(), "Unknown alias.");
-    return findit->second;
-}
-
-fs::path FileSystem::universal_path(const std::string& unipath) const
-{
-    auto result = parse_universal_path(unipath);
-    // If an alias was found
-    if(result.alias_entry)
-        return fs::absolute((result.alias_entry->path / result.path)).lexically_normal();
-    // Simply return a canonical path
-    return fs::absolute(result.path).lexically_normal();
+    return to_regular_path(parse_universal_path(unipath));
 }
 
 std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_hash) const
 {
     // Make path relative to the aliased directory
-    const auto& base_alias = get_aliased_directory_entry(base_alias_hash);
-    auto rel_path = fs::relative(path, base_alias.path);
-
-    // TODO: Check path is not empty
-
-    return su::concat(base_alias.alias, "://", rel_path.string());
+    const auto& alias_entry = get_alias_entry(base_alias_hash);
+    auto rel_path = fs::relative(path, alias_entry.base);
+    return su::concat(alias_entry.alias, "://", rel_path.string());
 }
 
-UnipathResult FileSystem::parse_universal_path(const std::string& unipath) const
+UpathParsingResult FileSystem::parse_universal_path(const std::string& unipath) const
 {
-    UnipathResult result;
+    UpathParsingResult result;
 
     // Try to regex match an aliasing of the form "alias://path/to/file"
     std::smatch match;
@@ -139,50 +131,54 @@ UnipathResult FileSystem::parse_universal_path(const std::string& unipath) const
         if(findit != aliases_.end())
         {
             result.alias_entry = &findit->second;
-            result.path = match[2].str();
+            result.path_component = match[2].str();
         }
     }
+    // A regular path was submitted
     else
-    {
-        result.path = unipath;
-    }
+        result.path_component = unipath;
 
     return result;
 }
 
+fs::path FileSystem::to_regular_path(const UpathParsingResult& result) const
+{
+    // If an alias was found, path_component is relative to the aliased base directory
+    if(result.alias_entry)
+        return fs::absolute((result.alias_entry->base / result.path_component)).lexically_normal();
+    // Simply return a canonical path
+    return fs::absolute(result.path_component).lexically_normal();
+}
+
 IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary) const
 {
-    KLOG("ios",0) << "Opening stream:" << std::endl;
-    KLOGI << WCC('p') << unipath << std::endl;
+    KLOG("ios", 0) << "Opening stream:" << std::endl;
+    KLOGI << "universal: " << WCC('p') << unipath << std::endl;
 
-    fs::path filepath;
     auto result = parse_universal_path(unipath);
-    // If an alias was found
+    // If a pack file is aliased at this name, try to find entry in pack
     if(result.alias_entry)
     {
-        // If a pack file is aliased at this name, try to find entry in pack
-        const auto* ppack = result.alias_entry->packfile;
-        if(ppack)
+        for(const auto* ppack : result.alias_entry->packfiles)
         {
-            auto findit = ppack->find(result.path);
+            auto findit = ppack->find(result.path_component);
             if(findit != ppack->end())
             {
                 KLOGI << "source: " << WCC('i') << "pack" << std::endl;
                 return ppack->get_input_stream(findit->second);
             }
         }
-        // Recover file path
-        filepath = fs::absolute((result.alias_entry->path / result.path)).lexically_normal();
     }
-    else
-    {
-        filepath = fs::absolute(result.path).lexically_normal();
-    }
-    KLOGI << "source: " << WCC('i') << "regular file" << std::endl;
+
+    // If we got here, either the file does not exist at all, or it is in a regular directory
+    auto filepath = to_regular_path(result);
+
+    KLOGI << "source:    " << WCC('i') << "regular file" << std::endl;
+    KLOGI << "path:      " << WCC('p') << filepath << std::endl;
 
     K_ASSERT(fs::exists(filepath), "File does not exist.");
     K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
-    
+
     auto mode = std::ios::in;
     if(binary)
         mode |= std::ios::binary;

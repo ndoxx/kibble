@@ -50,24 +50,24 @@ int main(int argc, char** argv)
 
     kfs::FileSystem filesystem;
     const auto& self_dir = filesystem.get_self_directory();
-    filesystem.add_directory_alias(self_dir / "../../data", "data");
-    filesystem.add_directory_alias(self_dir / "../../data/iotest/resources", "resources");
+    filesystem.alias_directory(self_dir / "../../data", "data");
 
-    /*kfs::pack_directory(filesystem.universal_path("data://iotest/resources"),
-                        filesystem.universal_path("data://iotest/resources.kpak"));*/
+    /*kfs::pack_directory(filesystem.regular_path("data://iotest/resources"),
+                        filesystem.regular_path("data://iotest/resources.kpak"));*/
 
-    filesystem.add_pack_alias(filesystem.universal_path("data://iotest/resources.kpak"), "resources");
+    filesystem.alias_directory(self_dir / "../../data/iotest/resources", "resources"); // Not required
+    filesystem.alias_packfile(filesystem.regular_path("data://iotest/resources.kpak"), "resources");
 
     {
         auto pstream = filesystem.get_input_stream("resources://text_file.txt");
         auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
-        KLOG("nuclear",1) << retrieved << std::endl;
+        KLOG("nuclear", 1) << retrieved << std::endl;
     }
 
     {
         auto pstream = filesystem.get_input_stream("resources://another_file.txt");
         auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
-        KLOG("nuclear",1) << retrieved << std::endl;
+        KLOG("nuclear", 1) << retrieved << std::endl;
     }
 
     return 0;

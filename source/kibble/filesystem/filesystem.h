@@ -1,20 +1,18 @@
 #pragma once
 /* TODO:
- * - Return stream to file inside packed resource file
- * - Packs can override a directory alias
  * - Handle OS-dep preferred user settings dir & other preferred dirs if any
  */
 
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <type_traits>
 #include <vector>
-#include <memory>
 
+#include "../assert/assert.h"
 #include "../hash/hashstr.h"
-#include "resource_pack.h"
 
 namespace fs = std::filesystem;
 namespace kb
@@ -22,30 +20,36 @@ namespace kb
 namespace kfs
 {
 
+class PackFile;
 struct DirectoryAlias
 {
     std::string alias;
-    fs::path path;
-    PackFile* packfile = nullptr;
+    fs::path base;
+    std::vector<PackFile*> packfiles;
 };
 
 using IStreamPtr = std::shared_ptr<std::istream>;
 
-struct UnipathResult;
+struct UpathParsingResult;
 class FileSystem
 {
 public:
     FileSystem();
     ~FileSystem();
 
-    // Add an alias to a directory, so a file path relative to this directory can be referenced by
+    // Alias a directory, so a file path relative to this directory can be referenced by
     // an universal path of the form alias://path/to/file
-    bool add_directory_alias(const fs::path& dir_path, const std::string& alias);
+    // Only one physical directory can be aliased by this name. If this function is called
+    // for two directories with the same alias, the last one will overload the alias.
+    bool alias_directory(const fs::path& dir_path, const std::string& alias);
     // Alias the root of a resource pack file. If a directory alias exists at this name,
-    // the file system will behave as is the two directory hierarchies were merged together.
-    bool add_pack_alias(const fs::path& pack_path, const std::string& alias);
+    // the file system will behave as if both hierarchies were merged together.
+    // Multiple packfiles can be grouped under the same alias. Last aliased pack has
+    // the lowest priority.
+    bool alias_packfile(const fs::path& pack_path, const std::string& alias);
+
     // Return an absolute lexically normal path to a file referenced by a universal path string
-    fs::path universal_path(const std::string& unipath) const;
+    fs::path regular_path(const std::string& unipath) const;
     // Return a universal path string given a path and a base directory alias
     std::string make_universal(const fs::path& path, hash_t base_alias_hash) const;
     inline std::string make_universal(const fs::path& path, const std::string& base_alias) const;
@@ -55,7 +59,7 @@ public:
     // Return the absolute lexically normal path to this binary's parent directory
     inline const fs::path& get_self_directory() const { return self_directory_; }
 
-    // Return an input stream to a file
+    // Return an input stream from a file. Aliased packs (if any) will be searched first.
     IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
     // Return content of a file as a vector of chosen integral type
     template <typename CharT, typename Traits = std::char_traits<CharT>>
@@ -63,13 +67,15 @@ public:
     // Return content of a file as a string
     inline std::string get_file_as_string(const std::string& unipath) const;
 
-    // Helper func to compute the hash of a file extension
-    static inline hash_t extension_hash(const fs::path& filepath) { return H_(filepath.extension().string()); }
-
 private:
-    const DirectoryAlias& get_aliased_directory_entry(hash_t alias_hash) const;
-    UnipathResult parse_universal_path(const std::string& unipath) const;
-
+    // Return alias entry at that name
+    inline const DirectoryAlias& get_alias_entry(hash_t alias_hash) const;
+    // Try to match an alias form in a universal path string, return an opaque type
+    // containing the parsing results
+    UpathParsingResult parse_universal_path(const std::string& unipath) const;
+    // Convert parsing results into a physical path
+    fs::path to_regular_path(const UpathParsingResult& result) const;
+    // OS-dependent method to localize the path to this binary
     static fs::path retrieve_self_path();
 
 private:
@@ -79,7 +85,7 @@ private:
 
 inline const fs::path& FileSystem::get_aliased_directory(hash_t alias_hash) const
 {
-    return get_aliased_directory_entry(alias_hash).path;
+    return get_alias_entry(alias_hash).base;
 }
 
 inline const fs::path& FileSystem::get_aliased_directory(const std::string& alias) const
@@ -102,6 +108,13 @@ inline std::string FileSystem::get_file_as_string(const std::string& unipath) co
 {
     auto pis = get_input_stream(unipath);
     return std::string((std::istreambuf_iterator<char>(*pis)), std::istreambuf_iterator<char>());
+}
+
+inline const DirectoryAlias& FileSystem::get_alias_entry(hash_t alias_hash) const
+{
+    auto findit = aliases_.find(alias_hash);
+    K_ASSERT(findit != aliases_.end(), "Unknown alias.");
+    return findit->second;
 }
 
 } // namespace kfs
