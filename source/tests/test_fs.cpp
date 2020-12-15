@@ -65,7 +65,7 @@ TEST_CASE_METHOD(ReadWriteFixture, "Getting a file as a std::vector<char>", "[rw
 class KpakFixture
 {
 public:
-    KpakFixture() : expected_data(256)
+    KpakFixture() : expected_data_1(256), expected_data_2(256)
     {
         // Create temporary directory with data
         fs::create_directory("/tmp/kibble_test");
@@ -73,7 +73,10 @@ public:
         fs::create_directory("/tmp/kibble_test/resources/textures");
         filesystem.add_directory_alias("/tmp/kibble_test", "test");
 
-        std::iota(expected_data.begin(), expected_data.end(), 0);
+        std::iota(expected_data_1.begin(), expected_data_1.end(), 0);
+        for(size_t ii = 0; ii < 256; ++ii)
+            expected_data_2[ii] = char(255 - ii);
+
         expected_text =
             R"(The BBC Micro could utilise the Teletext 7-bit character set, which had 128 box-drawing characters, 
             whose code points were shared with the regular alphanumeric and punctuation characters. Control 
@@ -82,13 +85,18 @@ public:
             )";
 
         std::ofstream ofs("/tmp/kibble_test/resources/textures/tex1.dat");
-        ofs.write(expected_data.data(), long(expected_data.size()));
+        ofs.write(expected_data_1.data(), long(expected_data_1.size()));
         ofs.close();
         ofs.open("/tmp/kibble_test/resources/textures/tex2.dat");
-        ofs.write(expected_data.data(), long(expected_data.size()));
+        ofs.write(expected_data_2.data(), long(expected_data_2.size()));
         ofs.close();
         ofs.open("/tmp/kibble_test/resources/text_file.txt");
         ofs.write(expected_text.data(), long(expected_text.size()));
+        ofs.close();
+
+        // Pack the directory
+        kfs::pack_directory(filesystem.universal_path("test://resources"),
+                            filesystem.universal_path("test://resources.kpak"));
     }
 
     ~KpakFixture() { fs::remove_all("/tmp/kibble_test"); }
@@ -96,14 +104,12 @@ public:
 protected:
     kfs::FileSystem filesystem;
     std::string expected_text;
-    std::vector<char> expected_data;
+    std::vector<char> expected_data_1;
+    std::vector<char> expected_data_2;
 };
 
-TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack", "[kpak]")
+TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak]")
 {
-    kfs::pack_directory(filesystem.universal_path("test://resources"),
-                        filesystem.universal_path("test://resources.kpak"));
-
     REQUIRE(fs::exists(filesystem.universal_path("test://resources.kpak")));
 
     kfs::PackFile pack(filesystem.universal_path("test://resources.kpak"));
@@ -123,7 +129,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack", "[kpak]")
         std::vector<char> retrieved(texture1_file_entry.size);
         ifs.seekg(texture1_file_entry.offset);
         ifs.read(retrieved.data(), texture1_file_entry.size);
-        REQUIRE(retrieved == expected_data);
+        REQUIRE(retrieved == expected_data_1);
     }
 
     {
@@ -131,8 +137,36 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack", "[kpak]")
         std::vector<char> retrieved(texture2_file_entry.size);
         ifs.seekg(texture2_file_entry.offset);
         ifs.read(retrieved.data(), texture2_file_entry.size);
-        REQUIRE(retrieved == expected_data);
+        REQUIRE(retrieved == expected_data_2);
     }
 
     ifs.close();
+}
+
+TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, custom stream", "[kpak]")
+{
+    kfs::PackFile pack(filesystem.universal_path("test://resources.kpak"));
+
+    {
+        auto pstream = pack.get_input_stream("text_file.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+
+        REQUIRE(!retrieved.compare(expected_text));
+    }
+
+    {
+        auto pstream = pack.get_input_stream("textures/tex1.dat");
+        auto retrieved =
+            std::vector<char>((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+
+        REQUIRE(retrieved == expected_data_1);
+    }
+
+    {
+        auto pstream = pack.get_input_stream("textures/tex2.dat");
+        auto retrieved =
+            std::vector<char>((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+
+        REQUIRE(retrieved == expected_data_2);
+    }
 }

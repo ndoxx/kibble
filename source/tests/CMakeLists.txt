@@ -52,7 +52,7 @@ target_include_directories(test_kibble
     )
 
 target_compile_definitions(test_kibble PRIVATE -DLOGGING_ANSI_3=0)
-target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=0)
+target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(test_kibble
     PROPERTIES

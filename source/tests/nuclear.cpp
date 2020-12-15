@@ -61,22 +61,26 @@ int main(int argc, char** argv)
     print_entry(text_file_entry);
 
     {
-        auto pbuf = pack.get_input_streambuf("text_file.txt");
-        std::istream stream(pbuf.get());
-        auto tmp = std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+        std::ifstream ifs(filesystem.universal_path("data://iotest/resources/text_file.txt"), std::ios::binary);
+        auto tmp = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         KLOGR("nuclear") << tmp << std::endl;
     }
 
     {
-        auto pbuf = pack.get_input_streambuf("textures/default.dat");
-        std::istream stream(pbuf.get());
-        auto tmp = std::vector<char>((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
-        KLOG("nuclear",1) << WCC('v');
-        for(size_t ii=0; ii<tmp.size(); ++ii)
+        auto pstream = pack.get_input_stream("text_file.txt");
+        auto tmp = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        KLOGR("nuclear") << tmp << std::endl;
+    }
+
+    {
+        auto pstream = pack.get_input_stream("textures/default.dat");
+        auto tmp = std::vector<char>((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        KLOG("nuclear", 1) << WCC('v');
+        for(size_t ii = 0; ii < tmp.size(); ++ii)
         {
-            KLOG("nuclear",1) << std::setw(4) << int(static_cast<unsigned char>(tmp[ii])) << ' ';
+            KLOG("nuclear", 1) << std::setw(4) << int(static_cast<unsigned char>(tmp[ii])) << ' ';
         }
-        KLOG("nuclear",1) << std::endl;
+        KLOG("nuclear", 1) << std::endl;
     }
 
     return 0;

@@ -12,37 +12,63 @@ namespace kb
 namespace kfs
 {
 
+/* Custom input stream and stream buffer implementations.
+ * I don't really like the way I did it, but it was the simplest solution I could come up with.
+ * PackInputStreambuf is a wrapper around a std::filebuf, and overrides the underflow()
+ * method in such a way that EOF is returned when the end of the file segment is reached.
+ * PackInputStream is a simple istream with a member PackInputStreambuf initialized during
+ * construction.
+ */
 class PackInputStreambuf : public std::streambuf
 {
 public:
     PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry);
+    virtual ~PackInputStreambuf() = default;
 
 protected:
     virtual int_type underflow() override;
 
 private:
-    std::ifstream ifs_;
-    std::array<char, 1024> data_;
-    std::streampos begin_ = 0;
-    std::streamsize remaining_ = 0;
+    std::filebuf buf_;
+    PackLocalEntry entry_;
+    std::streamsize remaining_;
+    std::array<char, 1024> data_in_;
 };
 
 PackInputStreambuf::PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry)
-    : ifs_(filepath, std::ios::binary), begin_(entry.offset), remaining_(entry.size)
+    : entry_(entry), remaining_(entry.size)
 {
-    ifs_.seekg(entry.offset);
+    buf_.open(filepath, std::ios::in | std::ios::binary);
+    buf_.pubseekpos(entry_.offset, std::ios::in);
 }
 
 std::streambuf::int_type PackInputStreambuf::underflow()
 {
-    if(remaining_ <= 0)
-        return traits_type::eof();
+    std::streamsize avail = std::min(long(data_in_.size()), remaining_);
+    if(avail)
+    {
+        std::streamsize count = buf_.sgetn(&data_in_[0], avail);
+        setg(&data_in_[0], &data_in_[0], &data_in_[size_t(count)]);
+        remaining_ -= count;
+        return traits_type::to_int_type(*gptr());
+    }
+    return traits_type::eof();
+}
 
-    std::streamsize max_avail = std::min(long(data_.size()), remaining_);
-    std::streamsize count = ifs_.readsome(&data_[0], max_avail);
-    setg(&data_[0], &data_[0], &data_[size_t(count)]);
-    remaining_ -= count;
-    return traits_type::to_int_type(*gptr());
+class PackInputStream : public std::istream
+{
+public:
+    PackInputStream(const fs::path& filepath, const PackLocalEntry& entry);
+    virtual ~PackInputStream() = default;
+
+private:
+    PackInputStreambuf buf_;
+};
+
+PackInputStream::PackInputStream(const fs::path& filepath, const PackLocalEntry& entry)
+    : std::istream(nullptr), buf_(filepath, entry)
+{
+    init(&buf_);
 }
 
 struct PAKHeader
@@ -170,9 +196,9 @@ const PackLocalEntry& PackFile::get_entry(const std::string& path)
     return findit->second;
 }
 
-std::shared_ptr<std::streambuf> PackFile::get_input_streambuf(const std::string& path)
+std::shared_ptr<std::istream> PackFile::get_input_stream(const std::string& path)
 {
-    return std::make_shared<PackInputStreambuf>(filepath_, get_entry(path));
+    return std::make_shared<PackInputStream>(filepath_, get_entry(path));
 }
 
 } // namespace kfs
