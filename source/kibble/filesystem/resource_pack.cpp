@@ -188,7 +188,7 @@ PackFile::PackFile(const fs::path& filepath) : filepath_(filepath)
     }
 }
 
-const PackLocalEntry& PackFile::get_entry(const std::string& path)
+const PackLocalEntry& PackFile::get_entry(const std::string& path) const
 {
     hash_t hname = H_(path);
     auto findit = index_.find(hname);
@@ -196,10 +196,11 @@ const PackLocalEntry& PackFile::get_entry(const std::string& path)
     return findit->second;
 }
 
-std::shared_ptr<std::istream> PackFile::get_input_stream(const std::string& path)
+std::shared_ptr<std::istream> PackFile::get_input_stream(const PackLocalEntry& entry) const
 {
-    return std::make_shared<PackInputStream>(filepath_, get_entry(path));
+    return std::make_shared<PackInputStream>(filepath_, entry);
 }
+
 
 } // namespace kfs
 } // namespace kb

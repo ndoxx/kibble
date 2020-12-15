@@ -30,8 +30,16 @@ class PackFile
 public:
     PackFile(const fs::path& filepath);
 
-    const PackLocalEntry& get_entry(const std::string& path);
-    std::shared_ptr<std::istream> get_input_stream(const std::string& path);
+    const PackLocalEntry& get_entry(const std::string& path) const;
+    std::shared_ptr<std::istream> get_input_stream(const PackLocalEntry& entry) const;
+
+    inline std::shared_ptr<std::istream> get_input_stream(const std::string& path) const
+    {
+        return get_input_stream(get_entry(path));
+    }
+    inline auto find(const std::string& path) const { return index_.find(H_(path)); }
+    inline auto begin() const { return index_.begin(); }
+    inline auto end() const { return index_.end(); }
 
 private:
     fs::path filepath_;

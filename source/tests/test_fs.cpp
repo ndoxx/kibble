@@ -77,11 +77,23 @@ public:
         for(size_t ii = 0; ii < 256; ++ii)
             expected_data_2[ii] = char(255 - ii);
 
-        expected_text =
+        expected_text_1 =
             R"(The BBC Micro could utilise the Teletext 7-bit character set, which had 128 box-drawing characters, 
             whose code points were shared with the regular alphanumeric and punctuation characters. Control 
             characters were used to switch between regular text and box drawing.[4]
             The BBC Master and later Acorn computers have the soft font by default defined with line drawing characters.
+            )";
+
+        expected_text_2 =
+            R"(On many Unix systems and early dial-up bulletin board systems the only common standard for box-drawing 
+            characters was the VT100 alternate character set (see also: DEC Special Graphics). The escape sequence Esc 
+            ( 0 switched the codes for lower-case ASCII letters to draw this set, and the sequence Esc ( B switched back:
+            )";
+
+        expected_text_3 =
+            R"(The first argument is a file path suitable for passing to fopen(). vf should be a pointer to an empty 
+            OggVorbis_File structure -- this is used for ALL the externally visible libvorbisfile functions. Once this 
+            has been called, the same OggVorbis_File struct should be passed to all the libvorbisfile functions.
             )";
 
         std::ofstream ofs("/tmp/kibble_test/resources/textures/tex1.dat");
@@ -91,19 +103,38 @@ public:
         ofs.write(expected_data_2.data(), long(expected_data_2.size()));
         ofs.close();
         ofs.open("/tmp/kibble_test/resources/text_file.txt");
-        ofs.write(expected_text.data(), long(expected_text.size()));
+        ofs.write(expected_text_1.data(), long(expected_text_1.size()));
+        ofs.close();
+
+        // This file will be present in the pack but not in the regular directory
+        ofs.open("/tmp/kibble_test/resources/only_in_pack.txt");
+        ofs.write(expected_text_3.data(), long(expected_text_3.size()));
         ofs.close();
 
         // Pack the directory
         kfs::pack_directory(filesystem.universal_path("test://resources"),
                             filesystem.universal_path("test://resources.kpak"));
+
+
+        // Alias the resources directory AND the resource pack
+        filesystem.add_directory_alias("/tmp/kibble_test/resources", "resources");
+        filesystem.add_pack_alias(filesystem.universal_path("test://resources.kpak"), "resources");
+
+        fs::remove("/tmp/kibble_test/resources/only_in_pack.txt");
+
+        // This file will not be present in the pack
+        ofs.open("/tmp/kibble_test/resources/not_in_pack.txt");
+        ofs.write(expected_text_2.data(), long(expected_text_2.size()));
+        ofs.close();
     }
 
     ~KpakFixture() { fs::remove_all("/tmp/kibble_test"); }
 
 protected:
     kfs::FileSystem filesystem;
-    std::string expected_text;
+    std::string expected_text_1;
+    std::string expected_text_2;
+    std::string expected_text_3;
     std::vector<char> expected_data_1;
     std::vector<char> expected_data_2;
 };
@@ -121,7 +152,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak
         retrieved.resize(text_file_entry.size);
         ifs.seekg(text_file_entry.offset);
         ifs.read(retrieved.data(), text_file_entry.size);
-        REQUIRE(!retrieved.compare(expected_text));
+        REQUIRE(!retrieved.compare(expected_text_1));
     }
 
     {
@@ -151,7 +182,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, custom stream", "[kpak
         auto pstream = pack.get_input_stream("text_file.txt");
         auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
 
-        REQUIRE(!retrieved.compare(expected_text));
+        REQUIRE(!retrieved.compare(expected_text_1));
     }
 
     {
@@ -168,5 +199,32 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, custom stream", "[kpak
             std::vector<char>((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
 
         REQUIRE(retrieved == expected_data_2);
+    }
+}
+
+TEST_CASE_METHOD(KpakFixture, "Automatic stream generation, file is both in pack and regular directory", "[kpak]")
+{
+    {
+        auto pstream = filesystem.get_input_stream("resources://text_file.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        REQUIRE(!retrieved.compare(expected_text_1));
+    }
+}
+
+TEST_CASE_METHOD(KpakFixture, "Automatic stream generation, file is only in pack", "[kpak]")
+{
+    {
+        auto pstream = filesystem.get_input_stream("resources://only_in_pack.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        REQUIRE(!retrieved.compare(expected_text_3));
+    }
+}
+
+TEST_CASE_METHOD(KpakFixture, "Automatic stream generation, file is only in regular directory", "[kpak]")
+{
+    {
+        auto pstream = filesystem.get_input_stream("resources://not_in_pack.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        REQUIRE(!retrieved.compare(expected_text_2));
     }
 }

@@ -51,36 +51,23 @@ int main(int argc, char** argv)
     kfs::FileSystem filesystem;
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.add_directory_alias(self_dir / "../../data", "data");
+    filesystem.add_directory_alias(self_dir / "../../data/iotest/resources", "resources");
 
-    kfs::pack_directory(filesystem.universal_path("data://iotest/resources"),
-                        filesystem.universal_path("data://iotest/resources.kpak"));
+    /*kfs::pack_directory(filesystem.universal_path("data://iotest/resources"),
+                        filesystem.universal_path("data://iotest/resources.kpak"));*/
 
-    kfs::PackFile pack(filesystem.universal_path("data://iotest/resources.kpak"));
-
-    const auto& text_file_entry = pack.get_entry("text_file.txt");
-    print_entry(text_file_entry);
+    filesystem.add_pack_alias(filesystem.universal_path("data://iotest/resources.kpak"), "resources");
 
     {
-        std::ifstream ifs(filesystem.universal_path("data://iotest/resources/text_file.txt"), std::ios::binary);
-        auto tmp = std::string((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-        KLOGR("nuclear") << tmp << std::endl;
+        auto pstream = filesystem.get_input_stream("resources://text_file.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        KLOG("nuclear",1) << retrieved << std::endl;
     }
 
     {
-        auto pstream = pack.get_input_stream("text_file.txt");
-        auto tmp = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
-        KLOGR("nuclear") << tmp << std::endl;
-    }
-
-    {
-        auto pstream = pack.get_input_stream("textures/default.dat");
-        auto tmp = std::vector<char>((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
-        KLOG("nuclear", 1) << WCC('v');
-        for(size_t ii = 0; ii < tmp.size(); ++ii)
-        {
-            KLOG("nuclear", 1) << std::setw(4) << int(static_cast<unsigned char>(tmp[ii])) << ' ';
-        }
-        KLOG("nuclear", 1) << std::endl;
+        auto pstream = filesystem.get_input_stream("resources://another_file.txt");
+        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        KLOG("nuclear",1) << retrieved << std::endl;
     }
 
     return 0;

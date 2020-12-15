@@ -14,6 +14,7 @@
 #include <memory>
 
 #include "../hash/hashstr.h"
+#include "resource_pack.h"
 
 namespace fs = std::filesystem;
 namespace kb
@@ -25,18 +26,24 @@ struct DirectoryAlias
 {
     std::string alias;
     fs::path path;
+    PackFile* packfile = nullptr;
 };
 
 using IStreamPtr = std::shared_ptr<std::istream>;
 
+struct UnipathResult;
 class FileSystem
 {
 public:
     FileSystem();
+    ~FileSystem();
 
     // Add an alias to a directory, so a file path relative to this directory can be referenced by
     // an universal path of the form alias://path/to/file
     bool add_directory_alias(const fs::path& dir_path, const std::string& alias);
+    // Alias the root of a resource pack file. If a directory alias exists at this name,
+    // the file system will behave as is the two directory hierarchies were merged together.
+    bool add_pack_alias(const fs::path& pack_path, const std::string& alias);
     // Return an absolute lexically normal path to a file referenced by a universal path string
     fs::path universal_path(const std::string& unipath) const;
     // Return a universal path string given a path and a base directory alias
@@ -61,6 +68,7 @@ public:
 
 private:
     const DirectoryAlias& get_aliased_directory_entry(hash_t alias_hash) const;
+    UnipathResult parse_universal_path(const std::string& unipath) const;
 
     static fs::path retrieve_self_path();
 
