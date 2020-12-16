@@ -227,3 +227,34 @@ TEST_CASE_METHOD(KpakFixture, "Automatic stream generation, file is only in regu
         REQUIRE(!retrieved.compare(expected_text_2));
     }
 }
+
+TEST_CASE_METHOD(KpakFixture, "Getting file as string", "[kpak]")
+{
+    {
+        auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");
+        REQUIRE(!retrieved.compare(expected_text_1));
+    }
+
+    {
+        auto retrieved = filesystem.get_file_as_string("resources://not_in_pack.txt");
+        REQUIRE(!retrieved.compare(expected_text_2));
+    }
+
+    {
+        auto retrieved = filesystem.get_file_as_string("resources://only_in_pack.txt");
+        REQUIRE(!retrieved.compare(expected_text_3));
+    }
+}
+
+TEST_CASE_METHOD(KpakFixture, "Getting file as vector", "[kpak]")
+{
+    {
+        auto retrieved = filesystem.get_file_as_vector<char>("resources://textures/tex1.dat");
+        REQUIRE(retrieved == expected_data_1);
+    }
+
+    {
+        auto retrieved = filesystem.get_file_as_vector<char>("resources://textures/tex2.dat");
+        REQUIRE(retrieved == expected_data_2);
+    }
+}

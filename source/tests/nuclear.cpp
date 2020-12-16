@@ -49,6 +49,10 @@ int main(int argc, char** argv)
     init_logger();
 
     kfs::FileSystem filesystem;
+    filesystem.setup_config_directory("ndoxx", "nuclear");
+    const auto& cfg_dir = filesystem.get_config_directory();
+    KLOG("nuclear",1) << cfg_dir << std::endl;
+
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
 
@@ -59,16 +63,17 @@ int main(int argc, char** argv)
     filesystem.alias_packfile(filesystem.regular_path("data://iotest/resources.kpak"), "resources");
 
     {
-        auto pstream = filesystem.get_input_stream("resources://text_file.txt");
-        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");
         KLOG("nuclear", 1) << retrieved << std::endl;
     }
 
     {
-        auto pstream = filesystem.get_input_stream("resources://another_file.txt");
-        auto retrieved = std::string((std::istreambuf_iterator<char>(*pstream)), std::istreambuf_iterator<char>());
+        auto retrieved = filesystem.get_file_as_string("resources://another_file.txt");
         KLOG("nuclear", 1) << retrieved << std::endl;
     }
+
+    KLOG("nuclear",1) << filesystem.is_older("resources://text_file.txt", "resources://another_file.txt") << std::endl;
+    KLOG("nuclear",1) << filesystem.is_older("resources://another_file.txt", "resources://text_file.txt") << std::endl;
 
     return 0;
 }

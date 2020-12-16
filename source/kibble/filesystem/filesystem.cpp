@@ -4,6 +4,7 @@
 #include "logger/logger.h"
 #include "string/string.h"
 
+#include <chrono>
 #include <regex>
 
 #ifdef __linux__
@@ -22,6 +23,13 @@ namespace kfs
 
 static const std::regex r_alias("^(.+?)://(.+)");
 
+template <typename TP> std::time_t to_time_t(TP tp)
+{
+    using namespace std::chrono;
+    auto sctp = time_point_cast<system_clock::duration>(tp - TP::clock::now() + system_clock::now());
+    return system_clock::to_time_t(sctp);
+}
+
 struct UpathParsingResult
 {
     const DirectoryAlias* alias_entry = nullptr;
@@ -30,9 +38,8 @@ struct UpathParsingResult
 
 FileSystem::FileSystem()
 {
-    // Localize binary
-    self_directory_ = fs::canonical(retrieve_self_path().parent_path());
-    K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
+    // Locate binary
+    init_self_path();
 }
 
 FileSystem::~FileSystem()
@@ -40,6 +47,82 @@ FileSystem::~FileSystem()
     for(auto&& [key, entry] : aliases_)
         for(auto* packfile : entry.packfiles)
             delete packfile;
+}
+
+bool FileSystem::setup_config_directory(std::string vendor, std::string appname, std::string alias)
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#ifdef __linux__
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char* homebuf;
+    if((homebuf = getenv("HOME")) == NULL)
+        homebuf = getpwuid(getuid())->pw_dir;
+
+    fs::path home_directory = fs::canonical(homebuf);
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+
+    // Check if ~/.config/<vendor>/<appname> is applicable, if not, fallback to
+    // ~/.<vendor>/<appname>/config
+    if(fs::exists(home_directory / ".config"))
+        app_config_directory_ = home_directory / ".config" / vendor / appname;
+    else
+        app_config_directory_ = home_directory / su::concat('.', vendor) / appname / "config";
+#else
+#error setup_config_directory() not yet implemented for this platform.
+#endif
+
+    // If directories do not exist, create them
+    if(!fs::exists(app_config_directory_))
+    {
+        if(!fs::create_directories(app_config_directory_))
+        {
+            KLOGE("ios") << "Failed to create config directory at:" << std::endl;
+            KLOGI << WCC('p') << app_config_directory_ << std::endl;
+            return false;
+        }
+        KLOGN("ios") << "Created application directory at:" << std::endl;
+    }
+    else
+    {
+        KLOGN("ios") << "Detected application directory at:" << std::endl;
+    }
+    KLOGI << WCC('p') << app_config_directory_ << std::endl;
+
+    // Alias the config directory
+    if(alias.empty())
+        alias = "config";
+    alias_directory(app_config_directory_, alias);
+
+    return true;
+}
+
+const fs::path& FileSystem::get_config_directory()
+{
+    if(app_config_directory_.empty())
+    {
+        KLOGW("ios") << "Application config directory has not been setup." << std::endl;
+        KLOGI << "Call setup_config_directory() after FileSystem construction." << std::endl;
+        KLOGI << "An empty path will be returned." << std::endl;
+    }
+    return app_config_directory_;
+}
+
+bool FileSystem::is_older(const std::string& unipath_1, const std::string& unipath_2)
+{
+    auto path_1 = regular_path(unipath_1);
+    auto path_2 = regular_path(unipath_2);
+
+    K_ASSERT(fs::exists(path_1), "First path does not exist.");
+    K_ASSERT(fs::exists(path_2), "Second path does not exist.");
+
+    std::time_t cftime_1 = to_time_t(fs::last_write_time(path_1));
+    std::time_t cftime_2 = to_time_t(fs::last_write_time(path_2));
+
+    return (cftime_2 > cftime_1);
 }
 
 bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& alias)
@@ -188,8 +271,9 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
     return pifs;
 }
 
-fs::path FileSystem::retrieve_self_path()
+void FileSystem::init_self_path()
 {
+    fs::path self_path;
 #ifdef __linux__
     char buff[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
@@ -197,12 +281,16 @@ fs::path FileSystem::retrieve_self_path()
 
     if(len != -1)
         buff[len] = '\0';
-    return fs::path(buff);
+    self_path = fs::path(buff);
 #else
-#error get_selfpath() not yet implemented for this platform.
+#error init_self_path() not yet implemented for this platform.
 #endif
 
-    return fs::path();
+    self_directory_ = fs::canonical(self_path.parent_path());
+    K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
+
+    KLOG("ios", 0) << "Self directory:" << std::endl;
+    KLOGI << WCC('p') << self_directory_ << std::endl;
 }
 
 } // namespace kfs

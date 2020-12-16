@@ -59,6 +59,17 @@ public:
     // Return the absolute lexically normal path to this binary's parent directory
     inline const fs::path& get_self_directory() const { return self_directory_; }
 
+    // Create a config directory for this application, the config directory
+    // will be aliased by "config", unless the third parameter is set.
+    // Whitespace characters will be stripped from the two first arguments.
+    bool setup_config_directory(std::string vendor, std::string appname, std::string alias = "");
+    // Get the application config directory
+    const fs::path& get_config_directory();
+
+    // Return true if the file/directory pointed to by the first argument is older than
+    // the second one. Both paths MUST exist.
+    bool is_older(const std::string& unipath_1, const std::string& unipath_2);
+
     // Return an input stream from a file. Aliased packs (if any) will be searched first.
     IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
     // Return content of a file as a vector of chosen integral type
@@ -75,11 +86,12 @@ private:
     UpathParsingResult parse_universal_path(const std::string& unipath) const;
     // Convert parsing results into a physical path
     fs::path to_regular_path(const UpathParsingResult& result) const;
-    // OS-dependent method to localize the path to this binary
-    static fs::path retrieve_self_path();
+    // OS-dependent method to locate this binary
+    void init_self_path();
 
 private:
     fs::path self_directory_;
+    fs::path app_config_directory_;
     std::map<hash_t, DirectoryAlias> aliases_;
 };
 

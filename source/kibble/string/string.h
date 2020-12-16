@@ -57,6 +57,12 @@ inline std::string trim_copy(std::string s)
     return s;
 }
 
+inline void strip_spaces(std::string& s)
+{
+    s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)); }),
+            s.end());
+}
+
 inline void to_lower(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -98,8 +104,7 @@ std::string base64_encode(const std::string data);
 std::string base64_decode(const std::string data);
 
 // Concatenate multiple arguments of different types into a string
-template <typename ...Args>
-std::string concat(Args&&... args)
+template <typename... Args> std::string concat(Args&&... args)
 {
     std::stringstream ss;
     (ss << ... << args);
@@ -107,8 +112,7 @@ std::string concat(Args&&... args)
 }
 
 // Same as before, but return a string hash instead
-template <typename ...Args>
-inline hash_t h_concat(Args&&... args) { return H_(concat(std::forward<Args>(args)...)); }
+template <typename... Args> inline hash_t h_concat(Args&&... args) { return H_(concat(std::forward<Args>(args)...)); }
 
 namespace rx
 {
