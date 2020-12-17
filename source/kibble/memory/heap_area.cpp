@@ -26,7 +26,7 @@ void HeapArea::debug_show_content()
 
 	KLOG("memory",1) << "Usage: " << utils::human_size(used_mem) << " / "
 					 << utils::human_size(size_) << " (" 
-					 << kb::WCC(R,G,B) << 100*usage << kb::WCC(0) << "%%)" << std::endl;
+					 << kb::KF_(R,G,B) << 100*usage << kb::KC_ << "%%)" << std::endl;
 	for(auto&& item: items_)
 	{
 		usage = float(item.size) / float(used_mem);
@@ -36,7 +36,7 @@ void HeapArea::debug_show_content()
 
 		std::string name(item.name);
 		kb::su::center(name,22);
-		KLOGR("memory") << "    0x" << std::hex << item.begin << " [" << kb::WCC(R,G,B) << name << kb::WCC(0) << "] 0x" << item.end 
+		KLOGR("memory") << "    0x" << std::hex << item.begin << " [" << kb::KF_(R,G,B) << name << kb::KC_ << "] 0x" << item.end 
 						<< " s=" << std::dec << utils::human_size(item.size) << std::endl;
 	}
 }
@@ -50,14 +50,14 @@ void HeapArea::debug_hex_dump(std::ostream& stream, size_t size)
 
 bool HeapArea::init(size_t size)
 {
-    KLOG("memory", 1) << kb::WCC('i') << "[HeapArea]" << kb::WCC(0) << " Initializing:" << std::endl;
+    KLOG("memory", 1) << kb::KS_INST_ << "[HeapArea]" << kb::KC_ << " Initializing:" << std::endl;
     size_ = size;
     begin_ = new uint8_t[size_];
     head_ = begin_;
 #ifdef HEAP_AREA_MEMSET_ENABLED
     memset(begin_, AREA_MEMSET_VALUE, size_);
 #endif
-    KLOGI << "Size:  " << kb::WCC('v') << size_ << kb::WCC(0) << "B" << std::endl;
+    KLOGI << "Size:  " << kb::KS_VALU_ << size_ << kb::KC_ << "B" << std::endl;
     KLOGI << "Begin: 0x" << std::hex << uint64_t(begin_) << std::dec << std::endl;
     return true;
 }
@@ -75,15 +75,15 @@ std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_n
 
     std::pair<void*, void*> ptr_range = {head_ + padding, head_ + padding + size + 1};
 
-    KLOG("memory", 1) << kb::WCC('i') << "[HeapArea]" << kb::WCC(0) << " allocated aligned block:" << std::endl;
+    KLOG("memory", 1) << kb::KS_INST_ << "[HeapArea]" << kb::KC_ << " allocated aligned block:" << std::endl;
     if(debug_name)
     {
-        KLOGI << "Name:      " << kb::WCC('n') << debug_name << std::endl;
+        KLOGI << "Name:      " << kb::KS_NAME_ << debug_name << std::endl;
     }
-    KLOGI << "Size:      " << kb::WCC('v') << size << kb::WCC(0) << "B" << std::endl;
-    KLOGI << "Padding:   " << kb::WCC('v') << padding << kb::WCC(0) << "B" << std::endl;
-    KLOGI << "Remaining: " << kb::WCC('v')
-          << static_cast<uint64_t>(static_cast<uint8_t*>(end()) - (head_ + size + padding)) << kb::WCC(0) << "B"
+    KLOGI << "Size:      " << kb::KS_VALU_ << size << kb::KC_ << "B" << std::endl;
+    KLOGI << "Padding:   " << kb::KS_VALU_ << padding << kb::KC_ << "B" << std::endl;
+    KLOGI << "Remaining: " << kb::KS_VALU_
+          << static_cast<uint64_t>(static_cast<uint8_t*>(end()) - (head_ + size + padding)) << kb::KC_ << "B"
           << std::endl;
     KLOGI << "Address:   0x" << std::hex << reinterpret_cast<uint64_t>(head_ + padding) << std::dec << std::endl;
 

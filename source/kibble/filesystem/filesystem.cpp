@@ -81,7 +81,7 @@ bool FileSystem::setup_config_directory(std::string vendor, std::string appname,
         if(!fs::create_directories(app_config_directory_))
         {
             KLOGE("ios") << "Failed to create config directory at:" << std::endl;
-            KLOGI << WCC('p') << app_config_directory_ << std::endl;
+            KLOGI << KS_PATH_ << app_config_directory_ << std::endl;
             return false;
         }
         KLOGN("ios") << "Created application directory at:" << std::endl;
@@ -90,7 +90,7 @@ bool FileSystem::setup_config_directory(std::string vendor, std::string appname,
     {
         KLOGN("ios") << "Detected application directory at:" << std::endl;
     }
-    KLOGI << WCC('p') << app_config_directory_ << std::endl;
+    KLOGI << KS_PATH_ << app_config_directory_ << std::endl;
 
     // Alias the config directory
     if(alias.empty())
@@ -133,7 +133,7 @@ bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& a
     if(!fs::exists(dir_path))
     {
         KLOGE("ios") << "Cannot add directory alias. Directory does not exist:" << std::endl;
-        KLOGI << WCC('p') << dir_path << std::endl;
+        KLOGI << KS_PATH_ << dir_path << std::endl;
         return false;
     }
     K_ASSERT(fs::is_directory(dir_path), "Not a directory.");
@@ -153,7 +153,7 @@ bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& a
         aliases_.insert({alias_hash, {alias, dir_path, {}}});
     }
 
-    KLOGI << alias << "://  <=>  " << WCC('p') << dir_path << std::endl;
+    KLOGI << alias << "://  <=>  " << KS_PATH_ << dir_path << std::endl;
     return true;
 }
 
@@ -162,7 +162,7 @@ bool FileSystem::alias_packfile(const fs::path& pack_path, const std::string& al
     if(!fs::exists(pack_path))
     {
         KLOGE("ios") << "Cannot add pack alias. File does not exist:" << std::endl;
-        KLOGI << WCC('p') << pack_path << std::endl;
+        KLOGI << KS_PATH_ << pack_path << std::endl;
         return false;
     }
     K_ASSERT(fs::is_regular_file(pack_path), "Not a file.");
@@ -183,7 +183,7 @@ bool FileSystem::alias_packfile(const fs::path& pack_path, const std::string& al
     }
 
     KLOG("ios", 0) << "Added pack alias:" << std::endl;
-    KLOGI << alias << "://  <=> " << WCC('p') << '@' << pack_path << std::endl;
+    KLOGI << alias << "://  <=> " << KS_PATH_ << '@' << pack_path << std::endl;
     return true;
 }
 
@@ -236,7 +236,7 @@ fs::path FileSystem::to_regular_path(const UpathParsingResult& result) const
 IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary) const
 {
     KLOG("ios", 0) << "Opening stream:" << std::endl;
-    KLOGI << "universal: " << WCC('p') << unipath << std::endl;
+    KLOGI << "universal: " << KS_PATH_ << unipath << std::endl;
 
     auto result = parse_universal_path(unipath);
     // If a pack file is aliased at this name, try to find entry in pack
@@ -247,7 +247,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
             auto findit = ppack->find(result.path_component);
             if(findit != ppack->end())
             {
-                KLOGI << "source: " << WCC('i') << "pack" << std::endl;
+                KLOGI << "source: " << KS_INST_ << "pack" << std::endl;
                 return ppack->get_input_stream(findit->second);
             }
         }
@@ -256,8 +256,8 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
     // If we got here, either the file does not exist at all, or it is in a regular directory
     auto filepath = to_regular_path(result);
 
-    KLOGI << "source:    " << WCC('i') << "regular file" << std::endl;
-    KLOGI << "path:      " << WCC('p') << filepath << std::endl;
+    KLOGI << "source:    " << KS_INST_ << "regular file" << std::endl;
+    KLOGI << "path:      " << KS_PATH_ << filepath << std::endl;
 
     K_ASSERT(fs::exists(filepath), "File does not exist.");
     K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
@@ -290,7 +290,7 @@ void FileSystem::init_self_path()
     K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
 
     KLOG("ios", 0) << "Self directory:" << std::endl;
-    KLOGI << WCC('p') << self_directory_ << std::endl;
+    KLOGI << KS_PATH_ << self_directory_ << std::endl;
 }
 
 } // namespace kfs

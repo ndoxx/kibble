@@ -127,7 +127,7 @@ std::set<hash_t> parse_kpakignore(const fs::path& filepath)
                 KLOGI << line << std::endl;
             }
 #endif
-            KLOG("ios", 1) << "[kpak] " << WCC('i') << "ignore" << WCC(0) << ": " << WCC('p') << line << std::endl;
+            KLOG("ios", 1) << "[kpak] " << KS_INST_ << "ignore" << KC_ << ": " << KS_PATH_ << line << std::endl;
             result.insert(key);
         }
     }
@@ -141,7 +141,7 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
     if(!fs::exists(dir_path))
     {
         KLOGE("ios") << "[kpak] Directory does not exist:" << std::endl;
-        KLOGI << WCC('p') << dir_path << std::endl;
+        KLOGI << KS_PATH_ << dir_path << std::endl;
         return false;
     }
 
@@ -184,9 +184,9 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
     h.entry_count = uint32_t(entries.size());
 
     KLOG("ios", 0) << "[kpak] Packing directory:" << std::endl;
-    KLOGI << WCC('p') << dir_path << std::endl;
+    KLOGI << KS_PATH_ << dir_path << std::endl;
     KLOG("ios", 0) << "[kpak] Target archive:" << std::endl;
-    KLOGI << WCC('p') << archive_path << std::endl;
+    KLOGI << KS_PATH_ << archive_path << std::endl;
 
     // Write header
     std::ofstream ofs(archive_path, std::ios::binary);
@@ -207,8 +207,8 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
     for(const auto& entry : entries)
     {
         size_t progess_percent = size_t(std::round(100.f * float(++progress) / float(entries.size())));
-        KLOG("ios", 0) << "[kpak] " << std::setw(3) << progess_percent << "% " << WCC('i') << "pack" << WCC(0) << ": "
-                       << WCC('p') << entry.path << WCC(0) << " (" << su::size_to_string(entry.size) << ')'
+        KLOG("ios", 0) << "[kpak] " << std::setw(3) << progess_percent << "% " << KS_INST_ << "pack" << KC_ << ": "
+                       << KS_PATH_ << entry.path << KC_ << " (" << su::size_to_string(entry.size) << ')'
                        << std::endl;
         std::ifstream ifs(dir_path / entry.path, std::ios::binary);
         databuf.insert(databuf.begin(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());

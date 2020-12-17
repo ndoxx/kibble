@@ -55,7 +55,7 @@ void Monitor::log_statistics(tid_t tid) const
     double mean_activity = 100.0 * mean_active_ms / (mean_idle_ms + mean_active_ms);
     float jobs_per_cycle = float(stats.total_executed) / float(stats.cycles);
 
-    KLOG("thread", 1) << WCC('i') << "Thread #" << tid << std::endl;
+    KLOG("thread", 1) << KS_INST_ << "Thread #" << tid << std::endl;
     KLOGI << "Sleep cycles:         " << stats.cycles << std::endl;
     KLOGI << "Mean active time:     " << mean_active_ms << "ms" << std::endl;
     KLOGI << "Mean idle time:       " << mean_idle_ms << "ms" << std::endl;
@@ -85,7 +85,7 @@ struct JPPHeader
 void Monitor::export_job_profiles(const fs::path& filepath)
 {
     KLOGN("thread") << "[Monitor] Exporting persistence file:" << std::endl;
-    KLOGI << WCC('p') << filepath << std::endl;
+    KLOGI << KS_PATH_ << filepath << std::endl;
 
     JPPHeader header;
     header.magic = JPP_MAGIC;
@@ -108,13 +108,13 @@ void Monitor::load_job_profiles(const fs::path& filepath)
     if(!fs::exists(filepath))
     {
         KLOGW("thread") << "[Monitor] File does not exist:" << std::endl;
-        KLOGI << WCC('p') << filepath << std::endl;
+        KLOGI << KS_PATH_ << filepath << std::endl;
         KLOGI << "Skipping persistence file loading." << std::endl;
         return;
     }
 
     KLOGN("thread") << "[Monitor] Loading persistence file:" << std::endl;
-    KLOGI << WCC('p') << filepath << std::endl;
+    KLOGI << KS_PATH_ << filepath << std::endl;
     auto ifs = std::ifstream(filepath, std::ios::binary);
 
     // Read header & sanity check

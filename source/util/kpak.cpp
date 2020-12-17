@@ -50,13 +50,13 @@ int main(int argc, char** argv)
     if(!fs::exists(dirpath))
     {
         KLOGE("kpak") << "Directory does not exist:" << std::endl;
-        KLOGI << WCC('p') << dirpath << std::endl;
+        KLOGI << KF_('p') << dirpath << std::endl;
         exit(0);
     }
     if(!fs::is_directory(dirpath))
     {
         KLOGE("kpak") << "Not a directory:" << std::endl;
-        KLOGI << WCC('p') << dirpath << std::endl;
+        KLOGI << KF_('p') << dirpath << std::endl;
         exit(0);
     }
 
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
     if(!fs::exists(output_parent))
     {
         KLOGE("kpak") << "Output directory does exist:" << std::endl;
-        KLOGI << WCC('p') << output_parent << std::endl;
+        KLOGI << KF_('p') << output_parent << std::endl;
         exit(0);
     }
 

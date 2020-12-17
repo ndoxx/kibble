@@ -61,8 +61,8 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
 
     // Spawn threads_count_-1 workers
-    KLOGI << "Detected " << WCC('v') << CPU_cores_count_ << WCC(0) << " CPU cores." << std::endl;
-    KLOGI << "Spawning " << WCC('v') << threads_count_ - 1 << WCC(0) << " worker threads." << std::endl;
+    KLOGI << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
+    KLOGI << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
 
     workers_.resize(threads_count_);
     for(uint32_t ii = 0; ii < threads_count_; ++ii)

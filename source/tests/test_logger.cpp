@@ -66,14 +66,14 @@ int main()
 
 
     KLOGN("core") << "-------- [COLORS] --------" << std::endl;
-    KLOG("core",1) << "Configuring " << WCC('i') << "accessibility" << WCC(0) << " parameters." << std::endl;
-    KLOG("core",1) << "If you are " << WCC('x') << "colorblind" << WCC(0)
-                            << " you can't see " << WCC('g') << "this" << WCC(0) << ":" << std::endl;
+    KLOG("core",1) << "Configuring " << KS_INST_ << "accessibility" << KC_ << " parameters." << std::endl;
+    KLOG("core",1) << "If you are " << KS_NODE_ << "colorblind" << KC_
+                            << " you can't see " << KF_('g') << "this" << KC_ << ":" << std::endl;
 
     for(uint8_t ii=0; ii<10; ++ii)
     {
         for(uint8_t jj=0; jj<10; ++jj)
-            KLOG("core",1) << WCC(25*ii,25*jj,255-25*jj) << char('A'+ii+jj) << " ";
+            KLOG("core",1) << KF_(25*ii,25*jj,255-25*jj) << char('A'+ii+jj) << " ";
         KLOG("core",1) << std::endl;
     }
 

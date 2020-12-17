@@ -4,11 +4,10 @@
 #include <ostream>
 #include <string>
 
+#include "../logger/common.h"
+
 namespace kb
 {
-
-struct WCB;
-
 namespace memory
 {
 namespace utils
@@ -30,7 +29,7 @@ std::string human_size(std::size_t bytes);
 
 } // namespace utils
 
-void hex_dump_highlight(uint32_t word, const kb::WCB& wcb);
+void hex_dump_highlight(uint32_t word, const kb::KB_& wcb);
 void hex_dump_clear_highlights();
 void hex_dump(std::ostream& stream, const void* ptr, std::size_t size, const std::string& title = "");
 
