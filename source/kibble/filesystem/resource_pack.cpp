@@ -4,6 +4,7 @@
 #include "string/string.h"
 
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <set>
 #include <vector>
@@ -200,12 +201,15 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
     }
 
     // Write all files to pack
+    size_t progress = 0;
     std::vector<char> databuf;
     databuf.reserve(size_t(max_file_size));
     for(const auto& entry : entries)
     {
-        KLOG("ios", 0) << "[kpak] " << WCC('i') << "pack" << WCC(0) << ": " << WCC('p') << entry.path << WCC(0) << " ("
-                       << su::size_to_string(entry.size) << ')' << std::endl;
+        size_t progess_percent = size_t(std::round(100.f * float(++progress) / float(entries.size())));
+        KLOG("ios", 0) << "[kpak] " << std::setw(3) << progess_percent << "% " << WCC('i') << "pack" << WCC(0) << ": "
+                       << WCC('p') << entry.path << WCC(0) << " (" << su::size_to_string(entry.size) << ')'
+                       << std::endl;
         std::ifstream ifs(dir_path / entry.path, std::ios::binary);
         databuf.insert(databuf.begin(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
         ofs.write(databuf.data(), long(databuf.size()));
