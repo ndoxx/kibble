@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "../hash/hashstr.h"
+#include "../hash/hash.h"
 
 namespace kb
 {

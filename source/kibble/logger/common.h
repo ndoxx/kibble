@@ -4,8 +4,9 @@
 #include <sstream>
 
 #include "../assert/assert.h"
-#include "../hash/hashstr.h"
+#include "../hash/hash.h"
 #include "../time/clock.h"
+#include "../math/color.h"
 
 namespace kb
 {
@@ -18,6 +19,7 @@ struct ConsoleColorClear
 template <bool FOREGROUND> struct ConsoleColor
 {
     ConsoleColor(): color_(0xFFFFFF) {}
+    ConsoleColor(math::argb32_t argb): color_(argb) {}
     explicit ConsoleColor(char shorthand)
     {
         switch(shorthand)
@@ -43,7 +45,7 @@ template <bool FOREGROUND> struct ConsoleColor
     ConsoleColor(uint8_t R, uint8_t G, uint8_t B);
 
     friend std::ostream& operator<<(std::ostream&, const ConsoleColor&);
-    uint32_t color_;
+    math::argb32_t color_;
 };
 
 template<> ConsoleColor<true>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B);

@@ -5,6 +5,7 @@
 
 namespace kb
 {
+using namespace math;
 namespace klog
 {
 
@@ -30,20 +31,20 @@ const std::array<std::string, size_t(MsgType::COUNT)> Style::s_icons = {
 
 } // namespace klog
 
-constexpr uint32_t k_rmask = 0x00FF0000;
-constexpr uint32_t k_gmask = 0x0000FF00;
-constexpr uint32_t k_bmask = 0x000000FF;
-constexpr uint32_t k_rshift = 16;
-constexpr uint32_t k_gshift = 8;
-constexpr uint32_t k_bshift = 0;
+constexpr argb32_t k_rmask = 0x00FF0000;
+constexpr argb32_t k_gmask = 0x0000FF00;
+constexpr argb32_t k_bmask = 0x000000FF;
+constexpr argb32_t k_rshift = 16;
+constexpr argb32_t k_gshift = 8;
+constexpr argb32_t k_bshift = 0;
 
 template<> ConsoleColor<true>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B)
 {
-    color_ = (uint32_t(R) << k_rshift) | (uint32_t(G) << k_gshift) | (uint32_t(B) << k_bshift);
+    color_ = (argb32_t(R) << k_rshift) | (argb32_t(G) << k_gshift) | (argb32_t(B) << k_bshift);
 }
 template<> ConsoleColor<false>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B)
 {
-    color_ = (uint32_t(R) << k_rshift) | (uint32_t(G) << k_gshift) | (uint32_t(B) << k_bshift);
+    color_ = (argb32_t(R) << k_rshift) | (argb32_t(G) << k_gshift) | (argb32_t(B) << k_bshift);
 }
 
 std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
@@ -55,18 +56,18 @@ std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
 std::ostream& operator<<(std::ostream& stream, const ConsoleColor<true>& o)
 {
     stream << "\033[1;38;2;"
-           << uint32_t((o.color_ & k_rmask) >> k_rshift) << ';'
-           << uint32_t((o.color_ & k_gmask) >> k_gshift) << ';'
-           << uint32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
+           << argb32_t((o.color_ & k_rmask) >> k_rshift) << ';'
+           << argb32_t((o.color_ & k_gmask) >> k_gshift) << ';'
+           << argb32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
     return stream;
 }
 
 std::ostream& operator<<(std::ostream& stream, const ConsoleColor<false>& o)
 {
     stream << "\033[1;48;2;"
-           << uint32_t((o.color_ & k_rmask) >> k_rshift) << ';'
-           << uint32_t((o.color_ & k_gmask) >> k_gshift) << ';'
-           << uint32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
+           << argb32_t((o.color_ & k_rmask) >> k_rshift) << ';'
+           << argb32_t((o.color_ & k_gmask) >> k_gshift) << ';'
+           << argb32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
     return stream;
 }
 

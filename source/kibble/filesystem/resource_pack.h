@@ -4,7 +4,7 @@
 #include <map>
 
 #include "../assert/assert.h"
-#include "../hash/hashstr.h"
+#include "../hash/hash.h"
 
 namespace fs = std::filesystem;
 namespace kb

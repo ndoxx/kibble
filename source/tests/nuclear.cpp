@@ -5,6 +5,9 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 #include "string/string.h"
+#include "math/color.h"
+#include "math/constexpr_math.h"
+#include "hash/hash.h"
 
 #include <algorithm>
 #include <array>
@@ -72,5 +75,14 @@ int main(int argc, char** argv)
    std::endl; KLOG("nuclear", 1) << filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt")
    << std::endl;
 
+/*
+    using namespace kb::math;
+    for(size_t ii=0; ii<20; ++ii)
+    {
+        KLOG("nuclear",1) << KF_(pack_ARGB(ColorHSLA::random_hue(0.8f,0.5f))) << "Plop" << std::endl;
+    }
+
+    KLOG("nuclear",1) << KF_('p') << "Pink" << std::endl;
+*/
     return 0;
 }

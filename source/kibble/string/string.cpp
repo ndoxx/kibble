@@ -1,5 +1,5 @@
 #include "string/string.h"
-#include "hash/hashstr.h"
+#include "hash/hash.h"
 
 namespace kb
 {

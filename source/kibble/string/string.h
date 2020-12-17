@@ -8,7 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include "../hash/hashstr.h"
+#include "../hash/hash.h"
 
 namespace kb
 {

@@ -14,7 +14,7 @@
  * modifications relative to this file will be written out.
  */
 
-#include "../hash/hashstr.h"
+#include "../hash/hash.h"
 #include <filesystem>
 #include <map>
 #include <memory>

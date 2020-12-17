@@ -79,7 +79,7 @@ void hex_dump(std::ostream& stream, const void* ptr, std::size_t size, const std
             // Highlight recognized words
             if(it != s_highlights.end())
                 stream << kb::KF_(220, 220, 220) << it->second << std::setfill('0') << std::setw(8) << value
-                       << kb::KB_(0);
+                       << kb::KC_;
             // Basic display
             else
                 stream << kb::KF_(220, 220, 220) << std::setfill('0') << std::setw(8) << value;
