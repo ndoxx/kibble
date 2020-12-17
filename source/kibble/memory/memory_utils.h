@@ -4,11 +4,10 @@
 #include <ostream>
 #include <string>
 
+#include "../logger/common.h"
+
 namespace kb
 {
-
-struct KB_;
-
 namespace memory
 {
 namespace utils
