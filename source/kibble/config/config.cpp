@@ -150,7 +150,7 @@ void Settings::debug_dump() const
 {
     for(auto&& [key, val] : storage_.scalars)
     {
-        KLOG("config", 1) << storage_.key_names.at(key) << ": " << WCC('v');
+        KLOG("config", 1) << storage_.key_names.at(key) << ": " << KS_VALU_;
         if(std::holds_alternative<int64_t>(val))
         {
             KLOG("config", 1) << std::get<int64_t>(val);

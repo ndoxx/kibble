@@ -10,6 +10,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <iomanip>
 #include <iterator>
 #include <numeric>
 #include <random>
@@ -23,6 +24,8 @@ namespace fs = std::filesystem;
 
 using namespace kb;
 
+
+
 void init_logger()
 {
     KLOGGER_START();
@@ -32,13 +35,6 @@ void init_logger()
     KLOGGER(create_channel("kibble", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
-}
-
-void print_entry(const kfs::PackLocalEntry& entry)
-{
-    KLOG("nuclear", 1) << WCC('p') << entry.path << std::endl;
-    KLOGI << "Offset: " << entry.offset << std::endl;
-    KLOGI << "Size:   " << entry.size << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -72,8 +68,9 @@ int main(int argc, char** argv)
         KLOGR("nuclear") << retrieved << std::endl;
     }
 
-    KLOG("nuclear", 1) << filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt") << std::endl;
-    KLOG("nuclear", 1) << filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt") << std::endl;
+    KLOG("nuclear", 1) << filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt") <<
+   std::endl; KLOG("nuclear", 1) << filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt")
+   << std::endl;
 
     return 0;
 }

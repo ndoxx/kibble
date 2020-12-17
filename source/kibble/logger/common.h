@@ -3,45 +3,67 @@
 #include <array>
 #include <sstream>
 
+#include "../assert/assert.h"
 #include "../hash/hashstr.h"
 #include "../time/clock.h"
-
-#if LOGGING_ANSI_3 == 1
-#define ANSI_3 true
-#else
-#define ANSI_3 false
-#endif
 
 namespace kb
 {
 
-// WCore Console Color
-// Evaluates to an ansi string when submitted to a stream
-struct WCC
+struct ConsoleColorClear
 {
-    WCC() = default;
-    explicit WCC(char cc);
-    explicit WCC(const std::string&);
-    WCC(uint8_t R, uint8_t G, uint8_t B);
-
-    friend std::ostream& operator<<(std::ostream& stream, const WCC& wcc);
-
-    std::string escape;
+    friend std::ostream& operator<<(std::ostream&, const ConsoleColorClear&);
 };
 
-// WCore Console Background color
-// Evaluates to an ansi string when submitted to a stream
-struct WCB
+template <bool FOREGROUND> struct ConsoleColor
 {
-    WCB() = default;
-    explicit WCB(int cc);
-    explicit WCB(const std::string&);
-    WCB(uint8_t R, uint8_t G, uint8_t B);
+    ConsoleColor(): color_(0xFFFFFF) {}
+    explicit ConsoleColor(char shorthand)
+    {
+        switch(shorthand)
+        {
+            case 'w': color_ = 0xFFFFFF; break; // White
+            case 'k': color_ = 0x000000; break; // blacK
+            case 'r': color_ = 0xFF0000; break; // Red
+            case 'g': color_ = 0x00FF00; break; // Green
+            case 'b': color_ = 0x0000FF; break; // Blue
+            case 'c': color_ = 0x00FFFF; break; // Cyan
+            case 'd': color_ = 0xFF3200; break; // Dark orange
+            case 'o': color_ = 0xFF6400; break; // Orange
+            case 's': color_ = 0xFFBE00; break; // light orange (Sand)
+            case 'v': color_ = 0xCC00CC; break; // Violet
+            case 't': color_ = 0x00CED1; break; // Turquoise
+            case 'p': color_ = 0xFF33CC; break; // Pink
+            case 'l': color_ = 0x00FF64; break; // Lime
+            case 'a': color_ = 0x99CC00; break; // lAwn green
 
-    friend std::ostream& operator<<(std::ostream& stream, const WCB& wcc);
+            default: K_ASSERT_FMT(false, "Unknown shorthand color notation: %c", shorthand);
+        }
+    }
+    ConsoleColor(uint8_t R, uint8_t G, uint8_t B);
 
-    std::string escape;
+    friend std::ostream& operator<<(std::ostream&, const ConsoleColor&);
+    uint32_t color_;
 };
+
+template<> ConsoleColor<true>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B);
+template<> ConsoleColor<false>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B);
+
+#define KF_ ConsoleColor<true>
+#define KB_ ConsoleColor<false>
+#define KC_ ConsoleColorClear{}
+
+#define KS_PATH_ KF_('c')
+#define KS_INST_ KF_('s')
+#define KS_DEFL_ KF_('o')
+#define KS_NAME_ KF_('d')
+#define KS_IVAL_ KF_('v')
+#define KS_VALU_ KF_('a')
+#define KS_ATTR_ KF_('l')
+#define KS_NODE_ KF_('t')
+#define KS_HIGH_ KF_('p')
+#define KS_GOOD_ KF_('g')
+#define KS_BAD_  KF_('r')
 
 namespace klog
 {
@@ -85,7 +107,7 @@ struct LogChannel
 class Style
 {
 public:
-    static const std::array<WCC, size_t(MsgType::COUNT)> s_colors;
+    static const std::array<KF_, size_t(MsgType::COUNT)> s_colors;
     static const std::array<std::string, size_t(MsgType::COUNT)> s_icons;
 };
 
