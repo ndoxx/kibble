@@ -5,6 +5,7 @@
 
 #include <array>
 #include <fstream>
+#include <set>
 #include <vector>
 
 namespace kb
@@ -102,13 +103,53 @@ void PackLocalEntry::read(std::istream& stream)
 #define KPAK_VERSION_MAJOR 0
 #define KPAK_VERSION_MINOR 1
 
-bool pack_directory(const fs::path& dir_path, const fs::path& archive_path)
+std::set<hash_t> parse_kpakignore(const fs::path& filepath)
+{
+    K_ASSERT(fs::is_regular_file(filepath), "kpakignore is not a file.");
+    fs::path base_path = filepath.parent_path();
+
+    std::ifstream ifs(filepath);
+    K_ASSERT(ifs.is_open(), "Problem opening kpakignore file.");
+
+    // For each line in the file, store a hash
+    std::set<hash_t> result;
+    std::string line;
+    while(std::getline(ifs, line))
+    {
+        if(fs::exists(base_path / line))
+        {
+            hash_t key = H_(line);
+#ifdef K_DEBUG
+            if(result.find(key) != result.end())
+            {
+                KLOGW("ios") << "[kpak] Duplicate kpakignore entry, or hash collision for:" << std::endl;
+                KLOGI << line << std::endl;
+            }
+#endif
+            KLOG("ios", 1) << "[kpak] " << WCC('i') << "ignore" << WCC(0) << ": " << WCC('p') << line << std::endl;
+            result.insert(key);
+        }
+    }
+    // Ignore the kpakignore file itself
+    result.insert(H_(filepath.stem()));
+    return result;
+}
+
+bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_path)
 {
     if(!fs::exists(dir_path))
     {
         KLOGE("ios") << "[kpak] Directory does not exist:" << std::endl;
         KLOGI << WCC('p') << dir_path << std::endl;
         return false;
+    }
+
+    // * First, try to find a kpakignore file and list all files that should be ignored
+    std::set<hash_t> ignored;
+    if(fs::exists(dir_path / "kpakignore"))
+    {
+        KLOGN("ios") << "[kpak] Detected kpakignore file." << std::endl;
+        ignored = parse_kpakignore(dir_path / "kpakignore");
     }
 
     PAKHeader h;
@@ -120,12 +161,18 @@ bool pack_directory(const fs::path& dir_path, const fs::path& archive_path)
     size_t current_offset = sizeof(PAKHeader);
     std::uintmax_t max_file_size = 0;
 
-    // Explore
+    // * Explore directory recursively and build the pack list
     for(auto& entry : fs::recursive_directory_iterator(dir_path))
     {
         if(entry.is_regular_file())
         {
             fs::path rel_path = fs::relative(entry.path(), dir_path);
+
+            // Do we ignore this file?
+            hash_t key = H_(rel_path);
+            if(ignored.find(key) != ignored.end())
+                continue;
+
             current_offset += PackLocalEntry::k_serialized_size + rel_path.string().size();
             entries.push_back({0, uint32_t(entry.file_size()), rel_path.string()});
             if(entry.file_size() > max_file_size)
@@ -157,7 +204,8 @@ bool pack_directory(const fs::path& dir_path, const fs::path& archive_path)
     databuf.reserve(size_t(max_file_size));
     for(const auto& entry : entries)
     {
-        KLOG("ios", 0) << "[kpak] " << entry.path << " (" << su::size_to_string(entry.size) << ')' << std::endl;
+        KLOG("ios", 0) << "[kpak] " << WCC('i') << "pack" << WCC(0) << ": " << WCC('p') << entry.path << WCC(0) << " ("
+                       << su::size_to_string(entry.size) << ')' << std::endl;
         std::ifstream ifs(dir_path / entry.path, std::ios::binary);
         databuf.insert(databuf.begin(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
         ofs.write(databuf.data(), long(databuf.size()));

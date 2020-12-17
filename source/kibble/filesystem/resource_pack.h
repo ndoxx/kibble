@@ -12,8 +12,6 @@ namespace kb
 namespace kfs
 {
 
-bool pack_directory(const fs::path& dir_path, const fs::path& archive_path);
-
 struct PackLocalEntry
 {
     uint32_t offset;
@@ -39,6 +37,11 @@ public:
     inline auto end() const { return index_.end(); }
     inline const PackLocalEntry& get_entry(const std::string& path) const;
     inline const PackLocalEntry& get_entry(hash_t key) const;
+
+    // Recursively pack a directory's content.
+    // If a "kpakignore" file is present at the root, all files listed in it (relative to the root)
+    // will be skipped. The "kpakignore" file itself will not be packed.
+    static bool pack_directory(const fs::path& dir_path, const fs::path& archive_path);
 
 private:
     fs::path filepath_;

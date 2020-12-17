@@ -51,29 +51,29 @@ int main(int argc, char** argv)
     kfs::FileSystem filesystem;
     filesystem.setup_config_directory("ndoxx", "nuclear");
     const auto& cfg_dir = filesystem.get_config_directory();
-    KLOG("nuclear",1) << cfg_dir << std::endl;
+    KLOG("nuclear", 1) << cfg_dir << std::endl;
 
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
 
-    /*kfs::pack_directory(filesystem.regular_path("data://iotest/resources"),
-                        filesystem.regular_path("data://iotest/resources.kpak"));*/
+    kfs::PackFile::pack_directory(filesystem.regular_path("data://iotest/resources"),
+                                  filesystem.regular_path("data://iotest/resources.kpak"));
 
     filesystem.alias_directory(self_dir / "../../data/iotest/resources", "resources"); // Not required
     filesystem.alias_packfile(filesystem.regular_path("data://iotest/resources.kpak"), "resources");
 
     {
         auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");
-        KLOG("nuclear", 1) << retrieved << std::endl;
+        KLOGR("nuclear") << retrieved << std::endl;
     }
 
     {
-        auto retrieved = filesystem.get_file_as_string("resources://another_file.txt");
-        KLOG("nuclear", 1) << retrieved << std::endl;
+        auto retrieved = filesystem.get_file_as_string("resources://not_in_pack.txt");
+        KLOGR("nuclear") << retrieved << std::endl;
     }
 
-    KLOG("nuclear",1) << filesystem.is_older("resources://text_file.txt", "resources://another_file.txt") << std::endl;
-    KLOG("nuclear",1) << filesystem.is_older("resources://another_file.txt", "resources://text_file.txt") << std::endl;
+    KLOG("nuclear", 1) << filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt") << std::endl;
+    KLOG("nuclear", 1) << filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt") << std::endl;
 
     return 0;
 }

@@ -112,8 +112,8 @@ public:
         ofs.close();
 
         // Pack the directory
-        kfs::pack_directory(filesystem.regular_path("test://resources"),
-                            filesystem.regular_path("test://resources.kpak"));
+        kfs::PackFile::pack_directory(filesystem.regular_path("test://resources"),
+                                      filesystem.regular_path("test://resources.kpak"));
 
         // Alias the resources directory AND the resource pack
         filesystem.alias_directory("/tmp/kibble_test/resources", "resources");
