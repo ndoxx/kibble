@@ -53,7 +53,7 @@ int main(int argc, char** argv)
         KLOG("nuclear",1) << KF_(pack_ARGB(ColorHSLA::random_hue(0.8f,0.5f))) << "Plop" << std::endl;
     }
 
-    KLOG("nuclear",1) << KF_('p') << "Pink" << std::endl;
+    KLOG("nuclear",1) << KF_(col::pink) << "Pink" << std::endl;
 
     return 0;
 }

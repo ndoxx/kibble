@@ -156,7 +156,7 @@ void register_intern_string(const std::string& intern, std::map<hash_t, std::str
     auto it = registry.find(hash_intern);
     if(it == registry.end())
     {
-        KLOGI << std::left << std::setw(20) << hash_intern << " -> " << KF_(math::argb32_t{0x669900}) << intern
+        KLOGI << std::left << std::setw(20) << hash_intern << " -> " << KF_({0x669900}) << intern
               << std::endl;
         registry.insert(std::make_pair(hash_intern, intern));
     }

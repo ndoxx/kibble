@@ -5,7 +5,7 @@
 
 #include "../assert/assert.h"
 #include "../hash/hash.h"
-#include "../math/color.h"
+#include "../math/color_table.h"
 #include "../time/clock.h"
 
 namespace kb
@@ -20,29 +20,7 @@ template <bool FOREGROUND> struct ConsoleColor
 {
     constexpr ConsoleColor() : color_{0xFFFFFF} {}
     constexpr ConsoleColor(math::argb32_t argb) : color_(argb) {}
-    constexpr ConsoleColor(uint8_t R, uint8_t G, uint8_t B): color_(math::pack_ARGB(R, G, B)) {}
-    constexpr explicit ConsoleColor(char shorthand)
-    {
-        switch(shorthand)
-        {
-            case 'w': color_ = {0xFFFFFF}; break; // White
-            case 'k': color_ = {0x000000}; break; // blacK
-            case 'r': color_ = {0xFF0000}; break; // Red
-            case 'g': color_ = {0x00FF00}; break; // Green
-            case 'b': color_ = {0x0000FF}; break; // Blue
-            case 'c': color_ = {0x00FFFF}; break; // Cyan
-            case 'd': color_ = {0xFF3200}; break; // Dark orange
-            case 'o': color_ = {0xFF6400}; break; // Orange
-            case 's': color_ = {0xFFBE00}; break; // light orange (Sand)
-            case 'v': color_ = {0xCC00CC}; break; // Violet
-            case 't': color_ = {0x00CED1}; break; // Turquoise
-            case 'p': color_ = {0xFF33CC}; break; // Pink
-            case 'l': color_ = {0x00FF64}; break; // Lime
-            case 'a': color_ = {0x99CC00}; break; // lAwn green
-
-            default:  color_ = {0xFFFFFF}; break; // Default to white
-        }
-    }
+    constexpr ConsoleColor(uint8_t R, uint8_t G, uint8_t B) : color_(math::pack_ARGB(R, G, B)) {}
 
     friend std::ostream& operator<<(std::ostream&, const ConsoleColor&);
     math::argb32_t color_;
@@ -50,20 +28,20 @@ template <bool FOREGROUND> struct ConsoleColor
 
 #define KF_ ConsoleColor<true>
 #define KB_ ConsoleColor<false>
-#define KC_ ConsoleColorClear {}
+#define KC_ ConsoleColorClear{}
 
 // Semiotics of colors I'm used to
-#define KS_PATH_ KF_('c') // path
-#define KS_INST_ KF_('s') // instruction
-#define KS_DEFL_ KF_('o') // default
-#define KS_NAME_ KF_('d') // name
-#define KS_IVAL_ KF_('v') // important value
-#define KS_VALU_ KF_('a') // value
-#define KS_ATTR_ KF_('l') // attribute
-#define KS_NODE_ KF_('t') // node
-#define KS_HIGH_ KF_('p') // highlight
-#define KS_GOOD_ KF_('g') // good thing
-#define KS_BAD_  KF_('r') // bad thing
+#define KS_PATH_ KF_(kb::col::cyan)        // path
+#define KS_INST_ KF_(kb::col::lightorange) // instruction
+#define KS_DEFL_ KF_(kb::col::ndxorange)   // default
+#define KS_NAME_ KF_(kb::col::orangered)   // name
+#define KS_IVAL_ KF_(kb::col::violet)      // important value
+#define KS_VALU_ KF_(kb::col::lawngreen)   // value
+#define KS_ATTR_ KF_(kb::col::lime)        // attribute
+#define KS_NODE_ KF_(kb::col::turquoise)   // node
+#define KS_HIGH_ KF_(kb::col::pink)        // highlight
+#define KS_GOOD_ KF_(kb::col::green)       // good thing
+#define KS_BAD_  KF_(kb::col::red)         // bad thing
 
 namespace klog
 {

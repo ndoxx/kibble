@@ -68,7 +68,7 @@ int main()
     KLOGN("core") << "-------- [COLORS] --------" << std::endl;
     KLOG("core",1) << "Configuring " << KS_INST_ << "accessibility" << KC_ << " parameters." << std::endl;
     KLOG("core",1) << "If you are " << KS_NODE_ << "colorblind" << KC_
-                            << " you can't see " << KF_('g') << "this" << KC_ << ":" << std::endl;
+                            << " you can't see " << KF_(col::lawngreen) << "this" << KC_ << ":" << std::endl;
 
     for(uint8_t ii=0; ii<10; ++ii)
     {
