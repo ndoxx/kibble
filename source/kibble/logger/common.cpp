@@ -5,7 +5,6 @@
 
 namespace kb
 {
-using namespace math;
 namespace klog
 {
 
@@ -31,22 +30,6 @@ const std::array<std::string, size_t(MsgType::COUNT)> Style::s_icons = {
 
 } // namespace klog
 
-constexpr argb32_t k_rmask = 0x00FF0000;
-constexpr argb32_t k_gmask = 0x0000FF00;
-constexpr argb32_t k_bmask = 0x000000FF;
-constexpr argb32_t k_rshift = 16;
-constexpr argb32_t k_gshift = 8;
-constexpr argb32_t k_bshift = 0;
-
-template<> ConsoleColor<true>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B)
-{
-    color_ = (argb32_t(R) << k_rshift) | (argb32_t(G) << k_gshift) | (argb32_t(B) << k_bshift);
-}
-template<> ConsoleColor<false>::ConsoleColor(uint8_t R, uint8_t G, uint8_t B)
-{
-    color_ = (argb32_t(R) << k_rshift) | (argb32_t(G) << k_gshift) | (argb32_t(B) << k_bshift);
-}
-
 std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
 {
     stream << "\033[0m\033[1;38;2;255;255;255m";
@@ -55,19 +38,13 @@ std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
 
 std::ostream& operator<<(std::ostream& stream, const ConsoleColor<true>& o)
 {
-    stream << "\033[1;38;2;"
-           << argb32_t((o.color_ & k_rmask) >> k_rshift) << ';'
-           << argb32_t((o.color_ & k_gmask) >> k_gshift) << ';'
-           << argb32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
+    stream << "\033[1;38;2;" << o.color_.r() << ';' << o.color_.g() << ';' << o.color_.b() << 'm';
     return stream;
 }
 
 std::ostream& operator<<(std::ostream& stream, const ConsoleColor<false>& o)
 {
-    stream << "\033[1;48;2;"
-           << argb32_t((o.color_ & k_rmask) >> k_rshift) << ';'
-           << argb32_t((o.color_ & k_gmask) >> k_gshift) << ';'
-           << argb32_t((o.color_ & k_bmask) >> k_bshift) << 'm';
+    stream << "\033[1;48;2;" << o.color_.r() << ';' << o.color_.g() << ';' << o.color_.b() << 'm';
     return stream;
 }
 
