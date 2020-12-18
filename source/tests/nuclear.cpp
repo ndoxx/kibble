@@ -1,66 +1,108 @@
-#include "argparse/argparse.h"
-#include "filesystem/filesystem.h"
-#include "filesystem/resource_pack.h"
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "logger/common.h"
+#include "math/easings.h"
 #include "string/string.h"
-#include "math/color.h"
-#include "math/constexpr_math.h"
-#include "hash/hash.h"
+#include "cli/terminal.h"
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <filesystem>
-#include <iomanip>
-#include <iterator>
-#include <numeric>
-#include <random>
-#include <regex>
-#include <sstream>
-#include <string>
-#include <variant>
-#include <vector>
+#include <iostream>
+#include <thread>
+#include <chrono>
 
 namespace fs = std::filesystem;
 
 using namespace kb;
 
-
-
-void init_logger()
+void print_bar(float weight, const std::string& name)
 {
-    KLOGGER_START();
+    auto&& [cols, rows] = cli::get_terminal_size();
+    weight = std::clamp(weight, 0.f, 1.f);
+    size_t cursor = size_t(std::round(float(cols - 3) * weight));
 
-    KLOGGER(create_channel("nuclear", 3));
-    KLOGGER(create_channel("ios", 3));
-    KLOGGER(create_channel("kibble", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
+    // [=======>-------]
+    std::string centered_name(su::concat('[', name, ']'));
+    su::center(centered_name, int(cols));
+    std::cout << centered_name << std::endl;
+    std::cout << KF_(col::white) << '[' << KF_(col::mediumturquoise);
+    for(size_t ii = 0; ii < cursor; ++ii)
+        std::cout << '=';
+    std::cout << '>' << KF_(col::ndxorange);
+    for(size_t ii = cursor + 1; ii < cols - 2; ++ii)
+        std::cout << '-';
+    std::cout << KF_(col::white) << ']' << std::endl;
+    std::cout << std::endl;
 }
+
+void print_colored_rect(float weight, const std::string& name)
+{
+    auto&& [cols, rows] = cli::get_terminal_size();
+    weight = std::clamp(weight, 0.f, 1.f);
+
+    std::string centered_name(su::concat('[', name, ']'));
+    su::center(centered_name, int(cols));
+
+    auto color = math::ColorRGBA(weight,0.f,1.f-weight);
+
+    std::cout << KB_(math::pack_ARGB(color));
+    std::cout << std::string(cols, ' ');
+    std::cout << centered_name << std::endl;
+    std::cout << std::string(cols, ' ') << KC_;
+}
+
+void clear_line(size_t count)
+{
+    for(size_t ii = 0; ii < count; ++ii)
+        std::cout << "\033[1A\033[K";
+}
+
+constexpr float test_inout_3(float t) { return easing::crossfade(easing::in_3(t), easing::out_3(t), t); } // DNW
+constexpr float test_inout_4(float t) { return easing::crossfade(easing::in_4(t), easing::out_4(t), t); } // DNW
+constexpr float test_inout_5(float t) { return easing::crossfade(easing::in_5(t), easing::out_5(t), t); } // DNW
 
 int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
 
-    init_logger();
-
     using namespace kb::math;
-    for(size_t ii=0; ii<10; ++ii)
+
+    std::vector<std::pair<float (*)(float), std::string>> easings = {
+        {&easing::in_2, "in_2"},
+        {&easing::out_2, "out_2"},
+        {&easing::inout_2, "inout_2"},
+        {&easing::in_3, "in_3"},
+        {&easing::out_3, "out_3"},
+        {&easing::inout_3, "inout_3"},
+        {&easing::in_4, "in_4"},
+        {&easing::out_4, "out_4"},
+        {&easing::inout_4, "inout_4"},
+        {&easing::in_5, "in_5"},
+        {&easing::out_5, "out_5"},
+        {&easing::inout_5, "inout_5"},
+        {&easing::arch_2, "arch_2"},
+        {&easing::in_arch_3, "in_arch_3"},
+        {&easing::out_arch_3, "out_arch_3"},
+        {&easing::inout_arch4, "inout_arch4"},
+        {&easing::bell_6, "bell_6"},
+        {&easing::bounce_bezier_3, "bounce_bezier_3"},
+    };
+
+    float frame_duration_s = 1.f/60.f;
+    float animation_duration_s = 1.f;
+    size_t frame_count = size_t(std::round(animation_duration_s/frame_duration_s));
+    std::chrono::duration<float> frame_duration(frame_duration_s);
+
+    std::cout << std::endl;
+
+    for(auto&& [pfunc, name] : easings)
     {
-        KLOG("nuclear",1) << KF_(pack_ARGB(ColorHSLA::random_hue(0.8f,0.5f))) << "Plop" << std::endl;
+        print_bar(0.f, name);
+        for(size_t ii = 0; ii < frame_count; ++ii)
+        {
+            float tt = float(ii) / float(frame_count - 1);
+            clear_line(3);
+            print_bar((*pfunc)(tt), name);
+            std::this_thread::sleep_for(frame_duration);
+        }
     }
-
-    KLOG("nuclear",1) << KF_(col::pink) << "Pink" << std::endl;
-
-    constexpr math::argb32_t mycol = pack_ARGB(128,128,128);
-    constexpr math::argb32_t mycol2 = pack_ARGB(math::ColorRGBA(0.5f,0.5f,0.5f));
-
-    KLOG("nuclear",1) << KF_(mycol) << "Plop" << std::endl;
-    KLOG("nuclear",1) << KF_(mycol2) << "Plop" << std::endl;
-
 
     return 0;
 }
