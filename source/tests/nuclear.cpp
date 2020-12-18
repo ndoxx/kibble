@@ -48,12 +48,19 @@ int main(int argc, char** argv)
     init_logger();
 
     using namespace kb::math;
-    for(size_t ii=0; ii<20; ++ii)
+    for(size_t ii=0; ii<10; ++ii)
     {
         KLOG("nuclear",1) << KF_(pack_ARGB(ColorHSLA::random_hue(0.8f,0.5f))) << "Plop" << std::endl;
     }
 
     KLOG("nuclear",1) << KF_(col::pink) << "Pink" << std::endl;
+
+    constexpr math::argb32_t mycol = pack_ARGB(128,128,128);
+    constexpr math::argb32_t mycol2 = pack_ARGB(math::ColorRGBA(0.5f,0.5f,0.5f));
+
+    KLOG("nuclear",1) << KF_(mycol) << "Plop" << std::endl;
+    KLOG("nuclear",1) << KF_(mycol2) << "Plop" << std::endl;
+
 
     return 0;
 }
