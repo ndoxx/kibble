@@ -47,35 +47,6 @@ int main(int argc, char** argv)
 
     init_logger();
 
-    kfs::FileSystem filesystem;
-    filesystem.setup_config_directory("ndoxx", "nuclear");
-    const auto& cfg_dir = filesystem.get_config_directory();
-    KLOG("nuclear", 1) << cfg_dir << std::endl;
-
-    const auto& self_dir = filesystem.get_self_directory();
-    filesystem.alias_directory(self_dir / "../../data", "data");
-
-    kfs::PackFile::pack_directory(filesystem.regular_path("data://iotest/resources"),
-                                  filesystem.regular_path("data://iotest/resources.kpak"));
-
-    filesystem.alias_directory(self_dir / "../../data/iotest/resources", "resources"); // Not required
-    filesystem.alias_packfile(filesystem.regular_path("data://iotest/resources.kpak"), "resources");
-
-    {
-        auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");
-        KLOGR("nuclear") << retrieved << std::endl;
-    }
-
-    {
-        auto retrieved = filesystem.get_file_as_string("resources://not_in_pack.txt");
-        KLOGR("nuclear") << retrieved << std::endl;
-    }
-
-    KLOG("nuclear", 1) << filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt") <<
-   std::endl; KLOG("nuclear", 1) << filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt")
-   << std::endl;
-
-/*
     using namespace kb::math;
     for(size_t ii=0; ii<20; ++ii)
     {
@@ -83,6 +54,6 @@ int main(int argc, char** argv)
     }
 
     KLOG("nuclear",1) << KF_('p') << "Pink" << std::endl;
-*/
+
     return 0;
 }

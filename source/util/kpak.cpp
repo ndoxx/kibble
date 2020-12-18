@@ -32,9 +32,6 @@ void show_error_and_die(ap::ArgParse& parser)
 
 int main(int argc, char** argv)
 {
-    (void)argc;
-    (void)argv;
-
     init_logger();
     ap::ArgParse parser("kpak", "0.1");
     parser.set_log_output([](const std::string& str) { KLOG("kpak", 1) << str << std::endl; });
@@ -50,13 +47,13 @@ int main(int argc, char** argv)
     if(!fs::exists(dirpath))
     {
         KLOGE("kpak") << "Directory does not exist:" << std::endl;
-        KLOGI << KF_('p') << dirpath << std::endl;
+        KLOGI << KS_PATH_ << dirpath << std::endl;
         exit(0);
     }
     if(!fs::is_directory(dirpath))
     {
         KLOGE("kpak") << "Not a directory:" << std::endl;
-        KLOGI << KF_('p') << dirpath << std::endl;
+        KLOGI << KS_PATH_ << dirpath << std::endl;
         exit(0);
     }
 
@@ -72,7 +69,7 @@ int main(int argc, char** argv)
     if(!fs::exists(output_parent))
     {
         KLOGE("kpak") << "Output directory does exist:" << std::endl;
-        KLOGI << KF_('p') << output_parent << std::endl;
+        KLOGI << KS_PATH_ << output_parent << std::endl;
         exit(0);
     }
 
