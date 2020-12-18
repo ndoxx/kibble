@@ -48,6 +48,9 @@ struct ColorRGBA
                     float(color.a()) / 255.f)
     {}
     ColorRGBA(const ColorHSLA&);
+
+    template <typename Vec4T>
+    constexpr ColorRGBA(const Vec4T& color): r(color[0]), g(color[1]), b(color[2]), a(color[3]) {}
 };
 
 ColorRGBA to_RGBA(const ColorHSLA&);
