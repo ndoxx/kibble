@@ -11,7 +11,10 @@ static void BM_EasingDirect(benchmark::State& state)
     std::uniform_real_distribution<float> dis(0.f, 1.f);
 
     for(auto _ : state)
-        kb::easing::FUT__(dis(rng));
+    {
+        benchmark::DoNotOptimize(kb::ease::FUT__(dis(rng)));
+        benchmark::ClobberMemory();
+    }
 }
 BENCHMARK(BM_EasingDirect);
 
@@ -22,7 +25,10 @@ static void BM_EasingLookup(benchmark::State& state)
     std::uniform_real_distribution<float> dis(0.f, 1.f);
 
     for(auto _ : state)
-        kb::experimental::easing::fast(kb::experimental::easing::Func::FUT__, dis(rng));
+    {
+        benchmark::DoNotOptimize(kb::experimental::ease::fast(kb::experimental::ease::Func::FUT__, dis(rng)));
+        benchmark::ClobberMemory();
+    }
 }
 BENCHMARK(BM_EasingLookup);
 
