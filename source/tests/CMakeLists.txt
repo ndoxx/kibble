@@ -152,3 +152,33 @@ target_link_libraries(nuclear
     )
 
 cotire(nuclear)
+
+
+
+# -------- BENCHMARKING -------- #
+
+add_executable(bench "${CMAKE_CURRENT_SOURCE_DIR}/bench.cpp")
+
+target_include_directories(bench
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/source/kibble"
+    )
+
+target_compile_definitions(bench PRIVATE -DLOGGING_ENABLED=0)
+
+set_target_properties(bench
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+    )
+
+target_link_libraries(bench
+    PRIVATE
+        project_options
+        stdc++fs
+        kibble
+        benchmark
+        pthread
+    )
+
+cotire(bench)
