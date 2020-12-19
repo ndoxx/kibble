@@ -49,6 +49,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/assert/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/assert)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/cli/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/cli)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/config/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/config)
 

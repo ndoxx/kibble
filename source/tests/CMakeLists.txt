@@ -19,6 +19,7 @@ set_target_properties(test_logger
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        EXCLUDE_FROM_ALL 1
 )
 
 target_link_libraries(test_logger
@@ -59,6 +60,7 @@ set_target_properties(test_kibble
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        EXCLUDE_FROM_ALL 1
 )
 
 target_link_libraries(test_kibble
@@ -90,6 +92,7 @@ set_target_properties(fuzz_tester
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        EXCLUDE_FROM_ALL 1
 )
 
 target_link_libraries(fuzz_tester
@@ -140,6 +143,7 @@ set_target_properties(nuclear
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        EXCLUDE_FROM_ALL 1
     )
 
 target_link_libraries(nuclear
@@ -152,3 +156,34 @@ target_link_libraries(nuclear
     )
 
 cotire(nuclear)
+
+
+
+# -------- BENCHMARKING -------- #
+
+add_executable(bench "${CMAKE_CURRENT_SOURCE_DIR}/bench.cpp")
+
+target_include_directories(bench
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/source/kibble"
+    )
+
+target_compile_definitions(bench PRIVATE -DLOGGING_ENABLED=0)
+
+set_target_properties(bench
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        EXCLUDE_FROM_ALL 1
+    )
+
+target_link_libraries(bench
+    PRIVATE
+        project_options
+        stdc++fs
+        kibble
+        benchmark
+        pthread
+    )
+
+cotire(bench)
