@@ -29,7 +29,6 @@ int main(int argc, char** argv)
 
     size_t nsamples = 100;
 
-
     // We should end up with {{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}}
     // math::BezierSpline<glm::vec2> bez({{0.f, 0.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {99.f, 99.f}});
     // bez.add({1.f, 1.f});
@@ -43,10 +42,13 @@ int main(int argc, char** argv)
     {
         float tt = float(ii) / float(nsamples - 1);
         auto val = bez.value(tt);
-        auto tval = bez.tangent(tt);
+        auto pri = bez.prime(tt);
+        auto sec = bez.second(tt);
+        pri = 0.3f * glm::normalize(pri);
+        sec = 0.3f * glm::normalize(sec);
 
-        tval = 0.3f * glm::normalize(tval);
-        ofs << tt << ' ' << val.x << ' ' << val.y << ' ' << tval.x << ' ' << tval.y << std::endl;
+        ofs << tt << ' ' << val.x << ' ' << val.y << ' ' << pri.x << ' ' << pri.y << ' ' << sec.x << ' ' << sec.y
+            << std::endl;
     }
 
     return 0;
