@@ -64,5 +64,14 @@ constexpr uint32_t np2(uint32_t x)
     return ++x;
 }
 
+// Compute (-1)^i
+constexpr int parity(int ii) { return ((ii % 2) ? -1 : 1); }
+
+// Compute n!
+constexpr int factorial(int n) { return n <= 1 ? 1 : (n * factorial(n - 1)); }
+
+// Compute binomial coefficient n choose i
+constexpr int choose(int nn, int ii) { return (ii <= nn) ? factorial(nn) / (factorial(ii) * factorial(nn - ii)) : 0; }
+
 } // namespace math
 } // namespace kb
