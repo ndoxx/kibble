@@ -35,6 +35,8 @@ int main(int argc, char** argv)
     // bez.insert(1, {0.5f, 2.f});
     // bez.remove(4);
 
+    // math::BasicSpline<glm::vec2>* bez = new math::BezierSpline<glm::vec2>({{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
+    
     math::BezierSpline<glm::vec2> bez({{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
 
     std::ofstream ofs("bezier.txt");
