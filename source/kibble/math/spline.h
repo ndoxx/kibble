@@ -11,7 +11,6 @@ namespace kb
 {
 namespace math
 {
-
 namespace detail
 {
 template <size_t SIZE> constexpr std::array<int, SIZE> gen_factorial()
