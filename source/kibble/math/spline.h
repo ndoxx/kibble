@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cmath>
+#include <iostream>
 #include <limits>
 #include <vector>
 
@@ -21,24 +23,87 @@ template <size_t SIZE> constexpr std::array<int, SIZE> gen_factorial()
 }
 constexpr size_t k_max_fac = 11;
 constexpr auto k_fac = gen_factorial<k_max_fac>();
+
+template <size_t DIFF_ORDER, typename T, typename VecT> static T bezier_evaluate(float tt, const VecT& coeffs)
+{
+    T sum(0);
+    float tpow = 1.f;
+    for(size_t ii = 0; ii < coeffs.size() - DIFF_ORDER; ++ii)
+    {
+        size_t diff_coeff = 1;
+        if constexpr(DIFF_ORDER > 0)
+        {
+            for(size_t jj = 0; jj < DIFF_ORDER; ++jj)
+                diff_coeff *= ii + jj + 1;
+        }
+
+        sum += tpow * float(diff_coeff) * coeffs[size_t(ii + DIFF_ORDER)];
+        tpow *= tt;
+    }
+    return sum;
+}
+
+template <typename T, typename VecT> void bezier_coefficients(const VecT& control, VecT& coeff)
+{
+    const int nn = int(control.size());
+    int prod = 1;
+    for(int jj = 0; jj < nn; ++jj)
+    {
+        // Product from m=0 to j-1 of (n-m)
+        prod *= (jj > 0) ? nn - jj : 1;
+
+        T sum(0);
+        for(int ii = 0; ii <= jj; ++ii)
+        {
+            int comb = (prod * parity(ii + jj)) / (k_fac[size_t(ii)] * k_fac[size_t(jj - ii)]);
+            sum += float(comb) * control[size_t(ii)];
+        }
+        coeff[size_t(jj)] = sum;
+    }
+}
+
+// Stateless interpolation using deCasteljau's algorithm
+// Parameters: recursion level, free index, interpolation parameter and control points
+template <typename T, typename VecT> static T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT& points)
+{
+    if(rr == 0)
+        return points[ii];
+
+    T p1 = deCasteljau(rr - 1, ii, tt, points);
+    T p2 = deCasteljau(rr - 1, ii + 1, tt, points);
+
+    return p1 * (1.f - tt) + p2 * tt;
+}
 } // namespace detail
 
-template <typename T> class BasicSpline
+// Stateless interpolation (deCasteljau)
+template <typename T> static inline T deCasteljau(float tt, const std::vector<T>& points)
+{
+    return detail::deCasteljau(points.size() - 1, 0, tt, points);
+}
+
+template <typename T> class BezierSpline
 {
 public:
-    BasicSpline(const std::vector<T>& control_points, size_t min_points,
-                size_t max_points = std::numeric_limits<size_t>::max())
-        : control_(control_points), min_points_(min_points), max_points_(max_points)
-    {}
-    virtual ~BasicSpline() = default;
+    BezierSpline(const std::vector<T>& control_points) : control_(control_points)
+    {
+        K_ASSERT(control_.size() > 2, "There must be at least 3 control points.");
+        K_ASSERT(control_.size() < detail::k_max_fac, "Maximum number of control points exceeded.");
+        coeff_.resize(control_.size());
+        detail::bezier_coefficients<T>(control_, coeff_);
+    }
+    BezierSpline() : BezierSpline({T(0), T(0), T(0)}) {}
+    ~BezierSpline() = default;
+
     // * Access
     // Set all control points
     bool set_control_points(const std::vector<T>& control_points)
     {
-        if(control_points.size() > min_points_ && control_points.size() < max_points_)
+        if(control_points.size() > 2 && control_points.size() < detail::k_max_fac)
         {
             control_ = control_points;
-            update_coefficients();
+            coeff_.resize(control_.size());
+            detail::bezier_coefficients<T>(control_, coeff_);
             return true;
         }
         return false;
@@ -46,10 +111,11 @@ public:
     // Add a new control point
     bool add(const T& point)
     {
-        if(control_.size() + 1 < max_points_)
+        if(control_.size() + 1 < detail::k_max_fac)
         {
             control_.push_back(point);
-            update_coefficients();
+            coeff_.resize(control_.size());
+            detail::bezier_coefficients<T>(control_, coeff_);
             return true;
         }
         return false;
@@ -57,10 +123,11 @@ public:
     // Insert a new control point at specified index
     bool insert(size_t idx, const T& point)
     {
-        if(idx < control_.size() && control_.size() + 1 < max_points_)
+        if(idx < control_.size() && control_.size() + 1 < detail::k_max_fac)
         {
             control_.insert(control_.begin() + long(idx), point);
-            update_coefficients();
+            coeff_.resize(control_.size());
+            detail::bezier_coefficients<T>(control_, coeff_);
             return true;
         }
         return false;
@@ -68,10 +135,11 @@ public:
     // Remove control point
     bool remove(size_t idx)
     {
-        if(idx < control_.size() && control_.size() - 1 > min_points_)
+        if(idx < control_.size() && control_.size() - 1 > 2)
         {
             control_.erase(control_.begin() + long(idx));
-            update_coefficients();
+            coeff_.resize(control_.size());
+            detail::bezier_coefficients<T>(control_, coeff_);
             return true;
         }
         return false;
@@ -82,7 +150,8 @@ public:
         if(idx < control_.size())
         {
             control_[idx] = new_value;
-            update_coefficients();
+            coeff_.resize(control_.size());
+            detail::bezier_coefficients<T>(control_, coeff_);
             return true;
         }
         return false;
@@ -104,118 +173,83 @@ public:
 
     // * Interpolation functions
     // Return the value along the curve at specified parameter value
-    virtual T value(float tt) const = 0;
+    inline T value(float tt) const { return detail::bezier_evaluate<0, T>(tt, coeff_); }
     // Return the first derivative at specified parameter value
-    virtual T prime(float tt) const = 0;
+    inline T prime(float tt) const { return detail::bezier_evaluate<1, T>(tt, coeff_); }
     // Return the second derivative at specified parameter value
-    virtual T second(float tt) const = 0;
-    // Shortcut for value interpolation
-    inline T operator()(float tt) const { return value(tt); }
+    inline T second(float tt) const { return detail::bezier_evaluate<2, T>(tt, coeff_); }
 
-protected:
-    virtual void update_coefficients() = 0;
-
-protected:
+private:
     std::vector<T> control_;
     std::vector<T> coeff_;
-    size_t min_points_;
-    size_t max_points_;
 };
 
-template <typename T> class BezierSpline : public BasicSpline<T>
+template <typename T> class HermiteSpline
 {
 public:
-    BezierSpline(const std::vector<T>& control_points) : BasicSpline<T>(control_points, 2, detail::k_max_fac)
+    HermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
+                const T& end_tangent = T(0))
+        : control_(control_points)
     {
-        BezierSpline::update_coefficients();
-    }
-    BezierSpline() : BezierSpline({T(0), T(0), T(0)}) {}
-    ~BezierSpline() = default;
+        coeff_.resize(control_.size() - 1);
 
-    // * Interpolation functions
-    // Return the value along the curve at specified parameter value
-    T value(float tt) const override
-    {
-        T sum(0);
-        float tpow = 1.f;
-        for(size_t ii = 0; ii < coeff_.size(); ++ii)
+        // Compute tangents (formula for a generic cardinal spline)
+        std::vector<T> tangents(control_.size(), T(0));
+        tangents[0] = start_tangent;
+        for(size_t ii = 1; ii < tangents.size() - 1; ++ii)
+            tangents[ii] = (1.f - tension) * (control_[ii + 1] - control_[ii - 1]);
+        tangents[control_.size() - 1] = end_tangent;
+
+        // Compute coefficients
+        for(size_t ii = 0; ii < control_.size() - 1; ++ii)
         {
-            sum += tpow * coeff_[ii];
-            tpow *= tt;
+            detail::bezier_coefficients<T>({control_[ii], control_[ii] + tangents[ii] / 3.f,
+                                            control_[ii + 1] - tangents[ii + 1] / 3.f, control_[ii + 1]},
+                                           coeff_[ii]);
         }
-        return sum;
-    }
-    // Return the first derivative at specified parameter value
-    T prime(float tt) const override
-    {
-        T sum(0);
-        float tpow = 1.f;
-        for(size_t ii = 0; ii < coeff_.size() - 1; ++ii)
-        {
-            sum += tpow * float(ii + 1) * coeff_[size_t(ii + 1)];
-            tpow *= tt;
-        }
-        return sum;
-    }
-    // Return the second derivative at specified parameter value
-    T second(float tt) const override
-    {
-        T sum(0);
-        float tpow = 1.f;
-        for(size_t ii = 0; ii < coeff_.size() - 2; ++ii)
-        {
-            sum += tpow * float((ii + 1) * (ii + 2)) * coeff_[size_t(ii + 2)];
-            tpow *= tt;
-        }
-        return sum;
-    }
-    // Stateless interpolation (deCasteljau)
-    static inline T interpolate_deCasteljau(float tt, const std::vector<T>& points)
-    {
-        return deCasteljau(points.size() - 1, 0, tt, points);
     }
 
-protected:
-    using BasicSpline<T>::control_;
-    using BasicSpline<T>::coeff_;
+    inline float remap(float tt, size_t idx) const { return tt * float(control_.size() - 1) - float(idx); }
 
-    void update_coefficients() override
+    inline T value(float tt) const
     {
-        K_ASSERT(control_.size() > 2, "There must be at least 3 control points.");
-        K_ASSERT(control_.size() < detail::k_max_fac, "Maximum number of control points exceeded.");
+        // Get coefficient index associated to subinterval containing tt
+        size_t idx = get_coeff_index(tt);
+        return detail::bezier_evaluate<0, T>(remap(tt, idx), coeff_[idx]);
+    }
 
-        coeff_.resize(control_.size());
+    inline T prime(float tt) const
+    {
+        size_t idx = get_coeff_index(tt);
+        return detail::bezier_evaluate<1, T>(remap(tt, idx), coeff_[idx]);
+    }
 
-        const int nn = int(control_.size());
-        int prod = 1;
-        for(int jj = 0; jj < nn; ++jj)
-        {
-            // Product from m=0 to j-1 of (n-m)
-            prod *= (jj > 0) ? nn - jj : 1;
-
-            T sum(0);
-            for(int ii = 0; ii <= jj; ++ii)
-            {
-                int comb = (prod * parity(ii + jj)) / (detail::k_fac[size_t(ii)] * detail::k_fac[size_t(jj - ii)]);
-                sum += float(comb) * control_[size_t(ii)];
-            }
-            coeff_[size_t(jj)] = sum;
-        }
+    inline T second(float tt) const
+    {
+        size_t idx = get_coeff_index(tt);
+        return detail::bezier_evaluate<2, T>(remap(tt, idx), coeff_[idx]);
     }
 
 private:
-    // Stateless interpolation using deCasteljau's algorithm
-    // Parameters: recursion level, free index, interpolation parameter and control points
-    static T interpolate_deCasteljau(unsigned rr, unsigned ii, float tt, const std::vector<T>& points)
+    size_t get_coeff_index(float tt) const
     {
-        if(rr == 0)
-            return points[ii];
-
-        T p1 = deCasteljau(rr - 1, ii, tt, points);
-        T p2 = deCasteljau(rr - 1, ii + 1, tt, points);
-
-        return p1 * (1.f - tt) + p2 * tt;
+        // Clamp index if tt is out of bounds
+        if(tt < 0.f)
+            return 0;
+        if(tt >= 1.f)
+            return coeff_.size() - 1;
+        // Find immediate upper bound in domain and return index of lower bound
+        for(size_t ii = 1; ii < control_.size(); ++ii)
+        {
+            if(tt < float(ii) / float(control_.size() - 1))
+                return ii - 1;
+        }
+        return 0;
     }
+
+private:
+    std::vector<T> control_;
+    std::vector<std::array<T, 4>> coeff_;
 };
 
 } // namespace math
