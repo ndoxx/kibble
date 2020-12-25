@@ -13,6 +13,18 @@ namespace kb
 {
 namespace math
 {
+
+// Specialize this for HermiteSpline's underlying types
+template <typename T> struct PointDistance
+{
+    static inline float distance(const T& p0, const T& p1)
+    {
+        (void)p0;
+        (void)p1;
+        return 0.f;
+    }
+};
+
 namespace detail
 {
 template <size_t SIZE> constexpr std::array<int, SIZE> gen_factorial()
@@ -24,7 +36,7 @@ template <size_t SIZE> constexpr std::array<int, SIZE> gen_factorial()
 constexpr size_t k_max_fac = 11;
 constexpr auto k_fac = gen_factorial<k_max_fac>();
 
-template <size_t DIFF_ORDER, typename T, typename VecT> static T bezier_evaluate(float tt, const VecT& coeffs)
+template <size_t DIFF_ORDER, typename T, typename VecT> T bezier_evaluate(float tt, const VecT& coeffs)
 {
     T sum(0);
     float tpow = 1.f;
@@ -64,7 +76,7 @@ template <typename T, typename VecT> void bezier_coefficients(const VecT& contro
 
 // Stateless interpolation using deCasteljau's algorithm
 // Parameters: recursion level, free index, interpolation parameter and control points
-template <typename T, typename VecT> static T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT& points)
+template <typename T, typename VecT> T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT& points)
 {
     if(rr == 0)
         return points[ii];
@@ -74,10 +86,42 @@ template <typename T, typename VecT> static T deCasteljau(unsigned rr, unsigned 
 
     return p1 * (1.f - tt) + p2 * tt;
 }
+
+// Return index of the largest arc length value smaller than target
+template <typename T> size_t arclen_binary_search(float target, const std::vector<float>& arc_length)
+{
+    // Binary search
+    size_t lb = 0;
+    size_t ub = arc_length.size();
+    size_t idx = 0;
+    while(lb < ub)
+    {
+        idx = lb + (((ub - lb) / 2));
+        if(arc_length[idx] < target)
+            lb = idx + 1;
+        else
+            ub = idx;
+    }
+    return (arc_length[idx] > target) ? idx - 1 : idx;
+}
+
+template <typename T> float arclen_parameterize(float tt, const std::vector<float>& arc_length)
+{
+    float target = tt * arc_length.back();
+    size_t idx = arclen_binary_search<T>(target, arc_length);
+    size_t nextidx = (idx + 1 > arc_length.size() - 1) ? arc_length.size() - 1 : idx + 1;
+
+    float len_before = arc_length[idx];
+    float len_after = arc_length[nextidx];
+    float len_segment = len_after - len_before;
+    float alpha = (target - len_before) / len_segment;
+    return (float(idx) + alpha) / float(arc_length.size() - 1);
+}
+
 } // namespace detail
 
 // Stateless interpolation (deCasteljau)
-template <typename T> static inline T deCasteljau(float tt, const std::vector<T>& points)
+template <typename T> inline T deCasteljau(float tt, const std::vector<T>& points)
 {
     return detail::deCasteljau(points.size() - 1, 0, tt, points);
 }
@@ -188,7 +232,7 @@ template <typename T> class HermiteSpline
 {
 public:
     HermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
-                const T& end_tangent = T(0))
+                  const T& end_tangent = T(0))
         : control_(control_points)
     {
         coeff_.resize(control_.size() - 1);
@@ -207,6 +251,9 @@ public:
                                             control_[ii + 1] - tangents[ii + 1] / 3.f, control_[ii + 1]},
                                            coeff_[ii]);
         }
+
+        // Compute cumulative arc lengths
+        calculate_arc_lengths_iterative(100);
     }
 
     inline float remap(float tt, size_t idx) const { return tt * float(control_.size() - 1) - float(idx); }
@@ -230,26 +277,41 @@ public:
         return detail::bezier_evaluate<2, T>(remap(tt, idx), coeff_[idx]);
     }
 
+    // Return arc-length parameterized value
+    inline T value_alp(float tt) const { return value(detail::arclen_parameterize<T>(tt, arc_length_)); }
+    // Return arc-length parameterized first derivative
+    inline T prime_alp(float tt) const { return prime(detail::arclen_parameterize<T>(tt, arc_length_)); }
+    // Return arc-length parameterized second derivative
+    inline T second_alp(float tt) const { return second(detail::arclen_parameterize<T>(tt, arc_length_)); }
+
 private:
-    size_t get_coeff_index(float tt) const
+    inline size_t get_coeff_index(float tt) const
     {
-        // Clamp index if tt is out of bounds
-        if(tt < 0.f)
-            return 0;
-        if(tt >= 1.f)
-            return coeff_.size() - 1;
-        // Find immediate upper bound in domain and return index of lower bound
-        for(size_t ii = 1; ii < control_.size(); ++ii)
+        // Clamp index if tt is out of bounds. A value of exactly 1.f would yield
+        // an index out of bounds, so the upper bound is set to the number just before 1.f
+        tt = std::clamp(tt, 0.f, std::nexttoward(1.f, -1));
+        return size_t(std::floor(float(control_.size() - 1) * tt));
+    }
+
+    void calculate_arc_lengths_iterative(size_t max_iter)
+    {
+        arc_length_.resize(max_iter);
+        float arclen = 0.f;
+        T prev = control_[0];
+        for(size_t ii = 0; ii < max_iter; ++ii)
         {
-            if(tt < float(ii) / float(control_.size() - 1))
-                return ii - 1;
+            float tt = float(ii) / float(max_iter - 1);
+            T point = value(tt);
+            arclen += PointDistance<T>::distance(point, prev);
+            arc_length_[ii] = arclen;
+            prev = point;
         }
-        return 0;
     }
 
 private:
     std::vector<T> control_;
     std::vector<std::array<T, 4>> coeff_;
+    std::vector<float> arc_length_;
 };
 
 } // namespace math
