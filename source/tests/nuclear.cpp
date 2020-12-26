@@ -4,11 +4,11 @@
 
 #include "math/spline.h"
 
+#include <array>
 #include <cmath>
 #include <fstream>
 #include <glm/glm.hpp>
 #include <vector>
-#include <array>
 
 namespace fs = std::filesystem;
 using namespace kb;
@@ -24,13 +24,8 @@ void init_logger()
 
 void export_bezier(size_t nsamples, const std::string& filename)
 {
-    // We should end up with {{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}}
-    // math::BezierSpline<glm::vec2> bez({{0.f, 0.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {99.f, 99.f}});
-    // bez.add({1.f, 1.f});
-    // bez.insert(1, {0.5f, 2.f});
-    // bez.remove(4);
-
-    math::BezierSpline<glm::vec2> bez({{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
+    math::FixedBezierSpline bez(
+        std::array<glm::vec2, 5>{glm::vec2{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
 
     std::ofstream ofs(filename);
     for(size_t ii = 0; ii < nsamples; ++ii)
@@ -49,19 +44,16 @@ void export_bezier(size_t nsamples, const std::string& filename)
 
 namespace kb::math
 {
-template <>
-struct PointDistance<glm::vec2>
+template <> struct PointDistance<glm::vec2>
 {
-    static inline float distance(const glm::vec2& p0, const glm::vec2& p1)
-    {
-        return glm::distance(p0,p1);
-    }
+    static inline float distance(const glm::vec2& p0, const glm::vec2& p1) { return glm::distance(p0, p1); }
 };
-}
+} // namespace kb::math
 
 void export_cspline(size_t nsamples, const std::string& filename)
 {
     math::HermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
+    KLOG("nuclear", 1) << "Spline length is: " << spl.length(0.01f) << std::endl;
 
     std::ofstream ofs(filename);
     for(size_t ii = 0; ii < nsamples; ++ii)
@@ -80,7 +72,8 @@ void export_cspline(size_t nsamples, const std::string& filename)
 
 void export_ucspline(size_t nsamples, const std::string& filename)
 {
-    math::UniformHermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
+    math::UniformHermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 64, 0.f);
+    KLOG("nuclear", 1) << "Spline length is: " << spl.length(0.01f) << std::endl;
 
     std::ofstream ofs(filename);
     for(size_t ii = 0; ii < nsamples; ++ii)

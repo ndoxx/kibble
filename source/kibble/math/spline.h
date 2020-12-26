@@ -1,16 +1,25 @@
 #pragma once
 
-/* This file contains multiple implementations of splines. Spline
- * classes are parameterized by a point type (could be a 2D/3D vector or anything else
+/* Spline classes are parameterized by a point type (could be a 2D/3D vector or anything else
  * that is vector-like) and do not depend explicitly on some math library types.
  * Points however must define the usual operations (add/subtract, scalar multiply/divide),
- * and the PointDistance struct must be specialized if UniformHermiteSpline is to be used.
+ * and the PointDistance struct must be specialized if HermiteSpline is to be used.
+ *
+ * Length estimation algorithm stemmed from Andrew Willmott's splines lib
+ * https://github.com/andrewwillmott/splines-lib
+ * - I use structured bindings instead of passing references
+ * - I implemented a generic deCasteljau split algorithm with a recursive template
+ *   -> which means I can compute lengths of generic order N Bezier curves
+ *
+ * At the moment, I only implemented a fixed-size (compile-time) Bezier spline, and
+ * a cubic Hermite spline that uses cubic Bezier spline segments. Also, there is the
+ * UniformHermiteSpline that is an arc-length reparameterization of a basic HermitSpline.
+ * This allows uniform percent length sampling along the curve.
+ * Points cannot be edited / added / moved dynamically for now.
  */
 
 #include <array>
 #include <cmath>
-#include <iostream>
-#include <limits>
 #include <vector>
 
 #include "../assert/assert.h"
@@ -34,15 +43,21 @@ template <typename T> struct PointDistance
 
 namespace detail
 {
+// Compile-time generation of the factorial array
 template <size_t SIZE> constexpr std::array<int, SIZE> gen_factorial()
 {
     std::array<int, SIZE> ret{0};
     std::generate(ret.begin(), ret.end(), [n = 0]() mutable { return factorial(n++); });
     return ret;
 }
+// Maximum number of factorials to compute
 constexpr size_t k_max_fac = 11;
+// This array contains factorials from 0 to k_max_fac-1
 constexpr auto k_fac = gen_factorial<k_max_fac>();
+// Basic linear interpolation utility
+template <typename T> inline T lerp(const T& a, const T& b, float alpha) { return (1.f - alpha) * a + alpha * b; }
 
+// Evaluate the DIFF_ORDER derivative of a Bezier curve specified by coeffs at parameter value tt
 template <size_t DIFF_ORDER, typename T, typename VecT> T bezier_evaluate(float tt, const VecT& coeffs)
 {
     T sum(0);
@@ -62,6 +77,7 @@ template <size_t DIFF_ORDER, typename T, typename VecT> T bezier_evaluate(float 
     return sum;
 }
 
+// Compute the polynomial (vector) coefficients of a Bezier curve from its control points
 template <typename T, typename VecT> void bezier_coefficients(const VecT& control, VecT& coeff)
 {
     const int nn = int(control.size());
@@ -94,9 +110,8 @@ template <typename T, typename VecT> T deCasteljau(unsigned rr, unsigned ii, flo
     return p1 * (1.f - tt) + p2 * tt;
 }
 
-template <typename T> inline T lerp(const T& a, const T& b, float alpha) { return (1.f - alpha) * a + alpha * b; }
-
-// Recursive deCasteljau algorithm to Split a Bezier curve into two curves of the same order
+// Recursive deCasteljau algorithm to Split a Bezier curve into two curves of the same order at arbitrary
+// parameter value
 template <typename T, size_t SIZE, size_t LEVEL>
 void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, SIZE>& left, std::array<T, SIZE>& right,
                       float param = 0.5f)
@@ -132,13 +147,15 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, S
     }
 }
 
-// Return index of the largest arc length value smaller than target
-template <typename T> size_t arclen_binary_search(float target, const std::vector<float>& arc_length)
+// Binary search the input arc_length lookup table for the target length and return its index.
+// The lower_bound argument sets the initial lower bound, it allows to skip a portion
+// of the array where we already know we won't find the target.
+size_t arclen_binary_search(float target, const std::vector<float>& arc_length, size_t lower_bound = 0)
 {
     // Binary search
-    size_t lb = 0;
+    size_t lb = lower_bound;
     size_t ub = arc_length.size();
-    size_t idx = 0;
+    size_t idx = lb;
     while(lb < ub)
     {
         idx = lb + (((ub - lb) / 2));
@@ -150,17 +167,22 @@ template <typename T> size_t arclen_binary_search(float target, const std::vecto
     return (arc_length[idx] > target) ? idx - 1 : idx;
 }
 
-template <typename T> float arclen_remap(float tt, const std::vector<float>& arc_length)
+// Return value and index of the largest arc length value smaller than target.
+// The last_index argument is transmitted to the binary search function so as
+// to avoid useless iterations.
+std::pair<float, size_t> arclen_remap(float tt, const std::vector<float>& arc_length, size_t last_index = 0)
 {
     float target = tt * arc_length.back();
-    size_t idx = arclen_binary_search<T>(target, arc_length);
-    size_t nextidx = (idx + 1 > arc_length.size() - 1) ? arc_length.size() - 1 : idx + 1;
+    size_t idx = arclen_binary_search(target, arc_length, last_index);
+    if(idx == arc_length.size() - 1)
+        return {1.f, idx};
 
     float len_before = arc_length[idx];
-    float len_after = arc_length[nextidx];
+    float len_after = arc_length[idx + 1];
     float len_segment = len_after - len_before;
     float alpha = (target - len_before) / len_segment;
-    return (float(idx) + alpha) / float(arc_length.size() - 1);
+    float ret = (float(idx) + alpha) / float(arc_length.size() - 1);
+    return {ret, idx};
 }
 
 } // namespace detail
@@ -171,79 +193,16 @@ template <typename T> inline T deCasteljau(float tt, const std::vector<T>& point
     return detail::deCasteljau(points.size() - 1, 0, tt, points);
 }
 
-template <typename T> class BezierSpline
+// A Bezier spline of order SIZE-1
+template <typename T, size_t SIZE> class FixedBezierSpline
 {
 public:
-    BezierSpline(const std::vector<T>& control_points) : control_(control_points)
+    FixedBezierSpline(std::array<T, SIZE>&& control_points) : control_(std::move(control_points))
     {
-        K_ASSERT(control_.size() > 2, "There must be at least 3 control points.");
-        K_ASSERT(control_.size() < detail::k_max_fac, "Maximum number of control points exceeded.");
-        coeff_.resize(control_.size());
         detail::bezier_coefficients<T>(control_, coeff_);
     }
-    BezierSpline() : BezierSpline({T(0), T(0), T(0)}) {}
 
     // * Access
-    // Set all control points
-    bool set_control_points(const std::vector<T>& control_points)
-    {
-        if(control_points.size() > 2 && control_points.size() < detail::k_max_fac)
-        {
-            control_ = control_points;
-            coeff_.resize(control_.size());
-            detail::bezier_coefficients<T>(control_, coeff_);
-            return true;
-        }
-        return false;
-    }
-    // Add a new control point
-    bool add(const T& point)
-    {
-        if(control_.size() + 1 < detail::k_max_fac)
-        {
-            control_.push_back(point);
-            coeff_.resize(control_.size());
-            detail::bezier_coefficients<T>(control_, coeff_);
-            return true;
-        }
-        return false;
-    }
-    // Insert a new control point at specified index
-    bool insert(size_t idx, const T& point)
-    {
-        if(idx < control_.size() && control_.size() + 1 < detail::k_max_fac)
-        {
-            control_.insert(control_.begin() + long(idx), point);
-            coeff_.resize(control_.size());
-            detail::bezier_coefficients<T>(control_, coeff_);
-            return true;
-        }
-        return false;
-    }
-    // Remove control point
-    bool remove(size_t idx)
-    {
-        if(idx < control_.size() && control_.size() - 1 > 2)
-        {
-            control_.erase(control_.begin() + long(idx));
-            coeff_.resize(control_.size());
-            detail::bezier_coefficients<T>(control_, coeff_);
-            return true;
-        }
-        return false;
-    }
-    // Move a control point to a new position
-    bool move(size_t idx, const T& new_value)
-    {
-        if(idx < control_.size())
-        {
-            control_[idx] = new_value;
-            coeff_.resize(control_.size());
-            detail::bezier_coefficients<T>(control_, coeff_);
-            return true;
-        }
-        return false;
-    }
     // Get the number of control points
     inline size_t get_count() const { return control_.size(); }
     // Get a control point
@@ -257,7 +216,7 @@ public:
     // Get last control point
     inline const T& back() const { return control_.back(); }
     // Get all control points
-    inline const std::vector<T>& get_control_points() const { return control_; }
+    inline const auto& get_control_points() const { return control_; }
 
     // * Interpolation functions
     // Return the value along the curve at specified parameter value
@@ -266,37 +225,16 @@ public:
     inline T prime(float tt) const { return detail::bezier_evaluate<1, T>(tt, coeff_); }
     // Return the second derivative at specified parameter value
     inline T second(float tt) const { return detail::bezier_evaluate<2, T>(tt, coeff_); }
-
-private:
-    std::vector<T> control_;
-    std::vector<T> coeff_;
-};
-
-template <typename T, size_t SIZE> class FixedBezierSpline
-{
-public:
-    FixedBezierSpline(std::array<T, SIZE>&& control_points) : control_(std::move(control_points))
-    {
-        detail::bezier_coefficients<T>(control_, coeff_);
-    }
-
-    // * Interpolation functions
-    // Return the value along the curve at specified parameter value
-    inline T value(float tt) const { return detail::bezier_evaluate<0, T>(tt, coeff_); }
-    // Return the first derivative at specified parameter value
-    inline T prime(float tt) const { return detail::bezier_evaluate<1, T>(tt, coeff_); }
-    // Return the second derivative at specified parameter value
-    inline T second(float tt) const { return detail::bezier_evaluate<2, T>(tt, coeff_); }
-
-    std::pair<FixedBezierSpline, FixedBezierSpline> half_split() const
+    // Return the total length of this curve, such that the error is less than input argument
+    inline float length(float max_error) const { return length(*this, max_error); }
+    // Split this Bezier curve into two curves of the same order
+    inline std::pair<FixedBezierSpline, FixedBezierSpline> split(float tt) const
     {
         std::array<T, SIZE> left;
         std::array<T, SIZE> right;
-        detail::deCasteljauSplit<T, SIZE, 0>(control_, left, right);
+        detail::deCasteljauSplit<T, SIZE, 0>(control_, left, right, tt);
         return {FixedBezierSpline(std::move(left)), FixedBezierSpline(std::move(right))};
     }
-
-    inline float length(float max_error) const { return length(*this, max_error); }
 
 private:
     // Return a float pair containing a length estimate and an error
@@ -311,12 +249,15 @@ private:
         return {0.5f * (max_length + min_length), 0.5f * (max_length - min_length)};
     }
 
+    // Recursive length computation
     static float length(const FixedBezierSpline& spline, float max_error)
     {
+        // While the length estimation error is too big, split the curve and add
+        // the length of the two subdivisions
         auto&& [len, error] = spline.length_estimate();
         if(error > max_error)
         {
-            auto&& [s0, s1] = spline.half_split();
+            auto&& [s0, s1] = spline.split(0.5f);
             return length(s0, max_error) + length(s1, max_error);
         }
         return len;
@@ -327,14 +268,22 @@ private:
     std::array<T, SIZE> coeff_;
 };
 
+// A cubic Hermite spline whose segments are expressed as cubic Bezier splines
 template <typename T> class HermiteSpline
 {
 public:
+    static constexpr size_t k_min_control_points = 1;
+
     HermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
                   const T& end_tangent = T(0))
         : control_(control_points)
     {
+        K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points.");
+
         // Compute tangents (formula for a generic cardinal spline)
+        // tension = 0.f  => Catmull-Rom spline
+        // tension = 0.5f => Finite-difference spline
+        // tension = 1.f  => Null-tangent spline
         std::vector<T> tangents(control_.size(), T(0));
         tangents[0] = start_tangent;
         for(size_t ii = 1; ii < tangents.size() - 1; ++ii)
@@ -342,39 +291,49 @@ public:
         tangents[control_.size() - 1] = end_tangent;
 
         // Each spline segment is a cubic Bezier spline
+        segment_.clear();
         for(size_t ii = 0; ii < control_.size() - 1; ++ii)
         {
             segment_.emplace_back(std::array{control_[ii], control_[ii] + tangents[ii] / 3.f,
                                              control_[ii + 1] - tangents[ii + 1] / 3.f, control_[ii + 1]});
         }
-        std::cout << segment_[0].length(0.1f) << std::endl;
+    }
+    HermiteSpline() : HermiteSpline({T(0), T(0)}) {}
+
+    // Return the total length of this curve, such that the error is less than input argument
+    float length(float max_error) const
+    {
+        float sum = 0.f;
+        for(const auto& seg : segment_)
+            sum += seg.length(max_error);
+        return sum;
     }
 
     // * Interpolation functions
     // Return the value along the curve at specified parameter value
     inline T value(float tt) const
     {
-        auto idx = get_coeff_index(tt);
-        return segment_[idx].value(remap(tt, idx));
+        auto idx = locate_segment(tt);
+        return segment_[idx].value(to_local_space(tt, idx));
     }
     // Return the first derivative at specified parameter value
     inline T prime(float tt) const
     {
-        auto idx = get_coeff_index(tt);
-        return segment_[idx].prime(remap(tt, idx));
+        auto idx = locate_segment(tt);
+        return segment_[idx].prime(to_local_space(tt, idx));
     }
     // Return the second derivative at specified parameter value
     inline T second(float tt) const
     {
-        auto idx = get_coeff_index(tt);
-        return segment_[idx].second(remap(tt, idx));
+        auto idx = locate_segment(tt);
+        return segment_[idx].second(to_local_space(tt, idx));
     }
 
 protected:
     // Remap parameter to local cubic spline parameter space
-    inline float remap(float tt, size_t idx) const { return tt * float(control_.size() - 1) - float(idx); }
-    // Return coefficient index associated to subinterval containing tt.
-    inline size_t get_coeff_index(float tt) const
+    inline float to_local_space(float tt, size_t idx) const { return tt * float(control_.size() - 1) - float(idx); }
+    // Return segment index associated to subinterval containing tt.
+    inline size_t locate_segment(float tt) const
     {
         // Clamp index if tt is out of bounds. A value of exactly 1.f would yield
         // an index out of bounds, so the upper bound is set to the number just before 1.f
@@ -391,30 +350,33 @@ protected:
 template <typename T> class UniformHermiteSpline : public HermiteSpline<T>
 {
 public:
-    UniformHermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
-                         const T& end_tangent = T(0))
+    UniformHermiteSpline(const std::vector<T>& control_points, size_t max_lookup = 64, float tension = 0.f,
+                         const T& start_tangent = T(0), const T& end_tangent = T(0))
         : HermiteSpline<T>(control_points, tension, start_tangent, end_tangent)
     {
-        // Compute cumulative arc lengths
-        calculate_arc_lengths_iterative(32);
+        calculate_lookup_iterative(max_lookup);
     }
+    UniformHermiteSpline() : UniformHermiteSpline({T(0), T(0)}) {}
 
     // * Interpolation functions
     // BEWARE: these are NON-VIRTUAL overrides
     // Return arc-length parameterized value
-    inline T value(float tt) const { return HermiteSpline<T>::value(detail::arclen_remap<T>(tt, arc_length_)); }
+    inline T value(float uu) const { return HermiteSpline<T>::value(arclen_remap(uu)); }
     // Return arc-length parameterized first derivative
-    inline T prime(float tt) const { return HermiteSpline<T>::prime(detail::arclen_remap<T>(tt, arc_length_)); }
+    inline T prime(float uu) const { return HermiteSpline<T>::prime(arclen_remap(uu)); }
     // Return arc-length parameterized second derivative
-    inline T second(float tt) const { return HermiteSpline<T>::second(detail::arclen_remap<T>(tt, arc_length_)); }
+    inline T second(float uu) const { return HermiteSpline<T>::second(arclen_remap(uu)); }
 
 protected:
     using HermiteSpline<T>::control_;
 
 private:
-    void calculate_arc_lengths_iterative(size_t max_iter)
+    // Compute the remapping lookup table, its size will be max_iter
+    void calculate_lookup_iterative(size_t max_iter)
     {
-        arc_length_.resize(max_iter);
+        // Sample the spline and estimate the cumulative lengths of each subintervals
+        std::vector<float> arc_length;
+        arc_length.resize(max_iter);
         float arclen = 0.f;
         T prev = control_[0];
         for(size_t ii = 0; ii < max_iter; ++ii)
@@ -422,13 +384,38 @@ private:
             float tt = float(ii) / float(max_iter - 1);
             T point = HermiteSpline<T>::value(tt);
             arclen += PointDistance<T>::distance(point, prev);
-            arc_length_[ii] = arclen;
+            arc_length[ii] = arclen;
             prev = point;
+        }
+
+        // Inverse the arc length function : compute parameter value as a function of arc length
+        size_t last_index = 0;
+        arc_length_inverse_.resize(max_iter);
+        for(size_t ii = 0; ii < max_iter; ++ii)
+        {
+            float uu = float(ii) / float(max_iter - 1);
+            // Because the length array is monotonically increasing, we know we won't find our target
+            // before the last_index, then we can cut down costs by providing last_index to the remap func.
+            auto&& [param, idx] = detail::arclen_remap(uu, arc_length, last_index);
+            arc_length_inverse_[ii] = param;
+            last_index = idx;
         }
     }
 
+    // Estimate a parameter value such that uu represents the length fraction along the curve
+    float arclen_remap(float uu) const
+    {
+        // Sample the lookup table
+        uu = std::clamp(uu, 0.f, std::nexttoward(1.f, -1));
+        size_t idx = size_t(std::floor(float(arc_length_inverse_.size() - 1) * uu));
+        if(idx == arc_length_inverse_.size() - 1)
+            return arc_length_inverse_.back();
+        float alpha = float(arc_length_inverse_.size() - 1) * uu - float(idx);
+        return std::lerp(arc_length_inverse_[idx], arc_length_inverse_[idx + 1], alpha);
+    }
+
 private:
-    std::vector<float> arc_length_;
+    std::vector<float> arc_length_inverse_;
 };
 
 } // namespace math
