@@ -74,38 +74,43 @@ int main(int argc, char** argv)
         KLOGN("nuclear") << "s=" << s << " v=" << y2 - y1 << " h=" << x2 - x1 << std::endl;
         cats.emplace_back(x1, y1, x2, y2, s);
     }
-    /*
+
+    // Multiple catenary curves with same anchor points but different lengths
+    {
         std::ofstream ofs("catenary.txt");
         for(size_t ii = 0; ii < nsamples; ++ii)
         {
             float tt = float(ii) / float(nsamples - 1);
             float xx = (1.f - tt) * x1 + tt * x2;
-            ofs << xx << ' ' << cats[ncats-1].value(xx) << std::endl;
+            ofs << xx << ' ';
+            for(size_t jj = 0; jj < ncats; ++jj)
+                ofs << cats[jj].value(xx) << ' ';
+            ofs << std::endl;
         }
-    */
-
-    std::ofstream ofs("catenary.txt");
-    for(size_t ii = 0; ii < nsamples; ++ii)
-    {
-        float tt = float(ii) / float(nsamples - 1);
-        float xx = (1.f - tt) * x1 + tt * x2;
-        ofs << xx << ' ';
-        for(size_t jj = 0; jj < ncats; ++jj)
-            ofs << cats[jj].value(xx) << ' ';
-        ofs << std::endl;
     }
-
-    /*
-    std::ofstream ofs("catenary_der.txt");
-    for(size_t ii = 0; ii < nsamples; ++ii)
+    // Single catenary curve, two parameterizations
     {
-        float tt = float(ii) / float(nsamples - 1);
-        float xx = (1.f - tt) * x1 + tt * x2;
-        float der = cats[ncats - 1].prime(xx);
-        glm::vec2 tangent{1.f, der};
-        tangent = glm::normalize(tangent);
-        ofs << xx << ' ' << cats[ncats - 1].value(xx) << ' ' << tangent.x << ' ' << tangent.y << std::endl;
+        std::ofstream ofs("catenary_alp.txt");
+        for(size_t ii = 0; ii < nsamples; ++ii)
+        {
+            float tt = float(ii) / float(nsamples - 1);
+            float xx = (1.f - tt) * x1 + tt * x2;
+            float rt = cats[ncats - 1].arclen_remap(tt);
+            ofs << xx << ' ' << cats[ncats - 1].value(xx) << ' ' << rt << ' ' << cats[ncats - 1].value(rt) << std::endl;
+        }
     }
-    */
+    // Catenary and its tangent vectors
+    {
+        std::ofstream ofs("catenary_der.txt");
+        for(size_t ii = 0; ii < nsamples; ++ii)
+        {
+            float tt = float(ii) / float(nsamples - 1);
+            float xx = (1.f - tt) * x1 + tt * x2;
+            float der = cats[ncats - 1].prime(xx);
+            glm::vec2 tangent{1.f, der};
+            tangent = glm::normalize(tangent);
+            ofs << xx << ' ' << cats[ncats - 1].value(xx) << ' ' << tangent.x << ' ' << tangent.y << std::endl;
+        }
+    }
     return 0;
 }

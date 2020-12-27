@@ -1,5 +1,4 @@
 #include "math/catenary.h"
-#include "logger/logger.h"
 #include "math/numeric.h"
 
 namespace kb
@@ -56,17 +55,18 @@ Catenary::Catenary(float x1, float y1, float x2, float y2, float s, float max_er
     // * Solve for p and q, there is a closed form
     p_ = 0.5f * (x1 + x2 - a_ * std::log((s + v) / (s - v)));
     q_ = 0.5f * (y1 + y2 - s * coth(0.5f * h / a_));
+    C_ = a_ * std::sinh((x1 - p_) / a_);
+    s_ = s;
 }
-/*
+
 float Catenary::arclen_remap(float ss) const
 {
-    float C = -a_ * std::sinh((x1_ - p_) / a_);
-    float t = a_ * argsinh((ss - C) / a_) + p_;
-
-    // KLOG("nuclear", 1) << ss << ' ' << t << ' ' << C << std::endl;
-
-    return t;
+    // Input parameter between 0 and 1
+    // Target length between 0 and s_
+    ss = s_ * std::clamp(ss, 0.f, 1.f);
+    // Inverse arc-length function (calculation in my notes)
+    return a_ * argsinh((ss + C_) / a_) + p_;
 }
-*/
+
 } // namespace math
 } // namespace kb
