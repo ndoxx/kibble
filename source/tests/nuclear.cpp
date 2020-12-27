@@ -2,12 +2,14 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 
-#include "math/spline.h"
+#include "math/catenary.h"
 
 #include <array>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <glm/glm.hpp>
+#include <limits>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -22,84 +24,88 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-void export_bezier(size_t nsamples, const std::string& filename)
-{
-    math::FixedBezierSpline bez(
-        std::array<glm::vec2, 5>{glm::vec2{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
-
-    std::ofstream ofs(filename);
-    for(size_t ii = 0; ii < nsamples; ++ii)
-    {
-        float tt = float(ii) / float(nsamples - 1);
-        auto val = bez.value(tt);
-        auto pri = bez.prime(tt);
-        auto sec = bez.second(tt);
-        pri = 0.3f * glm::normalize(pri);
-        sec = 0.3f * glm::normalize(sec);
-
-        ofs << tt << ' ' << val.x << ' ' << val.y << ' ' << pri.x << ' ' << pri.y << ' ' << sec.x << ' ' << sec.y
-            << std::endl;
-    }
-}
-
-namespace kb::math
-{
-template <> struct PointDistance<glm::vec2>
-{
-    static inline float distance(const glm::vec2& p0, const glm::vec2& p1) { return glm::distance(p0, p1); }
-};
-} // namespace kb::math
-
-void export_cspline(size_t nsamples, const std::string& filename)
-{
-    math::HermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
-    KLOG("nuclear", 1) << "Spline length is: " << spl.length(0.01f) << std::endl;
-
-    std::ofstream ofs(filename);
-    for(size_t ii = 0; ii < nsamples; ++ii)
-    {
-        float tt = float(ii) / float(nsamples - 1);
-        auto val = spl.value(tt);
-        auto pri = spl.prime(tt);
-        auto sec = spl.second(tt);
-        pri = 0.3f * glm::normalize(pri);
-        sec = 0.3f * glm::normalize(sec);
-
-        ofs << tt << ' ' << val.x << ' ' << val.y << ' ' << pri.x << ' ' << pri.y << ' ' << sec.x << ' ' << sec.y
-            << std::endl;
-    }
-}
-
-void export_ucspline(size_t nsamples, const std::string& filename)
-{
-    math::UniformHermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 64, 0.f);
-    KLOG("nuclear", 1) << "Spline length is: " << spl.length(0.01f) << std::endl;
-
-    std::ofstream ofs(filename);
-    for(size_t ii = 0; ii < nsamples; ++ii)
-    {
-        float tt = float(ii) / float(nsamples - 1);
-        auto val = spl.value(tt);
-        auto pri = spl.prime(tt);
-        auto sec = spl.second(tt);
-        pri = 0.3f * glm::normalize(pri);
-        sec = 0.3f * glm::normalize(sec);
-
-        ofs << tt << ' ' << val.x << ' ' << val.y << ' ' << pri.x << ' ' << pri.y << ' ' << sec.x << ' ' << sec.y
-            << std::endl;
-    }
-}
-
 int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
     init_logger();
 
-    size_t nsamples = 100;
-    // export_bezier(nsamples, "spline.txt");
-    // export_cspline(nsamples, "spline.txt");
-    export_ucspline(nsamples, "spline.txt");
+    float scale = 1.f;
 
+#define C 0
+#if C == 0
+    // x1<x2 && y1<y2
+    float x1 = scale * 0.5f;
+    float y1 = scale * 1.6f;
+    float x2 = scale * 1.5f;
+    float y2 = scale * 2.0f;
+#elif C == 1
+    // x1<x2 && y1>y2
+    float x1 = scale * 0.5f;
+    float y1 = scale * 2.0f;
+    float x2 = scale * 1.5f;
+    float y2 = scale * 1.6f;
+#elif C == 2
+    // x1>x2 && y1<y2
+    float x1 = scale * 1.5f;
+    float y1 = scale * 1.6f;
+    float x2 = scale * 0.5f;
+    float y2 = scale * 2.0f;
+#elif C == 3
+    // x1>x2 && y1>y2
+    float x1 = scale * 1.5f;
+    float y1 = scale * 2.0f;
+    float x2 = scale * 0.5f;
+    float y2 = scale * 1.6f;
+#else
+    float x1 = -10.f;
+    float y1 = 16.f;
+    float x2 = 5.f;
+    float y2 = 8.f;
+#endif
+    size_t nsamples = 100;
+    size_t ncats = 4;
+
+    std::vector<math::Catenary> cats;
+    for(size_t ii = 0; ii < ncats; ++ii)
+    {
+        float tt = float(ii) / float(ncats - 1);
+        float s = scale * std::lerp(1.1f, 3.1f, tt);
+        KLOGN("nuclear") << "s=" << s << " v=" << y2 - y1 << " h=" << x2 - x1 << std::endl;
+        cats.emplace_back(x1, y1, x2, y2, s);
+    }
+    /*
+        std::ofstream ofs("catenary.txt");
+        for(size_t ii = 0; ii < nsamples; ++ii)
+        {
+            float tt = float(ii) / float(nsamples - 1);
+            float xx = (1.f - tt) * x1 + tt * x2;
+            ofs << xx << ' ' << cats[ncats-1].value(xx) << std::endl;
+        }
+    */
+
+    std::ofstream ofs("catenary.txt");
+    for(size_t ii = 0; ii < nsamples; ++ii)
+    {
+        float tt = float(ii) / float(nsamples - 1);
+        float xx = (1.f - tt) * x1 + tt * x2;
+        ofs << xx << ' ';
+        for(size_t jj = 0; jj < ncats; ++jj)
+            ofs << cats[jj].value(xx) << ' ';
+        ofs << std::endl;
+    }
+
+    /*
+    std::ofstream ofs("catenary_der.txt");
+    for(size_t ii = 0; ii < nsamples; ++ii)
+    {
+        float tt = float(ii) / float(nsamples - 1);
+        float xx = (1.f - tt) * x1 + tt * x2;
+        float der = cats[ncats - 1].prime(xx);
+        glm::vec2 tangent{1.f, der};
+        tangent = glm::normalize(tangent);
+        ofs << xx << ' ' << cats[ncats - 1].value(xx) << ' ' << tangent.x << ' ' << tangent.y << std::endl;
+    }
+    */
     return 0;
 }
