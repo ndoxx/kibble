@@ -96,7 +96,7 @@ int p1(int argc, char** argv)
         {
             th::JobMetadata meta;
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
-            if(ii<70)
+            if(ii < 70)
                 meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
             else
                 meta.worker_affinity = th::WORKER_AFFINITY_ANY;
@@ -118,8 +118,8 @@ int p1(int argc, char** argv)
         float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
         KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-        KLOGI << "Factor:                " << (factor > 1 ? WCC('g') : WCC('b')) << factor << WCC(0) << std::endl;
-        KLOGI << "Gain:                  " << (factor > 1 ? WCC('g') : WCC('b')) << gain_percent << WCC(0) << '%'
+        KLOGI << "Factor:                " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << factor << KC_ << std::endl;
+        KLOGI << "Gain:                  " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << gain_percent << KC_ << '%'
               << std::endl;
 
         for(auto* job : jobs)
