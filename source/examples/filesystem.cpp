@@ -4,7 +4,6 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 
-
 namespace fs = std::filesystem;
 
 using namespace kb;

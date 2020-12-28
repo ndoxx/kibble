@@ -1,7 +1,7 @@
 #include "argparse/argparse.h"
+#include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
-#include "logger/dispatcher.h"
 
 #include <exception>
 #include <regex>
@@ -47,11 +47,12 @@ int p1(int argc, char** argv)
     const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = parser.parse(argc, argv);
-    if(!success) show_error_and_die(parser);
+    if(!success)
+        show_error_and_die(parser);
 
     if(orange())
     {
-        KLOG("kibble", 1) << WCC(255, 190, 0);
+        KLOG("kibble", 1) << KF_(255, 190, 0);
     }
     KLOG("kibble", 1) << "Age of the captain: " << age() << std::endl;
     if(yarr())
@@ -71,11 +72,12 @@ int p2(int argc, char** argv)
     const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
 
     bool success = parser.parse(argc, argv);
-    if(!success) show_error_and_die(parser);
+    if(!success)
+        show_error_and_die(parser);
 
     if(orange())
     {
-        KLOG("kibble", 1) << WCC(255, 190, 0);
+        KLOG("kibble", 1) << KF_(255, 190, 0);
     }
     KLOG("kibble", 1) << "The sum of " << A() << " and " << B() << " is " << A() + B() << std::endl;
 
@@ -105,7 +107,8 @@ int p3(int argc, char** argv)
     parser.set_dependency('D', 'E');
 
     bool success = parser.parse(argc, argv);
-    if(!success) show_error_and_die(parser);
+    if(!success)
+        show_error_and_die(parser);
 
     return 0;
 }
@@ -124,15 +127,16 @@ int p4(int argc, char** argv)
     parser.set_dependency('y', 'x');
 
     bool success = parser.parse(argc, argv);
-    if(!success) show_error_and_die(parser);
+    if(!success)
+        show_error_and_die(parser);
 
     if(mm.is_set)
     {
-        KLOG("kibble",1) << "m: " << mm() << std::endl;
+        KLOG("kibble", 1) << "m: " << mm() << std::endl;
     }
 
-    for(int v:l())
-    	KLOG("kibble",1) << v << std::endl;
+    for(int v : l())
+        KLOG("kibble", 1) << v << std::endl;
 
     KLOGN("kibble") << "done" << std::endl;
     return 0;
@@ -145,7 +149,7 @@ int p5(int argc, char** argv)
     parser.parse(argc, argv);
 
     KLOGN("kibble") << "Extracting from: " << std::endl;
-    KLOGI << WCC('p') << target() << std::endl;
+    KLOGI << KS_PATH_ << target() << std::endl;
 
     return 0;
 }

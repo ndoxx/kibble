@@ -18,20 +18,20 @@ public:
     // Return the first derivative at specified parameter value
     inline float prime(float xx) const { return std::sinh(((reflect_ ? -xx + m_ : xx) - p_) / a_); }
     // Return arc-length parameterized value
-    inline float value_alp(float ss) const { return value(arclen_remap(ss)); }
+    inline float value_arclen(float ss) const { return value(arclen_remap(ss)); }
     // Return arc-length parameterized first derivative
-    inline float prime_alp(float ss) const { return prime(arclen_remap(ss)); }
+    inline float prime_arclen(float ss) const { return prime(arclen_remap(ss)); }
     // Return the value of the catenary argument for specified length fraction ss in [0,1]
     float arclen_remap(float ss) const;
 
 private:
-    float a_;
-    float p_;
-    float q_;
-    float m_;
-    float C_;
-    float s_;
-    bool reflect_ = false;
+    float a_; // Scale parameter
+    float p_; // x-offset
+    float q_; // y-offset
+    float m_; // Anchors midpoint
+    float C_; // Integration constant for arc-length parameterization
+    float s_; // Full length between anchor points
+    bool reflect_ = false; // Reflect curve w.r.t midpoint?
 };
 
 } // namespace math

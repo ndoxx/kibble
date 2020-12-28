@@ -5,8 +5,8 @@
 
 #include <chrono>
 #include <iostream>
-#include <thread>
 #include <random>
+#include <thread>
 
 namespace fs = std::filesystem;
 

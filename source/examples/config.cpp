@@ -1,5 +1,5 @@
-#include "argparse/argparse.h"
 #include "config/config.h"
+#include "argparse/argparse.h"
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
@@ -56,13 +56,13 @@ int main(int argc, char** argv)
     if(!fs::exists(cfg_path))
     {
         KLOGE("nuclear") << "Directory does not exist:" << std::endl;
-        KLOGI << WCC('p') << cfg_path << std::endl;
+        KLOGI << KS_PATH_ << cfg_path << std::endl;
         return 0;
     }
     if(!fs::is_directory(cfg_path))
     {
         KLOGE("nuclear") << "Not a directory:" << std::endl;
-        KLOGI << WCC('p') << cfg_path << std::endl;
+        KLOGI << KS_PATH_ << cfg_path << std::endl;
         return 0;
     }
 
