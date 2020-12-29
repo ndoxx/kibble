@@ -1,35 +1,54 @@
-#include "math/easings.h"
-#include <random>
+// #include "math/easings.h"
 #include <benchmark/benchmark.h>
+#include <cmath>
+#include <random>
 
-#define FUT__ inout_5
+#include "random/xor_shift.h"
+#include "random/simplex_noise.h"
 
-static void BM_EasingDirect(benchmark::State& state)
+using namespace kb;
+
+static void BM_simplex_2d(benchmark::State& state)
 {
-    std::random_device rd;
-    std::default_random_engine rng(rd());
-    std::uniform_real_distribution<float> dis(0.f, 1.f);
+    rng::XorShiftEngine rng;
+    rng.seed(23456);
+    rng::SimplexNoiseGenerator simplex(rng);
 
     for(auto _ : state)
     {
-        benchmark::DoNotOptimize(kb::ease::FUT__(dis(rng)));
+        benchmark::DoNotOptimize(simplex(0.256478f,-10.2646f));
         benchmark::ClobberMemory();
     }
 }
-BENCHMARK(BM_EasingDirect);
+BENCHMARK(BM_simplex_2d);
 
-static void BM_EasingLookup(benchmark::State& state)
+static void BM_simplex_3d(benchmark::State& state)
 {
-    std::random_device rd;
-    std::default_random_engine rng(rd());
-    std::uniform_real_distribution<float> dis(0.f, 1.f);
+    rng::XorShiftEngine rng;
+    rng.seed(23456);
+    rng::SimplexNoiseGenerator simplex(rng);
 
     for(auto _ : state)
     {
-        benchmark::DoNotOptimize(kb::experimental::ease::fast(kb::experimental::ease::Func::FUT__, dis(rng)));
+        benchmark::DoNotOptimize(simplex(0.256478f,-10.2646f,12.87542f));
         benchmark::ClobberMemory();
     }
 }
-BENCHMARK(BM_EasingLookup);
+BENCHMARK(BM_simplex_3d);
+
+static void BM_simplex_4d(benchmark::State& state)
+{
+    rng::XorShiftEngine rng;
+    rng.seed(23456);
+    rng::SimplexNoiseGenerator simplex(rng);
+
+    for(auto _ : state)
+    {
+        benchmark::DoNotOptimize(simplex(0.256478f,-10.2646f,12.87542f,-45.18186f));
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_simplex_4d);
+
 
 BENCHMARK_MAIN();

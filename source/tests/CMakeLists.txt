@@ -152,6 +152,7 @@ target_link_libraries(nuclear
         project_warnings
         pthread
         stdc++fs
+        X11
         kibble
     )
 
