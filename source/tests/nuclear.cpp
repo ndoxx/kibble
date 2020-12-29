@@ -8,6 +8,8 @@
 #include <functional>
 #include <glm/glm.hpp>
 #include <limits>
+#include <random>
+#include <sstream>
 #include <vector>
 
 namespace fs = std::filesystem;
