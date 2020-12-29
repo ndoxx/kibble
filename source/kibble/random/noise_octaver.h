@@ -89,17 +89,17 @@ public:
     }
     inline float scaled_octave(float x, float y, size_t octaves, float frequency, float persistence, float lb, float ub)
     {
-        return rescale(octave(x, y, octaves, frequency, persistence, lb, ub));
+        return rescale(octave(x, y, octaves, frequency, persistence), lb, ub);
     }
     inline float scaled_octave(float x, float y, float z, size_t octaves, float frequency, float persistence, float lb,
                                float ub)
     {
-        return rescale(octave(x, y, z, octaves, frequency, persistence, lb, ub));
+        return rescale(octave(x, y, z, octaves, frequency, persistence), lb, ub);
     }
     inline float scaled_octave(float x, float y, float z, float w, size_t octaves, float frequency, float persistence,
                                float lb, float ub)
     {
-        return rescale(octave(x, y, z, w, octaves, frequency, persistence, lb, ub));
+        return rescale(octave(x, y, z, w, octaves, frequency, persistence), lb, ub);
     }
     inline float marble_x_2d(float x, float y, size_t octaves, float frequency, float persistence)
     {
