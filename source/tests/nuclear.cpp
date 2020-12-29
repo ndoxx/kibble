@@ -7,6 +7,7 @@
 #include <fstream>
 #include <functional>
 #include <glm/glm.hpp>
+#include <iomanip>
 #include <limits>
 #include <random>
 #include <sstream>
