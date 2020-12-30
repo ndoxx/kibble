@@ -43,6 +43,9 @@ cotire(kibble)
 # Install rules
 install(TARGETS kibble DESTINATION lib)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/algorithm/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/algorithm)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/argparse/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
 
