@@ -1,7 +1,6 @@
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
-#include "algorithm/endian.h"
 
 namespace fs = std::filesystem;
 using namespace kb;
@@ -21,15 +20,17 @@ int main(int argc, char** argv)
     (void)argv;
     init_logger();
 
-    uint16_t aa = 0x1234u;
-    uint64_t bb = 0x0123456789abcdefULL;
-    constexpr uint16_t cc = bswap<uint16_t>(0x1234u);
-    constexpr uint64_t dd = bswap(0x0123456789abcdefULL);
+    for(size_t ii=0; ii<10; ++ii)
+    {
+        float tt = float(ii)/float(10-1);
+        math::ColorHSLA hsla(tt,1.f,0.5f);
 
-    KLOG("nuclear",1) << std::hex << aa << " -> " << bswap(aa) << std::endl;
-    KLOG("nuclear",1) << std::hex << bb << " -> " << bswap(bb) << std::endl;
-    KLOG("nuclear",1) << std::hex << cc << std::endl;
-    KLOG("nuclear",1) << std::hex << dd << std::endl;
+        auto rgba1 = math::to_RGBA(hsla);
+        auto hsla2 = math::to_HSLA(rgba1);
+        auto rgba2 = math::to_RGBA(hsla2);
+
+        KLOG("nuclear",1) << KF_(math::pack_ARGB(rgba1)) << "RGBA1 " << KF_(math::pack_ARGB(rgba2)) << "RGBA2" << std::endl;
+    }
 
     return 0;
 }

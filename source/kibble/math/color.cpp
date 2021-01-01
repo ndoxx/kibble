@@ -25,56 +25,70 @@ ColorHSLA ColorHSLA::random_hue(float s, float l, unsigned long long seed)
     return ColorHSLA(distribution(generator), s, l);
 }
 
-constexpr float SQ3_2 = 0.866025404f;
-constexpr std::array<float, 3> W = {0.2126f, 0.7152f, 0.0722f};
+float hue_to_rgb(float v1, float v2, float vH)
+{
+    if(vH < 0)
+        vH += 1;
+    if(vH > 1)
+        vH -= 1;
+    if((6 * vH) < 1)
+        return (v1 + (v2 - v1) * 6.f * vH);
+    if((2 * vH) < 1)
+        return (v2);
+    if((3 * vH) < 2)
+        return (v1 + (v2 - v1) * ((2.f / 3.f) - vH) * 6);
+    return (v1);
+}
 
 ColorRGBA to_RGBA(const ColorHSLA& hsla)
 {
-    // Chroma
-    float c = (1.0f - std::abs(2.0f * hsla.l - 1.0f)) * hsla.s;
-    // Intermediate
-    float Hp = hsla.h * 6.0f; // Map to degrees -> *360°, divide by 60° -> *6
-    float x = c * (1.0f - std::abs(fmodf(Hp, 2) - 1.0f));
-    uint8_t hn = uint8_t(std::floor(Hp));
-
-    // Lightness offset
-    float m = hsla.l - 0.5f * c;
-
-    // Project to RGB cube
-    switch(hn)
+    if(hsla.s == 0)
+        return math::ColorRGBA(hsla.l, hsla.l, hsla.l);
+    else
     {
-    case 0:
-        return ColorRGBA(c + m, x + m, m, hsla.a);
-    case 1:
-        return ColorRGBA(x + m, c + m, m, hsla.a);
-    case 2:
-        return ColorRGBA(m, c + m, x + m, hsla.a);
-    case 3:
-        return ColorRGBA(m, x + m, c + m, hsla.a);
-    case 4:
-        return ColorRGBA(x + m, m, c + m, hsla.a);
-    case 5:
-        return ColorRGBA(c + m, m, x + m, hsla.a);
-    default:
-        return ColorRGBA(m, m, m, hsla.a);
+        float v1 = 0.f;
+        float v2 = 0.f;
+        if(hsla.l < 0.5f)
+            v2 = hsla.l * (1 + hsla.s);
+        else
+            v2 = (hsla.l + hsla.s) - (hsla.s * hsla.l);
+
+        v1 = 2 * hsla.l - v2;
+
+        float R = hue_to_rgb(v1, v2, hsla.h + (1.f / 3.f));
+        float G = hue_to_rgb(v1, v2, hsla.h);
+        float B = hue_to_rgb(v1, v2, hsla.h - (1.f / 3.f));
+        return math::ColorRGBA(R, G, B, hsla.a);
     }
 }
 
 ColorHSLA to_HSLA(const ColorRGBA& rgba)
 {
-    // Auxillary Cartesian chromaticity coordinates
-    float a = 0.5f * (2.0f * rgba.r - rgba.g - rgba.b);
-    float b = SQ3_2 * (rgba.g - rgba.b);
-    // Hue
-    float h = std::atan2(b, a);
-    // Chroma
-    float c = std::sqrt(a * a + b * b);
-    // We choose Luma Y_709 (for sRGB primaries) as a definition for Lightness
-    float l = rgba.r * W[0] + rgba.g * W[1] + rgba.b * W[1];
-    // Saturation
-    float s = (l == 1.0f) ? 0.0f : c / (1.0f - std::abs(2 * l - 1));
-    // Just convert hue from radians in [-pi/2,pi/2] to [0,1]
-    return ColorHSLA(h / float(M_PI) + 0.5f, s, l, rgba.a);
+    float cmin = std::min(rgba.r, std::min(rgba.g, rgba.b));
+    float cmax = std::max(rgba.r, std::max(rgba.g, rgba.b));
+    float delta = cmax - cmin;
+    float H = 0.f;
+    float S = 0.f;
+    float L = 0.5f * (cmax + cmin);
+
+    if(delta > 0)
+    {
+        S = (L < 0.5f) ? delta / (cmax + cmin) : delta / (2.f - cmax - cmin);
+        float del_R = (((cmax - rgba.r) / 6.f) + (delta * 0.5f)) / delta;
+        float del_G = (((cmax - rgba.g) / 6.f) + (delta * 0.5f)) / delta;
+        float del_B = (((cmax - rgba.b) / 6.f) + (delta * 0.5f)) / delta;
+        if(rgba.r == cmax)
+            H = del_B - del_G;
+        else if(rgba.g == cmax)
+            H = (1.f / 3.f) + del_R - del_B;
+        else if(rgba.b == cmax)
+            H = (2.f / 3.f) + del_G - del_R;
+        if(H < 0)
+            H += 1;
+        if(H > 1)
+            H -= 1;
+    }
+    return math::ColorHSLA(H, S, L, rgba.a);
 }
 
 ColorCIELab to_CIELab(const ColorRGBA& srgba)
