@@ -49,7 +49,7 @@ FileSystem::~FileSystem()
             delete packfile;
 }
 
-bool FileSystem::setup_config_directory(std::string vendor, std::string appname, std::string alias)
+bool FileSystem::setup_settings_directory(std::string vendor, std::string appname, std::string alias)
 {
     // Strip spaces in provided arguments
     su::strip_spaces(vendor);
@@ -68,20 +68,20 @@ bool FileSystem::setup_config_directory(std::string vendor, std::string appname,
     // Check if ~/.config/<vendor>/<appname> is applicable, if not, fallback to
     // ~/.<vendor>/<appname>/config
     if(fs::exists(home_directory / ".config"))
-        app_config_directory_ = home_directory / ".config" / vendor / appname;
+        app_settings_directory_ = home_directory / ".config" / vendor / appname;
     else
-        app_config_directory_ = home_directory / su::concat('.', vendor) / appname / "config";
+        app_settings_directory_ = home_directory / su::concat('.', vendor) / appname / "config";
 #else
 #error setup_config_directory() not yet implemented for this platform.
 #endif
 
     // If directories do not exist, create them
-    if(!fs::exists(app_config_directory_))
+    if(!fs::exists(app_settings_directory_))
     {
-        if(!fs::create_directories(app_config_directory_))
+        if(!fs::create_directories(app_settings_directory_))
         {
             KLOGE("ios") << "Failed to create config directory at:" << std::endl;
-            KLOGI << KS_PATH_ << app_config_directory_ << std::endl;
+            KLOGI << KS_PATH_ << app_settings_directory_ << std::endl;
             return false;
         }
         KLOGN("ios") << "Created application directory at:" << std::endl;
@@ -90,25 +90,25 @@ bool FileSystem::setup_config_directory(std::string vendor, std::string appname,
     {
         KLOGN("ios") << "Detected application directory at:" << std::endl;
     }
-    KLOGI << KS_PATH_ << app_config_directory_ << std::endl;
+    KLOGI << KS_PATH_ << app_settings_directory_ << std::endl;
 
     // Alias the config directory
     if(alias.empty())
         alias = "config";
-    alias_directory(app_config_directory_, alias);
+    alias_directory(app_settings_directory_, alias);
 
     return true;
 }
 
-const fs::path& FileSystem::get_config_directory()
+const fs::path& FileSystem::get_settings_directory()
 {
-    if(app_config_directory_.empty())
+    if(app_settings_directory_.empty())
     {
         KLOGW("ios") << "Application config directory has not been setup." << std::endl;
         KLOGI << "Call setup_config_directory() after FileSystem construction." << std::endl;
         KLOGI << "An empty path will be returned." << std::endl;
     }
-    return app_config_directory_;
+    return app_settings_directory_;
 }
 
 bool FileSystem::is_older(const std::string& unipath_1, const std::string& unipath_2)

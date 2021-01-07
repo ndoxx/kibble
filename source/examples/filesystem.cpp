@@ -27,8 +27,8 @@ int main(int argc, char** argv)
     init_logger();
 
     kfs::FileSystem filesystem;
-    filesystem.setup_config_directory("ndoxx", "nuclear");
-    const auto& cfg_dir = filesystem.get_config_directory();
+    filesystem.setup_settings_directory("ndoxx", "nuclear");
+    const auto& cfg_dir = filesystem.get_settings_directory();
     KLOG("nuclear", 1) << cfg_dir << std::endl;
 
     const auto& self_dir = filesystem.get_self_directory();

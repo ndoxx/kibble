@@ -62,13 +62,19 @@ public:
     // Create a config directory for this application, the config directory
     // will be aliased by "config", unless the third parameter is set.
     // Whitespace characters will be stripped from the two first arguments.
-    bool setup_config_directory(std::string vendor, std::string appname, std::string alias = "");
+    bool setup_settings_directory(std::string vendor, std::string appname, std::string alias = "");
     // Get the application config directory
-    const fs::path& get_config_directory();
+    const fs::path& get_settings_directory();
 
     // Return true if the file/directory pointed to by the first argument is older than
     // the second one. Both paths MUST exist.
     bool is_older(const std::string& unipath_1, const std::string& unipath_2);
+    inline bool exists(const std::string& unipath) { return fs::exists(regular_path(unipath)); }
+    inline bool check_extension(const std::string& unipath, const std::string& ext)
+    {
+        return !regular_path(unipath).extension().compare(ext);
+    }
+    inline std::string extension(const std::string& unipath) { return regular_path(unipath).extension(); }
 
     // Return an input stream from a file. Aliased packs (if any) will be searched first.
     IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
@@ -91,7 +97,7 @@ private:
 
 private:
     fs::path self_directory_;
-    fs::path app_config_directory_;
+    fs::path app_settings_directory_;
     std::map<hash_t, DirectoryAlias> aliases_;
 };
 
