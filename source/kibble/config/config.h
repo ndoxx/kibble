@@ -40,6 +40,15 @@ struct SettingsStorage
 #ifdef K_DEBUG
     std::map<hash_t, std::string> key_names;
 #endif
+
+    void clear()
+    {
+        scalars.clear();
+        arrays.clear();
+#ifdef K_DEBUG
+        key_names.clear();
+#endif
+    }
 };
 
 class Settings
@@ -47,6 +56,7 @@ class Settings
 public:
     void load_toml(const fs::path& filepath, const std::string& root_name = "");
     void save_toml(const fs::path& filepath, const std::string& root_name = "");
+    inline void clear() { storage_.clear(); }
 
     template <typename T> T get(hash_t hash, const T& default_value) const;
     template <typename T> bool set(hash_t hash, const T& value);

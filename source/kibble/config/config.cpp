@@ -105,6 +105,13 @@ template <typename NodeT> void serialize(NodeT& node, const std::string& name_ch
 
 void Settings::load_toml(const fs::path& filepath, const std::string& _root_name)
 {
+    if(!fs::exists(filepath))
+    {
+        KLOGE("core") << "File does not exist:" << std::endl;
+        KLOGI << KS_PATH_ << filepath << std::endl;
+        return;
+    }
+
     // Use file name as root name if no root name specified
     std::string root_name = _root_name;
     if(root_name.empty())
@@ -116,6 +123,13 @@ void Settings::load_toml(const fs::path& filepath, const std::string& _root_name
 
 void Settings::save_toml(const fs::path& filepath, const std::string& _root_name)
 {
+    if(!fs::exists(filepath))
+    {
+        KLOGE("core") << "File does not exist:" << std::endl;
+        KLOGI << KS_PATH_ << filepath << std::endl;
+        return;
+    }
+    
     // Use file name as root name if no root name specified
     std::string root_name = _root_name;
     if(root_name.empty())

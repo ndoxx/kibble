@@ -36,6 +36,11 @@ LogDispatcher::~LogDispatcher()
         sink->finish();
 }
 
+void LogDispatcher::has_channel(hash_t hname, bool& result)
+{
+    result = (channels_.find(hname) != channels_.end());
+}
+
 void LogDispatcher::create_channel(const std::string& name, uint8_t verbosity)
 {
     hash_t hname = H_(name.c_str());

@@ -288,9 +288,6 @@ void FileSystem::init_self_path()
 
     self_directory_ = fs::canonical(self_path.parent_path());
     K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
-
-    KLOG("ios", 0) << "Self directory:" << std::endl;
-    KLOGI << KS_PATH_ << self_directory_ << std::endl;
 }
 
 } // namespace kfs

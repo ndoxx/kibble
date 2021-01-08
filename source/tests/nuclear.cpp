@@ -2,6 +2,8 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 
+#include <cmath>
+
 namespace fs = std::filesystem;
 using namespace kb;
 

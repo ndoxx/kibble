@@ -19,6 +19,8 @@ public:
     LogDispatcher();
     ~LogDispatcher();
 
+    // Check if a logging channel exists
+    void has_channel(hash_t hname, bool& result);
     // Create a logging channel to group information of the same kind
     void create_channel(const std::string& name, uint8_t verbosity = 3);
     // Attach a sink to a list of channels
