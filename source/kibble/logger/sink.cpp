@@ -50,7 +50,10 @@ void ConsoleSink::send(const LogStatement& stmt, const LogChannel& chan)
 
 void ConsoleSink::send_raw(const std::string& message) { std::cout << message; }
 
-LogFileSink::LogFileSink(const std::string& filename) : filename_(filename) {}
+LogFileSink::LogFileSink(const std::string& filename) : filename_(filename), out_(filename) {}
+
+static const std::regex s_ansi_regex("\033\\[.+?m"); // matches ANSI codes
+static std::string strip_ansi(const std::string& str) { return std::regex_replace(str, s_ansi_regex, ""); }
 
 void LogFileSink::send(const LogStatement& stmt, const LogChannel&)
 {
@@ -58,36 +61,27 @@ void LogFileSink::send(const LogStatement& stmt, const LogChannel&)
     {
         // Show file and line if sufficiently severe
         if(stmt.severity >= 2)
-            ss_ << "@ " << stmt.code_file << ":" << stmt.code_line << std::endl;
+            out_ << "@ " << stmt.code_file << ":" << stmt.code_line << std::endl;
 
         float ts = std::chrono::duration_cast<std::chrono::duration<float>>(stmt.timestamp).count();
-        ss_ << "[" << std::setprecision(6) << std::fixed << ts << "](" << int(stmt.severity) << ") ";
-        ss_ << stmt.message;
-
-        entries_.push_back(ss_.str());
-        ss_.str("");
+        out_ << "[" << std::setprecision(6) << std::fixed << ts << "](" << int(stmt.severity) << ") ";
+        out_ << strip_ansi(stmt.message);
     }
     else
-        entries_.push_back(stmt.message);
+        out_ << strip_ansi(stmt.message);
 }
 
-void LogFileSink::send_raw(const std::string& message) { entries_.push_back(message); }
-
-static const std::regex s_ansi_regex("\033\\[.+?m"); // matches ANSI codes
-static std::string strip_ansi(const std::string& str) { return std::regex_replace(str, s_ansi_regex, ""); }
+void LogFileSink::send_raw(const std::string& message)
+{
+    out_ << message << std::endl;
+}
 
 void LogFileSink::finish()
 {
     if(!enabled_)
         return;
 
-    std::ofstream ofs(filename_);
-
-    for(const std::string& entry : entries_)
-        ofs << strip_ansi(entry);
-
-    ofs.close();
-
+    out_.close();
     std::cout << "\033[1;39mSaved log file: " << k_log_files_style << filename_ << "\n";
 }
 

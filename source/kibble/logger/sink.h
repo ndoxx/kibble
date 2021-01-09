@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include "../hash/hash.h"
@@ -73,8 +73,7 @@ public:
 
 private:
     std::string filename_;
-    std::stringstream ss_;
-    std::vector<std::string> entries_;
+    std::ofstream out_;
 };
 
 // This sink writes to a TCP socket
