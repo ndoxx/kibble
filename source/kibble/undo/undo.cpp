@@ -24,52 +24,54 @@ namespace kb
             history_.erase(std::next(history_.begin(), ssize_t(head_)), history_.end());
 
         // If limit will be exceeded, pop front command
-        if ((undo_limit_ > 0) && (count() + 1 >= undo_limit_))
+        if ((undo_limit_ > 0) && (count() >= undo_limit_))
             history_.pop_front();
 
         // Execute command and push it to the stack
         cmd->redo();
         history_.push_back(std::move(cmd));
         head_ = count();
+        on_head_change_(head());
     }
 
     void UndoStack::clear()
     {
         history_.clear();
         head_ = 0;
+        on_head_change_(head());
     }
 
-    void UndoStack::undo()
+    void UndoStack::undo_internal()
     {
         // Undo command under head and decrement head
-        if (can_undo())
-            history_[--head_]->undo();
+        history_[--head_]->undo();
     }
 
-    void UndoStack::redo()
+    void UndoStack::redo_internal()
     {
         // Redo command at head and increment head
-        if (can_redo())
-            history_[head_++]->redo();
+        history_[head_++]->redo();
     }
 
     void UndoStack::set_head(size_t index)
     {
-        if (index == head_)
-            return;
-
         if (index > count())
             index = count();
 
+        if (index == head_)
+            return;
+
         // Can't use lambda capture because operands would be of different types and could not be used
         // in the ternary operator. But closure type of lambda with no capture has non-explicit
-        // conversion operator to func ptr... 
+        // conversion operator to func ptr...
         auto advance = (index < head_) ? ([](UndoStack *stk)
-                                          { stk->undo(); })
+                                          { stk->undo_internal(); })
                                        : ([](UndoStack *stk)
-                                          { stk->redo(); });
-        while(head_ != index)
+                                          { stk->redo_internal(); });
+        while (head_ != index)
             advance(this);
+
+        on_head_change_(head());
     }
 
     std::string_view UndoStack::text(size_t index) const
