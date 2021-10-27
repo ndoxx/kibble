@@ -483,10 +483,10 @@ struct Orientable
     float angle = 0.f;
 };
 
-class RotateCommand : public kb::MergeableUndoCommand
+class RotateCommand : public kb::UndoCommand
 {
 public:
-    RotateCommand(Orientable *obj, float increment) : kb::MergeableUndoCommand("Change orientable object angle"),
+    RotateCommand(Orientable *obj, float increment) : kb::UndoCommand("Change orientable object angle", 0),
                                                       obj_(obj),
                                                       increment_(increment)
 

@@ -4,6 +4,7 @@
 #include <memory>
 #include <string_view>
 #include <deque>
+#include <vector>
 #include <functional>
 
 /*
@@ -21,31 +22,51 @@ namespace kb
     class UndoCommand
     {
     public:
-        explicit UndoCommand(const std::string &action_text);
+        friend class MacroCommandBuilder;
+
+        explicit UndoCommand(const std::string &action_text, ssize_t merge_id = -1);
+        UndoCommand(const std::string &action_text, std::vector<std::unique_ptr<UndoCommand>> children, ssize_t merge_id = -1);
         virtual ~UndoCommand() = default;
 
         inline const std::string &text() const { return action_text_; }
+        inline ssize_t merge_id() const { return merge_id_; }
         inline void set_obsolete() { obsolete_ = true; }
         inline bool is_obsolete() const { return obsolete_; }
 
-        virtual void undo() = 0;
-        virtual void redo() = 0;
-        virtual ssize_t merge_id();
-        virtual bool merge_with(const UndoCommand& cmd);
+        inline size_t child_count() const { return children_.size(); }
+        inline const UndoCommand &child(size_t index) { return *children_.at(index); }
+
+        virtual void undo();
+        virtual void redo();
+        virtual bool merge_with(const UndoCommand &cmd);
+
+    protected:
+        ssize_t merge_id_;
 
     private:
-        std::string action_text_;
         bool obsolete_ = false;
+        std::string action_text_;
+        std::vector<std::unique_ptr<UndoCommand>> children_;
     };
 
-    class MergeableUndoCommand: public UndoCommand
+    class MacroCommandBuilder
     {
     public:
-        explicit MergeableUndoCommand(const std::string &action_text);
-        ssize_t merge_id() override final;
+        explicit MacroCommandBuilder(const std::string &action_text, ssize_t merge_id = -1);
+        void push(std::unique_ptr<UndoCommand> cmd);
+
+        template <typename C, typename... Args>
+        inline void push(Args &&...args)
+        {
+            push(std::make_unique<C>(std::forward<Args>(args)...));
+        }
+
+        std::unique_ptr<UndoCommand> build();
 
     private:
         ssize_t merge_id_;
+        std::string action_text_;
+        std::vector<std::unique_ptr<UndoCommand>> children_;
     };
 
     class UndoStack

@@ -1,22 +1,36 @@
 #include "undo/undo.h"
 #include <sstream>
+#include <algorithm>
 
 namespace kb
 {
 
-    UndoCommand::UndoCommand(const std::string &action_text) : action_text_(action_text)
+    UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) : merge_id_(merge_id), action_text_(action_text)
+    {
+    }
+    UndoCommand::UndoCommand(const std::string &action_text, std::vector<std::unique_ptr<UndoCommand>> children, ssize_t merge_id) : merge_id_(merge_id),
+                                                                                                                                     action_text_(action_text),
+                                                                                                                                     children_(std::move(children))
     {
     }
 
-    ssize_t UndoCommand::merge_id() { return -1; }
+    void UndoCommand::undo()
+    {
+        std::for_each(children_.rbegin(),
+                      children_.rend(),
+                      [](const auto &child)
+                      {
+                          child->undo();
+                      });
+    }
+
+    void UndoCommand::redo()
+    {
+        for (const auto &child : children_)
+            child->redo();
+    }
+
     bool UndoCommand::merge_with(const UndoCommand &) { return false; }
-
-    MergeableUndoCommand::MergeableUndoCommand(const std::string &action_text) : UndoCommand(action_text),
-                                                                                 merge_id_(ssize_t(std::hash<std::string>{}(action_text)))
-    {
-    }
-
-    ssize_t MergeableUndoCommand::merge_id() { return merge_id_; }
 
     bool UndoStack::set_undo_limit(size_t undo_limit)
     {
@@ -26,6 +40,21 @@ namespace kb
             return true;
         }
         return false;
+    }
+
+    MacroCommandBuilder::MacroCommandBuilder(const std::string &action_text, ssize_t merge_id) : merge_id_(merge_id),
+                                                                                                 action_text_(action_text)
+    {
+    }
+
+    void MacroCommandBuilder::push(std::unique_ptr<UndoCommand> cmd)
+    {
+        children_.push_back(std::move(cmd));
+    }
+
+    std::unique_ptr<UndoCommand> MacroCommandBuilder::build()
+    {
+        return std::make_unique<UndoCommand>(action_text_, std::move(children_), merge_id_);
     }
 
     void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
@@ -76,7 +105,7 @@ namespace kb
         // Check if command is obsolete
         if (history_.back()->is_obsolete())
         {
-            if(clean_index_ >= ssize_t(count()))
+            if (clean_index_ >= ssize_t(count()))
                 reset_clean_internal();
             history_.pop_back();
         }
