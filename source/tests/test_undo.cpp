@@ -477,3 +477,161 @@ TEST_CASE_METHOD(CleanStateFixture, "Clean state can be reached back using set_h
     REQUIRE(new_is_clean_);
     REQUIRE(clean_transitions_ == 3);
 }
+
+struct Orientable
+{
+    float angle = 0.f;
+};
+
+class RotateCommand : public kb::MergeableUndoCommand
+{
+public:
+    RotateCommand(Orientable *obj, float increment) : kb::MergeableUndoCommand("Change orientable object angle"),
+                                                      obj_(obj),
+                                                      increment_(increment)
+
+    {
+    }
+
+    void redo() override
+    {
+        obj_->angle += increment_;
+    }
+
+    void undo() override
+    {
+        obj_->angle -= increment_;
+    }
+
+    static constexpr float EPSILON = 1e-5f;
+    bool merge_with(const UndoCommand &cmd) override final
+    {
+        increment_ += static_cast<const RotateCommand &>(cmd).increment_;
+        if (std::fabs(increment_) < EPSILON)
+            set_obsolete();
+        return true;
+    }
+
+    inline float get_increment() const { return increment_; }
+
+private:
+    Orientable *obj_ = nullptr;
+    float increment_ = 0.f;
+};
+
+class SetAngleCommand : public kb::UndoCommand
+{
+public:
+    SetAngleCommand(Orientable *obj, float value) : kb::UndoCommand("Set orientable object angle"),
+                                                    obj_(obj),
+                                                    value_(value),
+                                                    old_value_(obj_->angle)
+
+    {
+    }
+
+    void redo() override
+    {
+        obj_->angle = value_;
+    }
+
+    void undo() override
+    {
+        obj_->angle = old_value_;
+    }
+
+    inline float get_value() const { return value_; }
+
+private:
+    Orientable *obj_ = nullptr;
+    float value_ = 0.f;
+    float old_value_ = 0.f;
+};
+
+class MergeFixture
+{
+public:
+    MergeFixture() : obj_{0.f}
+    {
+    }
+
+    void dump()
+    {
+        std::cout << undo_stack_.dump() << std::endl;
+    }
+
+protected:
+    Orientable obj_;
+    kb::UndoStack undo_stack_;
+};
+
+TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands should merge them", "[merge]")
+{
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    REQUIRE(undo_stack_.count() == 1);
+    REQUIRE(static_cast<const RotateCommand &>(undo_stack_.at(0)).get_increment() == 2.f);
+}
+
+TEST_CASE_METHOD(MergeFixture, "merged commands should behave atomically with respect to undo", "[merge]")
+{
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.undo();
+    REQUIRE(undo_stack_.count() == 1);
+    REQUIRE(undo_stack_.head() == 0);
+}
+
+TEST_CASE_METHOD(MergeFixture, "merged commands should behave atomically with respect to redo", "[merge]")
+{
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.undo();
+    undo_stack_.redo();
+    REQUIRE(undo_stack_.head() == 1);
+}
+
+TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands after an undo should still erase commands after head", "[merge]")
+{
+    undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
+    undo_stack_.undo();
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    REQUIRE(undo_stack_.count() == 1);
+    REQUIRE(static_cast<const RotateCommand &>(undo_stack_.at(0)).get_increment() == 2.f);
+}
+
+TEST_CASE_METHOD(MergeFixture, "incompatible commands should not interfere", "[merge]")
+{
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    REQUIRE(undo_stack_.count() == 3);
+}
+
+TEST_CASE_METHOD(MergeFixture, "commands that merge to an obsolete command should be deleted", "[merge]")
+{
+    undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, -1.f);
+    REQUIRE(undo_stack_.count() == 1);
+    REQUIRE(static_cast<const SetAngleCommand &>(undo_stack_.at(0)).get_value() == 8.f);
+}
+
+TEST_CASE_METHOD(MergeFixture, "clean state can be reached back after deletion of an obsolete command", "[merge]")
+{
+    undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
+    undo_stack_.set_clean();
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.push<RotateCommand>(&obj_, -1.f);
+    REQUIRE(undo_stack_.is_clean());
+}
+
+TEST_CASE_METHOD(MergeFixture, "clean index should be reset if it is greater than or equal to the index of an obsolete command", "[merge]")
+{
+    undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
+    undo_stack_.push<RotateCommand>(&obj_, 1.f);
+    undo_stack_.set_clean();
+    undo_stack_.push<RotateCommand>(&obj_, -1.f);
+    REQUIRE(undo_stack_.clean_index() == -1);
+}

@@ -12,10 +12,7 @@ TODO:
         -> UndoCommands can register a parent on construction
         -> UndoCommand::redo() default impl calls all children redo() in order
         -> UndoCommand::undo() default impl calls all children undo() in reverse order
-    [ ] Event system coupling
-        -> on_can_redo_change
-        -> on_can_undo_change
-    [ ] Commands merging
+    [ ] Undo groups
 */
 
 namespace kb
@@ -24,7 +21,7 @@ namespace kb
     class UndoCommand
     {
     public:
-        UndoCommand(const std::string &action_text);
+        explicit UndoCommand(const std::string &action_text);
         virtual ~UndoCommand() = default;
 
         inline const std::string &text() const { return action_text_; }
@@ -44,7 +41,7 @@ namespace kb
     class MergeableUndoCommand: public UndoCommand
     {
     public:
-        MergeableUndoCommand(const std::string &action_text);
+        explicit MergeableUndoCommand(const std::string &action_text);
         ssize_t merge_id() override final;
 
     private:

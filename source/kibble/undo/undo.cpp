@@ -69,15 +69,19 @@ namespace kb
             if ((undo_limit_ > 0) && (count() >= undo_limit_))
                 history_.pop_front();
 
-            // Push command to the stack and move head
+            // Push command to the stack
             history_.push_back(std::move(cmd));
-            head_ = count();
         }
 
         // Check if command is obsolete
         if (history_.back()->is_obsolete())
+        {
+            if(clean_index_ >= ssize_t(count()))
+                reset_clean_internal();
             history_.pop_back();
+        }
 
+        head_ = count();
         check_state_transitions();
     }
 
