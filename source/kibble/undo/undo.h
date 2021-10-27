@@ -71,22 +71,38 @@ namespace kb
 
         inline void on_head_change(std::function<void(size_t)> func) { on_head_change_ = func; }
         inline void on_clean_change(std::function<void(bool)> func) { on_clean_change_ = func; }
+        inline void on_can_undo_change(std::function<void(bool)> func) { on_can_undo_change_ = func; }
+        inline void on_can_redo_change(std::function<void(bool)> func) { on_can_redo_change_ = func; }
 
         std::string dump() const;
 
     private:
+        struct Snapshot
+        {
+            size_t head = 0;
+            size_t count = 0;
+            bool is_clean = false;
+            bool can_undo = false;
+            bool can_redo = false;
+        };
+
+        void snapshot();
+        void check_state_transitions();
         void undo_internal();
         void redo_internal();
-        void check_clean_changed(bool was_clean);
+        void reset_clean_internal();
 
     private:
         std::deque<std::unique_ptr<UndoCommand>> history_;
         size_t undo_limit_ = 0;
         size_t head_ = 0;
         ssize_t clean_index_ = -1;
+        Snapshot last_snapshot_;
 
         std::function<void(size_t)> on_head_change_ = [](size_t) {};
         std::function<void(bool)> on_clean_change_ = [](bool) {};
+        std::function<void(bool)> on_can_undo_change_ = [](bool) {};
+        std::function<void(bool)> on_can_redo_change_ = [](bool) {};
     };
 
 } // namespace kb

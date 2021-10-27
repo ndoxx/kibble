@@ -20,13 +20,14 @@ namespace kb
 
     void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
     {
+        snapshot();
         // If commands have been undone, remove all commands after head
         if (can_redo())
         {
             history_.erase(std::next(history_.begin(), ssize_t(head_)), history_.end());
             // If clean state was located after head, reset it
             if (ssize_t(head_) < clean_index_)
-                reset_clean();
+                reset_clean_internal();
         }
 
         // If limit will be exceeded, pop front command
@@ -37,19 +38,35 @@ namespace kb
         cmd->redo();
         history_.push_back(std::move(cmd));
 
-        // Move head and check if the clean state was exited
-        bool was_clean = is_clean();
+        // Move head
         head_ = count();
-        on_head_change_(head());
-        check_clean_changed(was_clean);
+        check_state_transitions();
     }
 
     void UndoStack::clear()
     {
+        snapshot();
         history_.clear();
         head_ = 0;
-        on_head_change_(head());
-        reset_clean();
+        reset_clean_internal();
+        check_state_transitions();
+    }
+
+    void UndoStack::snapshot()
+    {
+        last_snapshot_ = Snapshot{head(), count(), is_clean(), can_undo(), can_redo()};
+    }
+
+    void UndoStack::check_state_transitions()
+    {
+        if (head() != last_snapshot_.head)
+            on_head_change_(head());
+        if (is_clean() != last_snapshot_.is_clean)
+            on_clean_change_(is_clean());
+        if (can_undo() != last_snapshot_.can_undo)
+            on_can_undo_change_(can_undo());
+        if (can_redo() != last_snapshot_.can_redo)
+            on_can_redo_change_(can_redo());
     }
 
     void UndoStack::undo_internal()
@@ -64,30 +81,27 @@ namespace kb
         history_[head_++]->redo();
     }
 
-    void UndoStack::check_clean_changed(bool was_clean)
+    void UndoStack::reset_clean_internal()
     {
-        if (is_clean() != was_clean)
-            on_clean_change_(is_clean());
+        clean_index_ = -1;
     }
 
     void UndoStack::undo()
     {
         if (can_undo())
         {
-            bool was_clean = is_clean();
+            snapshot();
             undo_internal();
-            on_head_change_(head());
-            check_clean_changed(was_clean);
+            check_state_transitions();
         }
     }
     void UndoStack::redo()
     {
         if (can_redo())
         {
-            bool was_clean = is_clean();
+            snapshot();
             redo_internal();
-            on_head_change_(head());
-            check_clean_changed(was_clean);
+            check_state_transitions();
         }
     }
 
@@ -106,26 +120,25 @@ namespace kb
                                           { stk->undo_internal(); })
                                        : ([](UndoStack *stk)
                                           { stk->redo_internal(); });
-        bool was_clean = is_clean();
+
+        snapshot();
         while (head_ != index)
             advance(this);
-
-        on_head_change_(head());
-        check_clean_changed(was_clean);
+        check_state_transitions();
     }
 
     void UndoStack::set_clean()
     {
-        bool was_clean = is_clean();
+        snapshot();
         clean_index_ = ssize_t(head_);
-        check_clean_changed(was_clean);
+        check_state_transitions();
     }
 
     void UndoStack::reset_clean()
     {
-        bool was_clean = is_clean();
-        clean_index_ = -1;
-        check_clean_changed(was_clean);
+        snapshot();
+        reset_clean_internal();
+        check_state_transitions();
     }
 
     std::string_view UndoStack::text(size_t index) const
