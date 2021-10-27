@@ -12,14 +12,10 @@ TODO:
         -> UndoCommands can register a parent on construction
         -> UndoCommand::redo() default impl calls all children redo() in order
         -> UndoCommand::undo() default impl calls all children undo() in reverse order
-    [ ] Clean state
-        -> On save (for example) the stack is marked as clean
-        -> The clean state can be reached back after undoing / redoing actions
-        -> This keeps track of the need to save a document (often marked by a * in editors title bar)
     [ ] Event system coupling
-        -> on_clean_change
         -> on_can_redo_change
         -> on_can_undo_change
+    [ ] Commands merging
 */
 
 namespace kb
@@ -53,7 +49,11 @@ namespace kb
         }
 
         void clear();
+        void undo();
+        void redo();
         void set_head(size_t index);
+        void set_clean();
+        void reset_clean();
 
         std::string_view text(size_t index) const; // string_view because it may be empty
         std::string_view redo_text() const;
@@ -63,40 +63,30 @@ namespace kb
         inline size_t count() const { return history_.size(); }
         inline size_t head() const { return head_; }
         inline size_t limit() const { return undo_limit_; }
+        inline ssize_t clean_index() const { return clean_index_; }
         inline bool empty() const { return history_.empty(); }
         inline bool can_redo() const { return head_ < count(); }
         inline bool can_undo() const { return head_ > 0; }
+        inline bool is_clean() const { return ssize_t(head_) == clean_index_; }
 
         inline void on_head_change(std::function<void(size_t)> func) { on_head_change_ = func; }
+        inline void on_clean_change(std::function<void(bool)> func) { on_clean_change_ = func; }
+
+        std::string dump() const;
 
     private:
         void undo_internal();
         void redo_internal();
-
-    public:
-        inline void undo()
-        {
-            if (can_undo())
-            {
-                undo_internal();
-                on_head_change_(head());
-            }
-        }
-        inline void redo()
-        {
-            if (can_redo())
-            {
-                redo_internal();
-                on_head_change_(head());
-            }
-        }
+        void check_clean_changed(bool was_clean);
 
     private:
         std::deque<std::unique_ptr<UndoCommand>> history_;
         size_t undo_limit_ = 0;
         size_t head_ = 0;
+        ssize_t clean_index_ = -1;
 
         std::function<void(size_t)> on_head_change_ = [](size_t) {};
+        std::function<void(bool)> on_clean_change_ = [](bool) {};
     };
 
 } // namespace kb

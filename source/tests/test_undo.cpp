@@ -98,7 +98,7 @@ protected:
     size_t new_head_;
 };
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should execute it", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should execute it", "[push]")
 {
     const int increment = 5;
     auto old_state = snap();
@@ -108,7 +108,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should execute it", "[ur]")
     REQUIRE(new_state.go_state.position == old_state.go_state.position + increment);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should increment stack count and set head to count", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should increment stack count and set head to count", "[push]")
 {
     const int increment = 5;
     auto old_state = snap();
@@ -121,14 +121,14 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should increment stack coun
     REQUIRE(new_head_ == new_state.stack_head);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should make it undoable", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should make it undoable", "[push]")
 {
     REQUIRE_FALSE(undo_stack_.can_undo());
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     REQUIRE(undo_stack_.can_undo());
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should make it redoable", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should make it redoable", "[undo]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     REQUIRE_FALSE(undo_stack_.can_redo());
@@ -136,7 +136,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should make it redoable", "
     REQUIRE(undo_stack_.can_redo());
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "undoing a command rolls back the state and moves head", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "undoing a command rolls back the state and moves head", "[undo]")
 {
     const int increment = 5;
     auto initial_state = snap();
@@ -151,7 +151,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "undoing a command rolls back the state and mo
     REQUIRE(new_head_ == new_state.stack_head);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "undoing on an empty stack does nothing", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "undoing on an empty stack does nothing", "[undo]")
 {
     REQUIRE_FALSE(undo_stack_.can_undo());
 
@@ -163,7 +163,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "undoing on an empty stack does nothing", "[ur
     REQUIRE(new_head_ == std::numeric_limits<size_t>::max());
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "redoing a command reexecutes it and moves head", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "redoing a command reexecutes it and moves head", "[redo]")
 {
     const int increment = 5;
     undo_stack_.push<GOMoveUndoCommand>(&go_, increment);
@@ -179,7 +179,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "redoing a command reexecutes it and moves hea
     REQUIRE(new_head_ == state_3.stack_head);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "redoing when head is at count does nothing", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "redoing when head is at count does nothing", "[redo]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     undo_stack_.push<GOMoveUndoCommand>(&go_, 2);
@@ -193,7 +193,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "redoing when head is at count does nothing", 
     REQUIRE(new_state == old_state);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "setting head before its current position should undo iteratively", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "setting head before its current position should undo iteratively", "[sethead]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     auto state_1 = snap();
@@ -209,7 +209,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head before its current position shou
     REQUIRE(new_head_ == state_2.stack_head);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "setting head after its current position should redo iteratively", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "setting head after its current position should redo iteratively", "[sethead]")
 {
     for (size_t ii = 0; ii < 4; ++ii)
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii + 1);
@@ -225,7 +225,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head after its current position shoul
     REQUIRE(new_head_ == state_2.stack_head);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "setting head after count should only set it to count", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "setting head after count should only set it to count", "[sethead]")
 {
     for (size_t ii = 0; ii < 4; ++ii)
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii + 1);
@@ -240,7 +240,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head after count should only set it t
     REQUIRE(state_1 == state_2);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "setting head on an empty stack does nothing", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "setting head on an empty stack does nothing", "[sethead]")
 {
     auto state_1 = snap();
     undo_stack_.set_head(42);
@@ -250,7 +250,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head on an empty stack does nothing",
     REQUIRE(new_head_ == std::numeric_limits<size_t>::max());
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should clear redoable commands in stack", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should clear redoable commands in stack", "[push]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     undo_stack_.push<GOMoveUndoCommand>(&go_, 2);
@@ -266,7 +266,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should clear redoable comma
     REQUIRE(new_state.go_state.position == old_state.go_state.position + 4);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command in a full stack should pop first command", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command in a full stack should pop first command", "[limit]")
 {
     constexpr size_t undo_limit = 3;
     bool success = undo_stack_.set_undo_limit(undo_limit);
@@ -291,7 +291,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command in a full stack should pop 
     REQUIRE(state_4.go_state == state_1.go_state);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "setting the undo limit on a non empty stack should fail and do nothing", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "setting the undo limit on a non empty stack should fail and do nothing", "[limit]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     bool success = undo_stack_.set_undo_limit(42);
@@ -299,7 +299,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting the undo limit on a non empty stack s
     REQUIRE(undo_stack_.limit() == 0);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "clearing stack should reset head and count to 0", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "clearing stack should reset head and count to 0", "[clear]")
 {
     for (size_t ii = 0; ii < 8; ++ii)
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii);
@@ -310,7 +310,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "clearing stack should reset head and count to
     REQUIRE(undo_stack_.empty());
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should change the undo text", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should change the undo text", "[push]")
 {
     using std::operator""sv;
 
@@ -326,7 +326,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should change the undo text
     REQUIRE(undo_text.compare("Kill game object"sv) == 0);
 }
 
-TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should change the redo text", "[ur]")
+TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should change the redo text", "[undo]")
 {
     using std::operator""sv;
 
@@ -343,4 +343,128 @@ TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should change the redo text
     undo_stack_.undo();
     redo_text = undo_stack_.redo_text();
     REQUIRE(redo_text.compare("Change game object position"sv) == 0);
+}
+
+class CleanStateFixture
+{
+public:
+    CleanStateFixture() : go_{42, 0, true}
+    {
+        undo_stack_.on_clean_change([this](bool is_clean)
+                                    {
+                                        new_is_clean_ = is_clean;
+                                        ++clean_transitions_;
+                                    });
+        // Push a few commands
+        undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
+        undo_stack_.push<GOMoveUndoCommand>(&go_, 2);
+        undo_stack_.push<GOMoveUndoCommand>(&go_, 4);
+        undo_stack_.push<GOMoveUndoCommand>(&go_, 8);
+        undo_stack_.undo();
+    }
+
+protected:
+    GameObject go_;
+    kb::UndoStack undo_stack_;
+
+    bool new_is_clean_ = false;
+    size_t clean_transitions_ = 0;
+};
+
+TEST_CASE_METHOD(CleanStateFixture, "Setting clean state should transition the clean state", "[clean]")
+{
+    undo_stack_.set_clean();
+    REQUIRE(undo_stack_.is_clean());
+    REQUIRE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 1);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Setting clean state should set the clean index at head", "[clean]")
+{
+    undo_stack_.set_clean();
+    REQUIRE(undo_stack_.clean_index() == ssize_t(undo_stack_.head()));
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Clearing the stack should reset the clean index", "[clean]")
+{
+    undo_stack_.clear();
+    REQUIRE(undo_stack_.clean_index() == -1);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Resetting clean state should work", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.reset_clean();
+    REQUIRE_FALSE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 2);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Pushing on clean state should exit the clean state", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.push<GOMoveUndoCommand>(&go_, 16);
+    REQUIRE_FALSE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 2);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Undoing on clean state should exit the clean state", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.undo();
+    REQUIRE_FALSE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 2);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Pushing before clean state should reset the clean index", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.undo();
+    undo_stack_.undo();
+    undo_stack_.push<GOMoveUndoCommand>(&go_, 16);
+    REQUIRE(undo_stack_.clean_index() == -1);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Setting head before clean state should exit the clean state", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.set_head(0);
+    REQUIRE_FALSE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 2);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Setting head after clean state should exit the clean state", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.set_head(undo_stack_.count());
+    REQUIRE_FALSE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 2);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Clean state can be reached back using undo", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.push<GOMoveUndoCommand>(&go_, 32);
+    undo_stack_.undo();
+    REQUIRE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 3);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Clean state can be reached back using redo", "[clean]")
+{
+    undo_stack_.set_clean();
+    undo_stack_.undo();
+    REQUIRE_FALSE(new_is_clean_);
+    undo_stack_.redo();
+    REQUIRE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 3);
+}
+
+TEST_CASE_METHOD(CleanStateFixture, "Clean state can be reached back using set_head", "[clean]")
+{
+    undo_stack_.set_clean();
+    size_t clean_index = size_t(undo_stack_.clean_index());
+    undo_stack_.set_head(0);
+    undo_stack_.set_head(clean_index);
+    REQUIRE(new_is_clean_);
+    REQUIRE(clean_transitions_ == 3);
 }
