@@ -28,12 +28,27 @@ namespace kb
         virtual ~UndoCommand() = default;
 
         inline const std::string &text() const { return action_text_; }
+        inline void set_obsolete() { obsolete_ = true; }
+        inline bool is_obsolete() const { return obsolete_; }
 
         virtual void undo() = 0;
         virtual void redo() = 0;
+        virtual ssize_t merge_id();
+        virtual bool merge_with(const UndoCommand& cmd);
 
     private:
         std::string action_text_;
+        bool obsolete_ = false;
+    };
+
+    class MergeableUndoCommand: public UndoCommand
+    {
+    public:
+        MergeableUndoCommand(const std::string &action_text);
+        ssize_t merge_id() override final;
+
+    private:
+        ssize_t merge_id_;
     };
 
     class UndoStack

@@ -68,9 +68,12 @@ class UndoRedoFixture
 public:
     UndoRedoFixture() : go_{42, 0, true}
     {
-        new_head_ = std::numeric_limits<size_t>::max();
         undo_stack_.on_head_change([this](size_t new_head)
                                    { new_head_ = new_head; });
+        undo_stack_.on_can_undo_change([this](bool can_undo)
+                                       { new_can_undo_ = can_undo; });
+        undo_stack_.on_can_redo_change([this](bool can_redo)
+                                       { new_can_redo_ = can_redo; });
     }
 
 protected:
@@ -95,7 +98,9 @@ protected:
     GameObject go_;
     kb::UndoStack undo_stack_;
 
-    size_t new_head_;
+    size_t new_head_ = std::numeric_limits<size_t>::max();
+    bool new_can_undo_ = false;
+    bool new_can_redo_ = false;
 };
 
 TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should execute it", "[push]")
@@ -126,14 +131,17 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command should make it undoable", "
     REQUIRE_FALSE(undo_stack_.can_undo());
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     REQUIRE(undo_stack_.can_undo());
+    REQUIRE(new_can_undo_);
 }
 
 TEST_CASE_METHOD(UndoRedoFixture, "undoing a command should make it redoable", "[undo]")
 {
     undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
     REQUIRE_FALSE(undo_stack_.can_redo());
+    REQUIRE_FALSE(new_can_redo_);
     undo_stack_.undo();
     REQUIRE(undo_stack_.can_redo());
+    REQUIRE(new_can_redo_);
 }
 
 TEST_CASE_METHOD(UndoRedoFixture, "undoing a command rolls back the state and moves head", "[undo]")
@@ -149,6 +157,7 @@ TEST_CASE_METHOD(UndoRedoFixture, "undoing a command rolls back the state and mo
     REQUIRE(new_state.stack_count == old_state.stack_count);
     REQUIRE(new_state.stack_head == old_state.stack_head - 1);
     REQUIRE(new_head_ == new_state.stack_head);
+    REQUIRE_FALSE(new_can_undo_);
 }
 
 TEST_CASE_METHOD(UndoRedoFixture, "undoing on an empty stack does nothing", "[undo]")

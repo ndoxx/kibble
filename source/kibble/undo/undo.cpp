@@ -8,6 +8,16 @@ namespace kb
     {
     }
 
+    ssize_t UndoCommand::merge_id() { return -1; }
+    bool UndoCommand::merge_with(const UndoCommand &) { return false; }
+
+    MergeableUndoCommand::MergeableUndoCommand(const std::string &action_text) : UndoCommand(action_text),
+                                                                                 merge_id_(ssize_t(std::hash<std::string>{}(action_text)))
+    {
+    }
+
+    ssize_t MergeableUndoCommand::merge_id() { return merge_id_; }
+
     bool UndoStack::set_undo_limit(size_t undo_limit)
     {
         if (empty())
@@ -20,7 +30,10 @@ namespace kb
 
     void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
     {
+        cmd->redo();
+
         snapshot();
+
         // If commands have been undone, remove all commands after head
         if (can_redo())
         {
@@ -30,16 +43,41 @@ namespace kb
                 reset_clean_internal();
         }
 
-        // If limit will be exceeded, pop front command
-        if ((undo_limit_ > 0) && (count() >= undo_limit_))
-            history_.pop_front();
+        // Try to merge with previous command
+        bool has_merged = false;
+        if (can_undo())
+        {
+            auto prev_id = history_[head_ - 1]->merge_id();
+            auto cmd_id = cmd->merge_id();
+            // Two successive commands of the same merge id
+            if (cmd_id != -1 && prev_id == cmd_id)
+            {
+                has_merged = history_[head_ - 1]->merge_with(*cmd);
+                if (has_merged)
+                {
+                    // cmd was merged with previous command, get rid of it
+                    // merge successful -> head does not move (we just "edited" the previous command)
+                    auto *raw = cmd.release();
+                    delete raw;
+                }
+            }
+        }
 
-        // Execute command and push it to the stack
-        cmd->redo();
-        history_.push_back(std::move(cmd));
+        if (!has_merged)
+        {
+            // If limit will be exceeded, pop front command
+            if ((undo_limit_ > 0) && (count() >= undo_limit_))
+                history_.pop_front();
 
-        // Move head
-        head_ = count();
+            // Push command to the stack and move head
+            history_.push_back(std::move(cmd));
+            head_ = count();
+        }
+
+        // Check if command is obsolete
+        if (history_.back()->is_obsolete())
+            history_.pop_back();
+
         check_state_transitions();
     }
 
