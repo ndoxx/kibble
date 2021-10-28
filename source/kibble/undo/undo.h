@@ -18,10 +18,7 @@ namespace kb
     class UndoCommand
     {
     public:
-        friend class MacroCommandBuilder;
-
         explicit UndoCommand(const std::string &action_text, ssize_t merge_id = -1);
-        UndoCommand(const std::string &action_text, std::vector<std::unique_ptr<UndoCommand>> children, ssize_t merge_id = -1);
         virtual ~UndoCommand() = default;
 
         inline const std::string &text() const { return action_text_; }
@@ -31,6 +28,9 @@ namespace kb
 
         inline size_t child_count() const { return children_.size(); }
         inline const UndoCommand &child(size_t index) { return *children_.at(index); }
+        inline void push(std::unique_ptr<UndoCommand> cmd) { children_.push_back(std::move(cmd)); }
+        template <typename C, typename... Args>
+        inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
 
         virtual void undo();
         virtual void redo();
@@ -45,37 +45,13 @@ namespace kb
         std::vector<std::unique_ptr<UndoCommand>> children_;
     };
 
-    class MacroCommandBuilder
-    {
-    public:
-        explicit MacroCommandBuilder(const std::string &action_text, ssize_t merge_id = -1);
-        void push(std::unique_ptr<UndoCommand> cmd);
-
-        template <typename C, typename... Args>
-        inline void push(Args &&...args)
-        {
-            push(std::make_unique<C>(std::forward<Args>(args)...));
-        }
-
-        std::unique_ptr<UndoCommand> build();
-
-    private:
-        ssize_t merge_id_;
-        std::string action_text_;
-        std::vector<std::unique_ptr<UndoCommand>> children_;
-    };
-
     class UndoStack
     {
     public:
-        bool set_undo_limit(size_t undo_limit);
         void push(std::unique_ptr<UndoCommand> cmd);
 
         template <typename C, typename... Args>
-        inline void push(Args &&...args)
-        {
-            push(std::make_unique<C>(std::forward<Args>(args)...));
-        }
+        inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
 
         void clear();
         void undo();
@@ -83,6 +59,7 @@ namespace kb
         void set_head(size_t index);
         void set_clean();
         void reset_clean();
+        bool set_undo_limit(size_t undo_limit);
 
         std::string_view text(size_t index) const; // string_view because it may be empty
         std::string_view redo_text() const;

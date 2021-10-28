@@ -729,10 +729,10 @@ public:
 
     void transfer(size_t source, size_t destination, uint32_t amt_cents)
     {
-        kb::MacroCommandBuilder bld("Transfer an amount between accounts");
-        bld.push<Withdraw>(bnk_, source, amt_cents);
-        bld.push<Deposit>(bnk_, destination, amt_cents);
-        undo_stack_.push(bld.build());
+        auto trans = std::make_unique<kb::UndoCommand>("Transfer an amount between accounts");
+        trans->push<Withdraw>(bnk_, source, amt_cents);
+        trans->push<Deposit>(bnk_, destination, amt_cents);
+        undo_stack_.push(std::move(trans));
     }
 
     auto snap()

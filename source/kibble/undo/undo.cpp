@@ -8,11 +8,6 @@ namespace kb
     UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) : merge_id_(merge_id), action_text_(action_text)
     {
     }
-    UndoCommand::UndoCommand(const std::string &action_text, std::vector<std::unique_ptr<UndoCommand>> children, ssize_t merge_id) : merge_id_(merge_id),
-                                                                                                                                     action_text_(action_text),
-                                                                                                                                     children_(std::move(children))
-    {
-    }
 
     void UndoCommand::undo()
     {
@@ -40,21 +35,6 @@ namespace kb
             return true;
         }
         return false;
-    }
-
-    MacroCommandBuilder::MacroCommandBuilder(const std::string &action_text, ssize_t merge_id) : merge_id_(merge_id),
-                                                                                                 action_text_(action_text)
-    {
-    }
-
-    void MacroCommandBuilder::push(std::unique_ptr<UndoCommand> cmd)
-    {
-        children_.push_back(std::move(cmd));
-    }
-
-    std::unique_ptr<UndoCommand> MacroCommandBuilder::build()
-    {
-        return std::make_unique<UndoCommand>(action_text_, std::move(children_), merge_id_);
     }
 
     void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
