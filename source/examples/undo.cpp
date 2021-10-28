@@ -5,78 +5,58 @@
 
 using namespace kb;
 
-struct GameObject
+struct TextBuffer
 {
-    int uuid = 0;
-    int position = 0;
-    bool alive = true;
+    std::string text;
+
+    void dump()
+    {
+        KLOG("text", 1) << text << std::endl;
+    }
 };
 
-class GOMoveUndoCommand : public kb::UndoCommand
+class AppendCommand : public kb::UndoCommand
 {
 public:
-    GOMoveUndoCommand(GameObject *go, int increment) : kb::UndoCommand("Change game object position"),
-                                                       go_(go),
-                                                       increment_(increment)
-
+    AppendCommand(TextBuffer &buffer, const std::string &text) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
     {
     }
 
-    void redo() override
+    AppendCommand(TextBuffer &buffer, char c) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
     {
-        KLOGN("undo") << "Move::redo" << std::endl;
-        KLOG("scene", 1) << "Object " << go_->uuid << " moved from " << go_->position;
-        go_->position += increment_;
-        KLOG("scene", 1) << " to " << go_->position << std::endl;
     }
 
-    void undo() override
+    void redo() override final
     {
-        KLOGN("undo") << "Move::undo" << std::endl;
-        KLOG("scene", 1) << "Object " << go_->uuid << " moved from " << go_->position;
-        go_->position -= increment_;
-        KLOG("scene", 1) << " to " << go_->position << std::endl;
+        buffer_.text += text_;
+    }
+
+    void undo() override final
+    {
+        buffer_.text.erase(buffer_.text.length() - text_.length());
+    }
+
+    bool merge_with(const UndoCommand &cmd) override final
+    {
+        const auto &other_text = static_cast<const AppendCommand &>(cmd).text_;
+        if (text_.compare(" ") != 0 && other_text.compare(" ") != 0)
+        {
+            text_ += other_text;
+            return true;
+        }
+        return false;
     }
 
 private:
-    GameObject *go_ = nullptr;
-    int increment_ = 0;
-};
-
-class GOKillUndoCommand : public kb::UndoCommand
-{
-public:
-    GOKillUndoCommand(GameObject *go) : kb::UndoCommand("Kill game object"),
-                                        go_(go)
-
-    {
-    }
-
-    void redo() override
-    {
-        KLOGN("undo") << "Kill::redo" << std::endl;
-        go_->alive = false;
-        KLOG("scene", 1) << "Object " << go_->uuid << " was killed" << std::endl;
-    }
-
-    void undo() override
-    {
-        KLOGN("undo") << "Kill::undo" << std::endl;
-        go_->alive = true;
-        KLOG("scene", 1) << "Object " << go_->uuid << " was resurrected" << std::endl;
-    }
-
-private:
-    GameObject *go_ = nullptr;
+    TextBuffer &buffer_;
+    std::string text_;
 };
 
 void init_logger()
 {
     KLOGGER_START();
 
-    KLOGGER(create_channel("nuclear", 3));
-    KLOGGER(create_channel("undo", 3));
-    KLOGGER(create_channel("scene", 3));
+    KLOGGER(create_channel("text", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
@@ -89,37 +69,27 @@ int main(int argc, char **argv)
 
     KLOGN("nuclear") << "Undo/Redo example" << std::endl;
 
-    GameObject go0{42, 8, true};
+    TextBuffer buf;
     UndoStack undo_stack;
 
-    auto print_state = [&go0, &undo_stack]()
-    {
-        KLOG("undo", 1) << "State: " << std::endl;
-        KLOGI << "game object: {pos=" << go0.position << ", alive=" << std::boolalpha << go0.alive << '}' << std::endl;
-        KLOGI << "undo stack:  {head=" << undo_stack.head() << ", count=" << undo_stack.count() << '}' << std::endl;
-    };
+    std::string typed = "hello shithead";
+    for (char c : typed)
+        undo_stack.push<AppendCommand>(buf, c);
+    buf.dump();
 
-    print_state();
-    undo_stack.push<GOMoveUndoCommand>(&go0, 5);
-    print_state();
     undo_stack.undo();
-    print_state();
+    buf.dump();
+
+    typed = "world";
+    for (char c : typed)
+        undo_stack.push<AppendCommand>(buf, c);
+    buf.dump();
+
+    undo_stack.undo();
+    buf.dump();
+
     undo_stack.redo();
-    print_state();
-    undo_stack.push<GOMoveUndoCommand>(&go0, 2);
-    print_state();
-    undo_stack.push<GOMoveUndoCommand>(&go0, -4);
-    print_state();
-    undo_stack.push<GOKillUndoCommand>(&go0);
-    print_state();
-    undo_stack.undo();
-    print_state();
-    undo_stack.undo();
-    print_state();
-    undo_stack.push<GOMoveUndoCommand>(&go0, -15);
-    print_state();
-    undo_stack.set_head(1);
-    print_state();
+    buf.dump();
 
     return 0;
 }

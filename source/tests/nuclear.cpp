@@ -21,15 +21,7 @@ int main(int argc, char** argv)
     (void)argv;
     init_logger();
 
-    std::vector<int> vec{0, 1, 2, 3, 4, 5};
-
-    // vec.erase(std::next(vec.begin(), 1), std::next(vec.begin(), 3));
-    vec.erase(std::next(vec.begin(), 3), vec.end());
-
-    for(int el: vec)
-    {
-        KLOG("nuclear",1) << el << std::endl;
-    }
+    KLOG("nuclear",1) << "plop" << std::endl;
 
     return 0;
 }

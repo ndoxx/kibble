@@ -635,3 +635,153 @@ TEST_CASE_METHOD(MergeFixture, "clean index should be reset if it is greater tha
     undo_stack_.push<RotateCommand>(&obj_, -1.f);
     REQUIRE(undo_stack_.clean_index() == -1);
 }
+
+struct Account
+{
+    float balance = 0.f;
+    std::string owner;
+};
+
+struct Operation
+{
+    size_t idx = 0;
+    float value = 0.f;
+};
+
+class Bank
+{
+public:
+    Bank() : accounts({{100.f, "Alice"}, {1234.5f, "Bob"}, {549862.23f, "Carol"}, {23649.1f, "Danny"}})
+    {
+    }
+
+    std::vector<Account> accounts;
+    std::vector<Operation> journal;
+};
+
+class Deposit : public kb::UndoCommand
+{
+public:
+    Deposit(Bank &bnk, size_t idx, uint32_t amt_cents) : kb::UndoCommand("Deposit amt_cents into idx's account"),
+                                                         bnk_(bnk),
+                                                         idx_(idx),
+                                                         value_(float(amt_cents) / 100.f)
+
+    {
+    }
+
+    void redo() override
+    {
+        bnk_.accounts[idx_].balance += value_;
+        bnk_.journal.push_back({idx_, value_});
+    }
+    void undo() override
+    {
+        bnk_.accounts[idx_].balance -= value_;
+        bnk_.journal.push_back({idx_, -value_});
+    }
+    inline float get_value() const { return value_; }
+
+private:
+    Bank &bnk_;
+    size_t idx_ = 0;
+    float value_ = 0.f;
+};
+
+class Withdraw : public kb::UndoCommand
+{
+public:
+    Withdraw(Bank &bnk, size_t idx, uint32_t amt_cents) : kb::UndoCommand("Withdraw amt_cents into idx's account"),
+                                                          bnk_(bnk),
+                                                          idx_(idx),
+                                                          value_(float(amt_cents) / 100.f)
+
+    {
+    }
+
+    void redo() override
+    {
+        bnk_.accounts[idx_].balance -= value_;
+        bnk_.journal.push_back({idx_, -value_});
+    }
+    void undo() override
+    {
+        bnk_.accounts[idx_].balance += value_;
+        bnk_.journal.push_back({idx_, value_});
+    }
+    inline float get_value() const { return value_; }
+
+private:
+    Bank &bnk_;
+    size_t idx_ = 0;
+    float value_ = 0.f;
+};
+
+class MacroFixture
+{
+public:
+    MacroFixture()
+    {
+        // Push some commands
+        undo_stack_.push<Deposit>(bnk_, 0, 20000);
+        undo_stack_.push<Withdraw>(bnk_, 1, 45600);
+    }
+
+    void transfer(size_t source, size_t destination, uint32_t amt_cents)
+    {
+        kb::MacroCommandBuilder bld("Transfer an amount between accounts");
+        bld.push<Withdraw>(bnk_, source, amt_cents);
+        bld.push<Deposit>(bnk_, destination, amt_cents);
+        undo_stack_.push(bld.build());
+    }
+
+    auto snap()
+    {
+        return bnk_.accounts;
+    }
+
+    void dump()
+    {
+        std::cout << undo_stack_.dump() << std::endl;
+    }
+
+protected:
+    Bank bnk_;
+    kb::UndoStack undo_stack_;
+};
+
+TEST_CASE_METHOD(MacroFixture, "A macro should count as a single command", "[macro]")
+{
+    size_t count = undo_stack_.count();
+    transfer(0, 1, 20000);
+    REQUIRE(undo_stack_.count() == count + 1);
+}
+
+TEST_CASE_METHOD(MacroFixture, "Pushing/redoing a macro should execute all its children in order", "[macro]")
+{
+    uint32_t amt = 20000;
+    auto before = snap();
+    transfer(0, 1, amt);
+    auto after = snap();
+    REQUIRE(after[0].balance == before[0].balance - float(amt) / 100.f);
+    REQUIRE(after[1].balance == before[1].balance + float(amt) / 100.f);
+
+    size_t last_op_idx = bnk_.journal.size() - 1;
+    REQUIRE(bnk_.journal[last_op_idx - 1].idx == 0);
+    REQUIRE(bnk_.journal[last_op_idx].idx == 1);
+}
+
+TEST_CASE_METHOD(MacroFixture, "Undoing a macro should undo all its children in reverse order", "[macro]")
+{
+    uint32_t amt = 20000;
+    transfer(0, 1, amt);
+    auto before = snap();
+    undo_stack_.undo();
+    auto after = snap();
+    REQUIRE(after[0].balance == before[0].balance + float(amt) / 100.f);
+    REQUIRE(after[1].balance == before[1].balance - float(amt) / 100.f);
+
+    size_t last_op_idx = bnk_.journal.size() - 1;
+    REQUIRE(bnk_.journal[last_op_idx - 1].idx == 1);
+    REQUIRE(bnk_.journal[last_op_idx].idx == 0);
+}

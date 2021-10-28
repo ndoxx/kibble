@@ -9,10 +9,6 @@
 
 /*
 TODO:
-    [ ] Macro commands
-        -> UndoCommands can register a parent on construction
-        -> UndoCommand::redo() default impl calls all children redo() in order
-        -> UndoCommand::undo() default impl calls all children undo() in reverse order
     [ ] Undo groups
 */
 
