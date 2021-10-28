@@ -215,4 +215,85 @@ namespace kb
         return ss.str();
     }
 
+    bool UndoGroup::add_stack(hash_t stack_name)
+    {
+        auto result = stacks_.emplace(stack_name, UndoStack{});
+        if (result.second)
+        {
+            // Forward stack signals to this level
+            auto &stack = result.first->second;
+            stack.on_head_change(on_head_change_);
+            stack.on_clean_change(on_clean_change_);
+            stack.on_can_undo_change(on_can_undo_change_);
+            stack.on_can_redo_change(on_can_redo_change_);
+            return true;
+        }
+        return false;
+    }
+
+    bool UndoGroup::remove_stack(hash_t stack_name)
+    {
+        auto findit = stacks_.find(stack_name);
+        if (findit != stacks_.end())
+        {
+            stacks_.erase(findit);
+            return true;
+        }
+        return false;
+    }
+
+    bool UndoGroup::set_active(hash_t stack_name)
+    {
+        if (active_stack_ == stack_name)
+            return true;
+
+        auto findit = stacks_.find(stack_name);
+        if (findit != stacks_.end())
+        {
+            active_stack_ = stack_name;
+            on_active_stack_change_(stack_name);
+            return true;
+        }
+        return false;
+    }
+
+    std::string_view UndoGroup::redo_text() const
+    {
+        return active_stack_ ? stacks_.at(active_stack_).redo_text() : s_empty_str;
+    }
+
+    std::string_view UndoGroup::undo_text() const
+    {
+        return active_stack_ ? stacks_.at(active_stack_).undo_text() : s_empty_str;
+    }
+
+    void UndoGroup::on_head_change(std::function<void(size_t)> func)
+    {
+        // Set functor and propagate to all stacks
+        on_head_change_ = func;
+        for (auto &&[name, stack] : stacks_)
+            stack.on_head_change(on_head_change_);
+    }
+
+    void UndoGroup::on_clean_change(std::function<void(bool)> func)
+    {
+        on_clean_change_ = func;
+        for (auto &&[name, stack] : stacks_)
+            stack.on_clean_change(on_clean_change_);
+    }
+
+    void UndoGroup::on_can_undo_change(std::function<void(bool)> func)
+    {
+        on_can_undo_change_ = func;
+        for (auto &&[name, stack] : stacks_)
+            stack.on_can_undo_change(on_can_undo_change_);
+    }
+
+    void UndoGroup::on_can_redo_change(std::function<void(bool)> func)
+    {
+        on_can_redo_change_ = func;
+        for (auto &&[name, stack] : stacks_)
+            stack.on_can_redo_change(on_can_redo_change_);
+    }
+
 } // namespace kb

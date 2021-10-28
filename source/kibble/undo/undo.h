@@ -6,11 +6,9 @@
 #include <deque>
 #include <vector>
 #include <functional>
+#include <unordered_map>
 
-/*
-TODO:
-    [ ] Undo groups
-*/
+#include "../hash/hash.h"
 
 namespace kb
 {
@@ -105,6 +103,87 @@ namespace kb
         ssize_t clean_index_ = -1;
         Snapshot last_snapshot_;
 
+        std::function<void(size_t)> on_head_change_ = [](size_t) {};
+        std::function<void(bool)> on_clean_change_ = [](bool) {};
+        std::function<void(bool)> on_can_undo_change_ = [](bool) {};
+        std::function<void(bool)> on_can_redo_change_ = [](bool) {};
+    };
+
+    class UndoGroup
+    {
+    public:
+        bool add_stack(hash_t stack_name);
+        bool remove_stack(hash_t stack_name);
+        bool set_active(hash_t stack_name);
+
+        std::string_view redo_text() const;
+        std::string_view undo_text() const;
+
+        inline void push(std::unique_ptr<UndoCommand> cmd)
+        {
+            if (active_stack_)
+                stacks_[active_stack_].push(std::move(cmd));
+        }
+
+        template <typename C, typename... Args>
+        inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
+
+        inline void clear()
+        {
+            if (active_stack_)
+                stacks_[active_stack_].clear();
+        }
+
+        inline void undo()
+        {
+            if (active_stack_)
+                stacks_[active_stack_].undo();
+        }
+
+        inline void redo()
+        {
+            if (active_stack_)
+                stacks_[active_stack_].redo();
+        }
+
+        inline void set_head(size_t index)
+        {
+            if (active_stack_)
+                stacks_[active_stack_].set_head(index);
+        }
+
+        inline void set_clean()
+        {
+            if (active_stack_)
+                stacks_[active_stack_].set_clean();
+        }
+
+        inline void reset_clean()
+        {
+            if (active_stack_)
+                stacks_[active_stack_].reset_clean();
+        }
+
+        inline bool set_undo_limit(size_t undo_limit)
+        {
+            if (active_stack_)
+                stacks_[active_stack_].set_undo_limit(undo_limit);
+        }
+
+        inline const UndoStack &active_stack() const { return stacks_.at(active_stack_); }
+        inline hash_t active_stack_name() const { return active_stack_; }
+
+        inline void on_active_stack_change(std::function<void(hash_t)> func) { on_active_stack_change_ = func; }
+        void on_head_change(std::function<void(size_t)> func);
+        void on_clean_change(std::function<void(bool)> func);
+        void on_can_undo_change(std::function<void(bool)> func);
+        void on_can_redo_change(std::function<void(bool)> func);
+
+    private:
+        hash_t active_stack_ = 0;
+        std::unordered_map<hash_t, UndoStack> stacks_;
+
+        std::function<void(hash_t)> on_active_stack_change_ = [](hash_t) {};
         std::function<void(size_t)> on_head_change_ = [](size_t) {};
         std::function<void(bool)> on_clean_change_ = [](bool) {};
         std::function<void(bool)> on_can_undo_change_ = [](bool) {};
