@@ -167,17 +167,23 @@ namespace kb
         inline bool set_undo_limit(size_t undo_limit)
         {
             if (active_stack_)
-                stacks_[active_stack_].set_undo_limit(undo_limit);
+                return stacks_[active_stack_].set_undo_limit(undo_limit);
+            return false;
         }
 
+        inline const UndoStack &stack(hash_t stack_name) const { return stacks_.at(stack_name); }
         inline const UndoStack &active_stack() const { return stacks_.at(active_stack_); }
         inline hash_t active_stack_name() const { return active_stack_; }
+        inline size_t size() const { return stacks_.size(); }
 
         inline void on_active_stack_change(std::function<void(hash_t)> func) { on_active_stack_change_ = func; }
         void on_head_change(std::function<void(size_t)> func);
         void on_clean_change(std::function<void(bool)> func);
         void on_can_undo_change(std::function<void(bool)> func);
         void on_can_redo_change(std::function<void(bool)> func);
+
+    private:
+        void change_active_stack(hash_t stack_name);
 
     private:
         hash_t active_stack_ = 0;

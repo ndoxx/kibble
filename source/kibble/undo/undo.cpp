@@ -217,6 +217,9 @@ namespace kb
 
     bool UndoGroup::add_stack(hash_t stack_name)
     {
+        if (stack_name == 0)
+            return false;
+
         auto result = stacks_.emplace(stack_name, UndoStack{});
         if (result.second)
         {
@@ -237,6 +240,10 @@ namespace kb
         if (findit != stacks_.end())
         {
             stacks_.erase(findit);
+            if (active_stack_ == stack_name)
+            {
+                change_active_stack(0);
+            }
             return true;
         }
         return false;
@@ -250,11 +257,20 @@ namespace kb
         auto findit = stacks_.find(stack_name);
         if (findit != stacks_.end())
         {
-            active_stack_ = stack_name;
-            on_active_stack_change_(stack_name);
+            change_active_stack(stack_name);
             return true;
         }
         return false;
+    }
+
+    void UndoGroup::change_active_stack(hash_t stack_name)
+    {
+        active_stack_ = stack_name;
+        on_active_stack_change_(stack_name);
+        on_head_change_(active_stack_ ? active_stack().head() : 0);
+        on_clean_change_(active_stack_ ? active_stack().is_clean() : false);
+        on_can_undo_change_(active_stack_ ? active_stack().can_undo() : false);
+        on_can_redo_change_(active_stack_ ? active_stack().can_redo() : false);
     }
 
     std::string_view UndoGroup::redo_text() const

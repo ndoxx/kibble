@@ -785,3 +785,206 @@ TEST_CASE_METHOD(MacroFixture, "Undoing a macro should undo all its children in 
     REQUIRE(bnk_.journal[last_op_idx - 1].idx == 1);
     REQUIRE(bnk_.journal[last_op_idx].idx == 0);
 }
+
+using hash_t = kb::hash_t;
+struct TextBuffer
+{
+    std::string text;
+    hash_t name;
+};
+
+class AppendCommand : public kb::UndoCommand
+{
+public:
+    AppendCommand(TextBuffer &buffer, const std::string &text) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
+    {
+    }
+
+    AppendCommand(TextBuffer &buffer, char c) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
+    {
+    }
+
+    void redo() override final { buffer_.text += text_; }
+
+    void undo() override final { buffer_.text.erase(buffer_.text.length() - text_.length()); }
+
+    bool merge_with(const UndoCommand &cmd) override final
+    {
+        const auto &other_text = static_cast<const AppendCommand &>(cmd).text_;
+        if (text_.compare(" ") != 0 && other_text.compare(" ") != 0)
+        {
+            text_ += other_text;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    TextBuffer &buffer_;
+    std::string text_;
+};
+
+class GroupFixture
+{
+public:
+    struct State
+    {
+        hash_t active_stack = 0;
+        size_t head = 0;
+        bool clean = false;
+        bool can_undo = false;
+        bool can_redo = false;
+    };
+
+    GroupFixture()
+    {
+        group_.on_active_stack_change([this](hash_t active_stack)
+                                      { last_state_.active_stack = active_stack; });
+        group_.on_head_change([this](size_t head)
+                              { last_state_.head = head; });
+        group_.on_clean_change([this](bool clean)
+                               { last_state_.clean = clean; });
+        group_.on_can_undo_change([this](bool can_undo)
+                                  { last_state_.can_undo = can_undo; });
+        group_.on_can_redo_change([this](bool can_redo)
+                                  { last_state_.can_redo = can_redo; });
+
+        create_doc("doc0"_h);
+        create_doc("doc1"_h);
+        create_doc("doc2"_h);
+    }
+
+    void focus(hash_t name)
+    {
+        auto findit = names_.find(name);
+        size_t idx = findit->second;
+        current_buf_ = idx;
+        current_doc_ = name;
+        group_.set_active(current_doc_);
+    }
+
+    void append(const std::string &text)
+    {
+        group_.push<AppendCommand>(bufs_[current_buf_], text);
+    }
+
+    void append(char c)
+    {
+        group_.push<AppendCommand>(bufs_[current_buf_], c);
+    }
+
+    void create_doc(hash_t name)
+    {
+        bufs_.push_back(TextBuffer{"", name});
+        group_.add_stack(name);
+        names_.insert({name, group_.size() - 1});
+    }
+
+    void destroy_doc(hash_t name)
+    {
+        auto findit = names_.find(name);
+        size_t idx = findit->second;
+        bufs_.erase(bufs_.begin() + long(idx));
+        group_.remove_stack(name);
+        // reindex
+        names_.clear();
+        for (size_t ii = 0; ii < bufs_.size(); ++ii)
+            names_.insert({bufs_[ii].name, ii});
+    }
+
+protected:
+    std::vector<TextBuffer> bufs_;
+    kb::UndoGroup group_;
+    State last_state_;
+    hash_t current_doc_;
+    size_t current_buf_;
+    std::unordered_map<hash_t, size_t> names_;
+};
+
+TEST_CASE_METHOD(GroupFixture, "If no active stack is selected, state cannot change, and getting active stack throws", "[group]")
+{
+    current_buf_ = 0;
+    current_doc_ = "doc0"_h;
+
+    append('h');
+    REQUIRE(last_state_.head == 0);
+
+    group_.undo();
+    REQUIRE(last_state_.head == 0);
+
+    group_.set_clean();
+    REQUIRE_FALSE(last_state_.clean);
+
+    REQUIRE_THROWS(group_.active_stack());
+}
+
+TEST_CASE_METHOD(GroupFixture, "Selecting an active stack should cause a state transition", "[group]")
+{
+    focus("doc0"_h);
+    REQUIRE(last_state_.active_stack == "doc0"_h);
+}
+
+TEST_CASE_METHOD(GroupFixture, "Group operations are forwarded to the active stack only", "[group]")
+{
+    focus("doc0"_h);
+    group_.set_clean();
+    append('h');
+    REQUIRE(group_.stack("doc0"_h).count() == 1);
+    REQUIRE(group_.stack("doc1"_h).count() == 0);
+    REQUIRE(group_.stack("doc2"_h).count() == 0);
+    REQUIRE_FALSE(group_.stack("doc0"_h).is_clean());
+    REQUIRE_FALSE(group_.stack("doc1"_h).is_clean());
+    REQUIRE_FALSE(group_.stack("doc2"_h).is_clean());
+    REQUIRE(group_.stack("doc0"_h).can_undo());
+    REQUIRE_FALSE(group_.stack("doc1"_h).can_undo());
+    REQUIRE_FALSE(group_.stack("doc2"_h).can_undo());
+
+    group_.undo();
+    REQUIRE(group_.stack("doc0"_h).head() == 0);
+    REQUIRE(group_.stack("doc0"_h).is_clean());
+    REQUIRE_FALSE(group_.stack("doc0"_h).can_undo());
+    REQUIRE(group_.stack("doc0"_h).can_redo());
+    REQUIRE_FALSE(group_.stack("doc1"_h).can_redo());
+    REQUIRE_FALSE(group_.stack("doc2"_h).can_redo());
+
+    group_.redo();
+    REQUIRE(group_.stack("doc0"_h).head() == 1);
+    REQUIRE(group_.stack("doc1"_h).head() == 0);
+    REQUIRE(group_.stack("doc2"_h).head() == 0);
+}
+
+TEST_CASE_METHOD(GroupFixture, "On adding a new stack, functors should work as expected", "[group]")
+{
+    focus("doc0"_h);
+    create_doc("doc3"_h);
+    REQUIRE(group_.size() == 4);
+
+    focus("doc3"_h);
+    group_.set_clean();
+    append('h');
+    REQUIRE(last_state_.head == 1);
+    REQUIRE(last_state_.can_undo);
+    REQUIRE_FALSE(last_state_.can_redo);
+    REQUIRE_FALSE(last_state_.clean);
+
+    group_.undo();
+    REQUIRE(last_state_.can_redo);
+}
+
+TEST_CASE_METHOD(GroupFixture, "Removing a stack should work", "[group]")
+{
+    focus("doc0"_h);
+    destroy_doc("doc2"_h);
+
+    REQUIRE(group_.size() == 2);
+    REQUIRE_THROWS(group_.stack("doc2"_h));
+}
+
+TEST_CASE_METHOD(GroupFixture, "Removing the active stack should reset the active stack index", "[group]")
+{
+    focus("doc0"_h);
+    REQUIRE(group_.active_stack_name() == "doc0"_h);
+    destroy_doc("doc0"_h);
+
+    REQUIRE(group_.active_stack_name() == 0);
+}
