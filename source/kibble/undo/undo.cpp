@@ -5,12 +5,13 @@
 namespace kb
 {
 
-    UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) : merge_id_(merge_id), action_text_(action_text)
+    UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) noexcept : merge_id_(merge_id), action_text_(action_text)
     {
     }
 
     void UndoCommand::undo()
     {
+        // Call children's undo() in reverse order
         std::for_each(children_.rbegin(),
                       children_.rend(),
                       [](const auto &child)
@@ -21,6 +22,7 @@ namespace kb
 
     void UndoCommand::redo()
     {
+        // Call children's redo() in order
         for (const auto &child : children_)
             child->redo();
     }
@@ -41,6 +43,7 @@ namespace kb
     {
         cmd->redo();
 
+        // Save state for state tracking purposes
         snapshot();
 
         // If commands have been undone, remove all commands after head
@@ -158,9 +161,11 @@ namespace kb
 
     void UndoStack::set_head(size_t index)
     {
+        // Clip index
         if (index > count())
             index = count();
 
+        // Nothing to do
         if (index == head_)
             return;
 
@@ -217,6 +222,7 @@ namespace kb
 
     bool UndoGroup::add_stack(hash_t stack_name)
     {
+        // Stack name must be non-zero
         if (stack_name == 0)
             return false;
 

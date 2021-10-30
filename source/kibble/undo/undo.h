@@ -7,11 +7,18 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <type_traits>
 
 #include "../hash/hash.h"
 
 namespace kb
 {
+    class UndoCommand;
+    template <typename T>
+    using is_undo_command = typename std::is_base_of<UndoCommand, T>;
+    template <typename T>
+    inline constexpr bool is_undo_command_v = is_undo_command<T>::value;
+
     /**
      * @brief Represents a user action that can be undone and redone
      * 
@@ -25,7 +32,7 @@ namespace kb
          * @param action_text Text associated to this action, for history display
          * @param merge_id Unique ID to identify commands that can be merged, set to -1 if command is not mergeable
          */
-        explicit UndoCommand(const std::string &action_text, ssize_t merge_id = -1);
+        explicit UndoCommand(const std::string &action_text, ssize_t merge_id = -1) noexcept;
 
         /**
          * @brief Destroy the Undo Command object
@@ -94,7 +101,7 @@ namespace kb
          * @tparam Args Types of the arguments to be forwarded to the command constructor
          * @param args Arguments to be forwarded to the command constructor
          */
-        template <typename C, typename... Args>
+        template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
         inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
 
         /**
@@ -161,12 +168,13 @@ namespace kb
 
         /**
          * @brief Convenience function to create a command pointer in-place before pushing it to this stack.
+         * This function is only enabled for classes that derive from UndoCommand.
          * 
          * @tparam C Type of the command to be pushed
          * @tparam Args Types of the arguments to be forwarded to the command constructor
          * @param args Arguments to be forwarded to the command constructor
          */
-        template <typename C, typename... Args>
+        template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
         inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
 
         /**
@@ -459,7 +467,7 @@ namespace kb
          * @tparam Args Types of the arguments to be forwarded to the command constructor
          * @param args Arguments to be forwarded to the command constructor
          */
-        template <typename C, typename... Args>
+        template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
         inline void push(Args &&...args) { push(std::make_unique<C>(std::forward<Args>(args)...)); }
 
         /**
