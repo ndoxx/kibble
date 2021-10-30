@@ -6,6 +6,7 @@ set(SRC_KIBBLE_TEST
     test_memory.cpp
     test_job.cpp
     test_fs.cpp
+    test_undo.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})
