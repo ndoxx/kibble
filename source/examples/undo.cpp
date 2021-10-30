@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     (void)argv;
     init_logger();
 
-    KLOGN("nuclear") << "Undo/Redo example" << std::endl;
+    KLOGN("text") << "Undo/Redo example" << std::endl;
 
     TextBuffer buf;
     UndoStack undo_stack;

@@ -92,6 +92,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/thread/job)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/time)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/undo/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/undo)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/util/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/util)
 
