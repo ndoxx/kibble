@@ -59,6 +59,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/config)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/ctti/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/ctti)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/event/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/event)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/filesystem/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/filesystem)
 
