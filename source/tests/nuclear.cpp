@@ -15,13 +15,11 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
     init_logger();
-
-    KLOG("nuclear",1) << "plop" << std::endl;
 
     return 0;
 }

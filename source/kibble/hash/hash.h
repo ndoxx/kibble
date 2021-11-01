@@ -58,7 +58,7 @@ namespace kh
 {
 struct pair_hash
 {
-    template <typename T1, typename T2> std::size_t operator()(const std::pair<T1, T2>& pair) const
+    template <typename T1, typename T2> std::size_t operator()(const std::pair<T1, T2> &pair) const
     {
         return std::hash<T1>()(pair.first) ^ std::hash<T1>()(pair.second);
     }
@@ -66,13 +66,13 @@ struct pair_hash
 
 template <typename Vec3T> struct vec3_hash
 {
-    std::size_t operator()(const Vec3T& vec) const
+    std::size_t operator()(const Vec3T &vec) const
     {
         std::size_t seed = 0;
 
         // Combine component hashes to obtain a position hash
         // Similar to Boost's hash_combine function
-        for(int ii = 0; ii < 3; ++ii)
+        for (int ii = 0; ii < 3; ++ii)
             seed ^= hakz::epsilon_hash(vec[ii]) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
         return seed; // Two epsilon-distant vectors will share a common hash
@@ -89,15 +89,21 @@ namespace detail
 static constexpr unsigned long long basis = 14695981039346656037ULL;
 static constexpr unsigned long long prime = 1099511628211ULL;
 
-// compile-time hash helper function
-static constexpr unsigned long long hash_one(char c, const char* remain, unsigned long long value)
+// compile-time hash helper functions
+static constexpr unsigned long long hash_one(char c, const char *remain, unsigned long long value)
 {
     return c == 0 ? value : hash_one(remain[0], remain + 1, (value ^ static_cast<unsigned long long>(c)) * prime);
 }
+static constexpr unsigned long long hash_one(std::string_view sv, size_t idx, unsigned long long value)
+{
+    return idx == sv.size() ? value : hash_one(sv, idx + 1, (value ^ static_cast<unsigned long long>(sv[idx])) * prime);
+}
 
-inline void hash_combine([[maybe_unused]] std::size_t& seed) {}
+inline void hash_combine([[maybe_unused]] std::size_t &seed)
+{
+}
 
-template <typename T, typename... Rest> inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)
+template <typename T, typename... Rest> inline void hash_combine(std::size_t &seed, const T &v, Rest... rest)
 {
     std::hash<T> hasher;
     seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -110,7 +116,7 @@ template <typename T, typename... Rest> inline void hash_combine(std::size_t& se
     {                                                                                                                  \
     template <> struct hash<type>                                                                                      \
     {                                                                                                                  \
-        std::size_t operator()(const type& t) const                                                                    \
+        std::size_t operator()(const type &t) const                                                                    \
         {                                                                                                              \
             std::size_t ret = 0;                                                                                       \
             kb::detail::hash_combine(ret, __VA_ARGS__);                                                                \
@@ -124,18 +130,34 @@ using hash_t = unsigned long long;
 } // namespace kb
 
 // compile-time hash
-constexpr kb::hash_t H_(const char* str) { return kb::detail::hash_one(str[0], str + 1, kb::detail::basis); }
-constexpr kb::hash_t H_(const std::string& str) { return H_(str.c_str()); }
+constexpr kb::hash_t H_(const char *str)
+{
+    return kb::detail::hash_one(str[0], str + 1, kb::detail::basis);
+}
+constexpr kb::hash_t H_(std::string_view sv)
+{
+    return kb::detail::hash_one(sv, 0, kb::detail::basis);
+}
+constexpr kb::hash_t H_(const std::string &str)
+{
+    return H_(str.c_str());
+}
 
 // string literal expression
-constexpr kb::hash_t operator"" _h(const char* internstr, size_t) { return H_(internstr); }
+constexpr kb::hash_t operator"" _h(const char *internstr, size_t)
+{
+    return H_(internstr);
+}
 
-inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second) { return (first ^ second) * kb::detail::prime; }
+inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second)
+{
+    return (first ^ second) * kb::detail::prime;
+}
 
-inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
+inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t> &hashes)
 {
     kb::hash_t ret = hashes[0];
-    for(size_t ii = 1; ii < hashes.size(); ++ii)
+    for (size_t ii = 1; ii < hashes.size(); ++ii)
         ret = HCOMBINE_(ret, hashes[ii]);
     return ret;
 }
