@@ -163,6 +163,12 @@ private:
     DelegateList delegates_;
     Queue queue_;
 };
+
+template <typename T> concept Streamable = requires(std::ostream &stream, T a)
+{
+    stream << a;
+};
+
 } // namespace detail
 
 using EventID = hash_t;
@@ -304,8 +310,19 @@ private:
     {
         if (should_track_(kb::ctti::type_id<EventT>()))
         {
-            kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m " << event << std::endl;
+            // Using a concept we can know at compile-time if the event supports the stream operator
+            if constexpr (detail::Streamable<EventT>)
+            {
+                kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
+                    << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m "
+                    << event << std::endl;
+            }
+            else
+            {
+                kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
+                    << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m"
+                    << std::endl;
+            }
         }
     }
 #endif

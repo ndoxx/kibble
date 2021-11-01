@@ -52,11 +52,6 @@ struct SubscriberPriorityKey
 
 struct CollideEvent
 {
-    CollideEvent() = default;
-    CollideEvent(uint32_t first, uint32_t second) : first(first), second(second)
-    {
-    }
-
     friend std::ostream &operator<<(std::ostream &, const CollideEvent &);
 
     uint32_t first;
@@ -65,35 +60,27 @@ struct CollideEvent
 
 std::ostream &operator<<(std::ostream &stream, const CollideEvent &e)
 {
-    stream << "first: " << e.first << " second: " << e.second << std::endl;
+    stream << "first: " << e.first << " second: " << e.second;
     return stream;
 }
 
 class ColliderSystem
 {
 public:
-    ColliderSystem()
-    {
-    }
-
     void fire_collision_instant(EventBus &eb, uint32_t first, uint32_t second)
     {
-        eb.fire(CollideEvent(first, second));
+        eb.fire<CollideEvent>({first, second});
     }
 
     void enqueue_collision(EventBus &eb, uint32_t first, uint32_t second)
     {
-        eb.enqueue(CollideEvent(first, second));
+        eb.enqueue<CollideEvent>({first, second});
     }
 };
 
 class CollisionResponseSystem
 {
 public:
-    CollisionResponseSystem()
-    {
-    }
-
     bool on_collision(const CollideEvent &event)
     {
         handled.push_back(std::pair(event.first, event.second));
