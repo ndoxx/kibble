@@ -23,7 +23,6 @@ target_link_libraries(kpak
         kibble
     )
 
-cotire(kpak)
 install(TARGETS kpak DESTINATION bin)
 
 
@@ -52,5 +51,4 @@ target_link_libraries(internstring
         kibble
     )
 
-cotire(internstring)
 install(TARGETS internstring DESTINATION bin)

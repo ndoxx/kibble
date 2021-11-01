@@ -38,8 +38,6 @@ target_link_libraries(test_kibble
         kibble
 )
 
-cotire(test_kibble)
-
 
 
 # -------- FUZZ TESTING -------- #
@@ -121,8 +119,6 @@ target_link_libraries(nuclear
         kibble
     )
 
-cotire(nuclear)
-
 
 
 # -------- BENCHMARKING -------- #
@@ -151,5 +147,3 @@ target_link_libraries(bench
         benchmark
         pthread
     )
-
-cotire(bench)

@@ -25,7 +25,6 @@ function(make_example_app project_name)
             kibble
         )
 
-    cotire(${NAME})
 endfunction()
 
 add_custom_target(examples)

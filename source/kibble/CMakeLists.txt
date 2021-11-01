@@ -38,8 +38,6 @@ target_link_libraries(kibble
         stdc++fs
 )
 
-cotire(kibble)
-
 # Install rules
 install(TARGETS kibble DESTINATION lib)
 
