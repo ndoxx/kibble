@@ -14,7 +14,6 @@ void EventBus::dispatch()
             queue->process();
 }
 
-// Check if all queues are empty
 bool EventBus::empty()
 {
     for (auto &&[id, queue] : event_queues_)
@@ -24,7 +23,6 @@ bool EventBus::empty()
     return true;
 }
 
-// Get the number of unprocessed events
 size_t EventBus::get_unprocessed_count()
 {
     return std::accumulate(event_queues_.begin(), event_queues_.end(), 0u, [](size_t accumulator, auto &&entry) {

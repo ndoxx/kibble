@@ -27,8 +27,8 @@
 #include <vector>
 
 #include "../config/config.h"
+#include "../ctti/ctti.h"
 #include "../logger/logger.h"
-#include "event.h"
 
 namespace kb
 {
@@ -55,13 +55,13 @@ private:
 template <typename T, typename EventT> class MemberDelegate : public AbstractDelegate<EventT>
 {
 public:
-    virtual ~MemberDelegate() = default;
     typedef bool (T::*MemberFunction)(const EventT &);
 
-    MemberDelegate(T *instance, MemberFunction memberFunction) : instance{instance}, memberFunction{memberFunction} {};
+    MemberDelegate(T *instance, MemberFunction memberFunction) noexcept
+        : instance{instance}, memberFunction{memberFunction} {};
 
     // Cast event to the correct type and call member function
-    virtual bool call(const EventT &event) const override
+    bool call(const EventT &event) const override final
     {
         return (instance->*memberFunction)(event);
     }
@@ -75,13 +75,12 @@ private:
 template <typename EventT> class FreeDelegate : public AbstractDelegate<EventT>
 {
 public:
-    virtual ~FreeDelegate() = default;
     typedef bool (*FreeFunction)(const EventT &);
 
-    explicit FreeDelegate(FreeFunction freeFunction) : freeFunction{freeFunction} {};
+    explicit FreeDelegate(FreeFunction freeFunction) noexcept : freeFunction{freeFunction} {};
 
     // Cast event to the correct type and call member function
-    virtual bool call(const EventT &event) const override
+    bool call(const EventT &event) const override final
     {
         return (*freeFunction)(event);
     }
@@ -104,8 +103,6 @@ public:
 template <typename EventT> class EventQueue : public AbstractEventQueue
 {
 public:
-    virtual ~EventQueue() = default;
-
     template <typename ClassT>
     inline void subscribe(ClassT *instance, bool (ClassT::*memberFunction)(const EventT &), uint32_t priority)
     {
@@ -137,7 +134,7 @@ public:
                 break; // If handler returns true, event is not propagated further
     }
 
-    virtual void process() override
+    void process() override final
     {
         while (!queue_.empty())
         {
@@ -149,12 +146,12 @@ public:
         }
     }
 
-    virtual bool empty() const override
+    bool empty() const override final
     {
         return queue_.empty();
     }
 
-    virtual size_t size() const override
+    size_t size() const override final
     {
         return queue_.size();
     }
@@ -167,6 +164,8 @@ private:
     Queue queue_;
 };
 } // namespace detail
+
+using EventID = hash_t;
 
 /**
  * @brief Central message broker
@@ -216,9 +215,10 @@ public:
      */
     template <typename EventT> void fire(const EventT &event)
     {
-        try_get<EventT>([&event](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto *q_ptr) {
+            (void)this;
 #ifdef K_DEBUG
-            log_event(event);
+            track_event(event);
 #endif
             q_ptr->fire(event);
         });
@@ -232,9 +232,10 @@ public:
      */
     template <typename EventT> void enqueue(const EventT &event)
     {
-        try_get<EventT>([&event](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto *q_ptr) {
+            (void)this;
 #ifdef K_DEBUG
-            log_event(event);
+            track_event(event);
 #endif
             q_ptr->submit(event);
         });
@@ -248,9 +249,10 @@ public:
      */
     template <typename EventT> void enqueue(EventT &&event)
     {
-        try_get<EventT>([&event](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto *q_ptr) {
+            (void)this;
 #ifdef K_DEBUG
-            log_event(event);
+            track_event(event);
 #endif
             q_ptr->submit(std::forward<EventT>(event));
         });
@@ -279,29 +281,31 @@ public:
 
 #ifdef K_DEBUG
     /**
-     * @brief Enable event tracking for a particular type of events.
+     * @brief Setup a callback that decides whether a particular event type should be tracked or not.
      * Tracked events will be logged when enqueued or fired. The logger must
      * be up and running for this to work. All events are logged on
      * the "event" channel. This channel must be created and configured beforehand.
+     * This callback should be a fast lookup, it will be called each time an event is emitted.
+     * Default implementation returns false.
      *
-     * @tparam EventT
-     * @param value
+     * @param pred Any function that returns true if the argument ID corresponds to an event that
+     * should be tracked, and false otherwise.
      */
-    template <typename EventT> inline void track_event(bool value = true)
+    inline void set_event_tracking_predicate(std::function<bool(EventID)> pred)
     {
-        event_filter_[EventT::ID] = value;
+        should_track_ = pred;
     }
 #endif
 
 private:
 #ifdef K_DEBUG
     // Log an event
-    template <typename EventT> inline void log_event(const EventT &event)
+    template <typename EventT> inline void track_event(const EventT &event)
     {
-        if (event_filter_[EventT::ID])
+        if (should_track_(kb::ctti::type_id<EventT>()))
         {
             kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << event.NAME << "]\033[0m " << event << std::endl;
+                << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m " << event << std::endl;
         }
     }
 #endif
@@ -309,21 +313,17 @@ private:
     // Helper function to get a particular event queue if it exists or create a new one if not
     template <typename EventT> auto &get_or_create()
     {
-        auto &queue = event_queues_[EventT::ID];
+        auto &queue = event_queues_[kb::ctti::type_id<EventT>()];
         if (queue == nullptr)
-        {
             queue = std::make_unique<detail::EventQueue<EventT>>();
-#ifdef K_DEBUG
-            configure_event_tracking<EventT>();
-#endif
-        }
+
         return queue;
     }
 
     // Helper function to access a queue only if it exists
     template <typename EventT> void try_get(std::function<void(detail::EventQueue<EventT> *)> visit)
     {
-        auto findit = event_queues_.find(EventT::ID);
+        auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())
         {
             auto *q_base_ptr = findit->second.get();
@@ -335,8 +335,9 @@ private:
 private:
     using EventQueues = std::map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
     EventQueues event_queues_;
+
 #ifdef K_DEBUG
-    std::map<EventID, bool> event_filter_; // Controls which tracked events are sent to the logger
+    std::function<bool(EventID)> should_track_ = [](EventID) { return false; };
 #endif
 };
 

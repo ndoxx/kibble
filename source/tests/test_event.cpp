@@ -3,7 +3,6 @@
 #include <random>
 #include <vector>
 
-#include "event/event.h"
 #include "event/event_bus.h"
 #include <catch2/catch_all.hpp>
 
@@ -53,16 +52,22 @@ struct SubscriberPriorityKey
 
 struct CollideEvent
 {
-    EVENT_DECLARATIONS(CollideEvent);
-
     CollideEvent() = default;
     CollideEvent(uint32_t first, uint32_t second) : first(first), second(second)
     {
     }
 
+    friend std::ostream &operator<<(std::ostream &, const CollideEvent &);
+
     uint32_t first;
     uint32_t second;
 };
+
+std::ostream &operator<<(std::ostream &stream, const CollideEvent &e)
+{
+    stream << "first: " << e.first << " second: " << e.second << std::endl;
+    return stream;
+}
 
 class ColliderSystem
 {
@@ -71,7 +76,7 @@ public:
     {
     }
 
-    void fire_collision_instant(EventBus& eb, uint32_t first, uint32_t second)
+    void fire_collision_instant(EventBus &eb, uint32_t first, uint32_t second)
     {
         eb.fire(CollideEvent(first, second));
     }
