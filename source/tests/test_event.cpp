@@ -96,7 +96,7 @@ class EventFixture
 public:
     EventFixture()
     {
-        event_bus.subscribe(&collision_response, &CollisionResponseSystem::on_collision);
+        event_bus.subscribe<&CollisionResponseSystem::on_collision>(&collision_response);
     }
 
 protected:

@@ -45,11 +45,6 @@ template <typename T> concept Streamable = requires(std::ostream &stream, T a)
     stream << a;
 };
 
-/*template <typename F, typename... Args> concept Handler = requires(F&& f, Args&&... args)
-{
-    std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-};*/
-
 template <typename EventT> using EventDelegate = kb::Delegate<bool(const EventT &)>;
 
 // Interface for an event queue
@@ -147,6 +142,9 @@ private:
     Queue queue_;
 };
 
+// This helper struct helps deduce the event type from a handler signature.
+// Thanks to it, only the handler function pointer is required as a template parameter
+// when calling the EventBus' subscribe methods.
 template <typename S> struct Signature;
 
 template <typename R, typename Arg> struct Signature<R (*)(Arg)>
@@ -181,17 +179,38 @@ using EventID = hash_t;
 class EventBus
 {
 public:
-    template <auto MemberFunction, typename Class,
-              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
-              typename = std::enable_if_t<
-                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
-    void subscribe(const Class *instance, uint32_t priority = 0u)
+    /**
+     * @brief Register a free function as an event handler.
+     *
+     * @tparam Function Function pointer as a handler. This is the only required template parameter,
+     * the event type is deduced. The function must return true to consume an event, or false to let
+     * it propagate to other handlers.
+     * @tparam EventT Type of the event. This parameter is deduced from the handler's signature, there is
+     * no need to fill it in.
+     * @param priority Handlers with higher priority will execute first. In case two handlers have the same
+     * priority, the last one to register will execute first.
+     */
+    template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
+    void subscribe(uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
+        q_ptr->template subscribe<Function>(priority);
     }
 
+    /**
+     * @brief Register a non-const member function as an event handler.
+     *
+     * @tparam Function Member function pointer as a handler. This is the only required template parameter,
+     * the event type and class are deduced. The function must return true to consume an event, or false to let
+     * it propagate to other handlers.
+     * @tparam Class Class that holds the member function. This parameter is deduced from the instance pointer.
+     * @tparam EventT Type of the event. This parameter is deduced from the handler's signature.
+     * @param instance Pointer to the instance of the class holding the member function used as a handler.
+     * @param priority Handlers with higher priority will execute first. In case two handlers have the same
+     * priority, the last one to register will execute first.
+     */
     template <
         auto MemberFunction, typename Class,
         typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
@@ -203,13 +222,27 @@ public:
         q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
     }
 
-    template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
-              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
-    void subscribe(uint32_t priority = 0u)
+    /**
+     * @brief Register a const member function as an event handler.
+     *
+     * @tparam Function Const member function pointer as a handler. This is the only required template parameter,
+     * the event type and class are deduced. The function must return true to consume an event, or false to let
+     * it propagate to other handlers.
+     * @tparam Class Class that holds the member function. This parameter is deduced from the instance pointer.
+     * @tparam EventT Type of the event. This parameter is deduced from the handler's signature.
+     * @param instance Pointer to the instance of the class holding the member function used as a handler.
+     * @param priority Handlers with higher priority will execute first. In case two handlers have the same
+     * priority, the last one to register will execute first.
+     */
+    template <auto MemberFunction, typename Class,
+              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+              typename = std::enable_if_t<
+                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
+    void subscribe(const Class *instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Function>(priority);
+        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
     }
 
     /**
@@ -287,8 +320,9 @@ public:
 #ifdef K_DEBUG
     /**
      * @brief Setup a callback that decides whether a particular event type should be tracked or not.
-     * Tracked events will be logged when enqueued or fired. The logger must
-     * be up and running for this to work. All events are logged on
+     * Tracked events will be logged when enqueued or fired. An event that defines a stream operator
+     * will automatically be serialized to the log stream.
+     * The logger must be up and running for this to work. All events are logged on
      * the "event" channel. This channel must be created and configured beforehand.
      * This callback should be a fast lookup, it will be called each time an event is emitted.
      * Default implementation returns false.
