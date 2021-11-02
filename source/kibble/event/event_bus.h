@@ -26,6 +26,7 @@
 #include <queue>
 #include <type_traits>
 #include <vector>
+#include <string_view>
 
 #include "../ctti/ctti.h"
 #include "../logger/logger.h"
@@ -229,11 +230,11 @@ public:
         auto MemberFunction, typename Class,
         typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
         typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
-    void subscribe(Class *instance, uint32_t priority = 0u)
+    void subscribe(Class& instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
+        q_ptr->template subscribe<Class, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -252,11 +253,11 @@ public:
               typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
               typename = std::enable_if_t<
                   std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
-    void subscribe(const Class *instance, uint32_t priority = 0u)
+    void subscribe(const Class& instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
+        q_ptr->template subscribe<Class, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -271,7 +272,7 @@ public:
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
 #ifdef K_DEBUG
-            track_event(event);
+            track_event(event, false);
 #endif
             q_ptr->fire(event);
         });
@@ -289,7 +290,7 @@ public:
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
 #ifdef K_DEBUG
-            track_event(event);
+            track_event(event, true);
 #endif
             q_ptr->submit(event);
         });
@@ -307,7 +308,7 @@ public:
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
 #ifdef K_DEBUG
-            track_event(event);
+            track_event(event, true);
 #endif
             q_ptr->submit(std::forward<EventT>(event));
         });
@@ -378,21 +379,23 @@ public:
 private:
 #ifdef K_DEBUG
     // Log an event
-    template <typename EventT> inline void track_event(const EventT &event)
+    template <typename EventT> inline void track_event(const EventT &event, bool is_queued)
     {
         if (should_track_(kb::ctti::type_id<EventT>()))
         {
+            constexpr std::string_view style_queued = "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[q][";
+            constexpr std::string_view style_fired = "\033[1;38;2;0;0;0m\033[1;48;2;185;153;0m[f][";
             // Using a concept we can know at compile-time if the event supports the stream operator
             if constexpr (detail::Streamable<EventT>)
             {
                 kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                    << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m "
+                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m "
                     << event << std::endl;
             }
             else
             {
                 kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                    << "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[" << kb::ctti::type_name<EventT>() << "]\033[0m"
+                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m"
                     << std::endl;
             }
         }

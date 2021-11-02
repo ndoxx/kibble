@@ -60,7 +60,6 @@ struct CollideEvent
 
 struct DummyEvent
 {
-    int a;
 };
 
 struct UnhandledEvent
@@ -90,7 +89,7 @@ class EventFixture
 public:
     EventFixture()
     {
-        event_bus.subscribe<&CollisionResponseSystem::on_collision>(&collision_response);
+        event_bus.subscribe<&CollisionResponseSystem::on_collision>(collision_response);
         event_bus.subscribe<&handle_dummy>();
     }
 
@@ -144,7 +143,7 @@ TEST_CASE_METHOD(EventFixture, "Enqueueing an unhandled event does nothing", "[e
 
 TEST_CASE_METHOD(EventFixture, "Unprocessed event count can be queried", "[evt]")
 {
-    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<DummyEvent>({});
     event_bus.enqueue<CollideEvent>({0, 1});
     event_bus.enqueue<CollideEvent>({2, 3});
     REQUIRE(event_bus.get_unprocessed_count() == 3);
@@ -152,7 +151,7 @@ TEST_CASE_METHOD(EventFixture, "Unprocessed event count can be queried", "[evt]"
 
 TEST_CASE_METHOD(EventFixture, "Events can be dropped selectively", "[evt]")
 {
-    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<DummyEvent>({});
     event_bus.enqueue<CollideEvent>({0, 1});
     event_bus.enqueue<CollideEvent>({2, 3});
 
@@ -162,7 +161,7 @@ TEST_CASE_METHOD(EventFixture, "Events can be dropped selectively", "[evt]")
 
 TEST_CASE_METHOD(EventFixture, "All events can be dropped at the same time", "[evt]")
 {
-    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<DummyEvent>({});
     event_bus.enqueue<CollideEvent>({0, 1});
     event_bus.enqueue<CollideEvent>({2, 3});
 
@@ -220,4 +219,58 @@ TEST_CASE_METHOD(TimeoutFixture, "Event dispatching can timeout, events should w
 
     done = event_bus.dispatch();
     REQUIRE(done);
+}
+
+
+class BaseDummyHandler
+{
+public:
+    virtual ~BaseDummyHandler() = default;
+    virtual bool handle_dummy(const DummyEvent &) = 0;
+    
+    bool handled = false;
+};
+
+class DummyHandlerA : public BaseDummyHandler
+{
+public:
+    bool handle_dummy(const DummyEvent &) override
+    {
+        handled = true;
+        return false;
+    }
+};
+
+class DummyHandlerB : public BaseDummyHandler
+{
+public:
+    bool handle_dummy(const DummyEvent &) override
+    {
+        handled = true;
+        return false;
+    }
+};
+
+class PolyFixture
+{
+public:
+    PolyFixture()
+    {
+        pa = std::make_unique<DummyHandlerA>();
+        pb = std::make_unique<DummyHandlerB>();
+        event_bus.subscribe<&BaseDummyHandler::handle_dummy>(*pa);
+        event_bus.subscribe<&BaseDummyHandler::handle_dummy>(*pb);
+    }
+
+protected:
+    EventBus event_bus;
+    std::unique_ptr<BaseDummyHandler> pa;
+    std::unique_ptr<BaseDummyHandler> pb;
+};
+
+TEST_CASE_METHOD(PolyFixture, "Subscribing a virtual member should work", "[poly]")
+{
+    event_bus.fire<DummyEvent>({});
+    REQUIRE(pa->handled);
+    REQUIRE(pb->handled);
 }
