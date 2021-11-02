@@ -29,7 +29,13 @@ public:
         return (*stub_)(instance_, std::forward<UArgs>(args)...);
     }
 
-    template <auto Function, typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(Function), Args...>>>
+    template <typename... UArgs, typename = std::enable_if_t<std::is_invocable_v<R(Args...), UArgs...>>>
+    auto operator()(UArgs &&...args) const -> R
+    {
+        return (*stub_)(instance_, std::forward<UArgs>(args)...);
+    }
+
+    template <std::invocable<Args...> auto Function>
     auto bind() -> void
     {
         instance_ = nullptr;
@@ -37,6 +43,7 @@ public:
             [](const void *, Args... args) -> R { return std::invoke(Function, std::forward<Args>(args)...); });
     }
 
+    // template <typename Class, std::invocable<const Class *, Args...> auto MemberFunction>
     template <auto MemberFunction, typename Class,
               typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), const Class *, Args...>>>
     auto bind(const Class *cls) -> void
@@ -48,6 +55,7 @@ public:
         });
     }
 
+    // template <typename Class, std::invocable<Class *, Args...> auto MemberFunction>
     template <auto MemberFunction, typename Class,
               typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), Class *, Args...>>>
     auto bind(Class *cls) -> void

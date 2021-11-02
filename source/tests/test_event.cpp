@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "event/event_bus.h"
+#include "util/delegate.h"
 #include <catch2/catch_all.hpp>
 
 using namespace kb::event;

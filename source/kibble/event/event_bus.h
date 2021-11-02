@@ -16,6 +16,7 @@
  */
 
 #pragma once
+#include <concepts>
 #include <functional>
 #include <map>
 #include <memory>
@@ -29,6 +30,7 @@
 #include "../config/config.h"
 #include "../ctti/ctti.h"
 #include "../logger/logger.h"
+#include "../util/delegate.h"
 
 namespace kb
 {
@@ -37,57 +39,18 @@ namespace event
 
 namespace detail
 {
-// Interface for function wrappers that an event bus can register
-template <typename EventT> class AbstractDelegate
-{
-public:
-    virtual ~AbstractDelegate() = default;
-    inline bool exec(const EventT &event) const
-    {
-        return call(event);
-    }
 
-private:
-    virtual bool call(const EventT &event) const = 0;
+template <typename T> concept Streamable = requires(std::ostream &stream, T a)
+{
+    stream << a;
 };
 
-// Member function wrapper, to allow classes to register their member functions as event handlers
-template <typename T, typename EventT> class MemberDelegate : public AbstractDelegate<EventT>
+/*template <typename F, typename... Args> concept Handler = requires(F&& f, Args&&... args)
 {
-public:
-    typedef bool (T::*MemberFunction)(const EventT &);
+    std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+};*/
 
-    MemberDelegate(T *instance, MemberFunction memberFunction) noexcept
-        : instance{instance}, memberFunction{memberFunction} {};
-
-    // Cast event to the correct type and call member function
-    bool call(const EventT &event) const override final
-    {
-        return (instance->*memberFunction)(event);
-    }
-
-private:
-    T *instance;                   // Pointer to class instance
-    MemberFunction memberFunction; // Pointer to member function
-};
-
-// Free function wrapper
-template <typename EventT> class FreeDelegate : public AbstractDelegate<EventT>
-{
-public:
-    typedef bool (*FreeFunction)(const EventT &);
-
-    explicit FreeDelegate(FreeFunction freeFunction) noexcept : freeFunction{freeFunction} {};
-
-    // Cast event to the correct type and call member function
-    bool call(const EventT &event) const override final
-    {
-        return (*freeFunction)(event);
-    }
-
-private:
-    FreeFunction freeFunction; // Pointer to member function
-};
+template <typename EventT> using EventDelegate = kb::Delegate<bool(const EventT &)>;
 
 // Interface for an event queue
 class AbstractEventQueue
@@ -100,22 +63,33 @@ public:
 };
 
 // Concrete event queue, can subscribe functions, and process events immediately or in a deferred fashion
-template <typename EventT> class EventQueue : public AbstractEventQueue
+template <typename EventT> class EventQueue : public kb::event::detail::AbstractEventQueue
 {
 public:
-    template <typename ClassT>
-    inline void subscribe(ClassT *instance, bool (ClassT::*memberFunction)(const EventT &), uint32_t priority)
+    template <typename Class, std::invocable<const Class *, const EventT &> auto MemberFunction>
+    void subscribe(const Class *instance, uint32_t priority = 0u)
     {
-        delegates_.push_back({priority, std::make_unique<MemberDelegate<ClassT, EventT>>(instance, memberFunction)});
-        // greater_equal generates the desired behavior: for equal priority range of subscribers,
-        // latest subscriber handles the event first
-        std::sort(delegates_.begin(), delegates_.end(), std::greater_equal<PriorityDelegate>());
+        auto d = EventDelegate<EventT>{};
+        d.template bind<MemberFunction>(instance);
+        delegates_.push_back({priority, std::move(d)});
+        sort();
     }
 
-    inline void subscribe(bool (*freeFunction)(const EventT &), uint32_t priority)
+    template <typename Class, std::invocable<Class *, const EventT &> auto MemberFunction>
+    void subscribe(Class *instance, uint32_t priority = 0u)
     {
-        delegates_.push_back({priority, std::make_unique<FreeDelegate<EventT>>(freeFunction)});
-        std::sort(delegates_.begin(), delegates_.end(), std::greater_equal<PriorityDelegate>());
+        auto d = EventDelegate<EventT>{};
+        d.template bind<MemberFunction>(instance);
+        delegates_.push_back({priority, std::move(d)});
+        sort();
+    }
+
+    template <std::invocable<const EventT &> auto Function> void subscribe(uint32_t priority)
+    {
+        auto d = EventDelegate<EventT>{};
+        d.template bind<Function>();
+        delegates_.push_back({priority, std::move(d)});
+        sort();
     }
 
     inline void submit(const EventT &event)
@@ -130,7 +104,7 @@ public:
     inline void fire(const EventT &event) const
     {
         for (auto &&[priority, handler] : delegates_)
-            if (handler->exec(event))
+            if (handler(event))
                 break; // If handler returns true, event is not propagated further
     }
 
@@ -139,7 +113,7 @@ public:
         while (!queue_.empty())
         {
             for (auto &&[priority, handler] : delegates_)
-                if (handler->exec(queue_.front()))
+                if (handler(queue_.front()))
                     break;
 
             queue_.pop();
@@ -157,16 +131,43 @@ public:
     }
 
 private:
-    using PriorityDelegate = std::pair<uint32_t, std::unique_ptr<AbstractDelegate<EventT>>>;
+    inline void sort()
+    {
+        // greater_equal generates the desired behavior: for equal priority range of subscribers,
+        // latest subscriber handles the event first
+        std::sort(delegates_.begin(), delegates_.end(),
+                  [](const PriorityDelegate &pd1, const PriorityDelegate &pd2) { return pd1.first >= pd2.first; });
+    }
+
+private:
+    using PriorityDelegate = std::pair<uint32_t, EventDelegate<EventT>>;
     using DelegateList = std::vector<PriorityDelegate>;
     using Queue = std::queue<EventT>;
     DelegateList delegates_;
     Queue queue_;
 };
 
-template <typename T> concept Streamable = requires(std::ostream &stream, T a)
+template <typename S> struct Signature;
+
+template <typename R, typename Arg> struct Signature<R (*)(Arg)>
 {
-    stream << a;
+    using return_type = R;
+    using argument_type = Arg;
+    using argument_type_decay = typename std::decay<Arg>::type;
+};
+
+template <typename C, typename R, typename Arg> struct Signature<R (C::*)(Arg)>
+{
+    using return_type = R;
+    using argument_type = Arg;
+    using argument_type_decay = typename std::decay<Arg>::type;
+};
+
+template <typename C, typename R, typename Arg> struct Signature<R (C::*)(Arg) const>
+{
+    using return_type = R;
+    using argument_type = Arg;
+    using argument_type_decay = typename std::decay<Arg>::type;
 };
 
 } // namespace detail
@@ -180,37 +181,35 @@ using EventID = hash_t;
 class EventBus
 {
 public:
-    /**
-     * @brief Subscribe a free function to a particular event type
-     *
-     * @tparam EventT The event type that will trigger the function execution
-     * @param freeFunction A free function pointer to execute when the event is dispatched
-     * @param priority Subscribers with a greater priority will execute first. If two subscribers
-     * have the same priority, then the most recent subscriber will execute first.
-     */
-    template <typename EventT> void subscribe(bool (*freeFunction)(const EventT &), uint32_t priority = 0u)
+    template <auto MemberFunction, typename Class,
+              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+              typename = std::enable_if_t<
+                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
+    void subscribe(const Class *instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->subscribe(freeFunction, priority);
+        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
     }
 
-    /**
-     * @brief Subscribe a member function to a particular event type
-     *
-     * @tparam ClassT The class owning the specified member
-     * @tparam EventT The event type that will trigger the function execution
-     * @param instance Instance of the class that subscribes to the event
-     * @param memberFunction Member function pointer to execute when the event is dispatched
-     * @param priority Subscribers with a greater priority will execute first. If two subscribers
-     * have the same priority, then the most recent subscriber will execute first.
-     */
-    template <typename ClassT, typename EventT>
-    void subscribe(ClassT *instance, bool (ClassT::*memberFunction)(const EventT &), uint32_t priority = 0u)
+    template <
+        auto MemberFunction, typename Class,
+        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
+    void subscribe(Class *instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->subscribe(instance, memberFunction, priority);
+        q_ptr->template subscribe<Class, MemberFunction>(instance, priority);
+    }
+
+    template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
+    void subscribe(uint32_t priority = 0u)
+    {
+        auto *q_base_ptr = get_or_create<EventT>().get();
+        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        q_ptr->template subscribe<Function>(priority);
     }
 
     /**
