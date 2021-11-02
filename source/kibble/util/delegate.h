@@ -94,7 +94,9 @@ public:
     {
         instance_ = instance;
         stub_ = [](const void *p, Args... args) -> R {
-            // I don't like const_cast but can't find an easy alternative
+            // I don't like const_cast but can't find an easy alternative.
+            // However it's safe, because we know the instance pointer was
+            // bound to a non-const instance.
             auto *c = const_cast<Class *>(static_cast<const Class *>(p));
             return std::invoke(MemberFunction, c, std::forward<Args>(args)...);
         };

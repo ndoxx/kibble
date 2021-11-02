@@ -1,6 +1,7 @@
 #include <array>
 #include <iostream>
 #include <random>
+#include <thread>
 #include <vector>
 
 #include "event/event_bus.h"
@@ -53,31 +54,24 @@ struct SubscriberPriorityKey
 
 struct CollideEvent
 {
-    friend std::ostream &operator<<(std::ostream &, const CollideEvent &);
-
     uint32_t first;
     uint32_t second;
 };
 
-std::ostream &operator<<(std::ostream &stream, const CollideEvent &e)
+struct DummyEvent
 {
-    stream << "first: " << e.first << " second: " << e.second;
-    return stream;
-}
-
-class ColliderSystem
-{
-public:
-    void fire_collision_instant(EventBus &eb, uint32_t first, uint32_t second)
-    {
-        eb.fire<CollideEvent>({first, second});
-    }
-
-    void enqueue_collision(EventBus &eb, uint32_t first, uint32_t second)
-    {
-        eb.enqueue<CollideEvent>({first, second});
-    }
+    int a;
 };
+
+struct UnhandledEvent
+{
+    int a;
+};
+
+bool handle_dummy(const DummyEvent &)
+{
+    return false;
+}
 
 class CollisionResponseSystem
 {
@@ -97,17 +91,17 @@ public:
     EventFixture()
     {
         event_bus.subscribe<&CollisionResponseSystem::on_collision>(&collision_response);
+        event_bus.subscribe<&handle_dummy>();
     }
 
 protected:
-    ColliderSystem collider;
     CollisionResponseSystem collision_response;
     EventBus event_bus;
 };
 
-TEST_CASE_METHOD(EventFixture, "Firing event instantly", "[evt]")
+TEST_CASE_METHOD(EventFixture, "Events fired instantly should be handled immediately", "[evt]")
 {
-    collider.fire_collision_instant(event_bus, 0, 1);
+    event_bus.fire<CollideEvent>({0, 1});
 
     REQUIRE(event_bus.empty());
     REQUIRE(collision_response.handled.size() == 1);
@@ -115,9 +109,9 @@ TEST_CASE_METHOD(EventFixture, "Firing event instantly", "[evt]")
     REQUIRE((a == 0 && b == 1));
 }
 
-TEST_CASE_METHOD(EventFixture, "Enqueueing event", "[evt]")
+TEST_CASE_METHOD(EventFixture, "Enqueued events should not be processed before a call to dispatch", "[evt]")
 {
-    collider.enqueue_collision(event_bus, 0, 1);
+    event_bus.enqueue<CollideEvent>({0, 1});
     REQUIRE(collision_response.handled.size() == 0);
 
     event_bus.dispatch();
@@ -127,10 +121,10 @@ TEST_CASE_METHOD(EventFixture, "Enqueueing event", "[evt]")
     REQUIRE((a == 0 && b == 1));
 }
 
-TEST_CASE_METHOD(EventFixture, "Enqueueing multiple events", "[evt]")
+TEST_CASE_METHOD(EventFixture, "Enqueueing multiple events should work", "[evt]")
 {
-    collider.enqueue_collision(event_bus, 0, 1);
-    collider.enqueue_collision(event_bus, 2, 3);
+    event_bus.enqueue<CollideEvent>({0, 1});
+    event_bus.enqueue<CollideEvent>({2, 3});
     REQUIRE(collision_response.handled.size() == 0);
 
     event_bus.dispatch();
@@ -140,4 +134,90 @@ TEST_CASE_METHOD(EventFixture, "Enqueueing multiple events", "[evt]")
     REQUIRE((a == 0 && b == 1));
     auto &&[c, d] = collision_response.handled[1];
     REQUIRE((c == 2 && d == 3));
+}
+
+TEST_CASE_METHOD(EventFixture, "Enqueueing an unhandled event does nothing", "[evt]")
+{
+    event_bus.enqueue<UnhandledEvent>({0});
+    REQUIRE(event_bus.empty());
+}
+
+TEST_CASE_METHOD(EventFixture, "Unprocessed event count can be queried", "[evt]")
+{
+    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<CollideEvent>({0, 1});
+    event_bus.enqueue<CollideEvent>({2, 3});
+    REQUIRE(event_bus.get_unprocessed_count() == 3);
+}
+
+TEST_CASE_METHOD(EventFixture, "Events can be dropped selectively", "[evt]")
+{
+    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<CollideEvent>({0, 1});
+    event_bus.enqueue<CollideEvent>({2, 3});
+
+    event_bus.drop<DummyEvent>();
+    REQUIRE(event_bus.get_unprocessed_count() == 2);
+}
+
+TEST_CASE_METHOD(EventFixture, "All events can be dropped at the same time", "[evt]")
+{
+    event_bus.enqueue<DummyEvent>({0});
+    event_bus.enqueue<CollideEvent>({0, 1});
+    event_bus.enqueue<CollideEvent>({2, 3});
+
+    event_bus.drop();
+    REQUIRE(event_bus.get_unprocessed_count() == 0);
+}
+
+struct EventA
+{
+    int a;
+};
+
+struct EventB
+{
+    int b;
+};
+
+bool handle_A(const EventA &)
+{
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1ms);
+    return false;
+}
+
+bool handle_B(const EventB &)
+{
+    return false;
+}
+
+class TimeoutFixture
+{
+public:
+    TimeoutFixture()
+    {
+        event_bus.subscribe<&handle_A>();
+        event_bus.subscribe<&handle_B>();
+    }
+
+protected:
+    EventBus event_bus;
+};
+
+TEST_CASE_METHOD(TimeoutFixture, "Event dispatching can timeout, events should wait for next dispatch", "[timeout]")
+{
+    using namespace std::chrono_literals;
+
+    // EventA takes 1ms to handle
+    event_bus.enqueue<EventA>({0});
+    event_bus.enqueue<EventA>({1});
+    event_bus.enqueue<EventB>({0});
+
+    bool done = event_bus.dispatch(1ms);
+    REQUIRE_FALSE(done);
+    REQUIRE(event_bus.get_unprocessed_count() > 0);
+
+    done = event_bus.dispatch();
+    REQUIRE(done);
 }

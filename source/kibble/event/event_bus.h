@@ -1,6 +1,6 @@
 /*
  * This is a rewrite of the event system used in my projects WCore and ErwinEngine
- * Inspired by https://medium.com/@savas/nomad-game-engine-part-7-the-event-system-45a809ccb68f
+ * Initially inspired by https://medium.com/@savas/nomad-game-engine-part-7-the-event-system-45a809ccb68f
  * Differences are:
  * - Using const references or rvalues instead of pointers to pass events around
  * - Using my constexpr ctti::type_id<>() instead of RTTI
@@ -8,28 +8,28 @@
  * - Events can be any type, no need to derive from a base event class
  * - Deferred event handling with event queues, instant firing still supported
  * - Priority mechanism
+ * - Zero-cost delegates
+ * - Several additional features
  *
  * TODO:
- * [ ] Dispatch timeout
  * [ ] Dispatch deadlock detection?
  * [ ] Event pooling if deemed necessary
  */
 
 #pragma once
-#include <concepts>
+#include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
 #include <numeric>
 #include <ostream>
 #include <queue>
-#include <string>
 #include <type_traits>
 #include <vector>
 
-#include "../config/config.h"
 #include "../ctti/ctti.h"
 #include "../logger/logger.h"
+#include "../time/clock.h"
 #include "../util/delegate.h"
 
 namespace kb
@@ -47,12 +47,15 @@ template <typename T> concept Streamable = requires(std::ostream &stream, T a)
 
 template <typename EventT> using EventDelegate = kb::Delegate<bool(const EventT &)>;
 
+using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::nanoseconds>;
+
 // Interface for an event queue
 class AbstractEventQueue
 {
 public:
     virtual ~AbstractEventQueue() = default;
-    virtual void process() = 0;
+    virtual bool process(TimePoint) = 0;
+    virtual void drop() = 0;
     virtual bool empty() const = 0;
     virtual size_t size() const = 0;
 };
@@ -103,7 +106,7 @@ public:
                 break; // If handler returns true, event is not propagated further
     }
 
-    void process() override final
+    bool process(TimePoint deadline) override final
     {
         while (!queue_.empty())
         {
@@ -112,7 +115,18 @@ public:
                     break;
 
             queue_.pop();
+
+            // Timeout if the deadline was exceeded
+            if (nanoClock::now() > deadline)
+                return false;
         }
+
+        return true;
+    }
+
+    void drop() override final
+    {
+        Queue{}.swap(queue_);
     }
 
     bool empty() const override final
@@ -247,6 +261,7 @@ public:
 
     /**
      * @brief Fire an event and have it handled immediately
+     * If there is no subscriber listening for this event type, this function does nothing.
      *
      * @tparam EventT The type of event to fire
      * @param event
@@ -263,7 +278,8 @@ public:
     }
 
     /**
-     * @brief Enqueue an event for deferred handling, during the dispatch() call
+     * @brief Enqueue an event for deferred handling, during the dispatch() call.
+     * If there is no subscriber listening for this event type, this function does nothing.
      *
      * @tparam EventT The type of event to enqueue
      * @param event
@@ -281,6 +297,7 @@ public:
 
     /**
      * @brief Enqueue an event for deferred handling, during the dispatch() call
+     * If there is no subscriber listening for this event type, this function does nothing.
      *
      * @tparam EventT The type of event to enqueue
      * @param event An event rvalue to forward
@@ -297,10 +314,32 @@ public:
     }
 
     /**
-     * @brief Handle all queued events
+     * @brief Handle all queued events. A timeout can be set so that event dispatching
+     * will be interrupted after a certain amount of time, regardless of the unprocessed count.
+     *
+     * @param timeout Timeout duration. Leave / set to 0 to disable the timeout.
+     * @return true if all events have been processed
+     * @return false if the function timed out and there are consequently still some events in the queues.
+     */
+    bool dispatch(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(0));
+
+    /**
+     * @brief Drop all events of the same type
+     * 
+     * @tparam EventT The type of events to drop
+     */
+    template <typename EventT> void drop()
+    {
+        auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
+        if (findit != event_queues_.end())
+            findit->second->drop();
+    }
+
+    /**
+     * @brief Drop all enqueued events
      *
      */
-    void dispatch();
+    void drop();
 
     /**
      * @brief Check if all queues are empty

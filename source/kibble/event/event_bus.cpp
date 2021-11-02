@@ -5,13 +5,26 @@ namespace kb
 namespace event
 {
 
-void EventBus::dispatch()
+static constexpr auto k_timepoint_max = std::chrono::time_point<std::chrono::high_resolution_clock>::max();
+
+bool EventBus::dispatch(std::chrono::nanoseconds timeout)
 {
+    bool enable_timeout = timeout.count() > 0;
+    auto deadline = enable_timeout ? nanoClock::now() + timeout : k_timepoint_max;
     // An event once handled can cause another event to be enqueued, so
     // we iterate till all events have been processed
     while (!empty())
         for (auto &&[id, queue] : event_queues_)
-            queue->process();
+            if (!queue->process(deadline) && enable_timeout)
+                return false;
+
+    return true;
+}
+
+void EventBus::drop()
+{
+    for (auto &&[id, queue] : event_queues_)
+        queue->drop();
 }
 
 bool EventBus::empty()
