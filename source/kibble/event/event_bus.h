@@ -17,6 +17,7 @@
  */
 
 #pragma once
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <map>
@@ -52,6 +53,9 @@ using EventDelegate = kb::Delegate<bool(const EventT &)>;
 
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::nanoseconds>;
 
+template <typename T>
+using to_pointer = std::add_pointer<typename std::remove_reference<T>::type>;
+
 // Interface for an event queue
 class AbstractEventQueue
 {
@@ -68,25 +72,50 @@ template <typename EventT>
 class EventQueue : public kb::event::detail::AbstractEventQueue
 {
 public:
-    template <typename Class, std::invocable<const Class *, const EventT &> auto MemberFunction>
-    inline void subscribe(const Class *instance, uint32_t priority = 0u)
+    template <std::invocable<const EventT &> auto Function>
+    inline void subscribe(uint32_t priority)
     {
-        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
+        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<Function>());
         sort();
     }
 
-    template <typename Class, std::invocable<Class *, const EventT &> auto MemberFunction>
-    inline void subscribe(Class *instance, uint32_t priority = 0u)
+    // I use template magic to handle both const and non-const case at the same time
+    template <typename ClassRef,
+              std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
+    inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority = 0u)
     {
         delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
         sort();
     }
 
     template <std::invocable<const EventT &> auto Function>
-    inline void subscribe(uint32_t priority)
+    bool unsubscribe()
     {
-        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<Function>());
-        sort();
+        auto target = EventDelegate<EventT>::template create<Function>();
+        auto findit =
+            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto &p) { return p.second == target; });
+        if (findit != delegates_.end())
+        {
+            delegates_.erase(findit);
+            return true;
+        }
+        return false;
+    }
+
+    // I use template magic to handle both const and non-const case at the same time
+    template <typename ClassRef,
+              std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
+    bool unsubscribe(typename to_pointer<ClassRef>::type instance)
+    {
+        auto target = EventDelegate<EventT>::template create<MemberFunction>(instance);
+        auto findit =
+            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto &p) { return p.second == target; });
+        if (findit != delegates_.end())
+        {
+            delegates_.erase(findit);
+            return true;
+        }
+        return false;
     }
 
     inline void submit(const EventT &event)
@@ -260,6 +289,58 @@ public:
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
         q_ptr->template subscribe<Class, MemberFunction>(&instance, priority);
+    }
+
+    /**
+     * @brief Remove a previously registered free function event handler.
+     *
+     * @tparam Function The function to remove
+     * @return true  if the removal succeeded
+     * @return false otherwise
+     */
+    template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
+    bool unsubscribe()
+    {
+        auto *q_base_ptr = get_or_create<EventT>().get();
+        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        return q_ptr->template unsubscribe<Function>();
+    }
+
+    /**
+     * @brief Remove a previously registered non-const member function event handler.
+     *
+     * @tparam Function The function to remove
+     * @return true  if the removal succeeded
+     * @return false otherwise
+     */
+    template <
+        auto MemberFunction, typename Class,
+        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
+    bool unsubscribe(Class &instance)
+    {
+        auto *q_base_ptr = get_or_create<EventT>().get();
+        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        return q_ptr->template unsubscribe<Class, MemberFunction>(&instance);
+    }
+
+    /**
+     * @brief Remove a previously registered const member function event handler.
+     *
+     * @tparam Function The function to remove
+     * @return true  if the removal succeeded
+     * @return false otherwise
+     */
+    template <auto MemberFunction, typename Class,
+              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+              typename = std::enable_if_t<
+                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
+    bool unsubscribe(const Class &instance)
+    {
+        auto *q_base_ptr = get_or_create<EventT>().get();
+        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        return q_ptr->template unsubscribe<Class, MemberFunction>(&instance);
     }
 
     /**

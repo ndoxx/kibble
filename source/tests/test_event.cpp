@@ -1,9 +1,9 @@
 #include <array>
 #include <iostream>
 #include <random>
+#include <string>
 #include <thread>
 #include <vector>
-#include <string>
 
 #include "event/event_bus.h"
 #include "util/delegate.h"
@@ -324,4 +324,95 @@ TEST_CASE_METHOD(PolyFixture, "Subscribing a virtual member should work", "[poly
     event_bus.fire<DummyEvent>({});
     REQUIRE(pa->handled);
     REQUIRE(pb->handled);
+}
+
+struct PokeEvent
+{
+};
+struct PokeHandler
+{
+    bool handle_poke(const PokeEvent &)
+    {
+        ++handle_count;
+        return false;
+    }
+    size_t handle_count = 0;
+};
+
+static size_t s_handle_count_1 = 0;
+static size_t s_handle_count_2 = 0;
+
+bool handle_poke_1(const PokeEvent &)
+{
+    ++s_handle_count_1;
+    return false;
+}
+
+bool handle_poke_2(const PokeEvent &)
+{
+    ++s_handle_count_2;
+    return false;
+}
+
+bool fake_handle_poke(const PokeEvent &)
+{
+    return false;
+}
+
+class UnsubFixture
+{
+public:
+    UnsubFixture()
+    {
+        s_handle_count_1 = 0;
+        s_handle_count_2 = 0;
+        event_bus.subscribe<&PokeHandler::handle_poke>(h1);
+        event_bus.subscribe<&PokeHandler::handle_poke>(h2);
+        event_bus.subscribe<&handle_poke_1>();
+        event_bus.subscribe<&handle_poke_2>();
+    }
+
+protected:
+    PokeHandler h1;
+    PokeHandler h2;
+    EventBus event_bus;
+};
+
+TEST_CASE_METHOD(UnsubFixture, "Unsubscribing free functions should work", "[unsub]")
+{
+    bool success = event_bus.unsubscribe<&handle_poke_1>();
+    event_bus.fire<PokeEvent>({});
+
+    REQUIRE(success);
+    REQUIRE(s_handle_count_1 == 0);
+    // Testing for side effects
+    REQUIRE(s_handle_count_2 == 1);
+    REQUIRE(h1.handle_count == 1);
+    REQUIRE(h2.handle_count == 1);
+}
+
+TEST_CASE_METHOD(UnsubFixture, "Unsubscribing member functions should work", "[unsub]")
+{
+    bool success = event_bus.unsubscribe<&PokeHandler::handle_poke>(h1);
+    event_bus.fire<PokeEvent>({});
+
+    REQUIRE(success);
+    REQUIRE(h1.handle_count == 0);
+    // Testing for side effects
+    REQUIRE(s_handle_count_1 == 1);
+    REQUIRE(s_handle_count_2 == 1);
+    REQUIRE(h2.handle_count == 1);
+}
+
+TEST_CASE_METHOD(UnsubFixture, "Unsubscribing non-existent subscriber should do nothing", "[unsub]")
+{
+    bool success = event_bus.unsubscribe<&fake_handle_poke>();
+    event_bus.fire<PokeEvent>({});
+
+    REQUIRE_FALSE(success);
+    // Testing for side effects
+    REQUIRE(s_handle_count_1 == 1);
+    REQUIRE(s_handle_count_2 == 1);
+    REQUIRE(h1.handle_count == 1);
+    REQUIRE(h2.handle_count == 1);
 }
