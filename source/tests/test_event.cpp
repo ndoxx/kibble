@@ -416,3 +416,84 @@ TEST_CASE_METHOD(UnsubFixture, "Unsubscribing non-existent subscriber should do 
     REQUIRE(h1.handle_count == 1);
     REQUIRE(h2.handle_count == 1);
 }
+
+class IndexedPokeHandler
+{
+public:
+    IndexedPokeHandler(size_t idx, std::vector<size_t> &journal) : idx_(idx), journal_(journal)
+    {
+    }
+
+    bool handle_poke(const PokeEvent &)
+    {
+        journal_.push_back(idx_);
+        return false;
+    }
+
+    size_t idx_;
+    std::vector<size_t> &journal_;
+};
+
+class PriorityFixture
+{
+public:
+    static constexpr size_t N = 10;
+
+    PriorityFixture()
+    {
+        for (size_t ii = 0; ii < N; ++ii)
+        {
+            handlers.emplace_back(ii, journal);
+        }
+    }
+
+protected:
+    std::vector<size_t> journal;
+    std::vector<IndexedPokeHandler> handlers;
+    EventBus event_bus;
+};
+
+TEST_CASE_METHOD(PriorityFixture, "Last subscriber of equal (default) priority should handle events first", "[prio]")
+{
+    for (size_t ii = 0; ii < N; ++ii)
+        event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii]);
+
+    event_bus.fire<PokeEvent>({});
+
+    REQUIRE(journal == std::vector<size_t>{9, 8, 7, 6, 5, 4, 3, 2, 1, 0});
+}
+
+TEST_CASE_METHOD(PriorityFixture, "Priority test with two priorities", "[prio]")
+{
+    for (size_t ii = 0; ii < N; ++ii)
+        event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 2));
+
+    event_bus.fire<PokeEvent>({});
+
+    // Priority is congruence class modulo 2, so odd numbers first in reverse order, then even numbers in reverse order
+    REQUIRE(journal == std::vector<size_t>{9, 7, 5, 3, 1, 8, 6, 4, 2, 0});
+}
+
+TEST_CASE_METHOD(PriorityFixture, "Priority test with three priorities", "[prio]")
+{
+    for (size_t ii = 0; ii < N; ++ii)
+        event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 3));
+
+    event_bus.fire<PokeEvent>({});
+
+    // Priority is congruence class modulo 3, so...
+    REQUIRE(journal == std::vector<size_t>{8, 5, 2, 7, 4, 1, 9, 6, 3, 0});
+}
+
+TEST_CASE_METHOD(PriorityFixture, "Removing subscribers does not screw anything up", "[prio]")
+{
+    for (size_t ii = 0; ii < N; ++ii)
+        event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 3));
+
+    event_bus.unsubscribe<&IndexedPokeHandler::handle_poke>(handlers[7]);
+    event_bus.unsubscribe<&IndexedPokeHandler::handle_poke>(handlers[6]);
+    event_bus.fire<PokeEvent>({});
+
+    // Same order as before, only 7 and 6 are omitted
+    REQUIRE(journal == std::vector<size_t>{8, 5, 2, 4, 1, 9, 3, 0});
+}

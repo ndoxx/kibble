@@ -47,20 +47,20 @@ bool handle_streamable_event(const StreamableExampleEvent &e)
     return false;
 }
 
-class CollisionHandler
+class ExampleHandler
 {
 public:
     // Member function to handle StreamableExampleEvent events
     bool handle_streamable_event(const StreamableExampleEvent &e) const
     {
-        KLOG("event", 1) << "CollisionHandler::handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
+        KLOG("event", 1) << "ExampleHandler::handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
         return false;
     }
 
     // Member function to handle ExampleEvent events
     bool handle_event(const ExampleEvent &e)
     {
-        KLOG("event", 1) << "CollisionHandler::handle_event(): " << e.first << ' ' << e.second << std::endl;
+        KLOG("event", 1) << "ExampleHandler::handle_event(): " << e.first << ' ' << e.second << std::endl;
         return false;
     }
 };
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 
     KLOGN("event") << "Using the EventBus class" << std::endl;
 
-    CollisionHandler collision_handler;
+    ExampleHandler example_handler;
     EventBus event_bus;
 
     // Track all events
@@ -157,11 +157,11 @@ int main(int argc, char **argv)
     event_bus.subscribe<&handle_event>();
     // Register a non-const member function
     // This subscriber will execute first, as it was added last
-    event_bus.subscribe<&CollisionHandler::handle_event>(collision_handler);
+    event_bus.subscribe<&ExampleHandler::handle_event>(example_handler);
 
     // Register a const member function
     // This subscriber will execute first, as it has a higher priority
-    event_bus.subscribe<&CollisionHandler::handle_streamable_event>(collision_handler, 1);
+    event_bus.subscribe<&ExampleHandler::handle_streamable_event>(example_handler, 1);
     // Register a free function
     event_bus.subscribe<&handle_streamable_event>();
 

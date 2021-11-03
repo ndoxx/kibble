@@ -79,7 +79,7 @@ public:
         sort();
     }
 
-    // I use template magic to handle both const and non-const case at the same time
+    // I use template magic to handle both const and non-const cases at the same time
     template <typename ClassRef,
               std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
     inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority = 0u)
@@ -102,7 +102,7 @@ public:
         return false;
     }
 
-    // I use template magic to handle both const and non-const case at the same time
+    // I use template magic to handle both const and non-const cases at the same time
     template <typename ClassRef,
               std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
@@ -129,8 +129,9 @@ public:
 
     void fire(const EventT &event) const
     {
-        for (auto &&[priority, handler] : delegates_)
-            if (handler(event))
+        // Iterate in reverse order, so the last subscribers execute first
+        for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
+            if (it->second(event))
                 break; // If handler returns true, event is not propagated further
     }
 
@@ -138,8 +139,8 @@ public:
     {
         while (!queue_.empty())
         {
-            for (auto &&[priority, handler] : delegates_)
-                if (handler(queue_.front()))
+            for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
+                if (it->second(queue_.front()))
                     break;
 
             queue_.pop();
@@ -170,10 +171,8 @@ public:
 private:
     inline void sort()
     {
-        // greater_equal generates the desired behavior: for equal priority range of subscribers,
-        // latest subscriber handles the event first
         std::sort(delegates_.begin(), delegates_.end(),
-                  [](const PriorityDelegate &pd1, const PriorityDelegate &pd2) { return pd1.first >= pd2.first; });
+                  [](const PriorityDelegate &pd1, const PriorityDelegate &pd2) { return pd1.first < pd2.first; });
     }
 
 private:
