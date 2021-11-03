@@ -5,8 +5,8 @@
 #define K_DEBUG
 #include "event/event_bus.h"
 
-#include <vector>
 #include <thread>
+#include <vector>
 
 using namespace kb;
 using namespace kb::event;
@@ -101,6 +101,11 @@ auto square(int x) -> int
     return x * x;
 }
 
+auto cube(int x) -> int
+{
+    return x * x * x;
+}
+
 void init_logger()
 {
     KLOGGER_START();
@@ -119,19 +124,22 @@ int main(int argc, char **argv)
 
     KLOGN("delegate") << "Using the Delegate class" << std::endl;
 
-    auto d1 = Delegate<int(int)>{};
-    d1.bind<&square>();
+    auto d1 = Delegate<int(int)>::create<&square>();
     KLOG("delegate", 1) << d1(2) << std::endl;
 
     auto str = std::string{"Hello"};
-    auto d2 = Delegate<size_t()>{};
-    d2.bind<&std::string::size>(&str);
+    auto d2 = Delegate<size_t()>::create<&std::string::size>(&str);
     KLOG("delegate", 1) << d2() << std::endl;
 
-    auto d3 = Delegate<void(int)>{};
-    d3.bind<&std::string::push_back>(&str);
+    auto d3 = Delegate<void(int)>::create<&std::string::push_back>(&str);
     d3('!');
     KLOG("delegate", 1) << str << std::endl;
+
+    KLOG("delegate", 1) << KF_(kb::col::sienna) << "Checking delegate equality" << std::endl;
+    auto d1_2 = Delegate<int(int)>::create<&square>();
+    auto d4 = Delegate<int(int)>::create<&cube>();
+    KLOG("delegate", 1) << std::boolalpha << (d1 == d1_2) << std::endl;
+    KLOG("delegate", 1) << std::boolalpha << (d1 == d4) << std::endl;
 
     KLOGN("event") << "Using the EventBus class" << std::endl;
 
@@ -158,7 +166,7 @@ int main(int argc, char **argv)
     event_bus.subscribe<&handle_streamable_event>();
 
     // Enqueue events
-    KLOG("event",1) << KF_(kb::col::sienna) << "Queued events are logged instantly..." << std::endl;
+    KLOG("event", 1) << KF_(kb::col::sienna) << "Queued events are logged instantly..." << std::endl;
     // When an event is enqueued, the logging information will show a [q] flag before the event
     // name, and the label color will be turquoise.
     // This event does not define a stream operator, the logging information will only

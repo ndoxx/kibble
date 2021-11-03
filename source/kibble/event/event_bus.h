@@ -24,9 +24,9 @@
 #include <numeric>
 #include <ostream>
 #include <queue>
+#include <string_view>
 #include <type_traits>
 #include <vector>
-#include <string_view>
 
 #include "../ctti/ctti.h"
 #include "../logger/logger.h"
@@ -41,12 +41,14 @@ namespace event
 namespace detail
 {
 
-template <typename T> concept Streamable = requires(std::ostream &stream, T a)
+template <typename T>
+concept Streamable = requires(std::ostream &stream, T a)
 {
     stream << a;
 };
 
-template <typename EventT> using EventDelegate = kb::Delegate<bool(const EventT &)>;
+template <typename EventT>
+using EventDelegate = kb::Delegate<bool(const EventT &)>;
 
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::nanoseconds>;
 
@@ -62,32 +64,28 @@ public:
 };
 
 // Concrete event queue, can subscribe functions, and process events immediately or in a deferred fashion
-template <typename EventT> class EventQueue : public kb::event::detail::AbstractEventQueue
+template <typename EventT>
+class EventQueue : public kb::event::detail::AbstractEventQueue
 {
 public:
     template <typename Class, std::invocable<const Class *, const EventT &> auto MemberFunction>
-    void subscribe(const Class *instance, uint32_t priority = 0u)
+    inline void subscribe(const Class *instance, uint32_t priority = 0u)
     {
-        auto d = EventDelegate<EventT>{};
-        d.template bind<MemberFunction>(instance);
-        delegates_.push_back({priority, std::move(d)});
+        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
         sort();
     }
 
     template <typename Class, std::invocable<Class *, const EventT &> auto MemberFunction>
-    void subscribe(Class *instance, uint32_t priority = 0u)
+    inline void subscribe(Class *instance, uint32_t priority = 0u)
     {
-        auto d = EventDelegate<EventT>{};
-        d.template bind<MemberFunction>(instance);
-        delegates_.push_back({priority, std::move(d)});
+        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
         sort();
     }
 
-    template <std::invocable<const EventT &> auto Function> void subscribe(uint32_t priority)
+    template <std::invocable<const EventT &> auto Function>
+    inline void subscribe(uint32_t priority)
     {
-        auto d = EventDelegate<EventT>{};
-        d.template bind<Function>();
-        delegates_.push_back({priority, std::move(d)});
+        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<Function>());
         sort();
     }
 
@@ -100,7 +98,7 @@ public:
         queue_.push(event);
     }
 
-    inline void fire(const EventT &event) const
+    void fire(const EventT &event) const
     {
         for (auto &&[priority, handler] : delegates_)
             if (handler(event))
@@ -160,23 +158,27 @@ private:
 // This helper struct helps deduce the event type from a handler signature.
 // Thanks to it, only the handler function pointer is required as a template parameter
 // when calling the EventBus' subscribe methods.
-template <typename S> struct Signature;
+template <typename S>
+struct Signature;
 
-template <typename R, typename Arg> struct Signature<R (*)(Arg)>
+template <typename R, typename Arg>
+struct Signature<R (*)(Arg)>
 {
     using return_type = R;
     using argument_type = Arg;
     using argument_type_decay = typename std::decay<Arg>::type;
 };
 
-template <typename C, typename R, typename Arg> struct Signature<R (C::*)(Arg)>
+template <typename C, typename R, typename Arg>
+struct Signature<R (C::*)(Arg)>
 {
     using return_type = R;
     using argument_type = Arg;
     using argument_type_decay = typename std::decay<Arg>::type;
 };
 
-template <typename C, typename R, typename Arg> struct Signature<R (C::*)(Arg) const>
+template <typename C, typename R, typename Arg>
+struct Signature<R (C::*)(Arg) const>
 {
     using return_type = R;
     using argument_type = Arg;
@@ -230,7 +232,7 @@ public:
         auto MemberFunction, typename Class,
         typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
         typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
-    void subscribe(Class& instance, uint32_t priority = 0u)
+    void subscribe(Class &instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
@@ -253,7 +255,7 @@ public:
               typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
               typename = std::enable_if_t<
                   std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
-    void subscribe(const Class& instance, uint32_t priority = 0u)
+    void subscribe(const Class &instance, uint32_t priority = 0u)
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
@@ -267,7 +269,8 @@ public:
      * @tparam EventT The type of event to fire
      * @param event
      */
-    template <typename EventT> void fire(const EventT &event)
+    template <typename EventT>
+    void fire(const EventT &event)
     {
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
@@ -285,7 +288,8 @@ public:
      * @tparam EventT The type of event to enqueue
      * @param event
      */
-    template <typename EventT> void enqueue(const EventT &event)
+    template <typename EventT>
+    void enqueue(const EventT &event)
     {
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
@@ -303,7 +307,8 @@ public:
      * @tparam EventT The type of event to enqueue
      * @param event An event rvalue to forward
      */
-    template <typename EventT> void enqueue(EventT &&event)
+    template <typename EventT>
+    void enqueue(EventT &&event)
     {
         try_get<EventT>([&event, this](auto *q_ptr) {
             (void)this;
@@ -326,10 +331,11 @@ public:
 
     /**
      * @brief Drop all events of the same type
-     * 
+     *
      * @tparam EventT The type of events to drop
      */
-    template <typename EventT> void drop()
+    template <typename EventT>
+    void drop()
     {
         auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())
@@ -379,7 +385,8 @@ public:
 private:
 #ifdef K_DEBUG
     // Log an event
-    template <typename EventT> inline void track_event(const EventT &event, bool is_queued)
+    template <typename EventT>
+    inline void track_event(const EventT &event, bool is_queued)
     {
         if (should_track_(kb::ctti::type_id<EventT>()))
         {
@@ -389,8 +396,8 @@ private:
             if constexpr (detail::Streamable<EventT>)
             {
                 kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m "
-                    << event << std::endl;
+                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m " << event
+                    << std::endl;
             }
             else
             {
@@ -403,7 +410,8 @@ private:
 #endif
 
     // Helper function to get a particular event queue if it exists or create a new one if not
-    template <typename EventT> auto &get_or_create()
+    template <typename EventT>
+    auto &get_or_create()
     {
         auto &queue = event_queues_[kb::ctti::type_id<EventT>()];
         if (queue == nullptr)
@@ -413,7 +421,8 @@ private:
     }
 
     // Helper function to access a queue only if it exists
-    template <typename EventT> void try_get(std::function<void(detail::EventQueue<EventT> *)> visit)
+    template <typename EventT>
+    void try_get(std::function<void(detail::EventQueue<EventT> *)> visit)
     {
         auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())

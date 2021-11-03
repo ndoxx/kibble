@@ -5,6 +5,12 @@
  * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-1/
  * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-2/
  * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-3/
+ * Differences are:
+ *     - Instead of the bind functions I wrote factories, so it is possible to create a delegate with a one-liner
+ *       See: https://www.codeproject.com/articles/11015/the-impossibly-fast-c-delegates
+ *     - Equal and not-equal comparison operators. Comparison is done indirectly by comparing the stubs and
+ *       instances, but it works. See:
+ *       https://www.codeproject.com/Articles/1170503/The-Impossibly-Fast-Cplusplus-Delegates-Fixed
  */
 
 #include <exception>
@@ -25,9 +31,11 @@ struct BadDelegateCallException : public std::exception
     }
 };
 
-template <typename Signature> class Delegate;
+template <typename Signature>
+class Delegate;
 
-template <typename R, typename... Args> class Delegate<R(Args...)>
+template <typename R, typename... Args>
+class Delegate<R(Args...)>
 {
 public:
     // Make delegates copyable
@@ -55,11 +63,13 @@ public:
      * @tparam Function Pointer to the function to attach
      */
     template <auto Function, typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(Function), Args...>>>
-    auto bind() -> void
+    static auto create()
     {
+        Delegate d;
         // A free function does not use any instance pointer, we leave it null
         // A lambda without capture is implicitly convertible to a function pointer
-        stub_ = [](const void *, Args... args) -> R { return std::invoke(Function, std::forward<Args>(args)...); };
+        d.stub_ = [](const void *, Args... args) -> R { return std::invoke(Function, std::forward<Args>(args)...); };
+        return d;
     }
 
     /**
@@ -71,14 +81,16 @@ public:
      */
     template <auto MemberFunction, typename Class,
               typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), const Class *, Args...>>>
-    auto bind(const Class *instance) -> void
+    static auto create(const Class *instance)
     {
+        Delegate d;
         // This time we need to provide an instance pointer
-        instance_ = instance;
-        stub_ = [](const void *p, Args... args) -> R {
+        d.instance_ = instance;
+        d.stub_ = [](const void *p, Args... args) -> R {
             const auto *c = static_cast<const Class *>(p);
             return std::invoke(MemberFunction, c, std::forward<Args>(args)...);
         };
+        return d;
     }
 
     /**
@@ -90,16 +102,46 @@ public:
      */
     template <auto MemberFunction, typename Class,
               typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), Class *, Args...>>>
-    auto bind(Class *instance) -> void
+    static auto create(Class *instance)
     {
-        instance_ = instance;
-        stub_ = [](const void *p, Args... args) -> R {
+        Delegate d;
+        d.instance_ = instance;
+        d.stub_ = [](const void *p, Args... args) -> R {
             // I don't like const_cast but can't find an easy alternative.
             // However it's safe, because we know the instance pointer was
             // bound to a non-const instance.
             auto *c = const_cast<Class *>(static_cast<const Class *>(p));
             return std::invoke(MemberFunction, c, std::forward<Args>(args)...);
         };
+        return d;
+    }
+
+    /**
+     * @brief Check if two delegates are the same
+     *
+     * @param rhs the other delegate
+     * @return true if they point to the same function and the same instance in the
+     * case of member delegates
+     * @return false otherwise
+     */
+    bool operator==(const Delegate &rhs) const
+    {
+        // If two stubs are different, it will always mean that the underlying function
+        // pointers are different and vice versa.
+        return (instance_ == rhs.instance_ && stub_ == rhs.stub_);
+    }
+
+    /**
+     * @brief Check if two delegates are different
+     *
+     * @param rhs the other delegate
+     * @return true if they point to a different member function or a different
+     * instance in the case of member delegates
+     * @return false otherwise
+     */
+    bool operator!=(const Delegate &rhs) const
+    {
+        return (instance_ != rhs.instance_ || stub_ != rhs.stub_);
     }
 
 private:

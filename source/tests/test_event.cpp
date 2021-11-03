@@ -3,53 +3,105 @@
 #include <random>
 #include <thread>
 #include <vector>
+#include <string>
 
 #include "event/event_bus.h"
 #include "util/delegate.h"
 #include <catch2/catch_all.hpp>
 
+using namespace kb;
 using namespace kb::event;
 
-struct SubscriberPriorityKey
+// I also test delegates here, why not.
+
+auto square(int x) -> int
 {
-    uint16_t flags;
-    uint8_t layer_id;
-    uint8_t system_id;
+    return x * x;
+}
 
-    static constexpr uint32_t k_flags_shift = 32u - 16u;
-    static constexpr uint32_t k_layer_shift = k_flags_shift - 8u;
-    static constexpr uint32_t k_system_shift = k_layer_shift - 8u;
-    static constexpr uint32_t k_flags_mask = uint32_t(0x0000ffff) << k_flags_shift;
-    static constexpr uint32_t k_layer_mask = uint32_t(0x000000ff) << k_layer_shift;
-    static constexpr uint32_t k_system_mask = uint32_t(0x000000ff) << k_system_shift;
-
-    SubscriberPriorityKey() : flags(0), layer_id(0), system_id(0)
-    {
-    }
-
-    SubscriberPriorityKey(uint8_t _layer_id, uint8_t _system_id = 0, uint16_t _flags = 0)
-        : flags(_flags), layer_id(_layer_id), system_id(_system_id)
-    {
-    }
-
-    inline uint32_t encode()
-    {
-        return (uint32_t(flags) << k_flags_shift) | (uint32_t(layer_id) << k_layer_shift) |
-               (uint32_t(system_id) << k_system_shift);
-    }
-
-    inline void decode(uint32_t priority)
-    {
-        flags = uint16_t((priority & k_flags_mask) >> k_flags_shift);
-        layer_id = uint8_t((priority & k_layer_mask) >> k_layer_shift);
-        system_id = uint8_t((priority & k_system_mask) >> k_system_shift);
-    }
-};
-
-[[maybe_unused]] static inline uint32_t subscriber_priority(uint8_t layer_id, uint8_t system_id = 0u,
-                                                            uint16_t flags = 0u)
+auto cube(int x) -> int
 {
-    return SubscriberPriorityKey(layer_id, system_id, flags).encode();
+    return x * x * x;
+}
+
+TEST_CASE("It is possible to delegate a free function", "[delegate]")
+{
+    auto d = Delegate<int(int)>::create<&square>();
+    REQUIRE(d(2) == 4);
+    REQUIRE(d(5) == 25);
+}
+
+TEST_CASE("It is possible to delegate a non-mutating member function", "[delegate]")
+{
+    auto str = std::string{"Hello"};
+    auto d = Delegate<size_t()>::create<&std::string::size>(&str);
+    REQUIRE(d() == 5);
+}
+
+TEST_CASE("It is possible to delegate a mutating member function", "[delegate]")
+{
+    auto str = std::string{"Hello"};
+    auto d = Delegate<void(int)>::create<&std::string::push_back>(&str);
+    d('!');
+    REQUIRE(str.compare("Hello!") == 0);
+}
+
+TEST_CASE("Free delegate comparison should be reflexive", "[delegate]")
+{
+    auto d = Delegate<int(int)>::create<&square>();
+    REQUIRE(d == d);
+    REQUIRE_FALSE(d != d);
+}
+
+TEST_CASE("A delegate should be equal to another delegate pointing to the same free function", "[delegate]")
+{
+    auto d1 = Delegate<int(int)>::create<&square>();
+    [[maybe_unused]] auto d3 = Delegate<int(int)>::create<&cube>();
+    auto d2 = Delegate<int(int)>::create<&square>();
+    REQUIRE(d1 == d2);
+    REQUIRE_FALSE(d1 != d2);
+}
+
+TEST_CASE("A delegate should not be equal to another delegate pointing to a different free function", "[delegate]")
+{
+    auto d1 = Delegate<int(int)>::create<&square>();
+    [[maybe_unused]] auto d3 = Delegate<int(int)>::create<&square>();
+    auto d2 = Delegate<int(int)>::create<&cube>();
+    REQUIRE_FALSE(d1 == d2);
+    REQUIRE(d1 != d2);
+}
+
+TEST_CASE("Member delegate comparison should be reflexive", "[delegate]")
+{
+    auto str = std::string{"Hello"};
+    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str);
+    auto d2 = Delegate<size_t()>::create<&std::string::size>(&str);
+
+    REQUIRE(d1 == d2);
+    REQUIRE_FALSE(d1 != d2);
+}
+
+TEST_CASE("Member delegates with different instances should be different", "[delegate]")
+{
+    auto str1 = std::string{"Hello"};
+    auto str2 = std::string{"World"};
+    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str1);
+    auto d2 = Delegate<size_t()>::create<&std::string::size>(&str2);
+
+    REQUIRE_FALSE(d1 == d2);
+    REQUIRE(d1 != d2);
+}
+
+TEST_CASE("Member delegates with different member pointers should be different", "[delegate]")
+{
+    auto str = std::string{"Hello"};
+    // Here we need to have the same signature otherwise it wouldn't even compile (and we would
+    // know at compile-time that they are different)
+    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str);
+    auto d2 = Delegate<size_t()>::create<&std::string::length>(&str);
+
+    REQUIRE_FALSE(d1 == d2);
+    REQUIRE(d1 != d2);
 }
 
 struct CollideEvent
@@ -221,13 +273,12 @@ TEST_CASE_METHOD(TimeoutFixture, "Event dispatching can timeout, events should w
     REQUIRE(done);
 }
 
-
 class BaseDummyHandler
 {
 public:
     virtual ~BaseDummyHandler() = default;
     virtual bool handle_dummy(const DummyEvent &) = 0;
-    
+
     bool handled = false;
 };
 
