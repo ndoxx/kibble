@@ -6,11 +6,13 @@
 
 using namespace kb;
 
+
 void init_logger()
 {
     KLOGGER_START();
 
     KLOGGER(create_channel("nuclear", 3));
+    KLOGGER(create_channel("event", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
