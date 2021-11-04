@@ -19,6 +19,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 include(standard_settings)
 include(compiler_warnings) # Hardcore warnings
 include(sanitizers)
+include(documentation)
 
 # Interface library to enable us to pass on options to multiple projects
 add_library(project_warnings INTERFACE)
@@ -27,5 +28,7 @@ set_project_warnings(project_warnings)
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 enable_sanitizers(project_options)
+
+setup_documentation("${CMAKE_SOURCE_DIR}/source/kibble" "${CMAKE_SOURCE_DIR}/doxygen")
 
 subdirs(source)

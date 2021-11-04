@@ -1,0 +1,8 @@
+bin/
+lib/
+build/
+data/
+doxygen/
+kibble.sublime-workspace
+workspace.code-workspace
+NOTES.md
