@@ -4,6 +4,7 @@
 #include "undo/undo.h"
 
 using namespace kb;
+using namespace kb::undo;
 
 struct TextBuffer
 {
@@ -15,14 +16,16 @@ struct TextBuffer
     }
 };
 
-class AppendCommand : public kb::UndoCommand
+class AppendCommand : public UndoCommand
 {
 public:
-    AppendCommand(TextBuffer &buffer, const std::string &text) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
+    AppendCommand(TextBuffer &buffer, const std::string &text)
+        : UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
     {
     }
 
-    AppendCommand(TextBuffer &buffer, char c) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
+    AppendCommand(TextBuffer &buffer, char c)
+        : UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
     {
     }
 

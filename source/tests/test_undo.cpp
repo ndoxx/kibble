@@ -15,12 +15,11 @@ struct GameObject
     }
 };
 
-class GOMoveUndoCommand : public kb::UndoCommand
+class GOMoveUndoCommand : public kb::undo::UndoCommand
 {
 public:
-    GOMoveUndoCommand(GameObject *go, int increment) : kb::UndoCommand("Change game object position"),
-                                                       go_(go),
-                                                       increment_(increment)
+    GOMoveUndoCommand(GameObject *go, int increment)
+        : kb::undo::UndoCommand("Change game object position"), go_(go), increment_(increment)
 
     {
     }
@@ -40,11 +39,10 @@ private:
     int increment_ = 0;
 };
 
-class GOKillUndoCommand : public kb::UndoCommand
+class GOKillUndoCommand : public kb::undo::UndoCommand
 {
 public:
-    GOKillUndoCommand(GameObject *go) : kb::UndoCommand("Kill game object"),
-                                        go_(go)
+    GOKillUndoCommand(GameObject *go) : kb::undo::UndoCommand("Kill game object"), go_(go)
 
     {
     }
@@ -68,12 +66,9 @@ class UndoRedoFixture
 public:
     UndoRedoFixture() : go_{42, 0, true}
     {
-        undo_stack_.on_head_change([this](size_t new_head)
-                                   { new_head_ = new_head; });
-        undo_stack_.on_can_undo_change([this](bool can_undo)
-                                       { new_can_undo_ = can_undo; });
-        undo_stack_.on_can_redo_change([this](bool can_redo)
-                                       { new_can_redo_ = can_redo; });
+        undo_stack_.on_head_change([this](size_t new_head) { new_head_ = new_head; });
+        undo_stack_.on_can_undo_change([this](bool can_undo) { new_can_undo_ = can_undo; });
+        undo_stack_.on_can_redo_change([this](bool can_redo) { new_can_redo_ = can_redo; });
     }
 
 protected:
@@ -96,7 +91,7 @@ protected:
 
 protected:
     GameObject go_;
-    kb::UndoStack undo_stack_;
+    kb::undo::UndoStack undo_stack_;
 
     size_t new_head_ = std::numeric_limits<size_t>::max();
     bool new_can_undo_ = false;
@@ -359,11 +354,10 @@ class CleanStateFixture
 public:
     CleanStateFixture() : go_{42, 0, true}
     {
-        undo_stack_.on_clean_change([this](bool is_clean)
-                                    {
-                                        new_is_clean_ = is_clean;
-                                        ++clean_transitions_;
-                                    });
+        undo_stack_.on_clean_change([this](bool is_clean) {
+            new_is_clean_ = is_clean;
+            ++clean_transitions_;
+        });
         // Push a few commands
         undo_stack_.push<GOMoveUndoCommand>(&go_, 1);
         undo_stack_.push<GOMoveUndoCommand>(&go_, 2);
@@ -374,7 +368,7 @@ public:
 
 protected:
     GameObject go_;
-    kb::UndoStack undo_stack_;
+    kb::undo::UndoStack undo_stack_;
 
     bool new_is_clean_ = false;
     size_t clean_transitions_ = 0;
@@ -483,12 +477,11 @@ struct Orientable
     float angle = 0.f;
 };
 
-class RotateCommand : public kb::UndoCommand
+class RotateCommand : public kb::undo::UndoCommand
 {
 public:
-    RotateCommand(Orientable *obj, float increment) : kb::UndoCommand("Change orientable object angle", 0),
-                                                      obj_(obj),
-                                                      increment_(increment)
+    RotateCommand(Orientable *obj, float increment)
+        : kb::undo::UndoCommand("Change orientable object angle", 0), obj_(obj), increment_(increment)
 
     {
     }
@@ -512,20 +505,21 @@ public:
         return true;
     }
 
-    inline float get_increment() const { return increment_; }
+    inline float get_increment() const
+    {
+        return increment_;
+    }
 
 private:
     Orientable *obj_ = nullptr;
     float increment_ = 0.f;
 };
 
-class SetAngleCommand : public kb::UndoCommand
+class SetAngleCommand : public kb::undo::UndoCommand
 {
 public:
-    SetAngleCommand(Orientable *obj, float value) : kb::UndoCommand("Set orientable object angle"),
-                                                    obj_(obj),
-                                                    value_(value),
-                                                    old_value_(obj_->angle)
+    SetAngleCommand(Orientable *obj, float value)
+        : kb::undo::UndoCommand("Set orientable object angle"), obj_(obj), value_(value), old_value_(obj_->angle)
 
     {
     }
@@ -540,7 +534,10 @@ public:
         obj_->angle = old_value_;
     }
 
-    inline float get_value() const { return value_; }
+    inline float get_value() const
+    {
+        return value_;
+    }
 
 private:
     Orientable *obj_ = nullptr;
@@ -562,7 +559,7 @@ public:
 
 protected:
     Orientable obj_;
-    kb::UndoStack undo_stack_;
+    kb::undo::UndoStack undo_stack_;
 };
 
 TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands should merge them", "[merge]")
@@ -591,7 +588,8 @@ TEST_CASE_METHOD(MergeFixture, "merged commands should behave atomically with re
     REQUIRE(undo_stack_.head() == 1);
 }
 
-TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands after an undo should still erase commands after head", "[merge]")
+TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands after an undo should still erase commands after head",
+                 "[merge]")
 {
     undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
     undo_stack_.undo();
@@ -627,7 +625,9 @@ TEST_CASE_METHOD(MergeFixture, "clean state can be reached back after deletion o
     REQUIRE(undo_stack_.is_clean());
 }
 
-TEST_CASE_METHOD(MergeFixture, "clean index should be reset if it is greater than or equal to the index of an obsolete command", "[merge]")
+TEST_CASE_METHOD(MergeFixture,
+                 "clean index should be reset if it is greater than or equal to the index of an obsolete command",
+                 "[merge]")
 {
     undo_stack_.push<SetAngleCommand>(&obj_, 8.f);
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
@@ -659,13 +659,12 @@ public:
     std::vector<Operation> journal;
 };
 
-class Deposit : public kb::UndoCommand
+class Deposit : public kb::undo::UndoCommand
 {
 public:
-    Deposit(Bank &bnk, size_t idx, uint32_t amt_cents) : kb::UndoCommand("Deposit amt_cents into idx's account"),
-                                                         bnk_(bnk),
-                                                         idx_(idx),
-                                                         value_(float(amt_cents) / 100.f)
+    Deposit(Bank &bnk, size_t idx, uint32_t amt_cents)
+        : kb::undo::UndoCommand("Deposit amt_cents into idx's account"), bnk_(bnk), idx_(idx),
+          value_(float(amt_cents) / 100.f)
 
     {
     }
@@ -680,7 +679,10 @@ public:
         bnk_.accounts[idx_].balance -= value_;
         bnk_.journal.push_back({idx_, -value_});
     }
-    inline float get_value() const { return value_; }
+    inline float get_value() const
+    {
+        return value_;
+    }
 
 private:
     Bank &bnk_;
@@ -688,13 +690,12 @@ private:
     float value_ = 0.f;
 };
 
-class Withdraw : public kb::UndoCommand
+class Withdraw : public kb::undo::UndoCommand
 {
 public:
-    Withdraw(Bank &bnk, size_t idx, uint32_t amt_cents) : kb::UndoCommand("Withdraw amt_cents into idx's account"),
-                                                          bnk_(bnk),
-                                                          idx_(idx),
-                                                          value_(float(amt_cents) / 100.f)
+    Withdraw(Bank &bnk, size_t idx, uint32_t amt_cents)
+        : kb::undo::UndoCommand("Withdraw amt_cents into idx's account"), bnk_(bnk), idx_(idx),
+          value_(float(amt_cents) / 100.f)
 
     {
     }
@@ -709,7 +710,10 @@ public:
         bnk_.accounts[idx_].balance += value_;
         bnk_.journal.push_back({idx_, value_});
     }
-    inline float get_value() const { return value_; }
+    inline float get_value() const
+    {
+        return value_;
+    }
 
 private:
     Bank &bnk_;
@@ -729,7 +733,7 @@ public:
 
     void transfer(size_t source, size_t destination, uint32_t amt_cents)
     {
-        auto trans = std::make_unique<kb::UndoCommand>("Transfer an amount between accounts");
+        auto trans = std::make_unique<kb::undo::UndoCommand>("Transfer an amount between accounts");
         trans->push<Withdraw>(bnk_, source, amt_cents);
         trans->push<Deposit>(bnk_, destination, amt_cents);
         undo_stack_.push(std::move(trans));
@@ -747,7 +751,7 @@ public:
 
 protected:
     Bank bnk_;
-    kb::UndoStack undo_stack_;
+    kb::undo::UndoStack undo_stack_;
 };
 
 TEST_CASE_METHOD(MacroFixture, "A macro should count as a single command", "[macro]")
@@ -793,20 +797,28 @@ struct TextBuffer
     hash_t name;
 };
 
-class AppendCommand : public kb::UndoCommand
+class AppendCommand : public kb::undo::UndoCommand
 {
 public:
-    AppendCommand(TextBuffer &buffer, const std::string &text) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
+    AppendCommand(TextBuffer &buffer, const std::string &text)
+        : kb::undo::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
     {
     }
 
-    AppendCommand(TextBuffer &buffer, char c) : kb::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
+    AppendCommand(TextBuffer &buffer, char c)
+        : kb::undo::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
     {
     }
 
-    void redo() override final { buffer_.text += text_; }
+    void redo() override final
+    {
+        buffer_.text += text_;
+    }
 
-    void undo() override final { buffer_.text.erase(buffer_.text.length() - text_.length()); }
+    void undo() override final
+    {
+        buffer_.text.erase(buffer_.text.length() - text_.length());
+    }
 
     bool merge_with(const UndoCommand &cmd) override final
     {
@@ -838,16 +850,11 @@ public:
 
     GroupFixture()
     {
-        group_.on_active_stack_change([this](hash_t active_stack)
-                                      { last_state_.active_stack = active_stack; });
-        group_.on_head_change([this](size_t head)
-                              { last_state_.head = head; });
-        group_.on_clean_change([this](bool clean)
-                               { last_state_.clean = clean; });
-        group_.on_can_undo_change([this](bool can_undo)
-                                  { last_state_.can_undo = can_undo; });
-        group_.on_can_redo_change([this](bool can_redo)
-                                  { last_state_.can_redo = can_redo; });
+        group_.on_active_stack_change([this](hash_t active_stack) { last_state_.active_stack = active_stack; });
+        group_.on_head_change([this](size_t head) { last_state_.head = head; });
+        group_.on_clean_change([this](bool clean) { last_state_.clean = clean; });
+        group_.on_can_undo_change([this](bool can_undo) { last_state_.can_undo = can_undo; });
+        group_.on_can_redo_change([this](bool can_redo) { last_state_.can_redo = can_redo; });
 
         create_doc("doc0"_h);
         create_doc("doc1"_h);
@@ -894,14 +901,15 @@ public:
 
 protected:
     std::vector<TextBuffer> bufs_;
-    kb::UndoGroup group_;
+    kb::undo::UndoGroup group_;
     State last_state_;
     hash_t current_doc_;
     size_t current_buf_;
     std::unordered_map<hash_t, size_t> names_;
 };
 
-TEST_CASE_METHOD(GroupFixture, "If no active stack is selected, state cannot change, and getting active stack throws", "[group]")
+TEST_CASE_METHOD(GroupFixture, "If no active stack is selected, state cannot change, and getting active stack throws",
+                 "[group]")
 {
     current_buf_ = 0;
     current_doc_ = "doc0"_h;
