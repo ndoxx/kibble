@@ -8,6 +8,7 @@ set(SRC_KIBBLE_TEST
     test_fs.cpp
     test_undo.cpp
     test_event.cpp
+    test_optimization.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})
