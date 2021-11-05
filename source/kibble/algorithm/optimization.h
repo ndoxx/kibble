@@ -3,6 +3,7 @@
 #include <functional>
 #include <limits>
 #include <random>
+#include <iostream>
 
 namespace kb
 {
@@ -114,7 +115,7 @@ class StochasticDescentOptimizer
 public:
     using LossFunc = std::function<float(const ControlT &)>;
     using ConstraintFunc = std::function<void(ControlT &)>;
-    using IterCallback = std::function<void(size_t iter, const ControlT &)>;
+    using IterCallback = std::function<void(size_t iter, const ControlT &, float)>;
 
     /**
      * @brief Construct a new Stochastic Descent Optimizer and initialize its random number generator with a seed.
@@ -210,7 +211,7 @@ public:
             old_loss = filtered_loss;
             exponential_moving_average(filtered_loss, current_loss, 0.1f);
 
-            iter_callback_(iter++, uu);
+            iter_callback_(iter++, uu, filtered_loss);
         }
         return uu;
     }
@@ -261,7 +262,7 @@ public:
             old_loss = filtered_loss;
             exponential_moving_average(filtered_loss, current_loss, 0.1f);
 
-            iter_callback_(iter++, uu);
+            iter_callback_(iter++, uu, filtered_loss);
         }
         return uu;
     }
@@ -283,7 +284,7 @@ private:
     RandomEngineT gen_;
     LossFunc loss_ = [](const ControlT &) { return 0.f; };
     ConstraintFunc constraint_ = [](ControlT &) {};
-    IterCallback iter_callback_ = [](size_t, const ControlT &) {};
+    IterCallback iter_callback_ = [](size_t, const ControlT &, float) {};
 };
 
 } // namespace opt
