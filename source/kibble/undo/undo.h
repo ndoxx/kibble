@@ -63,7 +63,9 @@ public:
     }
 
     /**
-     * @brief Make this command obsolete. An obsolete command will be destroyed when pushed to a stack.
+     * @brief Make this command obsolete.
+     * 
+     * An obsolete command will be destroyed when pushed to a stack.
      * This is useful when merging two commands, and the resulting command happens to have no action at all.
      *
      */
@@ -106,7 +108,9 @@ public:
     }
 
     /**
-     * @brief Push a sub-command as a child of this command. This command effectively becomes a macro-command,
+     * @brief Push a sub-command as a child of this command.
+     * 
+     * This command effectively becomes a macro-command,
      * and undoing() / redoing() it runs all its children undo() / redo() functions by default. This command
      * takes ownership of the child command which will never be mutable anymore from the outside.
      *
@@ -123,6 +127,7 @@ public:
      * @tparam C Type of UndoCommand to create
      * @tparam Args Types of the arguments to be forwarded to the command constructor
      * @param args Arguments to be forwarded to the command constructor
+     * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
     inline void push(Args &&...args)
@@ -131,31 +136,34 @@ public:
     }
 
     /**
-     * @brief Rolls back the state before this command was executed. Default implementation will call
-     * children's undo() in reverse order.
+     * @brief Rolls back the state before this command was executed.
+     * @note Default implementation will call children's undo() in reverse order.
      *
      */
     virtual void undo();
 
     /**
-     * @brief (Re-)executes this command. Default implementation will call children's redo() in order.
-     *
+     * @brief (Re-)executes this command.
+     * @note Default implementation will call children's redo() in order.
+     * 
      */
     virtual void redo();
 
     /**
-     * @brief Attempt to merge another command with this command. This allows for command compression.
+     * @brief Attempt to merge another command with this command.
+     *
+     * This allows for command compression.
      * It is the responsibility of the programmer to override this function to specify the merging mechanism.
      * Basically, all information contained in cmd should be extracted and added to this command, in such a way that:
      * - redoing this command would be the same as redoing both unmerged commands in order
      * - undoing this command would be the same as undoing both unmerged commands in reverse order
      * If the resulting command produces no action, the programmer is free to call set_obsolete() within the
      * implementation, and its destruction will be taken care of by the UndoStack.
-     * Default implementation simply returns false.
      *
      * @param cmd The command to merge with this one
      * @return true if the merge was successful
      * @return false otherwise
+     * @note Default implementation simply returns false.
      */
     virtual bool merge_with(const UndoCommand &cmd);
 
@@ -169,7 +177,9 @@ private:
 };
 
 /**
- * @brief Implements the undo mechanism. UndoCommands can be pushed to this stack, and be rolled-back / re-executed
+ * @brief Implements the undo mechanism.
+ * 
+ * UndoCommands can be pushed to this stack, and be rolled-back / re-executed
  * any time by calling the appropriate functions. Such a stack can also be used in conjunction with others in
  * a coordinated manner with UndoGroups.
  *
@@ -178,7 +188,9 @@ class UndoStack
 {
 public:
     /**
-     * @brief Push a command to this stack. This stack takes ownership of the command which will never be mutable again
+     * @brief Push a command to this stack.
+     * 
+     * This stack takes ownership of the command which will never be mutable again
      * from the outside. Pushing a command immediately executes its redo() function. Any command that can be redone
      * before cmd is pushed will be destroyed, so the head will always match the command count. If the clean state was
      * located after head, it will be reset. Before the command is pushed however, this function will attempt to merge
@@ -198,6 +210,7 @@ public:
      * @tparam C Type of the command to be pushed
      * @tparam Args Types of the arguments to be forwarded to the command constructor
      * @param args Arguments to be forwarded to the command constructor
+     * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
     inline void push(Args &&...args)
@@ -214,29 +227,34 @@ public:
     /**
      * @brief Call undo() on the command located just before the head position (if any) and decrement head.
      * If the head is at index 0 (no command can be undone), nothing will happen.
-     *
+     * @see UndoCommand::undo()
      */
     void undo();
 
     /**
      * @brief Call redo() on the command located at head (if any) and increment head. If the head is equal
      * to the command count (no command can be redone), nothing will happen.
+     * @see UndoCommand::redo()
      *
      */
     void redo();
 
     /**
-     * @brief Call undo() or redo() iteratively until the head matches the index argument. Any state change
-     * will only trigger a single call to the state tracker functors.
+     * @brief Call undo() or redo() iteratively until the head matches the index argument.
+     *
+     * Any state change will only trigger a single call to the state tracker functors.
      * The index is first clipped to the correct bounds, so calling set_head() with a target index greater than
      * the command count will only redo every command after the head position, and nothing more.
      *
      * @param index The target index
+     * @see undo() redo()
      */
     void set_head(size_t index);
 
     /**
-     * @brief Mark this state as the "clean state". This is typically called when the underlying document / model
+     * @brief Mark this state as the "clean state".
+     * 
+     * This is typically called when the underlying document / model
      * is saved. The clean state can be reached back through the use of the undo() / redo() functions. Anytime
      * the clean state changes, the on_clean_change functor will be called.
      *
@@ -250,7 +268,9 @@ public:
     void reset_clean();
 
     /**
-     * @brief Set the maximum number of commands that can be pushed to this stack. By default the undo limit is
+     * @brief Set the maximum number of commands that can be pushed to this stack.
+     * 
+     * By default the undo limit is
      * set to zero, meaning that the stack can grow unbounded. Pushing a command when the stack's count reaches
      * the undo limit will cause the furthest command to be destroyed in order to maintain a constant count.
      * This function can only be called on an empty stack, or will fail and do nothing.
@@ -328,7 +348,9 @@ public:
     }
 
     /**
-     * @brief Get the index of the command marked as clean. If there is no clean state (because it was reset
+     * @brief Get the index of the command marked as clean.
+     * 
+     * If there is no clean state (because it was reset
      * or because it was never set in the first place), this function will return -1.
      *
      * @return ssize_t The clean state index, or -1 if no clean state is reachable.
@@ -376,6 +398,7 @@ public:
      *
      * @return true if the clean index matches the head
      * @return false otherwise
+     * @see set_clean()
      */
     inline bool is_clean() const
     {
@@ -473,7 +496,9 @@ class UndoGroup
 {
 public:
     /**
-     * @brief Add a stack to this group. The group takes complete ownership of it, and the stack will never be
+     * @brief Add a stack to this group.
+     * 
+     * The group takes complete ownership of it, and the stack will never be
      * accessible in a mutable fashion from the outside anymore.
      *
      * @param stack_name Non-null string hash uniquely identifying this stack.
@@ -483,7 +508,9 @@ public:
     bool add_stack(hash_t stack_name);
 
     /**
-     * @brief Remove a stack at that name. If this stack was active, the active stack id will be reset. Nothing happens
+     * @brief Remove a stack at that name.
+     * 
+     * If this stack was active, the active stack id will be reset. Nothing happens
      * if the stack name does not exist within this group.
      *
      * @param stack_name The target stack to destroy
@@ -506,6 +533,7 @@ public:
      * @brief Get the redo text of the active stack.
      *
      * @return std::string_view The redo text, or an empty string if no stack is active
+     * @see UndoStack::redo_text()
      */
     std::string_view redo_text() const;
 
@@ -513,6 +541,7 @@ public:
      * @brief Get the undo text of the active stack.
      *
      * @return std::string_view The redo text, or an empty string if no stack is active
+     * @see UndoStack::undo_text()
      */
     std::string_view undo_text() const;
 
@@ -520,6 +549,7 @@ public:
      * @brief Push a command into the active stack.
      *
      * @param cmd The command to push
+     * @see UndoStack::push()
      */
     inline void push(std::unique_ptr<UndoCommand> cmd)
     {
@@ -533,6 +563,7 @@ public:
      * @tparam C Type of UndoCommand to create
      * @tparam Args Types of the arguments to be forwarded to the command constructor
      * @param args Arguments to be forwarded to the command constructor
+     * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
     inline void push(Args &&...args)
@@ -542,6 +573,7 @@ public:
 
     /**
      * @brief Clear the active stack.
+     * @see UndoStack::clear()
      *
      */
     inline void clear()
@@ -552,6 +584,7 @@ public:
 
     /**
      * @brief Call undo() on the active stack.
+     * @see UndoStack::undo()
      *
      */
     inline void undo()
@@ -562,6 +595,7 @@ public:
 
     /**
      * @brief Call redo() on the active stack.
+     * @see UndoStack::redo()
      *
      */
     inline void redo()
@@ -574,6 +608,7 @@ public:
      * @brief Call set_head() on the active stack.
      *
      * @param index The target index
+     * @see UndoStack::set_head()
      */
     inline void set_head(size_t index)
     {
@@ -583,6 +618,7 @@ public:
 
     /**
      * @brief Call set_clean() on the active stack.
+     * @see UndoStack::set_clean()
      *
      */
     inline void set_clean()
@@ -593,6 +629,7 @@ public:
 
     /**
      * @brief Call reset_clean() on the active stack.
+     * @see UndoStack::reset_clean()
      *
      */
     inline void reset_clean()
@@ -607,6 +644,7 @@ public:
      * @param undo_limit Undo limit setpoint
      * @return true if the undo limit was updated successfully
      * @return false otherwise
+     * @see UndoStack::set_undo_limit()
      */
     inline bool set_undo_limit(size_t undo_limit)
     {
@@ -670,6 +708,7 @@ public:
      * @brief Set a functor to be called whenever the active stack's head changes, or the active stack changes itself.
      *
      * @param func
+     * @see UndoStack::on_head_change()
      */
     void on_head_change(std::function<void(size_t)> func);
 
@@ -678,6 +717,7 @@ public:
      * itself.
      *
      * @param func
+     * @see UndoStack::on_clean_change()
      */
     void on_clean_change(std::function<void(bool)> func);
 
@@ -686,6 +726,7 @@ public:
      * changes itself.
      *
      * @param func
+     * @see UndoStack::on_can_undo_change()
      */
     void on_can_undo_change(std::function<void(bool)> func);
 
@@ -694,6 +735,7 @@ public:
      * changes itself.
      *
      * @param func
+     * @see UndoStack::on_can_redo_change()
      */
     void on_can_redo_change(std::function<void(bool)> func);
 

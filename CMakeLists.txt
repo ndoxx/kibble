@@ -29,6 +29,11 @@ add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_20)
 enable_sanitizers(project_options)
 
-setup_documentation("${CMAKE_SOURCE_DIR}/source/kibble" "${CMAKE_SOURCE_DIR}/doxygen")
+set(DOCS_INPUT
+	"${CMAKE_SOURCE_DIR}/source/kibble"
+	"${CMAKE_SOURCE_DIR}/docs"
+)
+
+setup_documentation("${DOCS_INPUT}" "${CMAKE_SOURCE_DIR}/doxygen")
 
 subdirs(source)

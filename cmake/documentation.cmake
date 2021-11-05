@@ -28,6 +28,7 @@ function(setup_documentation source_dir output_dir)
         set( DOXYGEN_DOT_GRAPH_MAX_NODES 100 )
         set( DOXYGEN_MAX_DOT_GRAPH_DEPTH 0 )
         set( DOXYGEN_DOT_TRANSPARENT YES )
+        set( DOXYGEN_SORT_MEMBER_DOCS NO )
 
         doxygen_add_docs( docs ${source_dir} ALL )
 
