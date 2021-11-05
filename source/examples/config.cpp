@@ -1,5 +1,5 @@
-#include "config/config.h"
 #include "argparse/argparse.h"
+#include "config/config.h"
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
@@ -33,33 +33,33 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-void show_error_and_die(ap::ArgParse& parser)
+void show_error_and_die(ap::ArgParse &parser)
 {
-    for(const auto& msg : parser.get_errors())
+    for (const auto &msg : parser.get_errors())
         KLOGW("kibble") << msg << std::endl;
 
     KLOG("kibble", 1) << parser.usage() << std::endl;
     exit(0);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     init_logger();
 
     ap::ArgParse parser("nuclear", "0.1");
-    const auto& cfg_path_str = parser.add_positional<std::string>("CONFIG_PATH", "Path to the config directory");
+    const auto &cfg_path_str = parser.add_positional<std::string>("CONFIG_PATH", "Path to the config directory");
     bool success = parser.parse(argc, argv);
-    if(!success)
+    if (!success)
         show_error_and_die(parser);
 
     fs::path cfg_path(cfg_path_str());
-    if(!fs::exists(cfg_path))
+    if (!fs::exists(cfg_path))
     {
         KLOGE("nuclear") << "Directory does not exist:" << std::endl;
         KLOGI << KS_PATH_ << cfg_path << std::endl;
         return 0;
     }
-    if(!fs::is_directory(cfg_path))
+    if (!fs::is_directory(cfg_path))
     {
         KLOGE("nuclear") << "Not a directory:" << std::endl;
         KLOGI << KS_PATH_ << cfg_path << std::endl;
@@ -67,9 +67,9 @@ int main(int argc, char** argv)
     }
 
     cfg::Settings settings;
-    for(auto& file : fs::directory_iterator(cfg_path))
+    for (auto &file : fs::directory_iterator(cfg_path))
     {
-        if(fs::is_regular_file(file) && !file.path().extension().string().compare(".toml"))
+        if (fs::is_regular_file(file) && !file.path().extension().string().compare(".toml"))
             settings.load_toml(file);
     }
 
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
                        << std::endl;
 
     KLOGN("nuclear") << "Displaying array properties:" << std::endl;
-    for(size_t ii = 0; ii < settings.get_array_size("erwin.logger.channels"_h); ++ii)
+    for (size_t ii = 0; ii < settings.get_array_size("erwin.logger.channels"_h); ++ii)
     {
         std::string channel_name = settings.get<std::string>(su::h_concat("erwin.logger.channels[", ii, "].name"), "");
         size_t verbosity = settings.get<size_t>(su::h_concat("erwin.logger.channels[", ii, "].verbosity"), 0);

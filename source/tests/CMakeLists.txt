@@ -9,6 +9,7 @@ set(SRC_KIBBLE_TEST
     test_undo.cpp
     test_event.cpp
     test_optimization.cpp
+    test_settings.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})
