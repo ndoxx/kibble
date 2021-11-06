@@ -26,6 +26,8 @@ struct argb32_t
     constexpr uint32_t operator[](int chan) { return (value & (uint32_t(0xFF) << (chan*8))) >> (chan*8); }
 };
 
+argb32_t lighten(argb32_t color, float factor);
+
 struct ColorRGBA;
 struct ColorHSLA
 {

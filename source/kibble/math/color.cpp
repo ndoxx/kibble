@@ -9,12 +9,29 @@ namespace kb
 namespace math
 {
 
-ColorRGBA::ColorRGBA(const ColorHSLA& hsla) : ColorRGBA(to_RGBA(hsla)) {}
+argb32_t lighten(argb32_t color, float factor)
+{
+    uint8_t R = uint8_t(std::roundf(factor * float(color.r())));
+    uint8_t G = uint8_t(std::roundf(factor * float(color.g())));
+    uint8_t B = uint8_t(std::roundf(factor * float(color.b())));
 
-ColorHSLA::ColorHSLA(const ColorRGBA& rgba) : ColorHSLA(to_HSLA(rgba)) {}
+    return pack_ARGB(R, G, B);
+}
 
-ColorCIELab::ColorCIELab(const ColorRGBA& rgba) : ColorCIELab(to_CIELab(rgba)) {}
-ColorCIELab::ColorCIELab(argb32_t color) : ColorCIELab(to_CIELab(color)) {}
+ColorRGBA::ColorRGBA(const ColorHSLA &hsla) : ColorRGBA(to_RGBA(hsla))
+{
+}
+
+ColorHSLA::ColorHSLA(const ColorRGBA &rgba) : ColorHSLA(to_HSLA(rgba))
+{
+}
+
+ColorCIELab::ColorCIELab(const ColorRGBA &rgba) : ColorCIELab(to_CIELab(rgba))
+{
+}
+ColorCIELab::ColorCIELab(argb32_t color) : ColorCIELab(to_CIELab(color))
+{
+}
 
 ColorHSLA ColorHSLA::random_hue(float s, float l, unsigned long long seed)
 {
@@ -27,28 +44,28 @@ ColorHSLA ColorHSLA::random_hue(float s, float l, unsigned long long seed)
 
 float hue_to_rgb(float v1, float v2, float vH)
 {
-    if(vH < 0)
+    if (vH < 0)
         vH += 1;
-    if(vH > 1)
+    if (vH > 1)
         vH -= 1;
-    if((6 * vH) < 1)
+    if ((6 * vH) < 1)
         return (v1 + (v2 - v1) * 6.f * vH);
-    if((2 * vH) < 1)
+    if ((2 * vH) < 1)
         return (v2);
-    if((3 * vH) < 2)
+    if ((3 * vH) < 2)
         return (v1 + (v2 - v1) * ((2.f / 3.f) - vH) * 6);
     return (v1);
 }
 
-ColorRGBA to_RGBA(const ColorHSLA& hsla)
+ColorRGBA to_RGBA(const ColorHSLA &hsla)
 {
-    if(hsla.s == 0)
+    if (hsla.s == 0)
         return math::ColorRGBA(hsla.l, hsla.l, hsla.l);
     else
     {
         float v1 = 0.f;
         float v2 = 0.f;
-        if(hsla.l < 0.5f)
+        if (hsla.l < 0.5f)
             v2 = hsla.l * (1 + hsla.s);
         else
             v2 = (hsla.l + hsla.s) - (hsla.s * hsla.l);
@@ -62,7 +79,7 @@ ColorRGBA to_RGBA(const ColorHSLA& hsla)
     }
 }
 
-ColorHSLA to_HSLA(const ColorRGBA& rgba)
+ColorHSLA to_HSLA(const ColorRGBA &rgba)
 {
     float cmin = std::min(rgba.r, std::min(rgba.g, rgba.b));
     float cmax = std::max(rgba.r, std::max(rgba.g, rgba.b));
@@ -71,27 +88,27 @@ ColorHSLA to_HSLA(const ColorRGBA& rgba)
     float S = 0.f;
     float L = 0.5f * (cmax + cmin);
 
-    if(delta > 0)
+    if (delta > 0)
     {
         S = (L < 0.5f) ? delta / (cmax + cmin) : delta / (2.f - cmax - cmin);
         float del_R = (((cmax - rgba.r) / 6.f) + (delta * 0.5f)) / delta;
         float del_G = (((cmax - rgba.g) / 6.f) + (delta * 0.5f)) / delta;
         float del_B = (((cmax - rgba.b) / 6.f) + (delta * 0.5f)) / delta;
-        if(rgba.r == cmax)
+        if (rgba.r == cmax)
             H = del_B - del_G;
-        else if(rgba.g == cmax)
+        else if (rgba.g == cmax)
             H = (1.f / 3.f) + del_R - del_B;
-        else if(rgba.b == cmax)
+        else if (rgba.b == cmax)
             H = (2.f / 3.f) + del_G - del_R;
-        if(H < 0)
+        if (H < 0)
             H += 1;
-        if(H > 1)
+        if (H > 1)
             H -= 1;
     }
     return math::ColorHSLA(H, S, L, rgba.a);
 }
 
-ColorCIELab to_CIELab(const ColorRGBA& srgba)
+ColorCIELab to_CIELab(const ColorRGBA &srgba)
 {
     // Gamma expand
     float lin_r = (srgba.r < 0.04045f) ? srgba.r / 12.92f : std::pow((srgba.r + 0.055f) / 1.055f, 2.4f);

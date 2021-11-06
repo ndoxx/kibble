@@ -2,6 +2,7 @@
 
 set(SRC_KIBBLE_TEST
     catch_app.cpp
+    test_hash.cpp
     test_ap.cpp
     test_memory.cpp
     test_job.cpp

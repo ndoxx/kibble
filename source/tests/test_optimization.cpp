@@ -51,7 +51,6 @@ TEST_CASE_METHOD(MinimizationFixture, "Non-convex Himmelblau's function minimiza
         return A * A + B * B;
     });
     auto opt = optimizer.SPSA({vec2(5.f, -2.f), 0.001f, 0.0005f, 0.f, 1e-3f});
-    std::cout << opt << std::endl;
     auto dist = vec2(3.584428f, -1.848126f) - opt;
 
     REQUIRE(dist.norm() < 0.2f);
