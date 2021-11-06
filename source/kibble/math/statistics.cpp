@@ -29,9 +29,10 @@ float Statistics::stdev(float var, float f) const
     return std::sqrt(var * factor);
 }
 
-std::ostream& operator<<(std::ostream& stream, const Statistics& stats)
+std::ostream &operator<<(std::ostream &stream, const Statistics &stats)
 {
-    stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u() << ')';
+    stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u()
+           << ')';
     return stream;
 }
 

@@ -11,6 +11,8 @@ namespace math
 
 argb32_t lighten(argb32_t color, float factor)
 {
+    factor = std::clamp(factor, 0.f, 1.f);
+
     uint8_t R = uint8_t(std::roundf(factor * float(color.r())));
     uint8_t G = uint8_t(std::roundf(factor * float(color.g())));
     uint8_t B = uint8_t(std::roundf(factor * float(color.b())));

@@ -10,7 +10,7 @@ std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime
 {
     float hh = f_over_fprime(xx);
     size_t iter = 0;
-    while(std::abs(hh) > epsilon && iter < max_iter)
+    while (std::abs(hh) > epsilon && iter < max_iter)
     {
         hh = f_over_fprime(xx);
         xx -= hh;
@@ -26,13 +26,15 @@ float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, f
     float step = start_step;
     float yy = f(xx);
     float yy_prev = yy;
-    while(yy * yy_prev > 0)
+    while (yy * yy_prev > 0)
     {
         yy_prev = yy;
         xx += step;
         step *= alpha;
         yy = f(xx);
     }
+
+    // Backtrack a bit
     return xx - 0.5f * step / alpha;
 }
 
@@ -46,7 +48,7 @@ float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint3
         yn = f(ub);                                 // f value at upper bound
 
     // loop to evaluate intermediary sums
-    for(uint32_t ii = 1; ii < subdivisions; ++ii)
+    for (uint32_t ii = 1; ii < subdivisions; ++ii)
     {
         float yy = f(lb + float(ii) * h); // evaluate y_ii
         // sum of odd terms go into sum_odd and sum of even terms go into sum_even
