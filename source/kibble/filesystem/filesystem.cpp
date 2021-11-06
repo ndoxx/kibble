@@ -31,7 +31,7 @@ std::time_t to_time_t(TP tp)
     return system_clock::to_time_t(sctp);
 }
 
-struct UpathParsingResult
+struct FileSystem::UpathParsingResult
 {
     const DirectoryAlias *alias_entry = nullptr;
     std::string path_component;
@@ -201,7 +201,7 @@ std::string FileSystem::make_universal(const fs::path &path, hash_t base_alias_h
     return su::concat(alias_entry.alias, "://", rel_path.string());
 }
 
-UpathParsingResult FileSystem::parse_universal_path(const std::string &unipath) const
+FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::string &unipath) const
 {
     UpathParsingResult result;
 

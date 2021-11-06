@@ -21,16 +21,27 @@ namespace kfs
 {
 
 class PackFile;
-struct DirectoryAlias
-{
-    std::string alias;
-    fs::path base;
-    std::vector<PackFile *> packfiles;
-};
 
 using IStreamPtr = std::shared_ptr<std::istream>;
 
-struct UpathParsingResult;
+/**
+ * @brief This class provides powerful and varied file interaction capabilities thanks to a variety of concepts like
+ * directory aliasing, resource packs and universal paths.
+ * - *Resource packs* or *pack files* are archive-like files that can mirror an existing directory hierarchy but are in
+ * theory way faster to access than regular directories. For more information, see the PackFile documentation.
+ * - *Directory aliases* are strings referencing a directory or the root of a pack file. They are used in conjunction
+ * with universal paths to allow for readable and terse path expressions.
+ * - *Universal paths* are formatted strings that can be converted to regular paths. They can be either written in the
+ * form of a regular path like `path/to/file` or include an alias using the syntax `alias://path/to/file`. In the latter
+ * case, the alias can either reference a regular directory or the root of a pack file, and the rest of the path is read
+ * relative to the aliased directory. Either way the file system will be able to find the targeted ressource.
+ *
+ * FEATURES:
+ * - Transparent directory / resource pack aliasing
+ * - Ability for an application to locate its own binary
+ * - Configuration directory creation
+ *
+ */
 class FileSystem
 {
 public:
@@ -53,7 +64,7 @@ public:
 
     /**
      * @brief Alias the root of a resource pack file.
-     * It allows to treat a pack file as if it were a simple directory.
+     * It allows to treat a pack file as if it were a regular directory.
      * If a directory alias exists at this name, the file system will behave as if both hierarchies were merged
      * together. Multiple packfiles can be grouped under the same alias. Last aliased pack has the lowest priority.
      *
@@ -224,6 +235,15 @@ public:
     inline std::string get_file_as_string(const std::string &unipath) const;
 
 private:
+    struct UpathParsingResult;
+
+    struct DirectoryAlias
+    {
+        std::string alias;
+        fs::path base;
+        std::vector<PackFile *> packfiles;
+    };
+
     // Return alias entry at that name
     inline const DirectoryAlias &get_alias_entry(hash_t alias_hash) const;
     // Try to match an alias form in a universal path string, return an opaque type
@@ -268,7 +288,7 @@ inline std::string FileSystem::get_file_as_string(const std::string &unipath) co
     return std::string((std::istreambuf_iterator<char>(*pis)), std::istreambuf_iterator<char>());
 }
 
-inline const DirectoryAlias &FileSystem::get_alias_entry(hash_t alias_hash) const
+inline const FileSystem::DirectoryAlias &FileSystem::get_alias_entry(hash_t alias_hash) const
 {
     auto findit = aliases_.find(alias_hash);
     K_ASSERT(findit != aliases_.end(), "Unknown alias.");
