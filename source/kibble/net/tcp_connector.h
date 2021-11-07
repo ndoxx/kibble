@@ -9,15 +9,23 @@ namespace net
 
 class TCPStream;
 
-/*
-	Factory class that actively connects to a remote machine and
-    returns a TCPStream object. 
-*/
+/**
+ * @brief Stateless static class that can connect to a remote TCPAcceptor.
+ * The connect() function (non-blockingly) attempts to connect to the remote TCPAcceptor and returns a stream that can
+ * be used for bidirectional communication with the TCPAcceptor.
+ *
+ */
 class TCPConnector
 {
 public:
-    // Generate a TCP stream object by connecting to a server using its name or IP address, and a port
-    static TCPStream* connect(const std::string& server, uint16_t port);
+    /**
+     * @brief Generate a TCP stream object by connecting to a server using its name or IP address, and a port.
+     *
+     * @param server server's IP address
+     * @param port the same port the server is listening to
+     * @return new stream pointer. Caller is responsible for its destruction.
+     */
+    static TCPStream *connect(const std::string &server, uint16_t port);
 };
 
 } // namespace net
