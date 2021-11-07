@@ -14,6 +14,7 @@ class TCPStream;
  * The connect() function (non-blockingly) attempts to connect to the remote TCPAcceptor and returns a stream that can
  * be used for bidirectional communication with the TCPAcceptor.
  *
+ * @note At the moment, only a linux implementation is available.
  */
 class TCPConnector
 {

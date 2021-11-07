@@ -12,7 +12,7 @@ namespace net
  * It represents an active connection, created either actively by a TCPConnector, or passively by a TCPAcceptor.
  *
  * @note This object is non-copyable and its constructor is private. Only TCPAcceptor and TCPConnector can create it.
- *
+ * @note At the moment, only a linux implementation is available.
  */
 class TCPStream
 {

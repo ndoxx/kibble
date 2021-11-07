@@ -14,7 +14,8 @@ class TCPStream;
  * connection from a remote TCPConnector. A TCPStream pointer is returned which can be used for bidirectional
  * communication with the TCPConnector.
  * The user of this code takes full ownership of the stream pointer, and is responsible for deleting it.
- *
+ * 
+ * @note At the moment, only a linux implementation is available.
  */
 class TCPAcceptor
 {
