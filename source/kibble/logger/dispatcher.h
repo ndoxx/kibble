@@ -63,7 +63,7 @@ public:
     void has_channel(hash_t hname, bool &result);
 
     /**
-     * @brief Create a logging channel to group information of the same kind
+     * @brief Create a logging channel to group information of the same kind.
      * If a channel already exists at that name, the creation will abort and the function will do nothing.
      * The styled tag used to display this channel is automatically generated. The tag color is taken from a fixed
      * palette, and the tag's short name is the first three characters of the channel name.
@@ -86,7 +86,7 @@ public:
     /**
      * @brief Attach a sink to a list of channels.
      * The sink will receive all the messages sent to the channels that are attached to it.
-     * The dispatcher will take full ownership of th sink.
+     * The dispatcher will take full ownership of the sink.
      *
      * @param sink_name Full name of the sink
      * @param sink Pointer to the sink

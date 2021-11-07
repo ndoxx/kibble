@@ -11,8 +11,8 @@ namespace math
 
 /**
  * @brief Lightweight class that allows to keep track of various basic statistics on a series of values pushed one by
- * one. The mean and standard deviation are updated thanks to a math trick, so the whole sequence of numbers need not be
- * memorized. This guarantees constant time computation of all statistics.
+ * one. The mean and standard deviation are updated incrementally in an online fashion thanks to an orthogonality trick,
+ * so the whole sequence of numbers need not be memorized. This guarantees constant time computation of all statistics.
  * Inspired by https://github.com/vectorgraphics/asymptote/blob/master/statistics.h
  */
 class Statistics

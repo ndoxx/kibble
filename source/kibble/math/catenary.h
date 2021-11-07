@@ -11,8 +11,8 @@ namespace math
  * anchors. It is essentially an hyperbolic cosine. Solving for the catenary parameters requires solving a
  * transcendental equation, which can be done approximately with a few iterations of the Newton-Raphson algorithm.
  * Expect instability for very distant anchor points. It is always a good strategy to normalize the input data and
- * rescale the curve. This class also uses a closed-form arc-length parameterization of the catenary, for a more uniform
- * sampling along the curve.
+ * rescale the curve. This class also uses a closed-form arc-length parameterization of the catenary, allowing for a
+ * uniform percent length sampling along the curve.
  *
  */
 class Catenary
