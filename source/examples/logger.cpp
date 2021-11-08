@@ -22,6 +22,9 @@ void init_logger()
         KLOGGER(create_channel(k_channels[ii], 3));
     }
 
+    KLOGGER(create_channel("custom", 3));
+    KLOGGER(set_channel_tag("custom", "csm", kb::col::darkorchid));
+
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
@@ -55,6 +58,7 @@ int main()
     KLOG("util", 1) << "Hello from 'util'" << std::endl;
     KLOG("config", 1) << "Hello from 'config'" << std::endl;
     KLOG("ios", 1) << "Hello from 'ios'" << std::endl;
+    KLOG("custom", 1) << "Hello from custom style channel" << std::endl;
 
     KLOGN("core") << "-------- [COLORS] --------" << std::endl;
     KLOG("core", 1) << "Configuring " << KS_INST_ << "accessibility" << KC_ << " parameters." << std::endl;

@@ -1,7 +1,4 @@
 
-set terminal x11
-set output
-
 set multiplot layout 1,2 columnsfirst title "{/:Bold=15 Spline}"
 set key left top
 

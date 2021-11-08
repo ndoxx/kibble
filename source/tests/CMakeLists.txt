@@ -2,12 +2,15 @@
 
 set(SRC_KIBBLE_TEST
     catch_app.cpp
+    test_hash.cpp
     test_ap.cpp
     test_memory.cpp
     test_job.cpp
     test_fs.cpp
     test_undo.cpp
     test_event.cpp
+    test_optimization.cpp
+    test_settings.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})

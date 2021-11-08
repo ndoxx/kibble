@@ -1,5 +1,5 @@
 #include "argparse/argparse.h"
-#include "test_common.hpp"
+#include "common/utils.hpp"
 #include <catch2/catch_all.hpp>
 
 using namespace kb;

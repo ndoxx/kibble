@@ -1,14 +1,9 @@
 #pragma once
 
-#include <array>
-#include <string>
-#include <string_view>
-#include <utility>
-
-#include "../hash/hash.h"
-
-/*
- * Compile-Time Type Information
+/**
+ * @file ctti.h
+ * @brief Compile-Time Type Information.
+ * 
  * This code was written as a replacement for parts of the CTTI lib I happen to use quite often :
  * https://github.com/Manu343726/ctti
  * Adapted from: https://bitwizeshift.github.io/posts/2021/03/09/getting-an-unmangled-type-name-at-compile-time/
@@ -16,7 +11,21 @@
  *   - I don't append '\n' after the type name, I see no reason to do so.
  *   - Added a type_id() function that computes a compile-time hash of the type name.
  *   - Extended type_name and type_id overload sets to work with instances as well, using std::decay like lib CTTI does
+ *
+ * @author ndx
+ * @version 0.1
+ * @date 2021-11-08
+ *
+ * @copyright Copyright (c) 2021
+ *
  */
+
+#include <array>
+#include <string>
+#include <string_view>
+#include <utility>
+
+#include "../hash/hash.h"
 
 namespace kb
 {

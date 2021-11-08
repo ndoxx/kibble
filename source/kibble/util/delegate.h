@@ -1,18 +1,5 @@
 #pragma once
 
-/*
- * Based on the excellent series of articles by Matthew Rodusek:
- * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-1/
- * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-2/
- * https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-3/
- * Differences are:
- *     - Instead of the bind functions I wrote factories, so it is possible to create a delegate with a one-liner
- *       See: https://www.codeproject.com/articles/11015/the-impossibly-fast-c-delegates
- *     - Equal and not-equal comparison operators. Comparison is done indirectly by comparing the stubs and
- *       instances, but it works. See:
- *       https://www.codeproject.com/Articles/1170503/The-Impossibly-Fast-Cplusplus-Delegates-Fixed
- */
-
 #include <exception>
 #include <type_traits>
 
@@ -31,9 +18,31 @@ struct BadDelegateCallException : public std::exception
     }
 };
 
+/**
+ * @brief A Delegate encapsulates a free or a member function.
+ * This implementation is based on the excellent series of articles by Matthew Rodusek:
+ * - https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-1/
+ * - https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-2/
+ * - https://bitwizeshift.github.io/posts/2021/02/24/creating-a-fast-and-efficient-delegate-type-part-3/
+ *
+ * Differences are:
+ *     - Instead of the bind functions I wrote factories, so it is possible to create a delegate with a one-liner
+ *       See: https://www.codeproject.com/articles/11015/the-impossibly-fast-c-delegates
+ *     - Equal and not-equal comparison operators. Comparison is done indirectly by comparing the stubs and
+ *       instances, but it works. See:
+ *       https://www.codeproject.com/Articles/1170503/The-Impossibly-Fast-Cplusplus-Delegates-Fixed
+ *
+ * @tparam Signature
+ */
 template <typename Signature>
 class Delegate;
 
+/**
+ * @brief Specialization of the Delegate class for function signatures with a return type and multiple arguments.
+ *
+ * @tparam R
+ * @tparam Args
+ */
 template <typename R, typename... Args>
 class Delegate<R(Args...)>
 {

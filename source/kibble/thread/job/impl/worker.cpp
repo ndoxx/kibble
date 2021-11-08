@@ -1,5 +1,5 @@
-#include "thread/job/impl/worker.h"
 #include "thread/job/impl/monitor.h"
+#include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
 
@@ -8,9 +8,8 @@ namespace kb
 namespace th
 {
 
-WorkerThread::WorkerThread(const WorkerProperties& props, JobSystem& jobsys)
-    : props_(props), js_(jobsys),
-      ss_(js_.get_shared_state())
+WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
+    : props_(props), js_(jobsys), ss_(js_.get_shared_state())
 {
 #if PROFILING
     activity_.tid = props_.tid;
@@ -19,17 +18,17 @@ WorkerThread::WorkerThread(const WorkerProperties& props, JobSystem& jobsys)
 
 void WorkerThread::spawn()
 {
-    if(props_.is_background)
+    if (props_.is_background)
         thread_ = std::thread(&WorkerThread::run, this);
 }
 
 void WorkerThread::join()
 {
-    if(props_.is_background)
+    if (props_.is_background)
         thread_.join();
 }
 
-void WorkerThread::submit(Job* job)
+void WorkerThread::submit(Job *job)
 {
     ANNOTATE_HAPPENS_BEFORE(&jobs_); // Avoid false positives with TSan
     jobs_.push(job);
@@ -39,12 +38,12 @@ void WorkerThread::run()
 {
     K_ASSERT(props_.is_background, "run() should not be called in the main thread.");
 
-    while(ss_.running.load(std::memory_order_relaxed))
+    while (ss_.running.load(std::memory_order_relaxed))
     {
         state_.store(State::Running, std::memory_order_release);
 
-        Job* job = nullptr;
-        if(get_job(job))
+        Job *job = nullptr;
+        if (get_job(job))
         {
             process(job);
             continue;
@@ -71,32 +70,32 @@ void WorkerThread::run()
     state_.store(State::Stopping, std::memory_order_release);
 }
 
-bool WorkerThread::get_job(Job*& job)
+bool WorkerThread::get_job(Job *&job)
 {
     // First, try to pop a job from the queue
     ANNOTATE_HAPPENS_AFTER(&jobs_); // Avoid false positives with TSan
     bool has_job = jobs_.try_pop(job);
 
     // If queue is empty, try to steal a job
-    if(!has_job && props_.can_steal)
+    if (!has_job && props_.can_steal)
     {
         // Random shuffle on candidate workers to avoid always stealing from the same worker(s)
-        std::vector<WorkerThread*> random_workers(js_.get_workers());
+        std::vector<WorkerThread *> random_workers(js_.get_workers());
         std::random_shuffle(random_workers.begin(), random_workers.end());
-        for(size_t ii = 0; ii < random_workers.size() && has_job == false; ++ii)
+        for (size_t ii = 0; ii < random_workers.size() && has_job == false; ++ii)
         {
             // Thou shalt not steal from yourself
-            if(ii == props_.tid)
+            if (ii == props_.tid)
                 continue;
 
-            auto& worker = *random_workers[ii];
+            auto &worker = *random_workers[ii];
             ANNOTATE_HAPPENS_AFTER(&worker.jobs_); // Avoid false positives with TSan
 
-            for(size_t jj=0; jj<props_.max_stealing_attempts; ++jj)
+            for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
             {
                 has_job = worker.jobs_.try_pop(job);
                 // If job has incompatible affinity, resubmit it
-                if(has_job && (job->meta.worker_affinity & (1<<props_.tid)) == 0)
+                if (has_job && (job->meta.worker_affinity & (1 << props_.tid)) == 0)
                 {
                     worker.jobs_.push(job);
                     has_job = false;
@@ -110,7 +109,7 @@ bool WorkerThread::get_job(Job*& job)
             }
         }
 #if PROFILING
-        if(has_job)
+        if (has_job)
             ++activity_.stolen;
 #endif
     }
@@ -118,7 +117,7 @@ bool WorkerThread::get_job(Job*& job)
     return has_job;
 }
 
-void WorkerThread::process(Job* job)
+void WorkerThread::process(Job *job)
 {
     microClock clk;
     job->kernel();
@@ -134,8 +133,8 @@ void WorkerThread::process(Job* job)
 bool WorkerThread::foreground_work()
 {
     K_ASSERT(!props_.is_background, "foreground_work() should not be called in a background thread.");
-    Job* job = nullptr;
-    if(get_job(job))
+    Job *job = nullptr;
+    if (get_job(job))
     {
         process(job);
         return true;

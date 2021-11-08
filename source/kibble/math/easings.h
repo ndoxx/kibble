@@ -12,7 +12,8 @@ namespace ease
 
 namespace traits
 {
-template <typename FloatT> using enable_if_float = std::enable_if_t<std::is_floating_point_v<FloatT>>;
+template <typename FloatT>
+using enable_if_float = std::enable_if_t<std::is_floating_point_v<FloatT>>;
 }
 
 // * Utility
@@ -117,7 +118,10 @@ inline FloatT inout_circ(FloatT t)
 
 // Quadratic
 template <typename FloatT, typename = traits::enable_if_float<FloatT>>
-constexpr FloatT in_2(FloatT t) { return t * t; }
+constexpr FloatT in_2(FloatT t)
+{
+    return t * t;
+}
 // == t*(FloatT(2)-t);
 template <typename FloatT, typename = traits::enable_if_float<FloatT>>
 constexpr FloatT out_2(FloatT t)

@@ -1,5 +1,5 @@
-#include "logger/sink.h"
 #include "logger/common.h"
+#include "logger/sink.h"
 #include "net/tcp_connector.h"
 #include "net/tcp_stream.h"
 #include "string/string.h"
@@ -27,12 +27,12 @@ static constexpr std::string_view k_timestamp_style{"\033[1;38;2;0;130;10m"};
 static constexpr std::string_view k_log_files_style{"\033[1;38;2;90;255;90m"};
 #endif
 
-void ConsoleSink::send(const LogStatement& stmt, const LogChannel& chan)
+void ConsoleSink::send(const LogStatement &stmt, const LogChannel &chan)
 {
-    if(stmt.msg_type != MsgType::RAW)
+    if (stmt.msg_type != MsgType::RAW)
     {
         // Show file and line if sufficiently severe
-        if(stmt.severity >= 2)
+        if (stmt.severity >= 2)
         {
             std::cout << k_code_file_style << "@ " << stmt.code_file << ":" << k_code_line_style << stmt.code_line
                       << "\n";
@@ -48,19 +48,27 @@ void ConsoleSink::send(const LogStatement& stmt, const LogChannel& chan)
         std::cout << "\033[0m" << stmt.message << "\033[0m";
 }
 
-void ConsoleSink::send_raw(const std::string& message) { std::cout << message; }
+void ConsoleSink::send_raw(const std::string &message)
+{
+    std::cout << message;
+}
 
-LogFileSink::LogFileSink(const std::string& filename) : filename_(filename), out_(filename) {}
+LogFileSink::LogFileSink(const std::string &filename) : filename_(filename), out_(filename)
+{
+}
 
 static const std::regex s_ansi_regex("\033\\[.+?m"); // matches ANSI codes
-static std::string strip_ansi(const std::string& str) { return std::regex_replace(str, s_ansi_regex, ""); }
-
-void LogFileSink::send(const LogStatement& stmt, const LogChannel&)
+static std::string strip_ansi(const std::string &str)
 {
-    if(stmt.msg_type != MsgType::RAW)
+    return std::regex_replace(str, s_ansi_regex, "");
+}
+
+void LogFileSink::send(const LogStatement &stmt, const LogChannel &)
+{
+    if (stmt.msg_type != MsgType::RAW)
     {
         // Show file and line if sufficiently severe
-        if(stmt.severity >= 2)
+        if (stmt.severity >= 2)
             out_ << "@ " << stmt.code_file << ":" << stmt.code_line << std::endl;
 
         float ts = std::chrono::duration_cast<std::chrono::duration<float>>(stmt.timestamp).count();
@@ -71,14 +79,14 @@ void LogFileSink::send(const LogStatement& stmt, const LogChannel&)
         out_ << strip_ansi(stmt.message);
 }
 
-void LogFileSink::send_raw(const std::string& message)
+void LogFileSink::send_raw(const std::string &message)
 {
     out_ << message << std::endl;
 }
 
 void LogFileSink::finish()
 {
-    if(!enabled_)
+    if (!enabled_)
         return;
 
     out_.close();
@@ -87,7 +95,7 @@ void LogFileSink::finish()
 
 NetSink::~NetSink()
 {
-    if(stream_)
+    if (stream_)
     {
         // Notify server before closing connection
         stream_->send("{\"action\":\"disconnect\"}");
@@ -95,7 +103,7 @@ NetSink::~NetSink()
     }
 }
 
-bool NetSink::connect(const std::string& server, uint16_t port)
+bool NetSink::connect(const std::string &server, uint16_t port)
 {
     server_ = server;
     stream_ = kb::net::TCPConnector::connect(server, port);
@@ -104,23 +112,23 @@ bool NetSink::connect(const std::string& server, uint16_t port)
 
 void NetSink::on_attach()
 {
-    if(stream_ != nullptr)
+    if (stream_ != nullptr)
     {
         std::stringstream ss;
         // Notify new connection
         ss << "{\"action\":\"connect\", "
-           << "\"peer_ip\":\""   << stream_->get_peer_ip() << "\", "
+           << "\"peer_ip\":\"" << stream_->get_peer_ip() << "\", "
            << "\"peer_port\":\"" << uint32_t(stream_->get_peer_port()) << "\"}";
         stream_->send(ss.str());
 
         // Send subscribed channels to server
         ss.str("");
-        ss << "{\"action\":\"set_channels\", \"channels\":["; 
-        for(size_t ii=0; ii<subscriptions_.size(); ++ii)
+        ss << "{\"action\":\"set_channels\", \"channels\":[";
+        for (size_t ii = 0; ii < subscriptions_.size(); ++ii)
         {
-            const auto& desc = subscriptions_[ii];
+            const auto &desc = subscriptions_[ii];
             ss << '\"' << desc.name << '\"';
-            if(ii<subscriptions_.size()-1)
+            if (ii < subscriptions_.size() - 1)
                 ss << ',';
         }
         ss << "]}";
@@ -128,21 +136,22 @@ void NetSink::on_attach()
     }
 }
 
-void NetSink::send(const kb::klog::LogStatement& stmt, const kb::klog::LogChannel& chan)
+void NetSink::send(const kb::klog::LogStatement &stmt, const kb::klog::LogChannel &chan)
 {
     // Send JSON formatted message
     std::stringstream ss;
-    ss << "{\"action\":\"msg\", \"channel\":\"" << chan.name 
-       << "\", \"type\":\"" << uint32_t(stmt.msg_type)
-       << "\", \"severity\":\"" << uint32_t(stmt.severity) 
-       << "\", \"timestamp\":\"" << std::chrono::duration_cast<std::chrono::duration<float>>(stmt.timestamp).count() 
-       << "\", \"line\":\"" << stmt.code_line 
-       << "\", \"file\":\"" << stmt.code_file 
-       << "\", \"message\":\"" << su::base64_encode(stmt.message + "\033[0m") << "\"}";
+    ss << "{\"action\":\"msg\", \"channel\":\"" << chan.name << "\", \"type\":\"" << uint32_t(stmt.msg_type)
+       << "\", \"severity\":\"" << uint32_t(stmt.severity) << "\", \"timestamp\":\""
+       << std::chrono::duration_cast<std::chrono::duration<float>>(stmt.timestamp).count() << "\", \"line\":\""
+       << stmt.code_line << "\", \"file\":\"" << stmt.code_file << "\", \"message\":\""
+       << su::base64_encode(stmt.message + "\033[0m") << "\"}";
     stream_->send(ss.str());
 }
 
-void NetSink::send_raw(const std::string& message) { stream_->send(message); }
+void NetSink::send_raw(const std::string &message)
+{
+    stream_->send(message);
+}
 
 } // namespace klog
 } // namespace kb

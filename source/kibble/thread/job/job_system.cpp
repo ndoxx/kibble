@@ -52,7 +52,7 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
         break;
     case SchedulingAlgorithm::min_load:
         KLOGI << "minimum-load (dynamic)" << std::endl;
-        scheduler_ = new MininmumLoadScheduler(*this);
+        scheduler_ = new MinimumLoadScheduler(*this);
         break;
     }
 
@@ -169,7 +169,7 @@ bool JobSystem::is_work_done(Job* job) const { return job->finished.load(std::me
 // and in WorkerThread::execute() I do this after the fetch_sub:
 //      ss_.cv_wait.notify_one();
 // But it deadlocks (lost wakeups?)
-void JobSystem::wait_untill(std::function<bool()> condition)
+void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
     while(condition())
@@ -196,7 +196,7 @@ void JobSystem::wait_untill(std::function<bool()> condition)
 
 void JobSystem::wait(std::function<bool()> condition)
 {
-    wait_untill([this, &condition]() { return is_busy() && condition(); });
+    wait_until([this, &condition]() { return is_busy() && condition(); });
     if(!condition())
     {
         KLOG("thread", 0) << "[JobSystem] wait() exited early." << std::endl;
@@ -207,7 +207,7 @@ void JobSystem::wait(std::function<bool()> condition)
 
 void JobSystem::wait_for(Job* job, std::function<bool()> condition)
 {
-    wait_untill([this, &condition, job]() { return !is_work_done(job) && condition(); });
+    wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
     if(!condition())
     {
         KLOG("thread", 0) << "[JobSystem] wait_for() exited early." << std::endl;

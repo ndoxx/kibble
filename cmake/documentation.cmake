@@ -1,6 +1,7 @@
 function(setup_documentation source_dir output_dir)
     find_package(Doxygen)
     option(BUILD_DOCUMENTATION "Create and install the HTML documentation (requires Doxygen)." ${DOXYGEN_FOUND})
+    option(INCLUDE_INTERNAL_DOCS "Include the internal documentation." OFF)
 
     if(BUILD_DOCUMENTATION)
         if(NOT DOXYGEN_FOUND)
@@ -18,7 +19,7 @@ function(setup_documentation source_dir output_dir)
         set( DOXYGEN_CALLER_GRAPH YES )
         set( DOXYGEN_COLLABORATION_GRAPH YES )
         set( DOXYGEN_BUILTIN_STL_SUPPORT YES )
-        set( DOXYGEN_EXTRACT_PRIVATE YES )
+        set( DOXYGEN_EXTRACT_PRIVATE NO )
         set( DOXYGEN_EXTRACT_PACKAGE YES )
         set( DOXYGEN_EXTRACT_STATIC YES )
         set( DOXYGEN_EXTRACT_LOCALMETHODS YES )
@@ -28,8 +29,12 @@ function(setup_documentation source_dir output_dir)
         set( DOXYGEN_DOT_GRAPH_MAX_NODES 100 )
         set( DOXYGEN_MAX_DOT_GRAPH_DEPTH 0 )
         set( DOXYGEN_DOT_TRANSPARENT YES )
+        set( DOXYGEN_SORT_MEMBER_DOCS NO )
+        
+        # Trying to make this work: $<IF:${INCLUDE_INTERNAL_DOCS},YES,NO>
+        set( DOXYGEN_INTERNAL_DOCS YES )
 
-        doxygen_add_docs( doxygen ${source_dir} )
+        doxygen_add_docs( docs ${source_dir} )
 
     else()
         message( "Doxygen need to be installed to generate the doxygen documentation" )
