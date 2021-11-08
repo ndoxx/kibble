@@ -1,30 +1,8 @@
-#include "random/simplex_noise.h"
 #include "math/constexpr_math.h"
+#include "random/simplex_noise.h"
 #include <random>
 #include <tuple>
 
-/*
- * A fast simplex noise implementation for 2D, 3D and 4D.
- * This is a rewrite of the code used in project WCore.
- * This code was itself a port from:
- * http://www.itn.liu.se/~stegu/simplexnoise/SimplexNoise.java
- * 
- * Original description states:
- * * Based on example code by Stefan Gustavson (stegu@itn.liu.se).
- * * Optimisations by Peter Eastman (peastman@drizzle.stanford.edu).
- * * Better rank ordering method by Stefan Gustavson in 2012.
- * * 
- * * This could be speeded up even further, but it's useful as it is.
- * * 
- * * Version 2015-07-01
- * * 
- * * This code was placed in the public domain by its original author,
- * * Stefan Gustavson. You may use it as you see fit, but
- * * attribution is appreciated.
- *
- * The code retains the original comments.
- *
- */
 
 namespace kb
 {
@@ -53,9 +31,15 @@ constexpr float grad4[32][4] = {
     {-1, 1, 0, -1},  {-1, -1, 0, 1},  {-1, -1, 0, -1}, {1, 1, 1, 0},   {1, 1, -1, 0},  {1, -1, 1, 0},  {1, -1, -1, 0},
     {-1, 1, 1, 0},   {-1, 1, -1, 0},  {-1, -1, 1, 0},  {-1, -1, -1, 0}};
 
-inline float dot(const float* g, float x, float y) { return g[0] * x + g[1] * y; }
-inline float dot(const float* g, float x, float y, float z) { return g[0] * x + g[1] * y + g[2] * z; }
-inline float dot(const float* g, float x, float y, float z, float w)
+inline float dot(const float *g, float x, float y)
+{
+    return g[0] * x + g[1] * y;
+}
+inline float dot(const float *g, float x, float y, float z)
+{
+    return g[0] * x + g[1] * y + g[2] * z;
+}
+inline float dot(const float *g, float x, float y, float z, float w)
 {
     return g[0] * x + g[1] * y + g[2] * z + g[3] * w;
 }
@@ -150,20 +134,20 @@ float SimplexNoiseGenerator::operator()(float xin, float yin, float zin)
     size_t i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
     size_t i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
 
-    if(x0 >= y0)
+    if (x0 >= y0)
     {
-        if(y0 >= z0)
+        if (y0 >= z0)
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(1, 0, 0, 1, 1, 0); // X Y Z order
-        else if(x0 >= z0)
+        else if (x0 >= z0)
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(1, 0, 0, 1, 0, 1); // X Z Y order
         else
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 0, 1, 1, 0, 1); // Z X Y order
     }
     else
     {
-        if(y0 < z0)
+        if (y0 < z0)
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 0, 1, 0, 1, 1); // Z Y X order
-        else if(x0 < z0)
+        else if (x0 < z0)
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 1, 0, 0, 1, 1); // Y Z X order
         else
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 1, 0, 1, 1, 0); // Y X Z order

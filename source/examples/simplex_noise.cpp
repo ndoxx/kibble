@@ -2,7 +2,7 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 #include "random/simplex_noise.h"
-#include "random/noise_octaver.h"
+#include "random/noise_blender.h"
 #include "random/xor_shift.h"
 
 #include <array>
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
     rng::XorShiftEngine rng;
     rng.seed(23456);
     rng::SimplexNoiseGenerator simplex(rng);
-    rng::NoiseOctaver<rng::SimplexNoiseGenerator> octaver(rng);
+    rng::NoiseBlender<rng::SimplexNoiseGenerator> blender(rng);
 
     size_t max_grd_2d = 100;
     size_t max_grd_3d = 20;
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
             for(size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
-                ofs << xx << ' ' << yy << ' ' << octaver.smooth_sample_2d(xx, yy, 0.1f) << std::endl;
+                ofs << xx << ' ' << yy << ' ' << blender.smooth_sample_2d(xx, yy, 0.1f) << std::endl;
             }
         }
     }
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
             for(size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
-                ofs << xx << ' ' << yy << ' ' << octaver.octave(xx, yy, 5, 0.3f, 0.4f) << std::endl;
+                ofs << xx << ' ' << yy << ' ' << blender.octave(xx, yy, 5, 0.3f, 0.4f) << std::endl;
             }
         }
     }
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
             for(size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
-                ofs << xx << ' ' << yy << ' ' << octaver.marble_x_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;
+                ofs << xx << ' ' << yy << ' ' << blender.marble_x_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;
             }
         }
     }
@@ -153,7 +153,7 @@ int main(int argc, char** argv)
             for(size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
-                ofs << xx << ' ' << yy << ' ' << octaver.marble_y_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;
+                ofs << xx << ' ' << yy << ' ' << blender.marble_y_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;
             }
         }
     }

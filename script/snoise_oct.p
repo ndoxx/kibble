@@ -1,5 +1,5 @@
 
-set multiplot layout 2,2 columnsfirst title "{/:Bold=15 Simplex noise}"
+set multiplot layout 2,2 columnsfirst title "{/:Bold=15 Octave simplex noise}"
 set size square
 set view map
 set dgrid3d

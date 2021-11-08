@@ -1,7 +1,4 @@
 
-set terminal x11
-set output
-
 set multiplot layout 1,3 columnsfirst title "{/:Bold=15 Catenary}"
 set key left top
 set size square
