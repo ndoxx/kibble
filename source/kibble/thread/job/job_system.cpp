@@ -52,7 +52,7 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
         break;
     case SchedulingAlgorithm::min_load:
         KLOGI << "minimum-load (dynamic)" << std::endl;
-        scheduler_ = new MininmumLoadScheduler(*this);
+        scheduler_ = new MinimumLoadScheduler(*this);
         break;
     }
 

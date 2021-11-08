@@ -154,7 +154,7 @@ public:
      *
      * @param size size of the chunk to allocate
      * @param alignment alignment constraint, such that `(returned_pointer + offset) % alignment == 0`
-     * @param offset offset between the returned bas pointer and the user pointer
+     * @param offset offset between the returned base pointer and the user pointer
      * @param file source file where that allocation was performed
      * @param line source line where that allocation was performed
      * @return base pointer to the allocated chunk
@@ -266,7 +266,7 @@ private:
  * Similar to a MemoryArena with a LinearAllocator but with specialized read() and write() functions instead of
  * allocation functions. This buffer is random access, the head can be moved anywhere thanks to a seek() function.
  *
- * @todo This class could be rewrote as a wrapper around a MemoryArena with a custom linear allocator that enables
+ * @todo This class could be rewritten as a wrapper around a MemoryArena with a custom linear allocator that enables
  * random access.
  *
  * @tparam ThreadPolicyT

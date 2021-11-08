@@ -76,7 +76,7 @@ struct argb32_t
 };
 
 /**
- * @brief Transform a color by multiplication of each color channel by a given factor
+ * @brief Transform a color by multiplication of each color channel by a given factor.
  * Allows to lighten or darken colors
  *
  * @param color Input color
@@ -275,7 +275,7 @@ constexpr argb32_t pack_ARGB(const ColorRGBA &rgba)
 // * Color differences
 /**
  * @brief Fast perceptive difference.
- * adapted from https://www.compuphase.com/cmetric.htm
+ * Adapted from https://www.compuphase.com/cmetric.htm
  *
  * @param col1 First color
  * @param col2 Second color
@@ -284,7 +284,7 @@ constexpr argb32_t pack_ARGB(const ColorRGBA &rgba)
 float delta_E_cmetric(argb32_t col1, argb32_t col2);
 
 /**
- * @brief (Slower) CIE delta E squared, 1976 formula (Lab space Euclidean distance)
+ * @brief (Slower) CIE delta E squared, 1976 formula (Lab space Euclidean distance).
  *
  * @param col1 First color
  * @param col2 Second color
@@ -293,7 +293,7 @@ float delta_E_cmetric(argb32_t col1, argb32_t col2);
 float delta_E2_CIE76(ColorCIELab col1, ColorCIELab col2);
 
 /**
- * @brief (Even slower) CIE delta E squared, 1994 formula (L*C*h* distance that addresses perceptual non-uniformities)
+ * @brief (Even slower) CIE delta E squared, 1994 formula (L*C*h* distance that addresses perceptual non-uniformities).
  *
  * @param col1 First color
  * @param col2 Second color

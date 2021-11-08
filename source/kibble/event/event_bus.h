@@ -1,5 +1,7 @@
-/*
- * This is a rewrite of the event system used in my projects WCore and ErwinEngine
+/**
+ * @file event_bus.h
+ * @brief This is a rewrite of the event system used in my projects WCore and ErwinEngine.
+ *
  * Initially inspired by https://medium.com/@savas/nomad-game-engine-part-7-the-event-system-45a809ccb68f
  * Differences are:
  * - Using const references or rvalues instead of pointers to pass events around
@@ -14,9 +16,17 @@
  * TODO:
  * [ ] Dispatch deadlock detection?
  * [ ] Event pooling if deemed necessary
+ *
+ * @author your name (you@domain.com)
+ * @brief
+ * @version 0.1
+ * @date 2021-11-08
+ *
+ * @copyright Copyright (c) 2021
+ *
  */
-
 #pragma once
+
 #include <algorithm>
 #include <chrono>
 #include <functional>
@@ -42,6 +52,12 @@ namespace event
 namespace detail
 {
 
+/**
+ * @internal
+ * @brief Conceppt of an event that is serializable to an std::ostream.
+ *
+ * @tparam T Event type
+ */
 template <typename T>
 concept Streamable = requires(std::ostream &stream, T a)
 {
@@ -56,22 +72,39 @@ using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock, st
 template <typename T>
 using to_pointer = std::add_pointer<typename std::remove_reference<T>::type>;
 
-// Interface for an event queue
+/**
+ * @internal
+ * @brief Interface for an event queue.
+ *
+ */
 class AbstractEventQueue
 {
 public:
     virtual ~AbstractEventQueue() = default;
+
     virtual bool process(TimePoint) = 0;
     virtual void drop() = 0;
     virtual bool empty() const = 0;
     virtual size_t size() const = 0;
 };
 
-// Concrete event queue, can subscribe functions, and process events immediately or in a deferred fashion
+/**
+ * @internal
+ * @brief Concrete event queue, can subscribe functions, and process events immediately or in a deferred fashion.
+ *
+ * @tparam EventT
+ */
 template <typename EventT>
 class EventQueue : public kb::event::detail::AbstractEventQueue
 {
 public:
+    /**
+     * @internal
+     * @brief Subscribe a free function.
+     *
+     * @tparam Function
+     * @param priority
+     */
     template <std::invocable<const EventT &> auto Function>
     inline void subscribe(uint32_t priority)
     {
@@ -79,7 +112,17 @@ public:
         sort();
     }
 
-    // I use template magic to handle both const and non-const cases at the same time
+    /**
+     * @internal
+     * @brief Subscribe a member function.
+     *
+     * I use template magic to handle both const and non-const cases at the same time.
+     *
+     * @tparam ClassRef either a reference or a const reference type
+     * @tparam MemberFunction
+     * @param instance class instance
+     * @param priority
+     */
     template <typename ClassRef,
               std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
     inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority = 0u)
@@ -88,6 +131,14 @@ public:
         sort();
     }
 
+    /**
+     * @internal
+     * @brief Unsubscribe a free function.
+     *
+     * @tparam Function
+     * @return true if the delegate was found and erased
+     * @return false otherwise
+     */
     template <std::invocable<const EventT &> auto Function>
     bool unsubscribe()
     {
@@ -102,7 +153,18 @@ public:
         return false;
     }
 
-    // I use template magic to handle both const and non-const cases at the same time
+    /**
+     * @internal
+     * @brief Unsubscribe a member function.
+     *
+     * I use template magic to handle both const and non-const cases at the same time.
+     *
+     * @tparam ClassRef either a reference or a const reference type
+     * @tparam MemberFunction
+     * @param instance class instance
+     * @return true if the delegate was found and erased
+     * @return false otherwise
+     */
     template <typename ClassRef,
               std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
@@ -118,15 +180,36 @@ public:
         return false;
     }
 
+    /**
+     * @internal
+     * @brief Submit an event to this queue.
+     *
+     * @param event
+     */
     inline void submit(const EventT &event)
     {
         queue_.push(event);
     }
+
+    /**
+     * @internal
+     * @brief Submit an event to this queue (r-value version).
+     *
+     * @param event
+     */
     inline void submit(EventT &&event)
     {
         queue_.push(event);
     }
 
+    /**
+     * @internal
+     * @brief Fire an event instantly.
+     *
+     * All the delegates are iterates and executed. The queue is left untouched.
+     *
+     * @param event
+     */
     void fire(const EventT &event) const
     {
         // Iterate in reverse order, so the last subscribers execute first
@@ -135,6 +218,16 @@ public:
                 break; // If handler returns true, event is not propagated further
     }
 
+    /**
+     * @internal
+     * @brief Process all events until a deadline is reached.
+     *
+     * While the queue is not empty, pop an event and execute all the delegates on it.
+     *
+     * @param deadline time point at which the event processing should be interrupted.
+     * @return true if all the events have been processed
+     * @return false if the function timed out, and there are still events in the queue
+     */
     bool process(TimePoint deadline) override final
     {
         while (!queue_.empty())
@@ -153,22 +246,46 @@ public:
         return true;
     }
 
+    /**
+     * @internal
+     * @brief Drop all events of this queue.
+     *
+     */
     void drop() override final
     {
+        // Swap with an empty queue
         Queue{}.swap(queue_);
     }
 
+    /**
+     * @internal
+     * @brief Check if the queue is empty.
+     *
+     * @return true if it is empty
+     * @return false otherwise
+     */
     bool empty() const override final
     {
         return queue_.empty();
     }
 
+    /**
+     * @internal
+     * @brief Get the number of events in this queue.
+     *
+     * @return size_t
+     */
     size_t size() const override final
     {
         return queue_.size();
     }
 
 private:
+    /**
+     * @internal
+     * @brief Sort the delegate list according to delegate priority.
+     *
+     */
     inline void sort()
     {
         std::sort(delegates_.begin(), delegates_.end(),
@@ -183,9 +300,15 @@ private:
     Queue queue_;
 };
 
-// This helper struct helps deduce the event type from a handler signature.
-// Thanks to it, only the handler function pointer is required as a template parameter
-// when calling the EventBus' subscribe methods.
+/**
+ * @internal
+ * @brief This helper struct helps deduce the event type from a handler signature.
+ *
+ * Thanks to it, only the handler function pointer is required as a template parameter when calling the EventBus'
+ * subscribe methods.
+ *
+ * @tparam S
+ */
 template <typename S>
 struct Signature;
 
@@ -343,7 +466,7 @@ public:
     }
 
     /**
-     * @brief Fire an event and have it handled immediately
+     * @brief Fire an event and have it handled immediately.
      * If there is no subscriber listening for this event type, this function does nothing.
      *
      * @tparam EventT The type of event to fire
@@ -381,7 +504,7 @@ public:
     }
 
     /**
-     * @brief Enqueue an event for deferred handling, during the dispatch() call
+     * @brief Enqueue an event for deferred handling, during the dispatch() call.
      * If there is no subscriber listening for this event type, this function does nothing.
      *
      * @tparam EventT The type of event to enqueue
@@ -410,7 +533,7 @@ public:
     bool dispatch(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(0));
 
     /**
-     * @brief Drop all events of the same type
+     * @brief Drop all events of the same type.
      *
      * @tparam EventT The type of events to drop
      */
@@ -423,13 +546,13 @@ public:
     }
 
     /**
-     * @brief Drop all enqueued events
+     * @brief Drop all enqueued events.
      *
      */
     void drop();
 
     /**
-     * @brief Check if all queues are empty
+     * @brief Check if all queues are empty.
      *
      * @return true if all queues are empty
      * @return false otherwise
@@ -437,7 +560,7 @@ public:
     bool empty();
 
     /**
-     * @brief Get the number of unprocessed events
+     * @brief Get the number of unprocessed events.
      *
      * @return size_t
      */
@@ -464,7 +587,14 @@ public:
 
 private:
 #ifdef K_DEBUG
-    // Log an event
+    /**
+     * @internal
+     * @brief Log an event.
+     *
+     * @tparam EventT event type
+     * @param event the event
+     * @param is_queued set to true if the event was enqueued
+     */
     template <typename EventT>
     inline void track_event(const EventT &event, bool is_queued)
     {
@@ -489,7 +619,13 @@ private:
     }
 #endif
 
-    // Helper function to get a particular event queue if it exists or create a new one if not
+    /**
+     * @internal
+     * @brief Helper function to get a particular event queue if it exists or create a new one if not.
+     *
+     * @tparam EventT event type
+     * @return the event queue for this event type
+     */
     template <typename EventT>
     auto &get_or_create()
     {
@@ -500,7 +636,13 @@ private:
         return queue;
     }
 
-    // Helper function to access a queue only if it exists
+    /**
+     * @internal
+     * @brief Helper function to access a queue only if it exists.
+     *
+     * @tparam EventT event type
+     * @param visit visitor called on the event queue if it exists
+     */
     template <typename EventT>
     void try_get(std::function<void(detail::EventQueue<EventT> *)> visit)
     {

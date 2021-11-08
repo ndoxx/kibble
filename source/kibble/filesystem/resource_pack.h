@@ -17,9 +17,12 @@ namespace kfs
  */
 struct PackLocalEntry
 {
-    uint32_t offset;  /// Byte offset in the pack
-    uint32_t size;    /// Size in bytes the file takes up
-    std::string path; /// Relative path of this file
+    /// Byte offset in the pack
+    uint32_t offset;  
+    /// Size in bytes the file takes up
+    uint32_t size;    
+    /// Relative path of this file
+    std::string path; 
 
     static constexpr size_t k_serialized_size = 3 * sizeof(uint32_t);
 
@@ -54,7 +57,7 @@ class PackFile
 public:
     /**
      * @brief Construct a new Pack File from a file.
-     * The constructor uses K_ASSERTions to make sure the file exists and the header is valid, so it is important to
+     * The constructor uses K_ASSERTs to make sure the file exists and the header is valid, so it is important to
      * build and test your application in debug mode first, where this assertion will be evaluated.
      * Packs created with a different version of this class are incompatible and cannot be read when the assertions are
      * enabled. If the assertions are disabled, anything is possible, so beware.\n

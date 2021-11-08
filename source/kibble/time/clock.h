@@ -35,7 +35,7 @@ public:
     }
 
     /**
-     * @brief Get time elapsed since the chronometer was constructed or restart.
+     * @brief Get time elapsed since the chronometer was constructed or restarted.
      *
      * @return DurationT
      */

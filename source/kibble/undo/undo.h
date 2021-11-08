@@ -77,7 +77,7 @@ public:
     /**
      * @brief Check whether this command is obsolete. Called by UndoStack::push().
      *
-     * @return true when the command is obsolete and can be removes
+     * @return true when the command is obsolete and can be removed
      * @return false otherwise
      */
     inline bool is_obsolete() const

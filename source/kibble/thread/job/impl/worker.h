@@ -17,10 +17,14 @@ namespace th
  */
 struct WorkerProperties
 {
-    bool is_background = false; /// false if main thread, true otherwise
-    bool can_steal = false;     /// true if this worker can steal jobs from other worker's queues, false otherwise
-    size_t max_stealing_attempts = 16; /// maximum allowable attempts at stealing a job
-    tid_t tid;                         /// worker id
+    /// false if main thread, true otherwise
+    bool is_background = false;        
+    /// true if this worker can steal jobs from other worker's queues, false otherwise
+    bool can_steal = false;            
+    /// maximum allowable attempts at stealing a job
+    size_t max_stealing_attempts = 16; 
+    /// worker id
+    tid_t tid;                         
 };
 
 struct Job;
@@ -32,11 +36,16 @@ struct Job;
  */
 struct SharedState
 {
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0}; /// Number of tasks left
-    PAGE_ALIGN std::atomic<bool> running = {true};  /// Flag to signal workers when they should stop and join
-    PAGE_ALIGN PoolArena job_pool;                  /// Memory arena to store job structures (page aligned)
-    PAGE_ALIGN std::condition_variable cv_wake;     /// To wake worker threads
-    PAGE_ALIGN std::mutex wake_mutex;               /// Workers wait on this one when they're idle
+    /// Number of tasks left
+    PAGE_ALIGN std::atomic<uint64_t> pending = {0}; 
+    /// Flag to signal workers when they should stop and join
+    PAGE_ALIGN std::atomic<bool> running = {true};  
+    /// Memory arena to store job structures (page aligned)
+    PAGE_ALIGN PoolArena job_pool;                  
+    /// To wake worker threads
+    PAGE_ALIGN std::condition_variable cv_wake;     
+    /// Workers wait on this one when they're idle
+    PAGE_ALIGN std::mutex wake_mutex;               
 };
 
 class JobSystem;
@@ -102,7 +111,7 @@ public:
 
     /**
      * @brief Only the main thread calls this function to pop and execute a single job.
-     * This function can potentially steal jobs from background workers. It is used to assist background threads wile
+     * This function can potentially steal jobs from background workers. It is used to assist background threads while
      * waiting on the main thread.
      *
      * @return true if the pop operation succeeded

@@ -106,7 +106,7 @@ public:
     }
 
     /**
-     * @brief Remove all elements from the set.
+     * @brief Remove all elements from the set.\n
      * Complexity: O(1)
      *
      */
@@ -116,7 +116,7 @@ public:
     }
 
     /**
-     * @brief Check if an element exists in the set.
+     * @brief Check if an element exists in the set.\n
      * Complexity: O(1)
      *
      * @param val value to check
@@ -278,7 +278,7 @@ public:
     }
 
     /**
-     * @brief Check if an element exists in the set.
+     * @brief Check if an element exists in the set.\n
      * Complexity: O(1)
      *
      * @param val value to check
@@ -293,7 +293,7 @@ public:
     /**
      * @brief Reserve space for numbers up to u.
      * If the capacity is already greater than u, nothing happens.\n
-     * Complexity: O(n) in the worsk case if reallocation happens
+     * Complexity: O(n) in the worst case if reallocation happens
      *
      * @param u new upper bound for the numbers
      */
@@ -310,7 +310,7 @@ public:
     /**
      * @brief Insert a new element in the set.
      * If the element already exists in the set, nothing is done.\n
-     * Complexity: O(1) in most cases, O(n) in the worsk case if reallocation happens
+     * Complexity: O(1) in most cases, O(n) in the worst case if reallocation happens
      *
      * @param val value to insert
      */
@@ -329,7 +329,7 @@ public:
 
     /**
      * @brief Remove an element in the set.
-     * If the element does not exist in the set, nothing is done. Internal vectors do not shrink.
+     * If the element does not exist in the set, nothing is done. Internal vectors do not shrink.\n
      * Complexity: O(1)
      *
      * @param val
@@ -446,7 +446,7 @@ public:
     }
 
     /**
-     * @brief Check if an input integer was produced by this pool.
+     * @brief Check if an input integer was produced by this pool.\n
      * Complexity: O(1)
      *
      * @param val value to check
@@ -459,7 +459,7 @@ public:
     }
 
     /**
-     * @brief Remove all elements from the set.
+     * @brief Remove all elements from the set.\n
      * Complexity: O(n)
      *
      */
@@ -530,14 +530,14 @@ constexpr UIntT make_mask(const UIntT shift_pos)
 
 /**
  * @brief More robust version of the SparsePool.
- * One of the shortcomings of the SparsePool class is that a handle that has been returned will be produced again as-is.
+ * One of the shortcomings of the SparsePool class is that a handle that has been released will be produced again as-is.
  * This makes it impractical to use in some real world scenarios, where we may want to distinguish a recycled handle
  * from a newly produced one: a resource indexed by an integer handle could have been freed, the handle released and
  * produced again later on, and we wouldn't notice by looking at the original handle.
  *
  * This version of the sparse pool uses a few MSB bits of the integer handles it produces to save the number of
- * recyclings. Then an old handle that has been released will never compare to a recycled handle using the same base
- * integer, at least until the counter overflows and cycles back to zero. The number of guard bits is adjustable at
+ * recyclings. Then an old handle that has been released will never compare to a recycled handle that is using the same
+ * base integer, at least until the counter overflows and cycles back to zero. The number of guard bits is adjustable at
  * compile-time thanks to a template parameter.
  *
  *
@@ -667,6 +667,7 @@ public:
      * The handle is deemed valid if:
      * - Its base integer part was produced by the pool
      * - The guard part is the most recent version for this base integer
+     * 
      * Complexity: O(1)
      *
      * @param val value to check
@@ -682,7 +683,7 @@ public:
     }
 
     /**
-     * @brief Remove all elements from the set.
+     * @brief Remove all elements from the set.\n
      * Complexity: O(n)
      *
      */
@@ -694,7 +695,7 @@ public:
     }
 
     /**
-     * @brief Produce the next available handle from the pool.
+     * @brief Produce the next available handle from the pool.\n
      * Complexity: O(1)
      *
      * @see release()

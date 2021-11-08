@@ -84,13 +84,20 @@ public:
     float arclen_remap(float ss) const;
 
 private:
-    float a_;              // Scale parameter
-    float p_;              // x-offset
-    float q_;              // y-offset
-    float m_;              // Anchors midpoint
-    float C_;              // Integration constant for arc-length parameterization
-    float s_;              // Full length between anchor points
-    bool reflect_ = false; // Reflect curve w.r.t midpoint?
+    /// Scale parameter
+    float a_;              
+    /// x-offset
+    float p_;              
+    /// y-offset
+    float q_;              
+    /// Anchors midpoint
+    float m_;              
+    /// Integration constant for arc-length parameterization
+    float C_;              
+    /// Full length between anchor points
+    float s_;              
+    /// Reflect curve w.r.t midpoint?
+    bool reflect_ = false; 
 };
 
 } // namespace math

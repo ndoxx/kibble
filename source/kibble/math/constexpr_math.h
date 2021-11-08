@@ -31,7 +31,7 @@ double constexpr sqrt_newton_raphson(double x, double curr, double prev)
  *
  * @param x
  * @return For a finite and non-negative value of "x", returns an approximation for the square root of "x", otherwise,
- * returns NaN
+ * returns NaN.
  */
 float constexpr fsqrt(float x)
 {
@@ -54,7 +54,7 @@ double constexpr sqrt(double x)
 }
 
 /**
- * @brief Previous power of 2 of x
+ * @brief Previous power of 2 of x.
  * May originate from the Hacker's Delight book
  *
  * @param x
@@ -71,7 +71,7 @@ constexpr uint32_t pp2(uint32_t x)
 }
 
 /**
- * @brief Next power of 2 of x
+ * @brief Next power of 2 of x.
  * May originate from the Hacker's Delight book
  *
  * @param x

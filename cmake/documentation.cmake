@@ -1,6 +1,7 @@
 function(setup_documentation source_dir output_dir)
     find_package(Doxygen)
     option(BUILD_DOCUMENTATION "Create and install the HTML documentation (requires Doxygen)." ${DOXYGEN_FOUND})
+    option(INCLUDE_INTERNAL_DOCS "Include the internal documentation." OFF)
 
     if(BUILD_DOCUMENTATION)
         if(NOT DOXYGEN_FOUND)
@@ -29,6 +30,9 @@ function(setup_documentation source_dir output_dir)
         set( DOXYGEN_MAX_DOT_GRAPH_DEPTH 0 )
         set( DOXYGEN_DOT_TRANSPARENT YES )
         set( DOXYGEN_SORT_MEMBER_DOCS NO )
+        
+        # Trying to make this work: $<IF:${INCLUDE_INTERNAL_DOCS},YES,NO>
+        set( DOXYGEN_INTERNAL_DOCS YES )
 
         doxygen_add_docs( docs ${source_dir} )
 

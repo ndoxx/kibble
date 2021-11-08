@@ -143,14 +143,14 @@ public:
 };
 
 /**
- * @brief This sink writes to a file (ANSI codes are stripped away)
+ * @brief This sink writes to a file (ANSI codes are stripped away).
  *
  */
 class LogFileSink : public Sink
 {
 public:
     /**
-     * @brief Construct a new Log File Sink, and initialize the path of its output file
+     * @brief Construct a new Log File Sink, and initialize the path of its output file.
      *
      * @param filename Path to the output log file
      */
@@ -184,7 +184,7 @@ private:
 };
 
 /**
- * @brief This sink writes to a TCP socket
+ * @brief This sink writes to a TCP socket.
  *
  */
 class NetSink : public Sink

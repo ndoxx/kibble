@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * @file argparse.h
  * @author ndx
@@ -10,6 +8,8 @@
  * @copyright Copyright (c) 2021
  *
  */
+
+#pragma once
 
 #include <functional>
 #include <map>
@@ -76,12 +76,18 @@ static constexpr ArgType k_underlying_type = ArgType::NONE;
  */
 struct AbstractOption
 {
-    char short_name = 0;             /// Single letter form of this option
-    char dependency = 0;             /// Short name of another option that is required for this one to make sense
-    bool is_set = false;             /// True if this option was set
-    std::string full_name;           /// Double-dash full form of this option
-    std::string description;         /// Small text describing what the option does
-    std::set<size_t> exclusive_sets; /// Compatibility requirements for this option
+    /// Single letter form of this option
+    char short_name = 0;             
+    /// Short name of another option that is required for this one to make sense
+    char dependency = 0;             
+    /// True if this option was set
+    bool is_set = false;             
+    /// Double-dash full form of this option
+    std::string full_name;           
+    /// Small text describing what the option does
+    std::string description;         
+    /// Compatibility requirements for this option
+    std::set<size_t> exclusive_sets; 
 
     virtual ~AbstractOption() = default;
 
@@ -97,15 +103,15 @@ struct AbstractOption
     virtual ArgType underlying_type() const = 0;
 
     /**
-     * @brief Serialize an option description line to a stream
-     * Used by the usage string generator
+     * @brief Serialize an option description line to a stream.
+     * Used by the usage string generator.
      * @param max_pad Maximum padding length between the option name and its description
      */
     void format_description(std::ostream &, long max_pad) const;
 };
 
 /**
- * @brief Concrete option with an associated value of type T
+ * @brief Concrete option with an associated value of type T.
  * A flag is just an option with a boolean value.
  * @tparam T Underlying value type
  */
@@ -115,7 +121,7 @@ struct Option : public AbstractOption
     T value; /// The value of this option
 
     /**
-     * @brief Cast the input string to the type T and initialize value
+     * @brief Cast the input string to the type T and initialize value.
      *
      * @param operand String next to the option to be cast to a value
      */
@@ -125,7 +131,7 @@ struct Option : public AbstractOption
     }
 
     /**
-     * @brief Get underlying type as a tag
+     * @brief Get underlying type as a tag.
      *
      * @return ArgType
      */
@@ -135,7 +141,7 @@ struct Option : public AbstractOption
     }
 
     /**
-     * @brief Convenience operator to obtain the stored value
+     * @brief Convenience operator to obtain the stored value.
      *
      * @return const T&
      */

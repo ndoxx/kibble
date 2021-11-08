@@ -73,7 +73,7 @@ public:
     /**
      * @brief Hand this job to the next worker.
      * If the job declares a non-default worker affinity in its metadata, the round robin will cycle until the
-     * apropriate worker can handle it.
+     * appropriate worker can handle it.
      *
      * @param job job instance
      */
@@ -88,15 +88,15 @@ private:
  * This dynamic load balancing strategy benefits from Monitor input to make informed dispatch decisions.
  *
  */
-class MininmumLoadScheduler : public Scheduler
+class MinimumLoadScheduler : public Scheduler
 {
 public:
     /**
-     * @brief Construct a new MininmumLoadScheduler.
+     * @brief Construct a new MinimumLoadScheduler.
      *
      * @param js job system instance
      */
-    MininmumLoadScheduler(JobSystem &js);
+    MinimumLoadScheduler(JobSystem &js);
 
     /**
      * @brief Hand this job to the optimally selected worker.

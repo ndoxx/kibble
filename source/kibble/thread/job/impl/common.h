@@ -62,15 +62,20 @@ using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true
  */
 struct WorkerActivity
 {
-    int64_t active_time_us = 0; /// Time in µs the worker was actively doing things
-    int64_t idle_time_us = 0;   // Time in µs the worker was doing nothing
-    size_t executed = 0;        /// Number of tasks executed by the worker
-    size_t stolen = 0;          /// Number of tasks stolen by the worker
-    size_t resubmit = 0;        /// Number of tasks resubmitted by the worker
-    tid_t tid = 0;              /// Worker id
+    /// Time in µs the worker was actively doing things
+    int64_t active_time_us = 0;
+    /// Time in µs the worker was doing nothing
+    int64_t idle_time_us = 0;
+    /// Number of tasks executed by the worker
+    size_t executed = 0;
+    /// Number of tasks stolen by the worker
+    size_t stolen = 0;
+    /// Number of tasks resubmitted by the worker
+    size_t resubmit = 0;
+    /// Worker id
+    tid_t tid = 0;
 
     /**
-     * @internal
      * @brief Reset all statistics
      *
      */

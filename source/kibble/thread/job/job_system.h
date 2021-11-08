@@ -24,7 +24,7 @@ using JobKernel = std::function<void(void)>;
 using worker_affinity_t = uint32_t;
 using label_t = uint64_t;
 
-/// A job with this affinity can be executed on any woker
+/// A job with this affinity can be executed on any worker
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ANY = std::numeric_limits<worker_affinity_t>::max();
 /// A job with this affinity should be executed on the main thread
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_MAIN = 1;
@@ -37,9 +37,12 @@ using label_t = uint64_t;
  */
 struct JobMetadata
 {
-    label_t label = 0;                                       /// Uniquely identifies a job
-    worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY; /// Workers this job can be pushed to
-    int64_t execution_time_us = 0;                           /// The time in µs it took to complete the job
+    /// Uniquely identifies a job
+    label_t label = 0;                                       
+    /// Workers this job can be pushed to
+    worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY; 
+    /// The time in µs it took to complete the job
+    int64_t execution_time_us = 0;                           
 };
 
 /**
@@ -48,13 +51,18 @@ struct JobMetadata
  */
 struct Job
 {
-    JobMetadata meta;               /// Job metadata
-    JobKernel kernel = JobKernel{}; /// The function to execute
-    std::vector<Job *> dependants;  /// All jobs that have this one as a dependency
+    /// Job metadata
+    JobMetadata meta;
+    /// The function to execute
+    JobKernel kernel = JobKernel{};
+    /// All jobs that have this one as a dependency
+    std::vector<Job *> dependants;
 
     // State
-    std::atomic<size_t> dependency_count = {0}; /// Job can be executed when this reaches 0
-    std::atomic<bool> finished = {false};       /// Set to true when this job has been processed
+    /// Job can be executed when this reaches 0
+    std::atomic<size_t> dependency_count = {0};
+    /// Set to true when this job has been processed
+    std::atomic<bool> finished = {false};
 
     /**
      * @brief Add a job that can only be executed once this job was processed.
@@ -84,10 +92,14 @@ enum class SchedulingAlgorithm : uint8_t
  */
 struct JobSystemScheme
 {
-    size_t max_workers = 0;            /// Maximum number of worker threads, if 0 => CPU_cores - 1
-    size_t max_stealing_attempts = 16; /// Maximum number of stealing attempts before moving to the next worker
-    bool enable_work_stealing = true;  /// Allow idle workers to steal jobs from their siblings
-    SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin; /// Job scheduling policy
+    /// Maximum number of worker threads, if 0 => CPU_cores - 1
+    size_t max_workers = 0;                                                      
+    /// Maximum number of stealing attempts before moving to the next worker
+    size_t max_stealing_attempts = 16;                                           
+    /// Allow idle workers to steal jobs from their siblings
+    bool enable_work_stealing = true;                                            
+    /// Job scheduling policy
+    SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin; 
 };
 
 struct SharedState;

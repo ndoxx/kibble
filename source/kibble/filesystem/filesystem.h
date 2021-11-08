@@ -34,7 +34,7 @@ using IStreamPtr = std::shared_ptr<std::istream>;
  * - *Universal paths* are formatted strings that can be converted to regular paths. They can be either written in the
  * form of a regular path like `path/to/file` or include an alias using the syntax `alias://path/to/file`. In the latter
  * case, the alias can either reference a regular directory or the root of a pack file, and the rest of the path is read
- * relative to the aliased directory. Either way the file system will be able to find the targeted ressource.
+ * relative to the aliased directory. Either way the file system will be able to find the targeted resource.
  *
  * FEATURES:
  * - Transparent directory / resource pack aliasing

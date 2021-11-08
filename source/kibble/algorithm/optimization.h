@@ -22,13 +22,21 @@ namespace opt
 template <typename ControlT>
 struct DescentParameters
 {
-    ControlT initial_control;          /// Initial values used as a starting point in the optimization process
-    float initial_step = 1.f;          /// Initial value @f$a@f$ of the learning rate (gain sequence @f$a_n@f$)
-    float initial_radius = 0.5f;       /// Initial value @f$c@f$ of the perturbation radius (gain sequence @f$c_n@f$)
-    float learning_bias = 0.f;         /// Bias term @f$A@f$ in the denominator of the power law for @f$a_n@f$
-    float convergence_delta = 0.0005f; /// Loss function difference convergence criterion @f$\delta@f$
-    float alpha = 0.602f;              /// Power law exponent for the @f$a_n@f$ schedule
-    float gamma = 0.101f;              /// Power law exponent for the @f$c_n@f$ schedule
+    /// Initial values used as a starting point in the optimization process
+    ControlT initial_control;          
+    /// Initial value @f$a@f$ of the learning rate (gain sequence @f$a_n@f$)
+    float initial_step = 1.f;          
+    /// Initial value @f$c@f$ of the perturbation radius (gain sequence @f$c_n@f$)
+    float initial_radius = 0.5f;       
+    /// Bias term @f$A@f$ in the denominator of the power law for @f$a_n@f$
+    float learning_bias = 0.f;         
+    /// Loss function difference convergence criterion @f$\delta@f$
+    float convergence_delta = 0.0005f; 
+    /// Power law exponent for the @f$a_n@f$ schedule
+    float alpha = 0.602f;              
+    /// Power law exponent for the @f$c_n@f$ schedule
+    float gamma = 0.101f;    
+    /// Maximum number of iterations          
     size_t max_iter = 200;
 };
 

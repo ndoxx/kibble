@@ -55,7 +55,7 @@ std::string human_size(std::size_t bytes);
 void hex_dump_highlight(uint32_t word, const kb::KB_ &wcb);
 
 /**
- * @brief Remove all previously configured hex dump hilights
+ * @brief Remove all previously configured hex dump highlights
  *
  */
 void hex_dump_clear_highlights();

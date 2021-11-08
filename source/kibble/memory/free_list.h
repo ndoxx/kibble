@@ -46,7 +46,7 @@ public:
     /**
      * @brief Get a pointer to the next unallocated block.
      *
-     * @return pointer to the newt available block or nullptr if there is no more room
+     * @return pointer to the next available block or nullptr if there is no more room
      */
     inline void *acquire()
     {

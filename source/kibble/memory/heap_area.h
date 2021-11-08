@@ -20,10 +20,14 @@ namespace debug
  */
 struct AreaItem
 {
-    std::string name;      /// debug name of the block
-    void *begin = nullptr; /// pointer to the beginning of the block
-    void *end = nullptr;   /// pointer past the end of the block
-    std::size_t size = 0;  /// size of the block
+    /// debug name of the block
+    std::string name;      
+    /// pointer to the beginning of the block
+    void *begin = nullptr; 
+    /// pointer past the end of the block
+    void *end = nullptr;   
+    /// size of the block
+    std::size_t size = 0;  
 };
 
 } // namespace debug
@@ -131,7 +135,7 @@ public:
     /**
      * @brief Show a hex dump of a portion of the memory content of this area, starting at the beginning and of
      * specified size.
-     * @warning This was done in hurry to debug something during the tests, the interface is bad and this should evolve
+     * @warning This was done in a hurry to debug something during the tests, the interface is bad and this should evolve
      * into a better designed feature later on.
      *
      * @param stream stream to output the hex dump to

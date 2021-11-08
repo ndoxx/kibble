@@ -72,13 +72,21 @@ void Monitor::log_statistics(tid_t tid) const
     KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
 }
 
-// Header for Job Profile Persistence files
+/**
+ * @internal
+ * @brief Header for Job Profile Persistence files.
+ *
+ */
 struct JPPHeader
 {
-    uint32_t magic;         // Magic number to check file format validity
-    uint16_t version_major; // Version major number
-    uint16_t version_minor; // Version minor number
-    uint64_t label_count;   // Number of job labels in this file
+    /// Magic number to check file format validity
+    uint32_t magic;         
+    /// Version major number
+    uint16_t version_major; 
+    /// Version minor number
+    uint16_t version_minor; 
+    /// Number of job labels in this file
+    uint64_t label_count;   
 };
 
 #define JPP_MAGIC 0x4650504a // ASCII(JPPF)

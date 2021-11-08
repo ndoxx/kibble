@@ -64,17 +64,28 @@ struct ConsoleColor
     }
 
 // Semiotics of colors I'm used to
-#define KS_PATH_ KF_(kb::col::cyan)        /// Console color for: path
-#define KS_INST_ KF_(kb::col::lightorange) /// Console color for: instruction
-#define KS_DEFL_ KF_(kb::col::ndxorange)   /// Console color for: default
-#define KS_NAME_ KF_(kb::col::orangered)   /// Console color for: name
-#define KS_IVAL_ KF_(kb::col::violet)      /// Console color for: important value
-#define KS_VALU_ KF_(kb::col::lawngreen)   /// Console color for: value
-#define KS_ATTR_ KF_(kb::col::lime)        /// Console color for: attribute
-#define KS_NODE_ KF_(kb::col::turquoise)   /// Console color for: node
-#define KS_HIGH_ KF_(kb::col::pink)        /// Console color for: highlight
-#define KS_GOOD_ KF_(kb::col::green)       /// Console color for: good thing
-#define KS_BAD_ KF_(kb::col::red)          /// Console color for: bad thing
+/// @def KS_PATH_ Console color for: path
+#define KS_PATH_ KF_(kb::col::cyan)        
+/// @def KS_INST_ Console color for: instruction
+#define KS_INST_ KF_(kb::col::lightorange) 
+/// @def KS_DEFL_ Console color for: default
+#define KS_DEFL_ KF_(kb::col::ndxorange)   
+/// @def KS_NAME_ Console color for: name
+#define KS_NAME_ KF_(kb::col::orangered)   
+/// @def KS_IVAL_ Console color for: important value
+#define KS_IVAL_ KF_(kb::col::violet)      
+/// @def KS_VALU_ Console color for: value
+#define KS_VALU_ KF_(kb::col::lawngreen)   
+/// @def KS_ATTR_ Console color for: attribute
+#define KS_ATTR_ KF_(kb::col::lime)        
+/// @def KS_NODE_ Console color for: node
+#define KS_NODE_ KF_(kb::col::turquoise)   
+/// @def KS_HIGH_ Console color for: highlight
+#define KS_HIGH_ KF_(kb::col::pink)        
+/// @def KS_GOOD_ Console color for: good thing
+#define KS_GOOD_ KF_(kb::col::green)       
+/// @def KS_BAD_ Console color for: bad thing
+#define KS_BAD_ KF_(kb::col::red)          
 
 namespace klog
 {
@@ -117,14 +128,20 @@ enum class MsgType : std::uint8_t
  */
 struct LogStatement
 {
-    hash_t channel;                /// The channel targeted by this statement
-    MsgType msg_type;              /// Type of message
-    TimeBase::TimeStamp timestamp; /// Time point at which the message was logged
-    uint8_t severity; /// The higher the severity, the lower the channel verbosity needs to be for the message to be
-                      /// displayed
-    int code_line;    /// Source code line number that emitted this statement
-    std::string code_file; /// Source file that emitted this statement
-    std::string message;   /// String message content
+    /// The channel targeted by this statement
+    hash_t channel;                
+    /// Type of message
+    MsgType msg_type;              
+    /// Time point at which the message was logged
+    TimeBase::TimeStamp timestamp; 
+    /// The higher the severity, the lower the channel verbosity needs to be for the message to be displayed
+    uint8_t severity;              
+    /// Source code line number that emitted this statement
+    int code_line;                 
+    /// Source file that emitted this statement
+    std::string code_file;         
+    /// String message content
+    std::string message;           
 };
 
 /**
@@ -136,10 +153,12 @@ struct LogStatement
  */
 struct LogChannel
 {
-    uint8_t verbosity; /// Verbosity level. The lower it gets, the higher the message severity needs to be to avoid
-                       /// filtering.
-    std::string name;  /// Full name of the channel
-    std::string tag;   /// styled label used by the console sink
+    /// Verbosity level. The lower it gets, the higher the message severity needs to be to avoid filtering.
+    uint8_t verbosity; 
+    /// Full name of the channel
+    std::string name;  
+    /// styled label used by the console sink
+    std::string tag;   
 };
 
 /**

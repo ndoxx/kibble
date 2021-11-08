@@ -28,11 +28,11 @@ void RoundRobinScheduler::dispatch(Job *job)
     round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
 }
 
-MininmumLoadScheduler::MininmumLoadScheduler(JobSystem &js) : Scheduler(js)
+MinimumLoadScheduler::MinimumLoadScheduler(JobSystem &js) : Scheduler(js)
 {
 }
 
-void MininmumLoadScheduler::dispatch(Job *job)
+void MinimumLoadScheduler::dispatch(Job *job)
 {
     // Create a vector of viable worker candidates based on affinity,
     // and select worker with minimal load

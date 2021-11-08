@@ -51,7 +51,7 @@ public:
         /**
          * @brief Construct a seed by directly initializing the lower and upper parts of the state.
          *
-         * @param upper uppar part of the seed
+         * @param upper upper part of the seed
          * @param lower lower part of the seed
          *
          */
@@ -170,7 +170,7 @@ public:
     }
 
     /**
-     * @brief Minimum numeric limit inherent to result_type (needed for compatibility with std distributions)
+     * @brief Minimum numeric limit inherent to result_type (needed for compatibility with std distributions).
      *
      * @return uint64_t
      */
@@ -180,7 +180,7 @@ public:
     }
 
     /**
-     * @brief Maximum numeric limit inherent to result_type (needed for compatibility with std distributions)
+     * @brief Maximum numeric limit inherent to result_type (needed for compatibility with std distributions).
      *
      * @return uint64_t
      */
