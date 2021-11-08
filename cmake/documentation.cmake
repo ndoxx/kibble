@@ -30,7 +30,7 @@ function(setup_documentation source_dir output_dir)
         set( DOXYGEN_DOT_TRANSPARENT YES )
         set( DOXYGEN_SORT_MEMBER_DOCS NO )
 
-        doxygen_add_docs( docs ${source_dir} ALL )
+        doxygen_add_docs( docs ${source_dir} )
 
     else()
         message( "Doxygen need to be installed to generate the doxygen documentation" )
