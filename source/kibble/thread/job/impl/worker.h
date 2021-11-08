@@ -11,67 +11,180 @@ namespace kb
 namespace th
 {
 
+/**
+ * @brief Properties of a worker thread.
+ *
+ */
 struct WorkerProperties
 {
-    bool is_background = false;
-    bool can_steal = false;
-    size_t max_stealing_attempts = 16;
-    tid_t tid;
+    bool is_background = false; /// false if main thread, true otherwise
+    bool can_steal = false;     /// true if this worker can steal jobs from other worker's queues, false otherwise
+    size_t max_stealing_attempts = 16; /// maximum allowable attempts at stealing a job
+    tid_t tid;                         /// worker id
 };
 
 struct Job;
-// Data common to all worker threads
+
+/**
+ * @brief Data common to all worker threads.
+ * All members are page aligned, so as to avoid false sharing.
+ *
+ */
 struct SharedState
 {
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0}; // Number of tasks left
-    PAGE_ALIGN std::atomic<bool> running = {true};  // Flag to signal workers when they should stop and join
-    PAGE_ALIGN PoolArena job_pool;                  // Memory arena to store job structures (page aligned)
-    PAGE_ALIGN std::condition_variable cv_wake;     // To wake worker threads
-    PAGE_ALIGN std::mutex wake_mutex;               // Workers wait on this one when they're idle
+    PAGE_ALIGN std::atomic<uint64_t> pending = {0}; /// Number of tasks left
+    PAGE_ALIGN std::atomic<bool> running = {true};  /// Flag to signal workers when they should stop and join
+    PAGE_ALIGN PoolArena job_pool;                  /// Memory arena to store job structures (page aligned)
+    PAGE_ALIGN std::condition_variable cv_wake;     /// To wake worker threads
+    PAGE_ALIGN std::mutex wake_mutex;               /// Workers wait on this one when they're idle
 };
 
 class JobSystem;
+
+/**
+ * @brief Represents a worker thread.
+ * A naive worker thread implementation would essentially continuously execute jobs from its job queue until the queue
+ * is empty, at which point it would become idle. This however can prove inefficient when the load is not evenly
+ * balanced among workers: some workers would basically do nothing while others would have piles of work to process.
+ * This implementation of a worker thread allows for work stealing, in an attempt to enhance load balancing naturally.
+ * When a worker has processed all jobs in its queue, it will try to pop jobs from other worker's queues selected at
+ * random.
+ *
+ * The job queue used behind the scene is a lock-free atomic queue, so there is no contention due to dispatching or work
+ * stealing. This makes this implementation thread-safe and quite fast.
+ *
+ */
 class WorkerThread
 {
 public:
+    /**
+     * @brief All possibles states a worker can be in.
+     * The state of a worker is stored in an atomic member so as to avoid sync points when querying other workers'
+     * state.
+     *
+     */
     enum class State : uint8_t
     {
+        /// The worker does nothing
         Idle,
+        /// The worker is executing jobs
         Running,
+        // The worker is stopping, and the thread will be joinable
         Stopping
     };
 
-    WorkerThread(const WorkerProperties&, JobSystem&);
+    /**
+     * @brief Construct and configure a new Worker Thread.
+     *
+     * @param props properties this worker should observe
+     * @param js job system instance
+     */
+    WorkerThread(const WorkerProperties &props, JobSystem &js);
 
-    // Spawn a thread for this worker
+    /**
+     * @brief Spawn a thread for this worker.
+     *
+     */
     void spawn();
-    // Join this worker's thread
+
+    /**
+     * @brief Join this worker's thread.
+     *
+     */
     void join();
-    // Scheduler calls this function to enqueue a job
-    void submit(Job* job);
-    // Main thread ONLY calls this function to pop and execute a single job
-    // Returns true if the pop operation succeeded, false otherwise
+
+    /**
+     * @brief The Scheduler calls this function to enqueue a job.
+     *
+     * @param job the job to push
+     */
+    void submit(Job *job);
+
+    /**
+     * @brief Only the main thread calls this function to pop and execute a single job.
+     * This function can potentially steal jobs from background workers. It is used to assist background threads wile
+     * waiting on the main thread.
+     *
+     * @return true if the pop operation succeeded
+     * @return false otherwise
+     */
     bool foreground_work();
 
-    inline tid_t get_tid() const { return props_.tid; }
-    inline State query_state() const { return state_.load(std::memory_order_relaxed); }
+    /**
+     * @brief Get this worker's ID.
+     *
+     * @return tid_t
+     */
+    inline tid_t get_tid() const
+    {
+        return props_.tid;
+    }
+
+    /**
+     * @brief Atomically get this worker's state.
+     *
+     * @return State
+     */
+    inline State query_state() const
+    {
+        return state_.load(std::memory_order_relaxed);
+    }
+
 #if PROFILING
-    inline const auto& get_activity() const { return activity_; }
-    inline auto& get_activity() { return activity_; }
+    /**
+     * @internal
+     * @brief Get this worker's activity report
+     *
+     * @return const auto&
+     */
+    inline const auto &get_activity() const
+    {
+        return activity_;
+    }
+
+    /**
+     * @internal
+     * @brief Get this worker's activity report
+     *
+     * @return auto&
+     */
+    inline auto &get_activity()
+    {
+        return activity_;
+    }
 #endif
 
 private:
-    // Thread loop
+    /**
+     * @internal
+     * @brief Thread loop.
+     *
+     */
     void run();
-    // Get next job in the queue or steal work from another worker
-    bool get_job(Job*& job);
-    // Execute a job
-    void process(Job* job);
+
+    /**
+     * @brief Get next job in the queue or steal work from another worker.
+     * First, the worker tries to pop a job from the queue. If the queue is empty, it will try to pop a job from a
+     * randomly selected worker's queue. If the job has incompatible affinity the job will be resubmitted.
+     *
+     * @param job Output variable that will contain the next job, or will be left uninitialized if no job could be
+     * obtained.
+     * @return true if a job was obtained
+     * @return false otherwise
+     */
+    bool get_job(Job *&job);
+
+    /**
+     * @brief Execute a job.
+     *
+     * @param job the job to execute
+     */
+    void process(Job *job);
 
 private:
     WorkerProperties props_;
-    JobSystem& js_;
-    SharedState& ss_;
+    JobSystem &js_;
+    SharedState &ss_;
     std::atomic<State> state_;
     std::thread thread_;
 
@@ -79,7 +192,7 @@ private:
     WorkerActivity activity_;
 #endif
 
-    JobQueue<Job*> jobs_;
+    JobQueue<Job *> jobs_; // SPMC queue
 };
 
 } // namespace th

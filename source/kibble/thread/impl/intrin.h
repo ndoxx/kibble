@@ -7,6 +7,11 @@
 	{
 	namespace intrin
 	{
+		/**
+		 * @internal
+		 * @brief Spinlock implementation using an intrinsic
+		 * 
+		 */
 		[[maybe_unused]] static inline void spin__() noexcept { _mm_pause(); }
 	} // namespace intrin
 	} // namespace kb

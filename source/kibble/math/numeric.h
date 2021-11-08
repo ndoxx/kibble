@@ -12,7 +12,7 @@ namespace math
 /**
  * @brief Implementation of the Newton-Raphson algorithm.
  * This algorithm is a means to compute a root of a function `f`, given an initial guess `xx` and its derivative. If the
- * initial guess is close enough to the root, the algorithm will quickly converge. The algorithm is iterated untill the
+ * initial guess is close enough to the root, the algorithm will quickly converge. The algorithm is iterated until the
  * error with respect to the root of the function f (value of f_over_fprime) becomes less than epsilon or the maximum
  * number of iterations has been reached.
  *
@@ -28,7 +28,7 @@ std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime
 
 /**
  * @brief Helper method to find the initial guess of Newton-Raphson.
- * Advances along the curve using bigger and bigger steps untill the function changes sign. The step size is in a
+ * Advances along the curve using bigger and bigger steps until the function changes sign. The step size is in a
  * geometric progression controlled by the parameter alpha. The value returned is between the two values of x where the
  * sign change occurred.
  *

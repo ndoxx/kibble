@@ -455,7 +455,7 @@ private:
 
     /**
      * @brief Compute the length of a Bezier spline recursively.
-     * The curve is subdivided untill the segments are linear enough that the length_estimate() will give a good
+     * The curve is subdivided until the segments are linear enough that the length_estimate() will give a good
      * approximation for each of them, then all the contributions are summed up.
      *
      * The length estimation algorithm stemmed from Andrew Willmott's splines lib

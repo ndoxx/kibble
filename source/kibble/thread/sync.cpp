@@ -4,7 +4,7 @@
 namespace kb
 {
 
-void SpinLock::lock()
+void Spinlock::lock()
 {
     for(;;)
     {
@@ -14,6 +14,6 @@ void SpinLock::lock()
     }
 }
 
-void SpinLock::unlock() { lock_.store(false, std::memory_order_release); }
+void Spinlock::unlock() { lock_.store(false, std::memory_order_release); }
 
 } // namespace kb
