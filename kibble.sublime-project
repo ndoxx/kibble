@@ -2,7 +2,28 @@
 	"folders":
 	[
 		{
-			"path": "source"
+			"name": "Kibble",
+			"path": "source/kibble"
+		},
+		{
+			"name": "Utils",
+			"path": "source/util"
+		},
+		{
+			"name": "Tests",
+			"path": "source/tests"
+		},
+		{
+			"name": "Examples",
+			"path": "source/examples"
+		},
+		{
+			"name": "Scripts",
+			"path": "script"
+		},
+		{
+			"name": "Data",
+			"path": "data"
 		}
 	],
 	"settings":
@@ -13,7 +34,7 @@
             "-I/usr/lib/clang/$clang_version/include",
         ],
         "ecc_lang_flags": {
-            "CPP": ["-std=c++17"],
+            "CPP": ["-std=c++20"],
         },
         "ecc_flags_sources":
         [

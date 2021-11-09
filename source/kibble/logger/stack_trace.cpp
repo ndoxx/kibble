@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "stack_trace.h"
+#include "logger/stack_trace.h"
 
 namespace kb
 {

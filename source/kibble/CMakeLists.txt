@@ -12,6 +12,12 @@ target_include_directories(kibble
         "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 
+target_include_directories(kibble
+    SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
+    )
+
 set_target_properties(kibble
     PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
@@ -20,18 +26,44 @@ set_target_properties(kibble
         POSITION_INDEPENDENT_CODE ON
 )
 
+target_compile_definitions(kibble PRIVATE -DLOGGING_ENABLED=1)
+target_compile_definitions(kibble PRIVATE -DK_ENABLE_ASSERT)
+
 target_link_libraries(kibble
     PRIVATE
         project_options
         project_warnings
         pthread
+        atomic
         stdc++fs
 )
 
-cotire(kibble)
-
 # Install rules
 install(TARGETS kibble DESTINATION lib)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/algorithm/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/algorithm)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/argparse/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/argparse)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/assert/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/assert)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/cli/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/cli)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/config/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/config)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/ctti/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/ctti)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/event/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/event)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/filesystem/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/filesystem)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/hash/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/hash)
@@ -39,11 +71,36 @@ install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
-install(FILES ${H_LIB} DESTINATION include/kibble/time)
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/math)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/memory/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/memory)
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/memory/*.inc")
+install(FILES ${H_LIB} DESTINATION include/kibble/memory)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/random/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/random)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/string/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/string)
+
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/thread)
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/thread/job/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/thread/job)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/time/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/time)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/undo/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/undo)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/util/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/util)
 
 ## More elegant, but DNW as dir is absolute
 # file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.h")

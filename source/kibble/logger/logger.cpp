@@ -1,8 +1,8 @@
 #include <iomanip>
 #include <iostream>
 
-#include "logger.h"
-#include "logger_thread.h"
+#include "logger/logger.h"
+#include "logger/dispatcher.h"
 
 namespace kb
 {
@@ -27,6 +27,17 @@ LoggerStream::LoggerStream()
     : std::ostream(&buffer_), buffer_(*this), stmt_({"core"_h, MsgType::NORMAL, TimeBase::TimeStamp(), 0, 0, "", ""})
 {}
 
+LoggerStream::~LoggerStream()
+{
+    // BUGFIX: "Double free or corruption" error if program returns and 
+    // std::endl has not been sent to the stream
+    if(buffer_.str().size())
+    {
+        prepare("core"_h, MsgType::RAW, 0, 0, "");
+        (*this) << std::endl;
+    }
+}
+
 void LoggerStream::prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char* code_file)
 {
     if(channel == 0)
@@ -45,7 +56,7 @@ void LoggerStream::prepare(hash_t channel, MsgType msg_type, uint8_t severity, i
 void LoggerStream::submit(const std::string& message)
 {
     stmt_.message = message;
-    Logger::LOGGER_THREAD->enqueue(stmt_);
+    Logger::DISPATCHER->dispatch(stmt_);
 }
 
 } // namespace klog
