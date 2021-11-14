@@ -387,7 +387,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class, MemberFunction>(&instance, priority);
+        q_ptr->template subscribe<Class&, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -410,7 +410,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class, MemberFunction>(&instance, priority);
+        q_ptr->template subscribe<const Class&, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -444,7 +444,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<Class, MemberFunction>(&instance);
+        return q_ptr->template unsubscribe<Class&, MemberFunction>(&instance);
     }
 
     /**
@@ -462,7 +462,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<Class, MemberFunction>(&instance);
+        return q_ptr->template unsubscribe<const Class&, MemberFunction>(&instance);
     }
 
     /**

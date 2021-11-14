@@ -150,6 +150,7 @@ To get a local copy up and running follow these steps.
 ## Prerequisites
 
 * A compiler with support for C++20 (tested with clang 12.0.0)
+* CMake, minimum version 3.19
 
 ## Installation
 
