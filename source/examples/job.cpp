@@ -78,12 +78,20 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     scheme.enable_work_stealing = !disable_work_stealing;
     scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
+    // The job system needs some pre-allocated memory for the job pool
     memory::HeapArea area(1_MB);
     th::JobSystem js(area, scheme);
+
+    // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
+    // immediately use this information during the next run.
     js.use_persistence_file("p1.jpp");
 
+    // We have nloads loading operations to execute asynchronously, each of them take a random amount of time
     std::vector<long> load_time(nloads, 0l);
     random_fill(load_time.begin(), load_time.end(), 1l, 100l, 42);
+
+    // This is the time it would take to execute them all serially, so we have a baseline to compare the system's
+    // performance to.
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
     KLOG("example", 1) << "Assets loading time:" << std::endl;
@@ -93,28 +101,48 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     }
     KLOGI << std::endl;
 
+    // We repeat the experiment nexp times
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
+
+        // We save the job pointers in there so we can release them when we're done
         std::vector<th::Job *> jobs;
+        // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
+        // have an idea of the amount of job creation / scheduling overhead.
         milliClock clk;
+
+        // Create as many jobs as needed
         for (size_t ii = 0; ii < nloads; ++ii)
         {
+            // Each job has some metadata attached
             th::JobMetadata meta;
+            // A label uniquely identifies this job, so its execution time can be monitored
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            // A job's worker affinity property can be used to specify in which threads the job can or cannot be
+            // executed. In this example, the first 70 (arbitrary) jobs must be executed asynchronously. The rest can be
+            // executed on any thread, including the main thread
             if (ii < 70)
                 meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
             else
                 meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
+            // Let's create a job and give it this simple lambda that waits a precise amount of time as a job kernel,
+            // and also pass the metadata
             auto *job = js.create_job(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); }, meta);
+
+            // Schedule the job, the workers will awake
             js.schedule(job);
+            // Save the job pointer for later cleanup (or the job pool will leak)
             jobs.push_back(job);
         }
+        // Wait for all jobs to be executed. This introduces a sync point. The main thread will assist the workers
+        // instead of just waiting idly.
         js.wait();
         auto parallel_dur_ms = clk.get_elapsed_time().count();
 
+        // Show some stats!
         float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
         float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
@@ -123,6 +151,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOGI << "Gain:                  " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << gain_percent << KC_ << '%'
               << std::endl;
 
+        // Cleanup
         for (auto *job : jobs)
             js.release_job(job);
     }
@@ -154,6 +183,7 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     th::JobSystem js(area, scheme);
     js.use_persistence_file("p2.jpp");
 
+    // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
     std::vector<long> load_time(nloads, 0l);
     std::vector<long> stage_time(nloads, 0l);
     random_fill(load_time.begin(), load_time.end(), 1l, 100l, 42);
@@ -175,6 +205,7 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
         {
+            // Create both jobs like we did in the previous example
             th::JobMetadata load_meta;
             load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             if (ii < 70)
@@ -194,9 +225,15 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
                 [&stage_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii])); },
                 stage_meta);
 
+            // But this time, we set the staging job as a child of the loading job. This means that the staging job will
+            // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
+            // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
             load_job->add_child(stage_job);
 
+            // We only schedule the parent job here, or we're asking for problems
             js.schedule(load_job);
+
+            // Both job pointers must be freed when we're done
             jobs.push_back(load_job);
             jobs.push_back(stage_job);
         }
