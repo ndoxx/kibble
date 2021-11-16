@@ -38,11 +38,11 @@ using label_t = uint64_t;
 struct JobMetadata
 {
     /// Uniquely identifies a job
-    label_t label = 0;                                       
+    label_t label = 0;
     /// Workers this job can be pushed to
-    worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY; 
+    worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
     /// The time in µs it took to complete the job
-    int64_t execution_time_us = 0;                           
+    int64_t execution_time_us = 0;
 };
 
 /**
@@ -56,22 +56,24 @@ struct Job
     /// The function to execute
     JobKernel kernel = JobKernel{};
     /// All jobs that have this one as a dependency
-    std::vector<Job *> dependants;
+    std::vector<Job *> children;
 
     // State
-    /// Job can be executed when this reaches 0
-    std::atomic<size_t> dependency_count = {0};
     /// Set to true when this job has been processed
     std::atomic<bool> finished = {false};
 
     /**
      * @brief Add a job that can only be executed once this job was processed.
-     * @warning This is stub functionality at the moment, nothing in the job system takes job dependencies into
-     * account.
+     *
+     * @warning Children jobs must never be scheduled by hand. The worker in charge of this job will schedule the
+     * children by himself once this job has been processed.
      *
      * @param child the child to add.
      */
-    void add_child(Job *child);
+    inline void add_child(Job *child)
+    {
+        children.push_back(child);
+    }
 };
 
 /**
@@ -93,13 +95,13 @@ enum class SchedulingAlgorithm : uint8_t
 struct JobSystemScheme
 {
     /// Maximum number of worker threads, if 0 => CPU_cores - 1
-    size_t max_workers = 0;                                                      
+    size_t max_workers = 0;
     /// Maximum number of stealing attempts before moving to the next worker
-    size_t max_stealing_attempts = 16;                                           
+    size_t max_stealing_attempts = 16;
     /// Allow idle workers to steal jobs from their siblings
-    bool enable_work_stealing = true;                                            
+    bool enable_work_stealing = true;
     /// Job scheduling policy
-    SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin; 
+    SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 };
 
 struct SharedState;
@@ -218,6 +220,26 @@ public:
     void wait_for(
         Job *job, std::function<bool()> condition = []() { return true; });
 
+    /**
+     * @brief Get a list of all workers compatible with the given affinity requirement.
+     * 
+     * @param affinity 
+     * @return std::vector<WorkerThread*> 
+     */
+    std::vector<WorkerThread*> get_compatible_workers(worker_affinity_t affinity);
+
+    /// Get the list of workers (non-const).
+    inline auto &get_workers()
+    {
+        return workers_;
+    }
+
+    /// Get the list of workers (const).
+    inline const auto &get_workers() const
+    {
+        return workers_;
+    }
+
     /// Get the number of threads
     inline size_t get_threads_count() const
     {
@@ -234,18 +256,6 @@ public:
     inline const auto &get_scheme() const
     {
         return scheme_;
-    }
-
-    /// Get the list of workers (non-const).
-    inline auto &get_workers()
-    {
-        return workers_;
-    }
-
-    /// Get the list of workers (const).
-    inline const auto &get_workers() const
-    {
-        return workers_;
     }
 
     /// Get the worker at input index (non-const).

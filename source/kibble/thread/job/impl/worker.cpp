@@ -2,6 +2,7 @@
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
+#include "random/random_operation.h"
 
 namespace kb
 {
@@ -123,11 +124,28 @@ void WorkerThread::process(Job *job)
     job->kernel();
     job->meta.execution_time_us = clk.get_elapsed_time().count();
     job->finished.store(true, std::memory_order_release);
-    ss_.pending.fetch_sub(1);
 #if PROFILING
     activity_.active_time_us += clk.get_elapsed_time().count();
     ++activity_.executed;
 #endif
+
+    schedule_children(job);
+    ss_.pending.fetch_sub(1);
+}
+
+void WorkerThread::schedule_children(Job *job)
+{
+    for(Job* child: job->children)
+    {
+        // Select a worker at random from a list of compatible workers, and submit the child
+        auto workers = js_.get_compatible_workers(child->meta.worker_affinity);
+        auto it = rng::random_select(workers.begin(), workers.end());
+        ss_.pending.fetch_add(1);
+        (*it)->submit(child);
+#if PROFILING
+        ++activity_.scheduled;
+#endif
+    }
 }
 
 bool WorkerThread::foreground_work()

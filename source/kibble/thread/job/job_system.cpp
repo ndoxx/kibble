@@ -18,12 +18,6 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
-void Job::add_child(Job* child)
-{
-    dependants.push_back(child);
-    child->dependency_count.fetch_add(1);
-}
-
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {
@@ -212,6 +206,16 @@ void JobSystem::wait_for(Job* job, std::function<bool()> condition)
     {
         KLOG("thread", 0) << "[JobSystem] wait_for() exited early." << std::endl;
     }
+}
+
+std::vector<WorkerThread *> JobSystem::get_compatible_workers(worker_affinity_t affinity)
+{
+    std::vector<WorkerThread *> ret;
+    for(uint32_t ii=0; ii<workers_.size(); ++ii)
+        if(affinity & (1<<ii))
+            ret.push_back(workers_[ii]);
+    
+    return ret;
 }
 
 } // namespace th

@@ -18,13 +18,13 @@ namespace th
 struct WorkerProperties
 {
     /// false if main thread, true otherwise
-    bool is_background = false;        
+    bool is_background = false;
     /// true if this worker can steal jobs from other worker's queues, false otherwise
-    bool can_steal = false;            
+    bool can_steal = false;
     /// maximum allowable attempts at stealing a job
-    size_t max_stealing_attempts = 16; 
+    size_t max_stealing_attempts = 16;
     /// worker id
-    tid_t tid;                         
+    tid_t tid;
 };
 
 struct Job;
@@ -37,15 +37,15 @@ struct Job;
 struct SharedState
 {
     /// Number of tasks left
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0}; 
+    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
     /// Flag to signal workers when they should stop and join
-    PAGE_ALIGN std::atomic<bool> running = {true};  
+    PAGE_ALIGN std::atomic<bool> running = {true};
     /// Memory arena to store job structures (page aligned)
-    PAGE_ALIGN PoolArena job_pool;                  
+    PAGE_ALIGN PoolArena job_pool;
     /// To wake worker threads
-    PAGE_ALIGN std::condition_variable cv_wake;     
+    PAGE_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle
-    PAGE_ALIGN std::mutex wake_mutex;               
+    PAGE_ALIGN std::mutex wake_mutex;
 };
 
 class JobSystem;
@@ -189,6 +189,15 @@ private:
      * @param job the job to execute
      */
     void process(Job *job);
+
+    /**
+     * @brief If a job has children, schedule them to a random compatible queue.
+     * 
+     * Called by process, after a job kernel has been executed.
+     * 
+     * @param job 
+     */
+    void schedule_children(Job *job);
 
 private:
     WorkerProperties props_;
