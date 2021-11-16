@@ -44,6 +44,7 @@ void Monitor::update_statistics()
         stats_[tid].total_executed += activity.executed;
         stats_[tid].total_stolen += activity.stolen;
         stats_[tid].total_resubmit += activity.resubmit;
+        stats_[tid].total_scheduled += activity.scheduled;
         ++stats_[tid].cycles;
     }
 }
@@ -58,18 +59,18 @@ void Monitor::log_statistics(tid_t tid) const
     double mean_activity = 100.0 * mean_active_ms / (mean_idle_ms + mean_active_ms);
     float jobs_per_cycle = float(stats.total_executed) / float(stats.cycles);
 
+    // clang-format off
     KLOG("thread", 1) << KS_INST_ << "Thread #" << tid << std::endl;
     KLOGI << "Sleep cycles:         " << stats.cycles << std::endl;
     KLOGI << "Mean active time:     " << mean_active_ms << "ms" << std::endl;
     KLOGI << "Mean idle time:       " << mean_idle_ms << "ms" << std::endl;
     KLOGI << "Mean activity ratio:  " << mean_activity << '%' << std::endl;
-    KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "")
-          << std::endl;
-    KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "")
-          << std::endl;
-    KLOGI << "Total resubmitted:    " << stats.total_resubmit << " job" << ((stats.total_resubmit > 1) ? "s" : "")
-          << std::endl;
+    KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "") << std::endl;
+    KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "") << std::endl;
+    KLOGI << "Total resubmitted:    " << stats.total_resubmit << " job" << ((stats.total_resubmit > 1) ? "s" : "") << std::endl;
+    KLOGI << "Total scheduled:      " << stats.total_scheduled << " job" << ((stats.total_scheduled > 1) ? "s" : "") << std::endl;
     KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
+    // clang-format on
 }
 
 /**

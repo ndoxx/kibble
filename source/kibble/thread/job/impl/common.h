@@ -72,6 +72,8 @@ struct WorkerActivity
     size_t stolen = 0;
     /// Number of tasks resubmitted by the worker
     size_t resubmit = 0;
+    /// Number of children tasks scheduled by the worker
+    size_t scheduled = 0;
     /// Worker id
     tid_t tid = 0;
 
@@ -86,6 +88,7 @@ struct WorkerActivity
         executed = 0;
         stolen = 0;
         resubmit = 0;
+        scheduled = 0;
     }
 };
 
