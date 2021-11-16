@@ -1,8 +1,8 @@
+#include "random/random_operation.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
-#include "random/random_operation.h"
 
 namespace kb
 {
@@ -135,7 +135,7 @@ void WorkerThread::process(Job *job)
 
 void WorkerThread::schedule_children(Job *job)
 {
-    for(Job* child: job->children)
+    for (Job *child : job->children)
     {
         // Select a worker at random from a list of compatible workers, and submit the child
         auto workers = js_.get_compatible_workers(child->meta.worker_affinity);
@@ -157,6 +157,7 @@ bool WorkerThread::foreground_work()
         process(job);
         return true;
     }
+
     return false;
 }
 

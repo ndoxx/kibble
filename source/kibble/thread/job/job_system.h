@@ -222,11 +222,11 @@ public:
 
     /**
      * @brief Get a list of all workers compatible with the given affinity requirement.
-     * 
-     * @param affinity 
-     * @return std::vector<WorkerThread*> 
+     *
+     * @param affinity
+     * @return std::vector<WorkerThread*>
      */
-    std::vector<WorkerThread*> get_compatible_workers(worker_affinity_t affinity);
+    std::vector<WorkerThread *> get_compatible_workers(worker_affinity_t affinity);
 
     /// Get the list of workers (non-const).
     inline auto &get_workers()

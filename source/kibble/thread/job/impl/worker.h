@@ -192,10 +192,10 @@ private:
 
     /**
      * @brief If a job has children, schedule them to a random compatible queue.
-     * 
+     *
      * Called by process, after a job kernel has been executed.
-     * 
-     * @param job 
+     *
+     * @param job
      */
     void schedule_children(Job *job);
 
