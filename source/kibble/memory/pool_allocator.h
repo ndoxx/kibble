@@ -4,7 +4,7 @@
 #include <ostream>
 #include <utility>
 
-#include <kibble/memory/free_list.h>
+#include "free_list.h"
 
 namespace kb
 {
