@@ -101,6 +101,58 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     return true;
 }
 
+bool FileSystem::setup_app_data_directory(std::string vendor, std::string appname, std::string alias)
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#ifdef __linux__
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char *homebuf;
+    if ((homebuf = getenv("HOME")) == NULL)
+        homebuf = getpwuid(getuid())->pw_dir;
+
+    fs::path home_directory = fs::canonical(homebuf);
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+
+    // Check if ~/.local/share/<vendor>/<appname> is applicable, if not, fallback to
+    // ~/.<vendor>/<appname>/appdata
+    if (fs::exists(home_directory / ".local/share"))
+        app_data_directory_ = home_directory / ".local/share" / vendor / appname;
+    else
+        app_data_directory_ = home_directory / su::concat('.', vendor) / appname / "appdata";
+#else
+#error setup_app_data_directory() not yet implemented for this platform.
+#endif
+
+    // If directories do not exist, create them
+    if (!fs::exists(app_data_directory_))
+    {
+        if (!fs::create_directories(app_data_directory_))
+        {
+            KLOGE("ios") << "Failed to create application data directory at:" << std::endl;
+            KLOGI << KS_PATH_ << app_data_directory_ << std::endl;
+            return false;
+        }
+        KLOGN("ios") << "Created application directory at:" << std::endl;
+    }
+    else
+    {
+        KLOGN("ios") << "Detected application directory at:" << std::endl;
+    }
+    KLOGI << KS_PATH_ << app_data_directory_ << std::endl;
+
+    // Alias the data directory
+    if (alias.empty())
+        alias = "appdata";
+    alias_directory(app_data_directory_, alias);
+
+    return true;
+}
+
+
 const fs::path &FileSystem::get_settings_directory()
 {
     if (app_settings_directory_.empty())
@@ -110,6 +162,17 @@ const fs::path &FileSystem::get_settings_directory()
         KLOGI << "An empty path will be returned." << std::endl;
     }
     return app_settings_directory_;
+}
+
+const fs::path &FileSystem::get_app_data_directory()
+{
+    if (app_data_directory_.empty())
+    {
+        KLOGW("ios") << "Application data directory has not been setup." << std::endl;
+        KLOGI << "Call setup_app_data_directory() after FileSystem construction." << std::endl;
+        KLOGI << "An empty path will be returned." << std::endl;
+    }
+    return app_data_directory_;
 }
 
 bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2)

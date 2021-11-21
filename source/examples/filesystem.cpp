@@ -28,8 +28,11 @@ int main(int argc, char** argv)
 
     kfs::FileSystem filesystem;
     filesystem.setup_settings_directory("ndoxx", "nuclear");
+    filesystem.setup_app_data_directory("ndoxx", "nuclear");
     const auto& cfg_dir = filesystem.get_settings_directory();
-    KLOG("nuclear", 1) << cfg_dir << std::endl;
+    const auto& appdata_dir = filesystem.get_app_data_directory();
+    KLOG("nuclear", 1) << "Config directory:   " << KS_PATH_ << cfg_dir << std::endl;
+    KLOG("nuclear", 1) << "App data directory: " << KS_PATH_ << appdata_dir << std::endl;
 
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
