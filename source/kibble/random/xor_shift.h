@@ -94,6 +94,18 @@ public:
     XorShiftEngine();
 
     /**
+     * @brief Construct and seed.
+     * 
+     * @tparam SeedT Seed type
+     * @param ss the seed
+     */
+    template <typename SeedT>
+    XorShiftEngine(SeedT ss)
+    {
+        seed(ss);
+    }
+
+    /**
      * @brief Seed this generator with the current time.
      *
      */
