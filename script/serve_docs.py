@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os, sys, argparse
-import SimpleHTTPServer
-import SocketServer
+import http.server
+import socketserver
 
 # Small HTTP server to make the docs accessible on the local network
 # For proofreading purposes
@@ -18,11 +18,10 @@ def main(argv):
     docpath = os.path.join(selfdir, "../doxygen/html")
     os.chdir(docpath)
 
-    Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-    httpd = SocketServer.TCPServer(("", PORT), Handler)
-
-    print("serving at port", PORT)
-    httpd.serve_forever()
+    Handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print("serving at port", PORT)
+        httpd.serve_forever()
 
 
 if __name__ == '__main__':
