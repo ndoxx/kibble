@@ -82,8 +82,8 @@ int main()
     KLOG("core", 1) << KS_ATTR_ << "attribute" << std::endl;
     KLOG("core", 1) << KS_NODE_ << "node" << std::endl;
     KLOG("core", 1) << KS_HIGH_ << "emphasis" << std::endl;
-    KLOG("core", 1) << KS_GOOD_ << "this is good" << std::endl;
-    KLOG("core", 1) << KS_BAD_ << "this is bad" << std::endl;
+    KLOG("core", 1) << KS_POS_ << "this is good" << std::endl;
+    KLOG("core", 1) << KS_NEG_ << "this is bad" << std::endl;
 
     KLOGN("core") << "-------- [SEVERITY & ERROR REPORT] --------" << std::endl;
     KBANG();

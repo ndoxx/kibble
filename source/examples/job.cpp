@@ -147,8 +147,8 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
         KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-        KLOGI << "Factor:                " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << factor << KC_ << std::endl;
-        KLOGI << "Gain:                  " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << gain_percent << KC_ << '%'
+        KLOGI << "Factor:                " << (factor > 1 ? KS_POS_ : KS_NEG_) << factor << KC_ << std::endl;
+        KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
               << std::endl;
 
         // Cleanup
@@ -244,8 +244,8 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
         KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-        KLOGI << "Factor:                " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << factor << KC_ << std::endl;
-        KLOGI << "Gain:                  " << (factor > 1 ? KS_GOOD_ : KS_BAD_) << gain_percent << KC_ << '%'
+        KLOGI << "Factor:                " << (factor > 1 ? KS_POS_ : KS_NEG_) << factor << KC_ << std::endl;
+        KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
               << std::endl;
 
         for (auto *job : jobs)
