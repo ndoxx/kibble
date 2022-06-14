@@ -38,8 +38,10 @@ Iter random_select(Iter start, Iter end, RandomGenerator &g)
 template <typename Iter>
 Iter random_select(Iter start, Iter end)
 {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
+    // NOTE: thread_local instead of static, to avoid a possible data race
+    // when this is called from a thread
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
     return random_select(start, end, gen);
 }
 

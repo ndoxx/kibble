@@ -136,7 +136,7 @@ T bezier_evaluate(float tt, const VecT &coeffs)
  * @tparam T Point type
  * @tparam VecT Type of coefficient vector
  * @param control list of control points
- * @param coeff output argument wher the coefficients will be pushed
+ * @param coeff output argument where the coefficients will be pushed
  */
 template <typename T, typename VecT>
 void bezier_coefficients(const VecT &control, VecT &coeff)
@@ -507,8 +507,7 @@ public:
      *
      * @param control_points list of control points
      * @param tension tension parameter:
-     * - tension = 0.f  => *Catmull-Rom spline*
-     * - tension = 0.5f => *Finite-difference spline*
+     * - tension = 0.5f  => *Catmull-Rom spline*
      * - tension = 1.f  => *Null-tangent spline*
      * @param start_tangent tangent at the first control point
      * @param end_tangent tangent at the last control point
