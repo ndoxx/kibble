@@ -52,7 +52,7 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
 
     // Init job pool
     KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
-    ss_->job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, k_max_jobs * threads_count_, "JobPool");
+    ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
 
     // Spawn threads_count_-1 workers
     KLOGI << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;

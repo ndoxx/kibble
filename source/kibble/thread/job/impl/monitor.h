@@ -5,6 +5,7 @@
 #include <map>
 
 #include "thread/job/impl/common.h"
+#include "thread/sanitizer.h"
 
 namespace fs = std::filesystem;
 

@@ -41,7 +41,7 @@ struct SharedState
     /// Flag to signal workers when they should stop and join
     PAGE_ALIGN std::atomic<bool> running = {true};
     /// Memory arena to store job structures (page aligned)
-    PAGE_ALIGN PoolArena job_pool;
+    PAGE_ALIGN JobPoolArena job_pool;
     /// To wake worker threads
     PAGE_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle

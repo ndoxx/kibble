@@ -102,6 +102,11 @@ target_include_directories(nuclear
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
+target_include_directories(nuclear
+SYSTEM PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+)
+
 target_compile_definitions(nuclear PRIVATE -DLOGGING_ANSI_3=0)
 target_compile_definitions(nuclear PRIVATE -DLOGGING_ENABLED=1)
 

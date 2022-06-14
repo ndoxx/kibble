@@ -2,96 +2,31 @@
 #include "logger/logger.h"
 #include "logger/sink.h"
 
+#include "memory/heap_area.h"
+#include "memory/memory.h"
+#include "memory/atomic_pool_allocator.h"
+
 #include <vector>
+#include <thread>
 
 using namespace kb;
+using namespace kb::memory;
+
 
 void init_logger()
 {
     KLOGGER_START();
 
     KLOGGER(create_channel("nuclear", 3));
+    KLOGGER(create_channel("memory", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
 
-// TODO: iterate over unordered pairs, and const iterator
-template <typename T>
-class PairIterator
+struct Job
 {
-public:
-    PairIterator(std::vector<T> &vec) : vec_(vec)
-    {
-    }
-
-    static inline PairIterator end(std::vector<T> &vec)
-    {
-        return PairIterator(vec, vec.size() - 1, vec.size() - 1);
-    }
-
-    inline std::pair<T &, T &> operator*() const
-    {
-        return {vec_[ii_], vec_[jj_]};
-    }
-
-    friend inline bool operator==(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() == it2.idx();
-    }
-
-    friend inline bool operator!=(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() != it2.idx();
-    }
-
-    friend inline bool operator<=(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() <= it2.idx();
-    }
-
-    friend inline bool operator>=(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() >= it2.idx();
-    }
-
-    friend inline bool operator<(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() < it2.idx();
-    }
-
-    friend inline bool operator>(const PairIterator &it1, const PairIterator &it2)
-    {
-        return it1.idx() > it2.idx();
-    }
-
-    inline PairIterator& operator++()
-    {
-        jj_ = jj_ + 1 < vec_.size() ? jj_ + 1 : 0;
-        ii_ = jj_ == 0 ? ii_ + 1 : ii_;
-        return *this;
-    }
-
-    inline PairIterator operator++(int)
-    {
-        PairIterator tmp = *this;
-        ++(*this);
-        return tmp;
-    }
-
-private:
-    PairIterator(std::vector<T> &vec, size_t ii, size_t jj) : vec_(vec), ii_(ii), jj_(jj)
-    {
-    }
-
-    inline size_t idx() const
-    {
-        return ii_ * vec_.size() + jj_;
-    }
-
-private:
-    std::vector<T> &vec_;
-    size_t ii_ = 0;
-    size_t jj_ = 0;
+    size_t a = 0;
+    size_t b = 0;
 };
 
 int main(int argc, char **argv)
@@ -100,11 +35,35 @@ int main(int argc, char **argv)
     (void)argv;
     init_logger();
 
-    std::vector<int> myvec{0, 1, 2, 3, 4, 5};
+    HeapArea area(1_MB);
 
-    for (PairIterator it(myvec); it < PairIterator<int>::end(myvec); ++it)
+    constexpr size_t k_max_jobs = 128;
+    constexpr size_t k_max_threads = 4;
+    constexpr size_t k_cache_line_size = 64;
+    constexpr size_t k_job_max_align = k_cache_line_size - 1;
+    constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
+
+    using PoolArena = memory::MemoryArena<AtomicPoolAllocator<k_max_jobs * k_max_threads>,
+                                          memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
+                                          memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
+    PoolArena job_pool;
+
+    job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, "JobPool");
+
+    std::vector<Job *> jobs;
+    for (size_t ii = 0; ii < 10; ++ii)
     {
-        KLOG("nuclear",1) << (*it).first << ' ' << (*it).second << std::endl; 
+        Job *job = K_NEW_ALIGN(Job, job_pool, k_cache_line_size);
+        job->a = ii;
+        job->b = ii + 1;
+        jobs.push_back(job);
+    }
+
+    for (Job *job : jobs)
+    {
+        KLOG("nuclear",1) << job->a << '/' << job->b << std::endl;
+        K_DELETE(job, job_pool);
     }
 
     return 0;

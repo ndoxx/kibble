@@ -32,6 +32,16 @@ namespace utils
     return padding;
 }
 
+/**
+ * @brief Round a number to the nearest multiple of another number.
+ * Useful to calculate total node size of an aligned object.
+ *
+ * @param base the base size
+ * @param multiple the multiple
+ * @return a number that is always a multiple of 'multiple', greater than or equal to base.
+ */
+std::size_t round_up(std::size_t base, std::size_t multiple);
+
 // TODO:
 // [ ] Move the hex dump free functions to a proper class
 

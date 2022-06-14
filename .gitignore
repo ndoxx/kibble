@@ -3,6 +3,7 @@ lib/
 build/
 data/
 doxygen/
+source/research/
 kibble.sublime-workspace
 workspace.code-workspace
 NOTES.md

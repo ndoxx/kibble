@@ -16,6 +16,18 @@ namespace utils
 static const std::string suffix[] = {"B", "kB", "MB", "GB", "TB"};
 static constexpr int length = 5;
 
+std::size_t round_up(std::size_t base, std::size_t multiple)
+{
+    if (multiple == 0)
+        return base;
+
+    std::size_t remainder = base % multiple;
+    if (remainder == 0)
+        return base;
+
+    return base + multiple - remainder;
+}
+
 std::string human_size(std::size_t bytes)
 {
     int i = 0;
