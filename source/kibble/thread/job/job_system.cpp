@@ -1,8 +1,8 @@
+#include "thread/job/job_system.h"
 #include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
-#include "thread/job/job_system.h"
 
 #include <thread>
 
@@ -11,8 +11,6 @@ namespace kb
 namespace th
 {
 
-// Size of a cache line -> controlling alignment prevents false sharing
-static constexpr size_t k_cache_line_size = 64;
 // Maximal padding of a Job structure within the job pool
 static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
@@ -94,7 +92,7 @@ void JobSystem::shutdown()
     for (auto *worker : workers_)
         worker->join();
 
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     // Log worker statistics
     monitor_->update_statistics();
     KLOGN("thread") << "[JobSystem] Thread statistics:" << std::endl;
@@ -138,10 +136,10 @@ void JobSystem::release_job(Job *job)
     K_DELETE(job, ss_->job_pool);
 }
 
-void JobSystem::schedule(Job *job)
+void JobSystem::schedule(Job *job, tid_t caller_thread)
 {
     ss_->pending.fetch_add(1);
-    scheduler_->dispatch(job);
+    scheduler_->dispatch(job, caller_thread);
     ss_->cv_wake.notify_all();
 }
 
@@ -152,8 +150,9 @@ void JobSystem::use_persistence_file(const fs::path &filepath)
     monitor_->load_job_profiles(persistence_file_);
 }
 
-// Main thread atomically increments pending each time a job is pushed to the queue.
-// Worker threads atomically decrement pending each time they finished a job.
+// Main thread and workers (on rescheduling) atomically increment pending each
+// time a job is pushed to the queue.
+// Main thread and workers atomically decrement pending each time they finished a job.
 // Then we just need to wait for pending to return to zero in order
 // to be sure all worker threads have finished.
 bool JobSystem::is_busy() const
@@ -175,7 +174,7 @@ bool JobSystem::is_work_done(Job *job) const
 void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     int64_t idle_time_us = 0;
 #endif
     while (condition())
@@ -183,18 +182,18 @@ void JobSystem::wait_until(std::function<bool()> condition)
         if (!workers_[0]->foreground_work())
         {
             // There's nothing we can do, just wait. Some work may come to us.
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
             microClock clk;
 #endif
             ss_->cv_wake.notify_all(); // wake worker threads
             std::this_thread::yield(); // allow this thread to be rescheduled
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
             idle_time_us += clk.get_elapsed_time().count();
 #endif
         }
     }
 
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     auto &activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
     monitor_->report_thread_activity(activity);
@@ -229,6 +228,16 @@ std::vector<WorkerThread *> JobSystem::get_compatible_workers(worker_affinity_t 
     for (uint32_t ii = 0; ii < workers_.size(); ++ii)
         if (affinity & (1 << ii))
             ret.push_back(workers_[ii]);
+
+    return ret;
+}
+
+std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affinity)
+{
+    std::vector<tid_t> ret;
+    for (tid_t ii = 0; ii < workers_.size(); ++ii)
+        if (affinity & (1 << ii))
+            ret.push_back(ii);
 
     return ret;
 }

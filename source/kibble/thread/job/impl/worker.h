@@ -139,7 +139,7 @@ public:
         return state_.load(std::memory_order_acquire);
     }
 
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     /**
      * @internal
      * @brief Get this worker's activity report
@@ -206,7 +206,7 @@ private:
     std::atomic<State> state_;
     std::thread thread_;
 
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     WorkerActivity activity_;
 #endif
 

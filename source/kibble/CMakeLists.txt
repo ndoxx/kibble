@@ -26,8 +26,36 @@ set_target_properties(kibble
         POSITION_INDEPENDENT_CODE ON
 )
 
-target_compile_definitions(kibble PRIVATE -DLOGGING_ENABLED=1)
-target_compile_definitions(kibble PRIVATE -DK_ENABLE_ASSERT)
+# Configuration
+option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
+option(ENABLE_LOGGING "Enable logging within Kibble" ON)
+option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
+option(ENABLE_SHARED_STATE_PAGE_ALIGN "Page align job system shared state members" ON)
+
+target_compile_definitions(kibble 
+    PUBLIC 
+        CFG_JS_MAX_THREADS=8
+        CFG_JS_MAX_JOBS_PER_WORKER=1024
+        CFG_JS_STATS_QUEUE_CAPACITY=128
+)
+
+if(ENABLE_LOGGING)
+    target_compile_definitions(kibble PRIVATE LOGGING_ENABLED=1)
+else()
+    target_compile_definitions(kibble PRIVATE LOGGING_ENABLED=0)
+endif()
+
+if(ENABLE_ASSERTIONS)
+    target_compile_definitions(kibble PRIVATE K_ENABLE_ASSERT)
+endif()
+
+if(ENABLE_JOB_SYSTEM_PROFILING)
+    target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)
+endif()
+
+if(ENABLE_SHARED_STATE_PAGE_ALIGN)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_SHARED_STATE_PAGE_ALIGN)
+endif()
 
 target_link_libraries(kibble
     PRIVATE

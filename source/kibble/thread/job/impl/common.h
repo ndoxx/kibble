@@ -4,34 +4,16 @@
 #include "logger/logger.h"
 #include "memory/heap_area.h"
 #include "memory/memory.h"
-// #include "memory/pool_allocator.h"
 #include "memory/atomic_pool_allocator.h"
-#include <cstdint>
+#include "thread/job/config.h"
 
 namespace kb
 {
 namespace th
 {
 
-// Brief idle/active timing stats per worker thread
-#define PROFILING 1
-// Attempt at reducing false sharing in shared state by page-aligning its members (TODO: measure this)
-#define ENABLE_SHARED_STATE_PAGE_ALIGN 0
-
-#if ENABLE_SHARED_STATE_PAGE_ALIGN
-#define PAGE_ALIGN alignas(k_cache_line_size)
-#else
-#define PAGE_ALIGN
-#endif
-
 using tid_t = uint32_t;
 using worker_affinity_t = uint32_t;
-/// Maximum allowable number of worker threads
-[[maybe_unused]] static constexpr std::size_t k_max_threads = 8;
-/// Maximum number of jobs per worker thread queue
-[[maybe_unused]] static constexpr std::size_t k_max_jobs = 1024;
-/// Maximum number of stats packets in the monitor queue
-[[maybe_unused]] static constexpr std::size_t k_stats_queue_capacity = 128;
 
 template <typename T>
 using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
@@ -41,6 +23,16 @@ using JobPoolArena = memory::MemoryArena<memory::AtomicPoolAllocator<k_max_jobs 
                                          memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 template <typename T>
 using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;
+
+
+// Size of a cache line -> controlling alignment prevents false sharing
+[[maybe_unused]] static constexpr size_t k_cache_line_size = 64;
+
+#ifdef K_ENABLE_SHARED_STATE_PAGE_ALIGN
+#define PAGE_ALIGN alignas(k_cache_line_size)
+#else
+#define PAGE_ALIGN
+#endif
 
 /**
  * @internal

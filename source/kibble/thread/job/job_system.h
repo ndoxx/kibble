@@ -7,6 +7,7 @@
 #include <limits>
 #include <memory>
 #include <vector>
+#include "thread/job/config.h"
 
 namespace fs = std::filesystem;
 
@@ -23,6 +24,7 @@ namespace th
 using JobKernel = std::function<void(void)>;
 using worker_affinity_t = uint32_t;
 using label_t = uint64_t;
+using tid_t = uint32_t;
 
 /// A job with this affinity can be executed on any worker
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ANY = std::numeric_limits<worker_affinity_t>::max();
@@ -176,8 +178,9 @@ public:
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
      * @param job the job to submit
+     * @param caller_thread the id of the thread calling this method (default: main thread)
      */
-    void schedule(Job *job);
+    void schedule(Job *job, tid_t caller_thread = 0);
 
     /**
      * @brief Non-blockingly check if any worker threads are busy.
@@ -227,6 +230,14 @@ public:
      * @return std::vector<WorkerThread*>
      */
     std::vector<WorkerThread *> get_compatible_workers(worker_affinity_t affinity);
+
+    /**
+     * @brief Get a list of ids of all workers compatible with the given affinity requirement.
+     *
+     * @param affinity
+     * @return std::vector<WorkerThread*>
+     */
+    std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
 
     /// Get the list of workers (non-const).
     inline auto &get_workers()

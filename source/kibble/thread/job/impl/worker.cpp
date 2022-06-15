@@ -1,6 +1,6 @@
+#include "thread/job/impl/worker.h"
 #include "random/random_operation.h"
 #include "thread/job/impl/monitor.h"
-#include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 #include "thread/sanitizer.h"
 #include "time/clock.h"
@@ -13,7 +13,7 @@ namespace th
 WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
     : props_(props), js_(jobsys), ss_(js_.get_shared_state())
 {
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     activity_.tid = props_.tid;
 #endif
 }
@@ -52,7 +52,7 @@ void WorkerThread::run()
         }
 
         state_.store(State::Idle, std::memory_order_release);
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
         microClock clk;
 #endif
         std::unique_lock<std::mutex> lock(ss_.wake_mutex);
@@ -62,7 +62,7 @@ void WorkerThread::run()
         // The second condition forces workers to wake up when the job system shuts down.
         // This avoids another deadlock on exit.
         ss_.cv_wake.wait(lock, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
         activity_.idle_time_us += clk.get_elapsed_time().count();
         js_.get_monitor().report_thread_activity(activity_);
         activity_.reset();
@@ -101,7 +101,7 @@ bool WorkerThread::get_job(Job *&job)
                 {
                     worker.jobs_.push(job);
                     has_job = false;
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
                     ++activity_.resubmit;
 #endif
                     continue;
@@ -110,7 +110,7 @@ bool WorkerThread::get_job(Job *&job)
                     break;
             }
         }
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
         if (has_job)
             ++activity_.stolen;
 #endif
@@ -125,7 +125,7 @@ void WorkerThread::process(Job *job)
     job->kernel();
     job->meta.execution_time_us = clk.get_elapsed_time().count();
     job->finished.store(true, std::memory_order_release);
-#if PROFILING
+#if K_PROFILE_JOB_SYSTEM
     activity_.active_time_us += clk.get_elapsed_time().count();
     ++activity_.executed;
 #endif
@@ -138,13 +138,9 @@ void WorkerThread::schedule_children(Job *job)
 {
     for (Job *child : job->children)
     {
-        // Select a worker at random from a list of compatible workers, and submit the child
-        // NOTE: I avoid calling js_.schedule() which would cause a data race
-        auto workers = js_.get_compatible_workers(child->meta.worker_affinity);
-        auto it = rng::random_select(workers.begin(), workers.end());
-        ss_.pending.fetch_add(1);
-        (*it)->submit(child);
-#if PROFILING
+        // Thread-safe call as long as the scheduler implementation is thread-safe
+        js_.schedule(child, props_.tid);
+#if K_PROFILE_JOB_SYSTEM
         ++activity_.scheduled;
 #endif
     }

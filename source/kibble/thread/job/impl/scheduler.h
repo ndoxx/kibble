@@ -1,5 +1,6 @@
 #pragma once
 
+#include "thread/job/impl/common.h"
 #include <cstdint>
 
 namespace kb
@@ -16,6 +17,8 @@ struct Job;
  * concept of load balancing is of central importance when designing a scheduler. Several strategies can be used to
  * balance thread load. This polymorphic design allows to dynamically choose such a strategy among multiple
  * implementations.
+ * Schedulers will be called by workers when they finished a parent task and need to schedule children tasks. So
+ * they need to be thread-safe. It is the responsibility of the implementation to avoid data races and deadlocks.
  *
  */
 class Scheduler
@@ -35,7 +38,7 @@ public:
      *
      * @param job job pointer
      */
-    virtual void dispatch(Job *job) = 0;
+    virtual void dispatch(Job *job, tid_t caller_thread) = 0;
 
     /**
      * @brief Check if the balancing algorithm is dynamic.
@@ -51,13 +54,15 @@ public:
     }
 
 protected:
-    JobSystem &js_;
+    PAGE_ALIGN JobSystem &js_;
 };
 
 /**
  * @brief This Scheduler dispatches the next job to the next worker in the line.
  * This simple static load balancing strategy ensures that a given worker is never given a job twice in a row, which
  * gives it some time to process its job queue before a new job is pushed.
+ *
+ * @note This scheduler is thread-safe.
  *
  */
 class RoundRobinScheduler : public Scheduler
@@ -77,15 +82,20 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job) override final;
+    void dispatch(Job *job, tid_t caller_thread) override final;
 
 private:
-    std::size_t round_robin_ = 0;
+    // Each thread has its own round robin state (64b to avoid false sharing)
+    PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 /**
  * @brief This Scheduler dispatches the next job to the worker with the less load.
  * This dynamic load balancing strategy benefits from Monitor input to make informed dispatch decisions.
+ *
+ * @note This scheduler is thread safe. It does not seem to perform as well as advertised when a task graph is used.
+ * The RoundRobinScheduler seem more efficient in this case. This may be due to worker affinity being adversarial in
+ * this context, by inducing loads of job resubmissions.
  *
  */
 class MinimumLoadScheduler : public Scheduler
@@ -107,12 +117,12 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job) override final;
+    void dispatch(Job *job, tid_t caller_thread) override final;
 
     /**
      * @brief This is a dynamic load balancer, return true.
-     * 
-     * @return true 
+     *
+     * @return true
      */
     bool is_dynamic() override final
     {
@@ -120,7 +130,8 @@ public:
     }
 
 private:
-    std::size_t round_robin_ = 0;
+    // Each thread has its own round robin state (64b to avoid false sharing)
+    PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 } // namespace th

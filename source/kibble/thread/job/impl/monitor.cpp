@@ -30,6 +30,8 @@ void Monitor::report_job_execution(const JobMetadata &meta)
 
 void Monitor::wrap()
 {
+    // NOTE(ndx): I suppose fill will use operator= which for an atomic is equivalent to
+    // calling store() with std::memory_order_seq_cst (thus release), so all is fine.
     std::fill(load_.begin(), load_.end(), 0);
 }
 
@@ -81,13 +83,13 @@ void Monitor::log_statistics(tid_t tid) const
 struct JPPHeader
 {
     /// Magic number to check file format validity
-    uint32_t magic;         
+    uint32_t magic;
     /// Version major number
-    uint16_t version_major; 
+    uint16_t version_major;
     /// Version minor number
-    uint16_t version_minor; 
+    uint16_t version_minor;
     /// Number of job labels in this file
-    uint64_t label_count;   
+    uint64_t label_count;
 };
 
 #define JPP_MAGIC 0x4650504a // ASCII(JPPF)

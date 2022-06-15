@@ -271,7 +271,7 @@ int main(int argc, char **argv)
     if (!success)
         show_error_and_die(parser);
 
-    size_t nexp = std::min(size_t(ne()), 10ul);
+    size_t nexp = std::min(size_t(ne()), 100ul);
     size_t njob = std::min(size_t(nj()), 500ul);
 
     if (ex() == 0)
