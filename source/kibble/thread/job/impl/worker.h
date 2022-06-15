@@ -136,7 +136,7 @@ public:
      */
     inline State query_state() const
     {
-        return state_.load(std::memory_order_relaxed);
+        return state_.load(std::memory_order_acquire);
     }
 
 #if PROFILING

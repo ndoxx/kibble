@@ -40,7 +40,7 @@ void WorkerThread::run()
 {
     K_ASSERT(props_.is_background, "run() should not be called in the main thread.");
 
-    while (ss_.running.load(std::memory_order_relaxed))
+    while (ss_.running.load(std::memory_order_acquire))
     {
         state_.store(State::Running, std::memory_order_release);
 
@@ -61,7 +61,7 @@ void WorkerThread::run()
         // the pending jobs it holds.
         // The second condition forces workers to wake up when the job system shuts down.
         // This avoids another deadlock on exit.
-        ss_.cv_wake.wait(lock, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_relaxed); });
+        ss_.cv_wake.wait(lock, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
 #if PROFILING
         activity_.idle_time_us += clk.get_elapsed_time().count();
         js_.get_monitor().report_thread_activity(activity_);

@@ -158,12 +158,12 @@ void JobSystem::use_persistence_file(const fs::path &filepath)
 // to be sure all worker threads have finished.
 bool JobSystem::is_busy() const
 {
-    return ss_->pending.load(std::memory_order_relaxed) > 0;
+    return ss_->pending.load(std::memory_order_acquire) > 0;
 }
 
 bool JobSystem::is_work_done(Job *job) const
 {
-    return job->finished.load(std::memory_order_relaxed);
+    return job->finished.load(std::memory_order_acquire);
 }
 
 // NOTE(ndx): Instead of busy-waiting I tried
