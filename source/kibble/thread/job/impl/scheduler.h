@@ -54,7 +54,7 @@ public:
     }
 
 protected:
-    JobSystem &js_;
+    PAGE_ALIGN JobSystem &js_;
 };
 
 /**
@@ -86,7 +86,7 @@ public:
 
 private:
     // Each thread has its own round robin state (64b to avoid false sharing)
-    std::array<std::size_t, k_max_threads> round_robin_;
+    PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 /**
@@ -131,7 +131,7 @@ public:
 
 private:
     // Each thread has its own round robin state (64b to avoid false sharing)
-    std::array<std::size_t, k_max_threads> round_robin_;
+    PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 } // namespace th

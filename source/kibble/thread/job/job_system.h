@@ -7,6 +7,7 @@
 #include <limits>
 #include <memory>
 #include <vector>
+#include "thread/job/config.h"
 
 namespace fs = std::filesystem;
 
