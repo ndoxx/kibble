@@ -230,6 +230,14 @@ public:
      */
     std::vector<WorkerThread *> get_compatible_workers(worker_affinity_t affinity);
 
+    /**
+     * @brief Get a list of ids of all workers compatible with the given affinity requirement.
+     *
+     * @param affinity
+     * @return std::vector<WorkerThread*>
+     */
+    std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
+
     /// Get the list of workers (non-const).
     inline auto &get_workers()
     {

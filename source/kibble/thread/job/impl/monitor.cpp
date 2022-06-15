@@ -83,13 +83,13 @@ void Monitor::log_statistics(tid_t tid) const
 struct JPPHeader
 {
     /// Magic number to check file format validity
-    uint32_t magic;         
+    uint32_t magic;
     /// Version major number
-    uint16_t version_major; 
+    uint16_t version_major;
     /// Version minor number
-    uint16_t version_minor; 
+    uint16_t version_minor;
     /// Number of job labels in this file
-    uint64_t label_count;   
+    uint64_t label_count;
 };
 
 #define JPP_MAGIC 0x4650504a // ASCII(JPPF)

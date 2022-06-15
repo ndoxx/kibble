@@ -1,6 +1,6 @@
+#include "thread/job/impl/worker.h"
 #include "random/random_operation.h"
 #include "thread/job/impl/monitor.h"
-#include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 #include "thread/sanitizer.h"
 #include "time/clock.h"

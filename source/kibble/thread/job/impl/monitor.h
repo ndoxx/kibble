@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include <filesystem>
 #include <atomic>
+#include <filesystem>
 #include <map>
 
 #include "thread/job/impl/common.h"
@@ -117,9 +117,9 @@ public:
      *
      * @return an array of loads, the size of the maximum amount of threads
      */
-    inline const auto &get_load() const
+    inline auto get_load(tid_t tid) const
     {
-        return load_;
+        return load_[tid].load(std::memory_order_acquire);
     }
 
     /**

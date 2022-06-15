@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include "thread/job/impl/common.h"
+#include <cstdint>
 
 namespace kb
 {
@@ -61,7 +61,7 @@ protected:
  * @brief This Scheduler dispatches the next job to the next worker in the line.
  * This simple static load balancing strategy ensures that a given worker is never given a job twice in a row, which
  * gives it some time to process its job queue before a new job is pushed.
- * 
+ *
  * @note This scheduler is thread-safe.
  *
  */
@@ -92,10 +92,10 @@ private:
 /**
  * @brief This Scheduler dispatches the next job to the worker with the less load.
  * This dynamic load balancing strategy benefits from Monitor input to make informed dispatch decisions.
- * 
- * @note This scheduler is thread safe. It does not seem to perform as well as advertised now, like it
- * did when I first implemented it. The RoundRobinScheduler seem more efficient for some reason, and
- * I don't really understand why.
+ *
+ * @note This scheduler is thread safe. It does not seem to perform as well as advertised when a task graph is used.
+ * The RoundRobinScheduler seem more efficient in this case. This may be due to worker affinity being adversarial in
+ * this context, by inducing loads of job resubmissions.
  *
  */
 class MinimumLoadScheduler : public Scheduler
@@ -121,8 +121,8 @@ public:
 
     /**
      * @brief This is a dynamic load balancer, return true.
-     * 
-     * @return true 
+     *
+     * @return true
      */
     bool is_dynamic() override final
     {

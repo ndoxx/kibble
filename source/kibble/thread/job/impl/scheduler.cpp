@@ -1,5 +1,5 @@
-#include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
+#include "thread/job/impl/monitor.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
 
@@ -22,7 +22,7 @@ RoundRobinScheduler::RoundRobinScheduler(JobSystem &js) : Scheduler(js)
 
 void RoundRobinScheduler::dispatch(Job *job, tid_t caller_thread)
 {
-    std::size_t& rr = round_robin_[caller_thread];
+    std::size_t &rr = round_robin_[caller_thread];
     while ((job->meta.worker_affinity & (1 << rr)) == 0)
         rr = (rr + 1) % js_.get_threads_count();
 
@@ -46,26 +46,26 @@ void MinimumLoadScheduler::dispatch(Job *job, tid_t caller_thread)
         if (findit != job_size.end())
         {
             // Find worker with minimal load and assign it the job
-            const auto &load = js_.get_monitor().get_load();
-            long min_load = std::numeric_limits<long>::max();
-            size_t min_load_idx = 0;
-            for (size_t ii = 0; ii < js_.get_threads_count(); ++ii)
+            int64_t min_load = std::numeric_limits<int64_t>::max();
+            size_t min_load_tid = 0;
+            auto compatible = js_.get_compatible_worker_ids(job->meta.worker_affinity);
+            for (auto tid : compatible)
             {
-                auto ld = load[ii].load(std::memory_order_acquire);
-                if ((job->meta.worker_affinity & (1 << ii)) != 0 && ld < min_load)
+                auto load = js_.get_monitor().get_load(tid);
+                if (load < min_load)
                 {
-                    min_load = ld;
-                    min_load_idx = ii;
+                    min_load = load;
+                    min_load_tid = tid;
                 }
             }
-            js_.get_monitor().add_load(min_load_idx, findit->second);
-            js_.get_worker(min_load_idx).submit(job);
+            js_.get_monitor().add_load(min_load_tid, findit->second);
+            js_.get_worker(min_load_tid).submit(job);
             return;
         }
     }
 
     // Fallback to round-robin selection
-    std::size_t& rr = round_robin_[caller_thread];
+    std::size_t &rr = round_robin_[caller_thread];
     while ((job->meta.worker_affinity & (1 << rr)) == 0)
         rr = (rr + 1) % js_.get_threads_count();
 

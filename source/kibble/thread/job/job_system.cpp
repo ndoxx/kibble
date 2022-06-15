@@ -1,8 +1,8 @@
+#include "thread/job/job_system.h"
 #include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
-#include "thread/job/job_system.h"
 
 #include <thread>
 
@@ -152,7 +152,7 @@ void JobSystem::use_persistence_file(const fs::path &filepath)
     monitor_->load_job_profiles(persistence_file_);
 }
 
-// Main thread and workers (on rescheduling) atomically increment pending each 
+// Main thread and workers (on rescheduling) atomically increment pending each
 // time a job is pushed to the queue.
 // Main thread and workers atomically decrement pending each time they finished a job.
 // Then we just need to wait for pending to return to zero in order
@@ -230,6 +230,16 @@ std::vector<WorkerThread *> JobSystem::get_compatible_workers(worker_affinity_t 
     for (uint32_t ii = 0; ii < workers_.size(); ++ii)
         if (affinity & (1 << ii))
             ret.push_back(workers_[ii]);
+
+    return ret;
+}
+
+std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affinity)
+{
+    std::vector<tid_t> ret;
+    for (tid_t ii = 0; ii < workers_.size(); ++ii)
+        if (affinity & (1 << ii))
+            ret.push_back(ii);
 
     return ret;
 }
