@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "thread/job/impl/common.h"
 
 namespace kb
 {
@@ -35,7 +36,7 @@ public:
      *
      * @param job job pointer
      */
-    virtual void dispatch(Job *job) = 0;
+    virtual void dispatch(Job *job, tid_t caller_thread) = 0;
 
     /**
      * @brief Check if the balancing algorithm is dynamic.
@@ -58,6 +59,8 @@ protected:
  * @brief This Scheduler dispatches the next job to the next worker in the line.
  * This simple static load balancing strategy ensures that a given worker is never given a job twice in a row, which
  * gives it some time to process its job queue before a new job is pushed.
+ * 
+ * @note This scheduler is thread-safe.
  *
  */
 class RoundRobinScheduler : public Scheduler
@@ -77,15 +80,18 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job) override final;
+    void dispatch(Job *job, tid_t caller_thread) override final;
 
 private:
-    std::size_t round_robin_ = 0;
+    /// Each thread has its own round robin state (64b to avoid false sharing)
+    std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 /**
  * @brief This Scheduler dispatches the next job to the worker with the less load.
  * This dynamic load balancing strategy benefits from Monitor input to make informed dispatch decisions.
+ * 
+ * @note This scheduler is NOT thread safe atm.
  *
  */
 class MinimumLoadScheduler : public Scheduler
@@ -107,7 +113,7 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job) override final;
+    void dispatch(Job *job, tid_t caller_thread) override final;
 
     /**
      * @brief This is a dynamic load balancer, return true.
@@ -120,7 +126,8 @@ public:
     }
 
 private:
-    std::size_t round_robin_ = 0;
+    /// Each thread has its own round robin state (64b to avoid false sharing)
+    std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 } // namespace th

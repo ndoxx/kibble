@@ -17,22 +17,25 @@ Scheduler::Scheduler(JobSystem &js) : js_(js)
 
 RoundRobinScheduler::RoundRobinScheduler(JobSystem &js) : Scheduler(js)
 {
+    std::fill(round_robin_.begin(), round_robin_.end(), 0);
 }
 
-void RoundRobinScheduler::dispatch(Job *job)
+void RoundRobinScheduler::dispatch(Job *job, tid_t caller_thread)
 {
-    while ((job->meta.worker_affinity & (1 << round_robin_)) == 0)
-        round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
+    std::size_t& rr = round_robin_[caller_thread];
+    while ((job->meta.worker_affinity & (1 << rr)) == 0)
+        rr = (rr + 1) % js_.get_threads_count();
 
-    js_.get_worker(round_robin_).submit(job);
-    round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
+    js_.get_worker(rr).submit(job);
+    rr = (rr + 1) % js_.get_threads_count();
 }
 
 MinimumLoadScheduler::MinimumLoadScheduler(JobSystem &js) : Scheduler(js)
 {
+    std::fill(round_robin_.begin(), round_robin_.end(), 0);
 }
 
-void MinimumLoadScheduler::dispatch(Job *job)
+void MinimumLoadScheduler::dispatch(Job *job, tid_t caller_thread)
 {
     // Create a vector of viable worker candidates based on affinity,
     // and select worker with minimal load
@@ -61,11 +64,12 @@ void MinimumLoadScheduler::dispatch(Job *job)
     }
 
     // Fallback to round-robin selection
-    while ((job->meta.worker_affinity & (1 << round_robin_)) == 0)
-        round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
+    std::size_t& rr = round_robin_[caller_thread];
+    while ((job->meta.worker_affinity & (1 << rr)) == 0)
+        rr = (rr + 1) % js_.get_threads_count();
 
-    js_.get_worker(round_robin_).submit(job);
-    round_robin_ = (round_robin_ + 1) % js_.get_threads_count();
+    js_.get_worker(rr).submit(job);
+    rr = (rr + 1) % js_.get_threads_count();
 }
 
 } // namespace th

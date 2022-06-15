@@ -23,6 +23,7 @@ namespace th
 using JobKernel = std::function<void(void)>;
 using worker_affinity_t = uint32_t;
 using label_t = uint64_t;
+using tid_t = uint32_t;
 
 /// A job with this affinity can be executed on any worker
 [[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ANY = std::numeric_limits<worker_affinity_t>::max();
@@ -176,8 +177,9 @@ public:
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
      * @param job the job to submit
+     * @param caller_thread the id of the thread calling this method (default: main thread)
      */
-    void schedule(Job *job);
+    void schedule(Job *job, tid_t caller_thread = 0);
 
     /**
      * @brief Non-blockingly check if any worker threads are busy.

@@ -140,10 +140,11 @@ void WorkerThread::schedule_children(Job *job)
     {
         // Select a worker at random from a list of compatible workers, and submit the child
         // NOTE: I avoid calling js_.schedule() which would cause a data race
-        auto workers = js_.get_compatible_workers(child->meta.worker_affinity);
-        auto it = rng::random_select(workers.begin(), workers.end());
-        ss_.pending.fetch_add(1);
-        (*it)->submit(child);
+        // auto workers = js_.get_compatible_workers(child->meta.worker_affinity);
+        // auto it = rng::random_select(workers.begin(), workers.end());
+        // ss_.pending.fetch_add(1);
+        // (*it)->submit(child);
+        js_.schedule(child, props_.tid);
 #if PROFILING
         ++activity_.scheduled;
 #endif

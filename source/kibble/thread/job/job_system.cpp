@@ -138,10 +138,10 @@ void JobSystem::release_job(Job *job)
     K_DELETE(job, ss_->job_pool);
 }
 
-void JobSystem::schedule(Job *job)
+void JobSystem::schedule(Job *job, tid_t caller_thread)
 {
     ss_->pending.fetch_add(1);
-    scheduler_->dispatch(job);
+    scheduler_->dispatch(job, caller_thread);
     ss_->cv_wake.notify_all();
 }
 
@@ -152,8 +152,9 @@ void JobSystem::use_persistence_file(const fs::path &filepath)
     monitor_->load_job_profiles(persistence_file_);
 }
 
-// Main thread atomically increments pending each time a job is pushed to the queue.
-// Worker threads atomically decrement pending each time they finished a job.
+// Main thread and workers (on rescheduling) atomically increment pending each 
+// time a job is pushed to the queue.
+// Main thread and workers atomically decrement pending each time they finished a job.
 // Then we just need to wait for pending to return to zero in order
 // to be sure all worker threads have finished.
 bool JobSystem::is_busy() const
