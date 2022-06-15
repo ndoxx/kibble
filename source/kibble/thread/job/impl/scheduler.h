@@ -17,6 +17,8 @@ struct Job;
  * concept of load balancing is of central importance when designing a scheduler. Several strategies can be used to
  * balance thread load. This polymorphic design allows to dynamically choose such a strategy among multiple
  * implementations.
+ * Schedulers will be called by workers when they finished a parent task and need to schedule children tasks. So
+ * they need to be thread-safe. It is the responsibility of the implementation to avoid data races and deadlocks.
  *
  */
 class Scheduler
@@ -83,7 +85,7 @@ public:
     void dispatch(Job *job, tid_t caller_thread) override final;
 
 private:
-    /// Each thread has its own round robin state (64b to avoid false sharing)
+    // Each thread has its own round robin state (64b to avoid false sharing)
     std::array<std::size_t, k_max_threads> round_robin_;
 };
 
@@ -91,7 +93,9 @@ private:
  * @brief This Scheduler dispatches the next job to the worker with the less load.
  * This dynamic load balancing strategy benefits from Monitor input to make informed dispatch decisions.
  * 
- * @note This scheduler is NOT thread safe atm.
+ * @note This scheduler is thread safe. It does not seem to perform as well as advertised now, like it
+ * did when I first implemented it. The RoundRobinScheduler seem more efficient for some reason, and
+ * I don't really understand why.
  *
  */
 class MinimumLoadScheduler : public Scheduler
@@ -126,7 +130,7 @@ public:
     }
 
 private:
-    /// Each thread has its own round robin state (64b to avoid false sharing)
+    // Each thread has its own round robin state (64b to avoid false sharing)
     std::array<std::size_t, k_max_threads> round_robin_;
 };
 

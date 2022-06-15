@@ -51,9 +51,10 @@ void MinimumLoadScheduler::dispatch(Job *job, tid_t caller_thread)
             size_t min_load_idx = 0;
             for (size_t ii = 0; ii < js_.get_threads_count(); ++ii)
             {
-                if ((job->meta.worker_affinity & (1 << ii)) != 0 && load[ii] < min_load)
+                auto ld = load[ii].load(std::memory_order_acquire);
+                if ((job->meta.worker_affinity & (1 << ii)) != 0 && ld < min_load)
                 {
-                    min_load = load[ii];
+                    min_load = ld;
                     min_load_idx = ii;
                 }
             }

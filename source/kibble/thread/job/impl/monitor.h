@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <atomic>
 #include <map>
 
 #include "thread/job/impl/common.h"
@@ -140,7 +141,7 @@ public:
      */
     inline void add_load(size_t idx, int64_t job_size)
     {
-        load_[idx] += job_size;
+        load_[idx].fetch_add(job_size);
     }
 
     /**
@@ -171,7 +172,9 @@ private:
 
 private:
     std::map<uint64_t, int64_t> job_size_;
-    std::array<int64_t, k_max_threads> load_;
+    // The load information is used by the Schedulers which are thread-safe objects, so
+    // each load variable needs to be atomic.
+    std::array<std::atomic<int64_t>, k_max_threads> load_;
     std::array<WorkerStats, k_max_threads> stats_;
     JobSystem &js_;
     ActivityQueue<WorkerActivity> activity_queue_;

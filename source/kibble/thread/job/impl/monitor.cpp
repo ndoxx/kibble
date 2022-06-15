@@ -30,6 +30,8 @@ void Monitor::report_job_execution(const JobMetadata &meta)
 
 void Monitor::wrap()
 {
+    // NOTE(ndx): I suppose fill will use operator= which for an atomic is equivalent to
+    // calling store() with std::memory_order_seq_cst (thus release), so all is fine.
     std::fill(load_.begin(), load_.end(), 0);
 }
 
