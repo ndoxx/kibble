@@ -1,13 +1,15 @@
 #pragma once
 
+#include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <vector>
-#include "thread/job/config.h"
 
 namespace fs = std::filesystem;
 
@@ -57,6 +59,8 @@ struct Job
     JobMetadata meta;
     /// The function to execute
     JobKernel kernel = JobKernel{};
+    /// Any exception thrown by the kernel function
+    std::exception_ptr p_except = nullptr;
     /// All jobs that have this one as a dependency
     std::vector<Job *> children;
 
@@ -210,7 +214,9 @@ public:
      * @brief Hold execution on this thread until all jobs are processed or the input predicate returns false.
      * Allows to wait for all jobs to be processed. This marks a sync point in the caller code.
      *
-     * @param condition predicate that will keep the function busy till it evaluates to false
+     * @param condition While this predicate evaluates to true, the function waits for job completion.
+     * When it evaluates to false, the function exits regardless of pending jobs. This can be used to implement
+     * a timeout functionality.
      */
     void wait(std::function<bool()> condition = []() { return true; });
 
@@ -218,7 +224,9 @@ public:
      * @brief Hold execution on the main thread until a given job has been processed or the predicate returns false.
      *
      * @param job the job to wait for
-     * @param condition predicate that will keep the function busy till it evaluates to false
+     * @param condition While this predicate evaluates to true, the function waits for job completion.
+     * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
+     * a timeout functionality.
      */
     void wait_for(
         Job *job, std::function<bool()> condition = []() { return true; });

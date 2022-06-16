@@ -124,16 +124,24 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 
 void JobSystem::release_job(Job *job)
 {
+    // Make sure that the job was processed
     if (!job->finished.load(std::memory_order_acquire))
     {
         KLOGW("thread") << "Tried to release unprocessed job." << std::endl;
         return;
     }
+
     // Inform monitor about what happened with this job
     if (scheduler_->is_dynamic())
         monitor_->report_job_execution(job->meta);
+
+    // Save exception pointer
+    auto p_except = job->p_except;
     // Return job to the pool
     K_DELETE(job, ss_->job_pool);
+    // If job threw an exception, rethrow it now
+    if (p_except != nullptr)
+        std::rethrow_exception(p_except);
 }
 
 void JobSystem::schedule(Job *job, tid_t caller_thread)
