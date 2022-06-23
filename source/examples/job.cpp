@@ -107,7 +107,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOG("example", 1) << "Round " << kk << std::endl;
 
         // We save the job pointers in there so we can release them when we're done
-        std::vector<th::Job *> jobs;
+        std::vector<th::JobHnd> jobs;
         // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
         // have an idea of the amount of job creation / scheduling overhead.
         milliClock clk;
@@ -129,12 +129,12 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 
             // Let's create a job and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
-            auto *job = js.create_job(
+            auto job = js.create_job(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); }, meta);
 
             // Schedule the job, the workers will awake
             js.schedule(job);
-            // Save the job pointer for later cleanup (or the job pool will leak)
+            // Save the job handle for later cleanup (or the job pool will leak)
             jobs.push_back(job);
         }
         // Wait for all jobs to be executed. This introduces a sync point. The main thread will assist the workers
@@ -152,8 +152,8 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
               << std::endl;
 
         // Cleanup
-        for (auto *job : jobs)
-            js.release_job(job);
+        for (auto &&job : jobs)
+            job.release();
     }
 
     return 0;
@@ -201,7 +201,7 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::Job *> jobs;
+        std::vector<th::JobHnd> jobs;
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
         {
@@ -213,7 +213,7 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
             else
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto *load_job = js.create_job(
+            auto load_job = js.create_job(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); },
                 load_meta);
 
@@ -221,14 +221,14 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
             stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
             stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
 
-            auto *stage_job = js.create_job(
+            auto stage_job = js.create_job(
                 [&stage_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii])); },
                 stage_meta);
 
             // But this time, we set the staging job as a child of the loading job. This means that the staging job will
             // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
             // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
-            load_job->add_child(stage_job);
+            load_job.add_child(stage_job);
 
             // We only schedule the parent job here, or we're asking for problems
             js.schedule(load_job);
@@ -248,8 +248,8 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
               << std::endl;
 
-        for (auto *job : jobs)
-            js.release_job(job);
+        for (auto &&job : jobs)
+            job.release();
     }
 
     return 0;
@@ -273,7 +273,7 @@ int p2(size_t njobs, bool minload, bool disable_work_stealing)
     memory::HeapArea area(2_MB);
     th::JobSystem js(area, scheme);
 
-    std::vector<th::Job *> jobs;
+    std::vector<th::JobHnd> jobs;
 
     KLOG("example", 1) << "Creating jobs." << std::endl;
 
@@ -284,7 +284,7 @@ int p2(size_t njobs, bool minload, bool disable_work_stealing)
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-        auto *job = js.create_job(
+        auto job = js.create_job(
             [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 if (ii % 40 == 0)
@@ -302,15 +302,15 @@ int p2(size_t njobs, bool minload, bool disable_work_stealing)
     js.wait();
 
     KLOG("example", 1) << "The exceptions should be rethrown now:" << std::endl;
-    for (auto *job : jobs)
+    for (auto &&job : jobs)
     {
         try
         {
-            js.release_job(job);
+            job.release();
         }
         catch (std::exception &e)
         {
-            KLOGE("example") << "Job #" << job->meta.label << " threw an exception: " << e.what() << std::endl;
+            KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
         }
     }
 
@@ -355,6 +355,11 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
         js.schedule(job);
         jobs.push_back(std::move(job));
     }
+
+    // If all worker affinities are async, waiting can be skipped, as the get() calls
+    // will provide suitable sync points. However, if jobs can execute on the main thread,
+    // not waiting will deadlock, as the main thread will wait for itself to finish
+    // some of the jobs, and never actually do the work!
     KLOG("example", 1) << "Waiting." << std::endl;
     js.wait();
 

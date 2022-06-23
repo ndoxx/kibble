@@ -114,7 +114,7 @@ void JobSystem::shutdown()
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
 
-Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
+Job *JobSystem::create_job_impl(JobKernel &&kernel, const JobMetadata &meta)
 {
     Job *job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
@@ -122,7 +122,7 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
     return job;
 }
 
-void JobSystem::release_job(Job *job)
+void JobSystem::release_job_impl(Job *job)
 {
     // Make sure that the job was processed
     if (!job->finished.load(std::memory_order_acquire))
@@ -243,6 +243,22 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
             ret.push_back(ii);
 
     return ret;
+}
+
+void JobHandle<void>::release()
+{
+    if (js_ != nullptr && job_ != nullptr)
+    {
+        auto p_except = job_->p_except;
+        js_->release_job_impl(job_);
+        if (p_except != nullptr)
+            std::rethrow_exception(p_except);
+    }
+}
+
+JobHandle<void>::JobHandle(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
+{
+    job_ = js->create_job_impl(std::forward<JobKernel>(kernel), meta);
 }
 
 } // namespace th

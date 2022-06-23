@@ -122,7 +122,22 @@ bool WorkerThread::get_job(Job *&job)
 void WorkerThread::process(Job *job)
 {
     microClock clk;
-    job->kernel();
+
+    try
+    {
+        job->kernel();
+    }
+    catch (...)
+    {
+        /*
+            Store any exception thrown by the kernel function, it will be rethrown 
+            when the job is released.
+            We should never get here when the future/promise API is used, as all
+            exceptions thrown by the kernel are captured by the wrapper.
+        */
+        job->p_except = std::current_exception();
+    }
+
     job->meta.execution_time_us = clk.get_elapsed_time().count();
     job->finished.store(true, std::memory_order_release);
 #if K_PROFILE_JOB_SYSTEM
