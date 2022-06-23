@@ -330,8 +330,10 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
     memory::HeapArea area(2_MB);
     th::JobSystem js(area, scheme);
 
-    std::vector<th::JobHandle<int>> jobs;
-    jobs.reserve(njobs);
+    std::vector<th::JobHandle<int>> job1s;
+    std::vector<th::JobHandle<float>> job2s;
+    job1s.reserve(njobs);
+    job2s.reserve(njobs);
 
     // Create as many jobs as needed
     KLOG("example", 1) << "Creating jobs." << std::endl;
@@ -341,7 +343,7 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-        auto job = js.create_job<int>(
+        auto job1 = js.create_job<int>(
             [ii](std::promise<int> &prom) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 if (ii % 40 == 0)
@@ -352,8 +354,19 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
             },
             meta);
 
-        js.schedule(job);
-        jobs.push_back(std::move(job));
+        auto fut = job1.get_future();
+        auto job2 = js.create_job<float>(
+            [fut](std::promise<float> &prom) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                prom.set_value(float(fut.get()) * 3.141592654f);
+            },
+            meta);
+
+        job1.add_child(job2);
+
+        js.schedule(job1);
+        job1s.push_back(std::move(job1));
+        job2s.push_back(std::move(job2));
     }
 
     // If all worker affinities are async, waiting can be skipped, as the get() calls
@@ -364,11 +377,14 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
     js.wait();
 
     KLOG("example", 1) << "Getting results." << std::endl;
-    for (auto &job : jobs)
+    for (auto &job : job1s)
+        job.release();
+
+    for (auto &job : job2s)
     {
         try
         {
-            int val = job.get();
+            float val = job.get();
             KLOG("example", 1) << "Value: " << val << std::endl;
         }
         catch (std::exception &e)

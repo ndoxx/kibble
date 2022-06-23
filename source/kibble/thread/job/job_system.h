@@ -1,6 +1,7 @@
 #pragma once
 
 #include "thread/job/config.h"
+#include "assert/assert.h"
 #include <atomic>
 #include <cstdint>
 #include <exception>
@@ -127,6 +128,7 @@ template <typename T>
 class JobHandle
 {
 public:
+    template <typename U> friend class JobHandle;
     friend class JobSystem;
     using TypedKernel = std::function<void(std::promise<T> &)>;
 
@@ -150,13 +152,11 @@ public:
      *
      * @return auto
      */
-    inline auto get()
+    inline auto get();
+
+    inline auto get_future()
     {
-        if (get_meta().worker_affinity != WORKER_AFFINITY_ASYNC)
-        {
-            K_ASSERT(js_->is_work_done(job_), "Tried to get() a potentially synchronous job without waiting.");
-        }
-        return future_.get();
+        return future_;
     }
 
     /**
@@ -181,7 +181,7 @@ private:
     JobSystem *js_ = nullptr;
     Job *job_ = nullptr;
     std::shared_ptr<std::promise<T>> promise_;
-    std::future<T> future_;
+    std::shared_future<T> future_;
 };
 
 /**
@@ -540,6 +540,16 @@ JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const
             }
         },
         meta);
+}
+
+template <typename T>
+inline auto JobHandle<T>::get()
+{
+    if (get_meta().worker_affinity != WORKER_AFFINITY_ASYNC)
+    {
+        K_ASSERT(js_->is_work_done(job_), "Tried to get() a potentially synchronous job without waiting.");
+    }
+    return future_.get();
 }
 
 template <typename T>
