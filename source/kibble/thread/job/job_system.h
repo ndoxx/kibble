@@ -154,7 +154,13 @@ public:
      */
     inline auto get();
 
-    inline auto get_future()
+    /**
+     * @brief Get a copy of the shared future data.
+     * This is used to pass data from parent job to child job.
+     * 
+     * @return auto 
+     */
+    inline auto get_future() const
     {
         return future_;
     }
@@ -181,7 +187,7 @@ private:
     JobSystem *js_ = nullptr;
     Job *job_ = nullptr;
     std::shared_ptr<std::promise<T>> promise_;
-    std::shared_future<T> future_;
+    std::shared_future<T> future_; // Needs to be shared, as it can be accessed from another thread.
 };
 
 /**

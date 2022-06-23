@@ -160,109 +160,16 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 }
 
 /**
- * @brief In this example, we simulate multiple resource loading and staging jobs being dispatched to worker threads.
- * Each staging job depends on the loading job with same index. Staging jobs can only be performed by the main thread.
+ * @brief Here we throw exceptions from job kernels and check that all is fine.
  *
- * @param nexp number of experiments
- * @param nloads number of loading jobs
+ * @param njobs number of jobs
  * @param minload use minimum load scheduler
  * @param disable_work_stealing
  * @return int
  */
-int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
+int p1(size_t njobs, bool minload, bool disable_work_stealing)
 {
-    KLOGN("example") << "[JobSystem Example 1] mock async loading and staging" << std::endl;
-
-    th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.enable_work_stealing = !disable_work_stealing;
-    scheme.max_stealing_attempts = 16;
-    scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
-
-    memory::HeapArea area(2_MB);
-    th::JobSystem js(area, scheme);
-    js.use_persistence_file("p2.jpp");
-
-    // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
-    std::vector<long> load_time(nloads, 0l);
-    std::vector<long> stage_time(nloads, 0l);
-    random_fill(load_time.begin(), load_time.end(), 1l, 100l, 42);
-    random_fill(stage_time.begin(), stage_time.end(), 1l, 10l, 42);
-    long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
-    serial_dur_ms += std::accumulate(stage_time.begin(), stage_time.end(), 0l);
-
-    KLOG("example", 1) << "Assets loading / staging time:" << std::endl;
-    for (size_t ii = 0; ii < nloads; ++ii)
-    {
-        KLOGI << load_time[ii] << '/' << stage_time[ii] << ' ';
-    }
-    KLOGI << std::endl;
-
-    for (size_t kk = 0; kk < nexp; ++kk)
-    {
-        KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::JobHnd> jobs;
-        milliClock clk;
-        for (size_t ii = 0; ii < nloads; ++ii)
-        {
-            // Create both jobs like we did in the previous example
-            th::JobMetadata load_meta;
-            load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
-            if (ii < 70)
-                load_meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
-            else
-                load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
-
-            auto load_job = js.create_job(
-                [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); },
-                load_meta);
-
-            th::JobMetadata stage_meta;
-            stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
-            stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
-
-            auto stage_job = js.create_job(
-                [&stage_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii])); },
-                stage_meta);
-
-            // But this time, we set the staging job as a child of the loading job. This means that the staging job will
-            // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
-            // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
-            load_job.add_child(stage_job);
-
-            // We only schedule the parent job here, or we're asking for problems
-            js.schedule(load_job);
-
-            // Both job pointers must be freed when we're done
-            jobs.push_back(load_job);
-            jobs.push_back(stage_job);
-        }
-        js.wait();
-        auto parallel_dur_ms = clk.get_elapsed_time().count();
-
-        float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
-        float factor = float(serial_dur_ms) / float(parallel_dur_ms);
-        KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
-        KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
-        KLOGI << "Factor:                " << (factor > 1 ? KS_POS_ : KS_NEG_) << factor << KC_ << std::endl;
-        KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
-              << std::endl;
-
-        for (auto &&job : jobs)
-            job.release();
-    }
-
-    return 0;
-}
-
-/**
- * @brief Here we throw exceptions from job kernels and check that all is fine.
- *
- * @return int
- */
-int p2(size_t njobs, bool minload, bool disable_work_stealing)
-{
-    KLOGN("example") << "[JobSystem Example 2] throwing exceptions" << std::endl;
+    KLOGN("example") << "[JobSystem Example 1] throwing exceptions" << std::endl;
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
@@ -317,9 +224,20 @@ int p2(size_t njobs, bool minload, bool disable_work_stealing)
     return 0;
 }
 
-int p3(size_t njobs, bool minload, bool disable_work_stealing)
+/**
+ * @brief In this example, we simulate multiple resource loading and staging jobs being dispatched to worker threads.
+ * Each staging job depends on the loading job with same index. Staging jobs can only be performed by the main thread.
+ * Some loading jobs can fail and throw an exception.
+ *
+ * @param nexp number of experiments
+ * @param nloads number of loading jobs
+ * @param minload use minimum load scheduler
+ * @param disable_work_stealing
+ * @return int
+ */
+int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 {
-    KLOGN("example") << "[JobSystem Example 3] future" << std::endl;
+    KLOGN("example") << "[JobSystem Example 3] mock async loading and staging" << std::endl;
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
@@ -329,69 +247,120 @@ int p3(size_t njobs, bool minload, bool disable_work_stealing)
 
     memory::HeapArea area(2_MB);
     th::JobSystem js(area, scheme);
+    js.use_persistence_file("p2.jpp");
 
-    std::vector<th::JobHandle<int>> job1s;
-    std::vector<th::JobHandle<float>> job2s;
-    job1s.reserve(njobs);
-    job2s.reserve(njobs);
+    // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
+    std::vector<long> load_time(nloads, 0l);
+    std::vector<long> stage_time(nloads, 0l);
+    random_fill(load_time.begin(), load_time.end(), 1l, 100l, 42);
+    random_fill(stage_time.begin(), stage_time.end(), 1l, 10l, 42);
+    long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
+    serial_dur_ms += std::accumulate(stage_time.begin(), stage_time.end(), 0l);
 
-    // Create as many jobs as needed
-    KLOG("example", 1) << "Creating jobs." << std::endl;
-    for (size_t ii = 0; ii < njobs; ++ii)
+    KLOG("example", 1) << "Assets loading / staging time:" << std::endl;
+    for (size_t ii = 0; ii < nloads; ++ii)
     {
-        th::JobMetadata meta;
-        meta.label = ii + 1;
-        meta.worker_affinity = th::WORKER_AFFINITY_ANY;
-
-        auto job1 = js.create_job<int>(
-            [ii](std::promise<int> &prom) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
-                if (ii % 40 == 0)
-                    throw std::runtime_error("Runtime error!");
-                else if (ii % 20 == 0)
-                    throw std::logic_error("Logic error!");
-                prom.set_value(int(ii) * 2);
-            },
-            meta);
-
-        auto fut = job1.get_future();
-        auto job2 = js.create_job<float>(
-            [fut](std::promise<float> &prom) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                prom.set_value(float(fut.get()) * 3.141592654f);
-            },
-            meta);
-
-        job1.add_child(job2);
-
-        js.schedule(job1);
-        job1s.push_back(std::move(job1));
-        job2s.push_back(std::move(job2));
+        KLOGI << load_time[ii] << '/' << stage_time[ii] << ' ';
     }
+    KLOGI << std::endl;
 
-    // If all worker affinities are async, waiting can be skipped, as the get() calls
-    // will provide suitable sync points. However, if jobs can execute on the main thread,
-    // not waiting will deadlock, as the main thread will wait for itself to finish
-    // some of the jobs, and never actually do the work!
-    KLOG("example", 1) << "Waiting." << std::endl;
-    js.wait();
-
-    KLOG("example", 1) << "Getting results." << std::endl;
-    for (auto &job : job1s)
-        job.release();
-
-    for (auto &job : job2s)
+    for (size_t kk = 0; kk < nexp; ++kk)
     {
-        try
+        KLOG("example", 1) << "Round " << kk << std::endl;
+        std::vector<th::JobHandle<int>> load_jobs;
+        std::vector<th::JobHandle<float>> stage_jobs;
+        milliClock clk;
+        for (size_t ii = 0; ii < nloads; ++ii)
         {
-            float val = job.get();
-            KLOG("example", 1) << "Value: " << val << std::endl;
+            // Create both jobs like we did in the first example
+            th::JobMetadata load_meta;
+            load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
+            if (ii < 70)
+                load_meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
+            else
+                load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+
+            auto load_job = js.create_job<int>(
+                [&load_time, ii](std::promise<int> &prom) {
+                    // Simulate loading time
+                    std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+                    // Sometimes, loading will fail and an exception will be thrown
+                    if (ii % 40 == 0)
+                        throw std::runtime_error("Runtime error!");
+                    else if (ii % 20 == 0)
+                        throw std::logic_error("Logic error!");
+                    // Don't forget to set the promise.
+                    // For this trivial example we just produce a dummy integer.
+                    prom.set_value(int(ii) * 2);
+                },
+                load_meta);
+
+            // Staging jobs are executed on the main thread
+            th::JobMetadata stage_meta;
+            stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
+            stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
+
+            // Get the loading job future data so we can use it in the staging job
+            auto fut = load_job.get_future();
+            auto stage_job = js.create_job<float>(
+                [&stage_time, ii, fut](std::promise<float> &prom) {
+                    // Simulate staging time
+                    std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii]));
+                    // Don't forget to set the promise.
+                    // For this example, we just multiply by some arbitrary float...
+                    prom.set_value(float(fut.get()) * 1.23f);
+                },
+                stage_meta);
+
+            // But this time, we set the staging job as a child of the loading job. This means that the staging job will
+            // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
+            // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
+            load_job.add_child(stage_job);
+
+            // We only schedule the parent job here, or we're asking for problems
+            js.schedule(load_job);
+
+            // Both job pointers must be freed when we're done
+            load_jobs.push_back(load_job);
+            stage_jobs.push_back(stage_job);
         }
-        catch (std::exception &e)
+        js.wait();
+
+        // Gather some statistics
+        auto parallel_dur_ms = clk.get_elapsed_time().count();
+        float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
+        float factor = float(serial_dur_ms) / float(parallel_dur_ms);
+        KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
+        KLOGI << "Parallel time:         " << parallel_dur_ms << "ms" << std::endl;
+        KLOGI << "Factor:                " << (factor > 1 ? KS_POS_ : KS_NEG_) << factor << KC_ << std::endl;
+        KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
+              << std::endl;
+
+        // Release jobs and check end results
+        for (auto &job : load_jobs)
+            job.release();
+
+        int ii = 0;
+        for (auto &job : stage_jobs)
         {
-            KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
+            try
+            {
+                [[maybe_unused]] float val = job.get();
+                // Check that the value is what we expect
+                [[maybe_unused]] float expect = float(ii) * 2.f * 1.23f;
+                [[maybe_unused]] constexpr float eps = 1e-10f;
+                K_ASSERT(std::fabs(val - expect) < eps, "");
+            }
+            catch (std::exception &e)
+            {
+                // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
+                // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
+                // we should catch them all right here.
+                KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
+            }
+            job.release();
+            ++ii;
         }
-        job.release();
     }
 
     return 0;
@@ -403,7 +372,7 @@ int main(int argc, char **argv)
 
     ap::ArgParse parser("job_system_example", "0.1");
     parser.set_log_output([](const std::string &str) { KLOG("kibble", 1) << str << std::endl; });
-    const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
+    const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,2]");
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
     const auto &ml = parser.add_flag('m', "minload", "Use minimal load scheduler");
@@ -420,9 +389,8 @@ int main(int argc, char **argv)
     switch(ex())
     {
         case 0: return p0(nexp, njob, ml(), WS());
-        case 1: return p1(nexp, njob, ml(), WS());
-        case 2: return p2(njob, ml(), WS());
-        case 3: return p3(njob, ml(), WS());
+        case 1: return p1(njob, ml(), WS());
+        case 2: return p2(nexp, njob, ml(), WS());
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;
