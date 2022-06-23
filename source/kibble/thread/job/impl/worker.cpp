@@ -122,16 +122,7 @@ bool WorkerThread::get_job(Job *&job)
 void WorkerThread::process(Job *job)
 {
     microClock clk;
-    try
-    {
-        job->kernel();
-    }
-    catch(...)
-    {
-        // Store any exception thrown by the kernel function,
-        // it will be rethrown when JobSystem::release_job() is called.
-        job->p_except = std::current_exception();
-    }
+    job->kernel();
     job->meta.execution_time_us = clk.get_elapsed_time().count();
     job->finished.store(true, std::memory_order_release);
 #if K_PROFILE_JOB_SYSTEM

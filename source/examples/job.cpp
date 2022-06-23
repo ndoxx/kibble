@@ -317,13 +317,72 @@ int p2(size_t njobs, bool minload, bool disable_work_stealing)
     return 0;
 }
 
+int p3(size_t njobs, bool minload, bool disable_work_stealing)
+{
+    KLOGN("example") << "[JobSystem Example 3] future" << std::endl;
+
+    th::JobSystemScheme scheme;
+    scheme.max_workers = 0;
+    scheme.enable_work_stealing = !disable_work_stealing;
+    scheme.max_stealing_attempts = 16;
+    scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
+
+    memory::HeapArea area(2_MB);
+    th::JobSystem js(area, scheme);
+
+    std::vector<th::JobHandle<int>> jobs;
+    jobs.reserve(njobs);
+
+    // Create as many jobs as needed
+    KLOG("example", 1) << "Creating jobs." << std::endl;
+    for (size_t ii = 0; ii < njobs; ++ii)
+    {
+        th::JobMetadata meta;
+        meta.label = ii + 1;
+        meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+
+        auto job = js.create_job<int>(
+            [ii](std::promise<int> &prom) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                if (ii % 40 == 0)
+                    throw std::runtime_error("Runtime error!");
+                else if (ii % 20 == 0)
+                    throw std::logic_error("Logic error!");
+                prom.set_value(int(ii) * 2);
+            },
+            meta);
+
+        js.schedule(job);
+        jobs.push_back(std::move(job));
+    }
+    KLOG("example", 1) << "Waiting." << std::endl;
+    js.wait();
+
+    KLOG("example", 1) << "Getting results." << std::endl;
+    for (auto &job : jobs)
+    {
+        try
+        {
+            int val = job.get();
+            KLOG("example", 1) << "Value: " << val << std::endl;
+        }
+        catch (std::exception &e)
+        {
+            KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
+        }
+        job.release();
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     init_logger();
 
     ap::ArgParse parser("job_system_example", "0.1");
     parser.set_log_output([](const std::string &str) { KLOG("kibble", 1) << str << std::endl; });
-    const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,2]");
+    const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
     const auto &ml = parser.add_flag('m', "minload", "Use minimal load scheduler");
@@ -342,6 +401,7 @@ int main(int argc, char **argv)
         case 0: return p0(nexp, njob, ml(), WS());
         case 1: return p1(nexp, njob, ml(), WS());
         case 2: return p2(njob, ml(), WS());
+        case 3: return p3(njob, ml(), WS());
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;

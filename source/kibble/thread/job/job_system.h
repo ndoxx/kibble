@@ -6,6 +6,7 @@
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -110,6 +111,45 @@ struct JobSystemScheme
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 };
 
+class JobSystem;
+
+template <typename T>
+class JobHandle
+{
+public:
+    friend class JobSystem;
+    using TypedKernel = std::function<void(std::promise<T> &)>;
+
+    JobHandle() = default;
+    JobHandle(const JobHandle &hnd) = delete;
+    JobHandle(JobHandle &&oth)
+        : js_(std::exchange(oth.js_, nullptr)), job_(std::exchange(oth.job_, nullptr)),
+          promise_(std::move(oth.promise_)), future_(std::move(oth.future_))
+    {
+    }
+
+    void release();
+
+    inline const auto &get_meta() const
+    {
+        return job_->meta;
+    }
+
+    inline auto get()
+    {
+        return future_.get();
+    }
+
+private:
+    JobHandle(JobSystem *js, TypedKernel &&kernel, const JobMetadata &meta = JobMetadata{});
+
+private:
+    JobSystem *js_ = nullptr;
+    Job *job_ = nullptr;
+    std::shared_ptr<std::promise<T>> promise_;
+    std::future<T> future_;
+};
+
 struct SharedState;
 class Scheduler;
 class Monitor;
@@ -185,6 +225,18 @@ public:
      * @param caller_thread the id of the thread calling this method (default: main thread)
      */
     void schedule(Job *job, tid_t caller_thread = 0);
+
+    template <typename T>
+    inline JobHandle<T> create_job(typename JobHandle<T>::TypedKernel &&kernel, const JobMetadata &meta = JobMetadata{})
+    {
+        return JobHandle<T>(this, std::move(kernel), meta);
+    }
+
+    template <typename T>
+    inline void schedule(const JobHandle<T> &hnd, tid_t caller_thread = 0)
+    {
+        schedule(hnd.job_, caller_thread);
+    }
 
     /**
      * @brief Non-blockingly check if any worker threads are busy.
@@ -336,6 +388,36 @@ private:
     fs::path persistence_file_;
     bool use_persistence_file_ = false;
 };
+
+template <typename T>
+JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const JobMetadata &meta)
+    : js_(js), promise_(new std::promise<T>)
+{
+    future_ = promise_->get_future();
+    job_ = js_->create_job(
+        [promise = promise_, kernel = std::move(kernel)]() {
+            try
+            {
+                kernel(*promise);
+            }
+            catch (...)
+            {
+                // Store any exception thrown by the kernel function,
+                // it will be rethrown when the future's get() function is called.
+                promise->set_exception(std::current_exception());
+            }
+        },
+        meta);
+}
+
+template <typename T>
+void JobHandle<T>::release()
+{
+    if (js_ != nullptr && job_ != nullptr)
+    {
+        js_->release_job(job_);
+    }
+}
 
 } // namespace th
 } // namespace kb
