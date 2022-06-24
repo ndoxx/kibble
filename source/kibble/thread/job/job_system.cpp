@@ -1,4 +1,5 @@
 #include "thread/job/job_system.h"
+#include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -140,6 +141,15 @@ void JobSystem::release_job(Job *job)
 
 void JobSystem::schedule(Job *job, tid_t caller_thread)
 {
+    // Sanity check
+    if (!job->is_orphan.load())
+    {
+        KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
+        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Safely ignored." << std::endl;
+        return;
+    }
+
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
     scheduler_->dispatch(job, caller_thread);

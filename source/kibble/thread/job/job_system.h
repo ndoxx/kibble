@@ -1,7 +1,6 @@
 #pragma once
 
 #include "assert/assert.h"
-#include "logger/logger.h"
 #include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
@@ -64,12 +63,12 @@ struct Job
     JobKernel kernel = JobKernel{};
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
-    /// Parent job if any
-    Job *parent = nullptr;
     /// All jobs that have this one as a dependency
     std::vector<Job *> children;
 
     // State
+    /// Set to false if job has a parent, only orphan jobs can be scheduled
+    std::atomic<bool> is_orphan = {true};
     /// Set to true when this job has been processed
     std::atomic<bool> finished = {false};
 
@@ -81,7 +80,7 @@ struct Job
     inline void add_child(Job *child)
     {
         children.push_back(child);
-        child->parent = this;
+        child->is_orphan.store(false);
     }
 };
 
@@ -500,6 +499,9 @@ private:
      * @brief Schedule job execution.
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
+     * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
+     * had no parent to begin with. Scheduling a non-orphan job will do nothing but raise a warning.
+     * 
      * @param job the job to submit
      * @param caller_thread the id of the thread calling this method (default: main thread)
      */
@@ -569,16 +571,6 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
 template <typename T>
 inline void Task<T>::schedule(tid_t caller_thread)
 {
-    // Sanity check
-    if (job_->parent != nullptr)
-    {
-        KLOGW("thread") << "Tried to schedule child _ #" << job_->meta.label << std::endl;
-        KLOGI << "Parent: #" << job_->parent->meta.label << std::endl;
-        KLOGI << "Caller thread: " << caller_thread << std::endl;
-        KLOGI << "Safely ignored." << std::endl;
-        return;
-    }
-
     js_->schedule(job_, caller_thread);
 }
 
@@ -613,16 +605,6 @@ void Task<T>::release()
 
 inline void Task<void>::schedule(tid_t caller_thread)
 {
-    // Sanity check
-    if (job_->parent != nullptr)
-    {
-        KLOGW("thread") << "Tried to schedule child _ #" << job_->meta.label << std::endl;
-        KLOGI << "Parent: #" << job_->parent->meta.label << std::endl;
-        KLOGI << "Caller thread: " << caller_thread << std::endl;
-        KLOGI << "Safely ignored." << std::endl;
-        return;
-    }
-
     js_->schedule(job_, caller_thread);
 }
 
