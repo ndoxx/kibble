@@ -107,7 +107,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOG("example", 1) << "Round " << kk << std::endl;
 
         // We save the job pointers in there so we can release them when we're done
-        std::vector<th::Job *> jobs;
+        std::vector<th::Task<>> jobs;
         // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
         // have an idea of the amount of job creation / scheduling overhead.
         milliClock clk;
@@ -129,12 +129,12 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 
             // Let's create a job and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
-            auto *job = js.create_job(
+            auto job = js.create_task(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); }, meta);
 
             // Schedule the job, the workers will awake
-            js.schedule(job);
-            // Save the job pointer for later cleanup (or the job pool will leak)
+            job.schedule();
+            // Save the job handle for later cleanup (or the job pool will leak)
             jobs.push_back(job);
         }
         // Wait for all jobs to be executed. This introduces a sync point. The main thread will assist the workers
@@ -152,8 +152,73 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
               << std::endl;
 
         // Cleanup
-        for (auto *job : jobs)
-            js.release_job(job);
+        for (auto &&job : jobs)
+            job.release();
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Here we throw exceptions from job kernels and check that all is fine.
+ *
+ * @param njobs number of jobs
+ * @param minload use minimum load scheduler
+ * @param disable_work_stealing
+ * @return int
+ */
+int p1(size_t njobs, bool minload, bool disable_work_stealing)
+{
+    KLOGN("example") << "[JobSystem Example 1] throwing exceptions" << std::endl;
+
+    th::JobSystemScheme scheme;
+    scheme.max_workers = 0;
+    scheme.enable_work_stealing = !disable_work_stealing;
+    scheme.max_stealing_attempts = 16;
+    scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
+
+    memory::HeapArea area(2_MB);
+    th::JobSystem js(area, scheme);
+
+    std::vector<th::Task<>> jobs;
+
+    KLOG("example", 1) << "Creating jobs." << std::endl;
+
+    // Create as many jobs as needed
+    for (size_t ii = 0; ii < njobs; ++ii)
+    {
+        th::JobMetadata meta;
+        meta.label = ii + 1;
+        meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+
+        auto job = js.create_task(
+            [ii]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                if (ii % 40 == 0)
+                    throw std::runtime_error("Runtime error!");
+                else if (ii % 20 == 0)
+                    throw std::logic_error("Logic error!");
+            },
+            meta);
+
+        // Schedule the job, the workers will awake
+        job.schedule();
+        // Save the job pointer for later cleanup (or the job pool will leak)
+        jobs.push_back(job);
+    }
+    js.wait();
+
+    KLOG("example", 1) << "The exceptions should be rethrown now:" << std::endl;
+    for (auto &&job : jobs)
+    {
+        try
+        {
+            job.release();
+        }
+        catch (std::exception &e)
+        {
+            KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
+        }
     }
 
     return 0;
@@ -162,6 +227,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 /**
  * @brief In this example, we simulate multiple resource loading and staging jobs being dispatched to worker threads.
  * Each staging job depends on the loading job with same index. Staging jobs can only be performed by the main thread.
+ * Some loading jobs can fail and throw an exception.
  *
  * @param nexp number of experiments
  * @param nloads number of loading jobs
@@ -169,9 +235,9 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
  * @param disable_work_stealing
  * @return int
  */
-int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
+int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 {
-    KLOGN("example") << "[JobSystem Example 1] mock async loading and staging" << std::endl;
+    KLOGN("example") << "[JobSystem Example 3] mock async loading and staging" << std::endl;
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
@@ -201,11 +267,12 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::Job *> jobs;
+        std::vector<th::Task<int>> load_jobs;
+        std::vector<th::Task<float>> stage_jobs;
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
         {
-            // Create both jobs like we did in the previous example
+            // Create both jobs like we did in the first example
             th::JobMetadata load_meta;
             load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             if (ii < 70)
@@ -213,33 +280,54 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
             else
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto *load_job = js.create_job(
-                [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); },
+            auto load_job = js.create_task<int>(
+                [&load_time, ii](std::promise<int> &prom) {
+                    // Simulate loading time
+                    std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+                    // Sometimes, loading will fail and an exception will be thrown
+                    if (ii % 40 == 0)
+                        throw std::runtime_error("Runtime error!");
+                    else if (ii % 20 == 0)
+                        throw std::logic_error("Logic error!");
+                    // Don't forget to set the promise.
+                    // For this trivial example we just produce a dummy integer.
+                    prom.set_value(int(ii) * 2);
+                },
                 load_meta);
 
+            // Staging jobs are executed on the main thread
             th::JobMetadata stage_meta;
             stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
             stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
 
-            auto *stage_job = js.create_job(
-                [&stage_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii])); },
+            // Get the loading job future data so we can use it in the staging job
+            auto fut = load_job.get_future();
+            auto stage_job = js.create_task<float>(
+                [&stage_time, ii, fut](std::promise<float> &prom) {
+                    // Simulate staging time
+                    std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii]));
+                    // Don't forget to set the promise.
+                    // For this example, we just multiply by some arbitrary float...
+                    prom.set_value(float(fut.get()) * 1.23f);
+                },
                 stage_meta);
 
             // But this time, we set the staging job as a child of the loading job. This means that the staging job will
             // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
             // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
-            load_job->add_child(stage_job);
+            load_job.add_child(stage_job);
 
             // We only schedule the parent job here, or we're asking for problems
-            js.schedule(load_job);
+            load_job.schedule();
 
             // Both job pointers must be freed when we're done
-            jobs.push_back(load_job);
-            jobs.push_back(stage_job);
+            load_jobs.push_back(load_job);
+            stage_jobs.push_back(stage_job);
         }
         js.wait();
-        auto parallel_dur_ms = clk.get_elapsed_time().count();
 
+        // Gather some statistics
+        auto parallel_dur_ms = clk.get_elapsed_time().count();
         float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
         float factor = float(serial_dur_ms) / float(parallel_dur_ms);
         KLOGI << "Estimated serial time: " << serial_dur_ms << "ms" << std::endl;
@@ -248,69 +336,30 @@ int p1(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOGI << "Gain:                  " << (factor > 1 ? KS_POS_ : KS_NEG_) << gain_percent << KC_ << '%'
               << std::endl;
 
-        for (auto *job : jobs)
-            js.release_job(job);
-    }
+        // Release jobs and check end results
+        for (auto &job : load_jobs)
+            job.release();
 
-    return 0;
-}
-
-/**
- * @brief Here we throw exceptions from job kernels and check that all is fine.
- *
- * @return int
- */
-int p2(size_t njobs, bool minload, bool disable_work_stealing)
-{
-    KLOGN("example") << "[JobSystem Example 2] throwing exceptions" << std::endl;
-
-    th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.enable_work_stealing = !disable_work_stealing;
-    scheme.max_stealing_attempts = 16;
-    scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
-
-    memory::HeapArea area(2_MB);
-    th::JobSystem js(area, scheme);
-
-    std::vector<th::Job *> jobs;
-
-    KLOG("example", 1) << "Creating jobs." << std::endl;
-
-    // Create as many jobs as needed
-    for (size_t ii = 0; ii < njobs; ++ii)
-    {
-        th::JobMetadata meta;
-        meta.label = ii + 1;
-        meta.worker_affinity = th::WORKER_AFFINITY_ANY;
-
-        auto *job = js.create_job(
-            [ii]() {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
-                if (ii % 40 == 0)
-                    throw std::runtime_error("Runtime error!");
-                else if (ii % 20 == 0)
-                    throw std::logic_error("Logic error!");
-            },
-            meta);
-
-        // Schedule the job, the workers will awake
-        js.schedule(job);
-        // Save the job pointer for later cleanup (or the job pool will leak)
-        jobs.push_back(job);
-    }
-    js.wait();
-
-    KLOG("example", 1) << "The exceptions should be rethrown now:" << std::endl;
-    for (auto *job : jobs)
-    {
-        try
+        int ii = 0;
+        for (auto &job : stage_jobs)
         {
-            js.release_job(job);
-        }
-        catch (std::exception &e)
-        {
-            KLOGE("example") << "Job #" << job->meta.label << " threw an exception: " << e.what() << std::endl;
+            try
+            {
+                [[maybe_unused]] float val = job.get();
+                // Check that the value is what we expect
+                [[maybe_unused]] float expect = float(ii) * 2.f * 1.23f;
+                [[maybe_unused]] constexpr float eps = 1e-10f;
+                K_ASSERT(std::fabs(val - expect) < eps, "");
+            }
+            catch (std::exception &e)
+            {
+                // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
+                // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
+                // we should catch them all right here.
+                KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
+            }
+            job.release();
+            ++ii;
         }
     }
 
@@ -340,8 +389,8 @@ int main(int argc, char **argv)
     switch(ex())
     {
         case 0: return p0(nexp, njob, ml(), WS());
-        case 1: return p1(nexp, njob, ml(), WS());
-        case 2: return p2(njob, ml(), WS());
+        case 1: return p1(njob, ml(), WS());
+        case 2: return p2(nexp, njob, ml(), WS());
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;

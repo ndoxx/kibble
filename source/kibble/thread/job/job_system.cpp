@@ -1,4 +1,5 @@
 #include "thread/job/job_system.h"
+#include "assert/assert.h"
 #include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
@@ -135,17 +136,22 @@ void JobSystem::release_job(Job *job)
     if (scheduler_->is_dynamic())
         monitor_->report_job_execution(job->meta);
 
-    // Save exception pointer
-    auto p_except = job->p_except;
     // Return job to the pool
     K_DELETE(job, ss_->job_pool);
-    // If job threw an exception, rethrow it now
-    if (p_except != nullptr)
-        std::rethrow_exception(p_except);
 }
 
 void JobSystem::schedule(Job *job, tid_t caller_thread)
 {
+    // Sanity check
+    if (!job->is_orphan.load())
+    {
+        KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
+        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Safely ignored." << std::endl;
+        return;
+    }
+
+    // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
     scheduler_->dispatch(job, caller_thread);
     ss_->cv_wake.notify_all();
@@ -248,6 +254,22 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
             ret.push_back(ii);
 
     return ret;
+}
+
+void Task<void>::release()
+{
+    if (js_ != nullptr && job_ != nullptr)
+    {
+        auto p_except = job_->p_except;
+        js_->release_job(job_);
+        if (p_except != nullptr)
+            std::rethrow_exception(p_except);
+    }
+}
+
+Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
+{
+    job_ = js->create_job(std::forward<JobKernel>(kernel), meta);
 }
 
 } // namespace th
