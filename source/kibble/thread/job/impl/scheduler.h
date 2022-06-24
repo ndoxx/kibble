@@ -38,7 +38,7 @@ public:
      *
      * @param job job pointer
      */
-    virtual void dispatch(Job *job, tid_t caller_thread) = 0;
+    virtual void dispatch(Job *job) = 0;
 
     /**
      * @brief Check if the balancing algorithm is dynamic.
@@ -82,7 +82,7 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job, tid_t caller_thread) override final;
+    void dispatch(Job *job) override final;
 
 private:
     // Each thread has its own round robin state (64b to avoid false sharing)
@@ -117,7 +117,7 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job, tid_t caller_thread) override final;
+    void dispatch(Job *job) override final;
 
     /**
      * @brief This is a dynamic load balancer, return true.

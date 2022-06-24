@@ -156,7 +156,7 @@ void WorkerThread::schedule_children(Job *job)
         // First, make the jobs orphans so they can be scheduled
         child->is_orphan.store(true);
         // Thread-safe call as long as the scheduler implementation is thread-safe
-        js_.schedule(child, props_.tid);
+        js_.schedule(child);
 #if K_PROFILE_JOB_SYSTEM
         ++activity_.scheduled;
 #endif

@@ -70,7 +70,12 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     }
     // Thread spawning is delayed to avoid a race condition of run() with other workers ctors
     for (auto *worker : workers_)
+    {
         worker->spawn();
+        auto system_thread_id = worker->is_background() ? worker->get_system_thread_id() : std::this_thread::get_id();
+        thread_ids_.insert({system_thread_id, worker->get_tid()});
+        KLOG("thread",1) << "Spawned worker #" << worker->get_tid() << " system id: " << system_thread_id << std::endl;
+    }
 
     KLOGG("thread") << "[JobSystem] Ready." << std::endl;
 }
@@ -140,20 +145,20 @@ void JobSystem::release_job(Job *job)
     K_DELETE(job, ss_->job_pool);
 }
 
-void JobSystem::schedule(Job *job, tid_t caller_thread)
+void JobSystem::schedule(Job *job)
 {
     // Sanity check
     if (!job->is_orphan.load())
     {
         KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
-        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Caller thread: " << this_thread_id() << std::endl;
         KLOGI << "Safely ignored." << std::endl;
         return;
     }
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
-    scheduler_->dispatch(job, caller_thread);
+    scheduler_->dispatch(job);
     ss_->cv_wake.notify_all();
 }
 
