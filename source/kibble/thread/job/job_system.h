@@ -1,6 +1,5 @@
 #pragma once
 
-#include "assert/assert.h"
 #include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
@@ -547,7 +546,7 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
     future_ = promise_->get_future();
     /*
         Job kernel is a void wrapper around the templated kernel passed in this call. This allows
-        some form of type erasure: user code has access promise as a kernel argument, but the
+        some form of type erasure: user code can access promise as a kernel argument, but the
         workers only see a void function call.
         The promise is stored as a shared_ptr and captured by value, as a plain std::promise cannot
         be captured by the lambda (non-copyable). The kernel can be moved.
@@ -577,10 +576,6 @@ inline void Task<T>::schedule(tid_t caller_thread)
 template <typename T>
 inline auto Task<T>::get()
 {
-    if (meta().worker_affinity != WORKER_AFFINITY_ASYNC)
-    {
-        K_ASSERT(js_->is_work_done(job_), "Tried to get() a potentially synchronous job without waiting.");
-    }
     return future_.get();
 }
 

@@ -1,4 +1,5 @@
 #include "thread/job/job_system.h"
+#include "assert/assert.h"
 #include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
