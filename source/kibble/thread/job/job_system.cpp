@@ -1,5 +1,4 @@
 #include "thread/job/job_system.h"
-#include "assert/assert.h"
 #include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
@@ -54,8 +53,8 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
 
     // Spawn threads_count_-1 workers
-    KLOGI << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
-    KLOGI << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
+    KLOG("thread", 0) << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
+    KLOG("thread", 0) << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
 
     workers_.resize(threads_count_);
     for (uint32_t ii = 0; ii < threads_count_; ++ii)
@@ -70,7 +69,14 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     }
     // Thread spawning is delayed to avoid a race condition of run() with other workers ctors
     for (auto *worker : workers_)
+    {
         worker->spawn();
+        auto native_id = worker->is_background() ? worker->get_native_thread_id() : std::this_thread::get_id();
+        thread_ids_.insert({native_id, worker->get_tid()});
+        KLOG("thread", 0) << "Spawned worker " << KS_VALU_ << '#' << worker->get_tid() << KC_
+                          << ", native thread id: " << KS_VALU_ << "0x" << std::hex << native_id << std::dec << KC_
+                          << std::endl;
+    }
 
     KLOGG("thread") << "[JobSystem] Ready." << std::endl;
 }
@@ -140,20 +146,20 @@ void JobSystem::release_job(Job *job)
     K_DELETE(job, ss_->job_pool);
 }
 
-void JobSystem::schedule(Job *job, tid_t caller_thread)
+void JobSystem::schedule(Job *job)
 {
     // Sanity check
     if (!job->is_orphan.load())
     {
         KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
-        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Caller thread: " << this_thread_id() << std::endl;
         KLOGI << "Safely ignored." << std::endl;
         return;
     }
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
-    scheduler_->dispatch(job, caller_thread);
+    scheduler_->dispatch(job);
     ss_->cv_wake.notify_all();
 }
 

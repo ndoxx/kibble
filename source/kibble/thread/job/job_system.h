@@ -1,5 +1,6 @@
 #pragma once
 
+#include "assert/assert.h"
 #include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
@@ -8,6 +9,7 @@
 #include <functional>
 #include <future>
 #include <limits>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -147,9 +149,8 @@ public:
      * @note Trying to schedule a child task will have no effect. A child job is always scheduled by
      * the worker that processed its parent, right after it has done so.
      *
-     * @param caller_thread the id of the thread calling this method (default: main thread)
      */
-    inline void schedule(tid_t caller_thread = 0);
+    inline void schedule();
 
     /// Release the job to the job pool.
     void release();
@@ -238,7 +239,7 @@ public:
     Task() = default;
 
     /// Schedule execution of this task.
-    inline void schedule(tid_t caller_thread = 0);
+    inline void schedule();
 
     /**
      * @brief Return the job to the job pool.
@@ -472,6 +473,12 @@ public:
         return *ss_;
     }
 
+    /// Get the tid of the current thread.
+    inline tid_t this_thread_id() const
+    {
+        return thread_ids_.at(std::this_thread::get_id());
+    }
+
 private:
     /**
      * @internal
@@ -500,11 +507,10 @@ private:
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
      * had no parent to begin with. Scheduling a non-orphan job will do nothing but raise a warning.
-     * 
+     *
      * @param job the job to submit
-     * @param caller_thread the id of the thread calling this method (default: main thread)
      */
-    void schedule(Job *job, tid_t caller_thread = 0);
+    void schedule(Job *job);
 
     /**
      * @internal
@@ -532,6 +538,7 @@ private:
     size_t threads_count_ = 0;
     JobSystemScheme scheme_;
     std::vector<WorkerThread *> workers_;
+    std::map<std::thread::id, tid_t> thread_ids_;
     Scheduler *scheduler_;
     Monitor *monitor_;
     std::shared_ptr<SharedState> ss_;
@@ -568,14 +575,19 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
 }
 
 template <typename T>
-inline void Task<T>::schedule(tid_t caller_thread)
+inline void Task<T>::schedule()
 {
-    js_->schedule(job_, caller_thread);
+    js_->schedule(job_);
 }
 
 template <typename T>
 inline auto Task<T>::get()
 {
+    // We want to avoid the situation where the caller thread calls a blocking get() on one of its own pending tasks.
+    [[maybe_unused]] bool maybe_handled_by_caller = bool(job_->meta.worker_affinity & (1 << js_->this_thread_id()));
+    [[maybe_unused]] bool processed = js_->is_work_done(job_);
+    K_ASSERT(processed || !maybe_handled_by_caller, "Possible self deadlock.");
+
     return future_.get();
 }
 
@@ -598,9 +610,9 @@ void Task<T>::release()
         js_->release_job(job_);
 }
 
-inline void Task<void>::schedule(tid_t caller_thread)
+inline void Task<void>::schedule()
 {
-    js_->schedule(job_, caller_thread);
+    js_->schedule(job_);
 }
 
 inline void Task<void>::wait(std::function<bool()> condition)

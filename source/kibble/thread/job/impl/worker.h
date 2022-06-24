@@ -119,6 +119,12 @@ public:
      */
     bool foreground_work();
 
+    /// Check whether this worker is a background worker.
+    inline bool is_background() const
+    {
+        return props_.is_background;
+    }
+
     /**
      * @brief Get this worker's ID.
      *
@@ -127,6 +133,18 @@ public:
     inline tid_t get_tid() const
     {
         return props_.tid;
+    }
+
+    /**
+     * @brief Get the system thread id.
+     * In association with the JobSystem's thread id map, this allows to know the tid_t thread index
+     * of the current context.
+     * 
+     * @return std::thread::id
+     */
+    inline std::thread::id get_native_thread_id() const
+    {
+        return thread_.get_id();
     }
 
     /**
