@@ -1,5 +1,6 @@
 #pragma once
 
+#include "assert/assert.h"
 #include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
@@ -8,10 +9,10 @@
 #include <functional>
 #include <future>
 #include <limits>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <vector>
-#include <map>
 
 namespace fs = std::filesystem;
 
@@ -506,7 +507,7 @@ private:
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
      * had no parent to begin with. Scheduling a non-orphan job will do nothing but raise a warning.
-     * 
+     *
      * @param job the job to submit
      */
     void schedule(Job *job);
@@ -582,6 +583,11 @@ inline void Task<T>::schedule()
 template <typename T>
 inline auto Task<T>::get()
 {
+    // We want to avoid the situation where the caller thread calls a blocking get() on one of its own pending tasks.
+    [[maybe_unused]] bool maybe_handled_by_caller = bool(job_->meta.worker_affinity & (1 << js_->this_thread_id()));
+    [[maybe_unused]] bool processed = js_->is_work_done(job_);
+    K_ASSERT(processed || !maybe_handled_by_caller, "Possible self deadlock.");
+
     return future_.get();
 }
 

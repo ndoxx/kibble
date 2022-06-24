@@ -142,7 +142,7 @@ public:
      * 
      * @return std::thread::id
      */
-    inline std::thread::id get_system_thread_id() const
+    inline std::thread::id get_native_thread_id() const
     {
         return thread_.get_id();
     }
