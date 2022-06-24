@@ -1,7 +1,7 @@
 #pragma once
 
-#include "thread/job/config.h"
 #include "assert/assert.h"
+#include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
 #include <exception>
@@ -128,7 +128,8 @@ template <typename T>
 class JobHandle
 {
 public:
-    template <typename U> friend class JobHandle;
+    template <typename U>
+    friend class JobHandle;
     friend class JobSystem;
     using TypedKernel = std::function<void(std::promise<T> &)>;
 
@@ -138,7 +139,7 @@ public:
     void release();
 
     /// Get job metadata.
-    inline const auto &get_meta() const
+    inline const auto &meta() const
     {
         return job_->meta;
     }
@@ -155,10 +156,26 @@ public:
     inline auto get();
 
     /**
+     * @brief Hold execution on the main thread until this job has been processed or the predicate returns false.
+     *
+     * @param condition While this predicate evaluates to true, the function waits for job completion.
+     * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
+     * a timeout functionality.
+     */
+    inline void wait(std::function<bool()> condition = []() { return true; });
+
+    /**
+     * @brief Non-blockingly check if this job is processed.
+     *
+     * @return true it the job was processed, false otherwise
+     */
+    inline bool is_processed();
+
+    /**
      * @brief Get a copy of the shared future data.
      * This is used to pass data from parent job to child job.
-     * 
-     * @return auto 
+     *
+     * @return auto
      */
     inline auto get_future() const
     {
@@ -217,10 +234,13 @@ public:
     void release();
 
     /// Get job metadata.
-    inline const auto &get_meta() const
+    inline const auto &meta() const
     {
         return job_->meta;
     }
+
+    inline void wait(std::function<bool()> condition = []() { return true; });
+    inline bool is_processed();
 
     /**
      * @brief Add a job that can only be executed once this job was processed.
@@ -347,15 +367,6 @@ public:
     bool is_busy() const;
 
     /**
-     * @brief Non-blockingly check if a job is processed.
-     *
-     * @param job the job
-     * @return true it the job was processed
-     * @return false otherwise
-     */
-    bool is_work_done(Job *job) const;
-
-    /**
      * @brief Wait for an input condition to become false, synchronous work may be executed in the meantime.
      *
      * @param condition predicate that will keep the function busy till it evaluates to false
@@ -371,17 +382,6 @@ public:
      * a timeout functionality.
      */
     void wait(std::function<bool()> condition = []() { return true; });
-
-    /**
-     * @brief Hold execution on the main thread until a given job has been processed or the predicate returns false.
-     *
-     * @param job the job to wait for
-     * @param condition While this predicate evaluates to true, the function waits for job completion.
-     * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
-     * a timeout functionality.
-     */
-    void wait_for(
-        Job *job, std::function<bool()> condition = []() { return true; });
 
     /**
      * @brief Get a list of all workers compatible with the given affinity requirement.
@@ -508,6 +508,27 @@ private:
      */
     void schedule(Job *job, tid_t caller_thread = 0);
 
+    /**
+     * @internal
+     * @brief Hold execution on the main thread until a given job has been processed or the predicate returns false.
+     *
+     * @param job the job to wait for
+     * @param condition While this predicate evaluates to true, the function waits for job completion.
+     * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
+     * a timeout functionality.
+     */
+    void wait_for(
+        Job *job, std::function<bool()> condition = []() { return true; });
+
+    /**
+     * @internal
+     * @brief Non-blockingly check if a job is processed.
+     *
+     * @param job the job
+     * @return true it the job was processed, false otherwise
+     */
+    bool is_work_done(Job *job) const;
+
 private:
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
@@ -551,7 +572,7 @@ JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const
 template <typename T>
 inline auto JobHandle<T>::get()
 {
-    if (get_meta().worker_affinity != WORKER_AFFINITY_ASYNC)
+    if (meta().worker_affinity != WORKER_AFFINITY_ASYNC)
     {
         K_ASSERT(js_->is_work_done(job_), "Tried to get() a potentially synchronous job without waiting.");
     }
@@ -559,10 +580,32 @@ inline auto JobHandle<T>::get()
 }
 
 template <typename T>
+inline void JobHandle<T>::wait(std::function<bool()> condition)
+{
+    js_->wait_for(job_, condition);
+}
+
+template <typename T>
+inline bool JobHandle<T>::is_processed()
+{
+    return js_->is_work_done(job_);
+}
+
+template <typename T>
 void JobHandle<T>::release()
 {
     if (js_ != nullptr && job_ != nullptr)
         js_->release_job_impl(job_);
+}
+
+inline void JobHandle<void>::wait(std::function<bool()> condition)
+{
+    js_->wait_for(job_, condition);
+}
+
+inline bool JobHandle<void>::is_processed()
+{
+    return js_->is_work_done(job_);
 }
 
 } // namespace th

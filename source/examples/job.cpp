@@ -217,7 +217,7 @@ int p1(size_t njobs, bool minload, bool disable_work_stealing)
         }
         catch (std::exception &e)
         {
-            KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
+            KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
         }
     }
 
@@ -356,7 +356,7 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
                 // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
                 // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
                 // we should catch them all right here.
-                KLOGE("example") << "Job #" << job.get_meta().label << " threw an exception: " << e.what() << std::endl;
+                KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
             }
             job.release();
             ++ii;
