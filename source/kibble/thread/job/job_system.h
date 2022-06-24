@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assert/assert.h"
+#include "logger/logger.h"
 #include "thread/job/config.h"
 #include <atomic>
 #include <cstdint>
@@ -63,6 +64,8 @@ struct Job
     JobKernel kernel = JobKernel{};
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
+    /// Parent job if any
+    Job *parent = nullptr;
     /// All jobs that have this one as a dependency
     std::vector<Job *> children;
 
@@ -73,14 +76,12 @@ struct Job
     /**
      * @brief Add a job that can only be executed once this job was processed.
      *
-     * @warning Children jobs must never be scheduled by hand. The worker in charge of this job will schedule the
-     * children by himself once this job has been processed.
-     *
      * @param child the child to add.
      */
     inline void add_child(Job *child)
     {
         children.push_back(child);
+        child->parent = this;
     }
 };
 
@@ -122,18 +123,35 @@ class JobSystem;
  * This template is specialized for T = void. The void specialization has
  * no notion of promise and future, and handles exceptions differently.
  *
+ * @note I use the following terminology: a "task" is essentially some
+ * code to be run ("job") associated with some data to be produced ("future data").
+ * So the user code sees "tasks", and the workers see "jobs".
+ *
  * @tparam T
  */
-template <typename T>
-class JobHandle
+template <typename T = void>
+class Task
 {
 public:
     template <typename U>
-    friend class JobHandle;
+    friend class Task;
     friend class JobSystem;
-    using TypedKernel = std::function<void(std::promise<T> &)>;
 
-    JobHandle() = default;
+    // User code needs to access the promise somehow
+    using TaskKernel = std::function<void(std::promise<T> &)>;
+
+    Task() = default;
+
+    /**
+     * @brief Schedule job execution.
+     * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
+     *
+     * @note Trying to schedule a child task will have no effect. A child job is always scheduled by
+     * the worker that processed its parent, right after it has done so.
+     *
+     * @param caller_thread the id of the thread calling this method (default: main thread)
+     */
+    inline void schedule(tid_t caller_thread = 0);
 
     /// Release the job to the job pool.
     void release();
@@ -185,32 +203,28 @@ public:
     /**
      * @brief Add a job that can only be executed once this job was processed.
      *
-     * @warning Children jobs must never be scheduled by hand. The worker in charge of this job will schedule the
-     * children by himself once this job has been processed.
-     *
      * @param child the child to add.
      * @tparam U future data type of the child job.
      */
     template <typename U>
-    inline void add_child(const JobHandle<U> &child)
+    inline void add_child(const Task<U> &child)
     {
         job_->add_child(child.job_);
     }
 
 private:
-    JobHandle(JobSystem *js, TypedKernel &&kernel, const JobMetadata &meta = JobMetadata{});
+    Task(JobSystem *js, TaskKernel &&kernel, const JobMetadata &meta = JobMetadata{});
 
 private:
     JobSystem *js_ = nullptr;
     Job *job_ = nullptr;
-    std::shared_ptr<std::promise<T>> promise_;
+    std::shared_ptr<std::promise<T>> promise_ = nullptr;
     std::shared_future<T> future_; // Needs to be shared, as it can be accessed from another thread.
 };
 
 /**
- * @brief Specialized job handle returned by the JobSystem by default.
- * When no future data type is explicitly specified on a call to
- * JobSystem::create_job(), this specialized handle is returned.
+ * @brief Specialized task returned by the JobSystem when no future data
+ * type is explicitly specified on a call to JobSystem::create_job().
  * It has no notion of future data, so it holds no promise and no future,
  * the job kernel is argument-free, there is no get() method,
  * and captured exceptions are rethrown on a call to release().
@@ -218,12 +232,15 @@ private:
  * @tparam
  */
 template <>
-class JobHandle<void>
+class Task<void>
 {
 public:
     friend class JobSystem;
 
-    JobHandle() = default;
+    Task() = default;
+
+    /// Schedule execution of this task.
+    inline void schedule(tid_t caller_thread = 0);
 
     /**
      * @brief Return the job to the job pool.
@@ -239,31 +256,25 @@ public:
         return job_->meta;
     }
 
+    /// Wait for task to be processed or the condition to evaluate to false.
     inline void wait(std::function<bool()> condition = []() { return true; });
+
+    /// Non-blockingly check for task completion.
     inline bool is_processed();
 
-    /**
-     * @brief Add a job that can only be executed once this job was processed.
-     *
-     * @warning Children jobs must never be scheduled by hand. The worker in charge of this job will schedule the
-     * children by himself once this job has been processed.
-     *
-     * @param child the child to add.
-     */
-    inline void add_child(const JobHandle &child)
+    /// Add a child task.
+    inline void add_child(const Task &child)
     {
         job_->add_child(child.job_);
     }
 
 private:
-    JobHandle(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta = JobMetadata{});
+    Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta = JobMetadata{});
 
 private:
     JobSystem *js_ = nullptr;
     Job *job_ = nullptr;
 };
-
-using JobHnd = JobHandle<void>;
 
 struct SharedState;
 class Scheduler;
@@ -282,7 +293,7 @@ class JobSystem
 {
 public:
     template <typename T>
-    friend class JobHandle;
+    friend class Task;
     friend class WorkerThread;
 
     /**
@@ -319,43 +330,29 @@ public:
     void shutdown();
 
     /**
-     * @brief Create a job with future data and return a job handle.
+     * @brief Create a job with future data.
      *
      * @tparam T Future data type
      * @param kernel function containing code to execute.
-     * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
-     * @return A handle to the newly created job.
+     * @param meta job metadata. Can be used to give a unique label to this task and setup worker affinity.
+     * @return A new task.
      */
     template <typename T>
-    inline JobHandle<T> create_job(typename JobHandle<T>::TypedKernel &&kernel, const JobMetadata &meta = JobMetadata{})
+    inline Task<T> create_task(typename Task<T>::TaskKernel &&kernel, const JobMetadata &meta = JobMetadata{})
     {
-        return JobHandle<T>(this, std::move(kernel), meta);
+        return Task<T>(this, std::move(kernel), meta);
     }
 
     /**
-     * @brief Create a job without specifying a future data type and return a job handle.
+     * @brief Create a job without specifying a future data type.
      *
      * @param kernel function containing code to execute.
-     * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
-     * @return A handle to the newly created job.
+     * @param meta job metadata. Can be used to give a unique label to this task and setup worker affinity.
+     * @return A new task.
      */
-    inline JobHandle<void> create_job(JobKernel &&kernel, const JobMetadata &meta = JobMetadata{})
+    inline Task<void> create_task(JobKernel &&kernel, const JobMetadata &meta = JobMetadata{})
     {
-        return JobHandle<void>(this, std::move(kernel), meta);
-    }
-
-    /**
-     * @brief Schedule job execution.
-     * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
-     *
-     * @tparam T Future data type
-     * @param job the job to submit
-     * @param caller_thread the id of the thread calling this method (default: main thread)
-     */
-    template <typename T>
-    inline void schedule(const JobHandle<T> &hnd, tid_t caller_thread = 0)
-    {
-        schedule(hnd.job_, caller_thread);
+        return Task<void>(this, std::move(kernel), meta);
     }
 
     /**
@@ -488,7 +485,7 @@ private:
      * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
      * @return a new job from the pool
      */
-    Job *create_job_impl(JobKernel &&kernel, const JobMetadata &meta = JobMetadata{});
+    Job *create_job(JobKernel &&kernel, const JobMetadata &meta = JobMetadata{});
 
     /**
      * @internal
@@ -496,7 +493,7 @@ private:
      *
      * @param job the job to release
      */
-    void release_job_impl(Job *job);
+    void release_job(Job *job);
 
     /**
      * @internal
@@ -542,7 +539,7 @@ private:
 };
 
 template <typename T>
-JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const JobMetadata &meta)
+Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &meta)
     : js_(js), promise_(new std::promise<T>)
 {
     future_ = promise_->get_future();
@@ -553,7 +550,7 @@ JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const
         The promise is stored as a shared_ptr and captured by value, as a plain std::promise cannot
         be captured by the lambda (non-copyable). The kernel can be moved.
     */
-    job_ = js_->create_job_impl(
+    job_ = js_->create_job(
         [promise = promise_, kernel = std::move(kernel)]() {
             try
             {
@@ -570,7 +567,23 @@ JobHandle<T>::JobHandle(JobSystem *js, JobHandle<T>::TypedKernel &&kernel, const
 }
 
 template <typename T>
-inline auto JobHandle<T>::get()
+inline void Task<T>::schedule(tid_t caller_thread)
+{
+    // Sanity check
+    if (job_->parent != nullptr)
+    {
+        KLOGW("thread") << "Tried to schedule child _ #" << job_->meta.label << std::endl;
+        KLOGI << "Parent: #" << job_->parent->meta.label << std::endl;
+        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Safely ignored." << std::endl;
+        return;
+    }
+
+    js_->schedule(job_, caller_thread);
+}
+
+template <typename T>
+inline auto Task<T>::get()
 {
     if (meta().worker_affinity != WORKER_AFFINITY_ASYNC)
     {
@@ -580,30 +593,45 @@ inline auto JobHandle<T>::get()
 }
 
 template <typename T>
-inline void JobHandle<T>::wait(std::function<bool()> condition)
+inline void Task<T>::wait(std::function<bool()> condition)
 {
     js_->wait_for(job_, condition);
 }
 
 template <typename T>
-inline bool JobHandle<T>::is_processed()
+inline bool Task<T>::is_processed()
 {
     return js_->is_work_done(job_);
 }
 
 template <typename T>
-void JobHandle<T>::release()
+void Task<T>::release()
 {
     if (js_ != nullptr && job_ != nullptr)
-        js_->release_job_impl(job_);
+        js_->release_job(job_);
 }
 
-inline void JobHandle<void>::wait(std::function<bool()> condition)
+inline void Task<void>::schedule(tid_t caller_thread)
+{
+    // Sanity check
+    if (job_->parent != nullptr)
+    {
+        KLOGW("thread") << "Tried to schedule child _ #" << job_->meta.label << std::endl;
+        KLOGI << "Parent: #" << job_->parent->meta.label << std::endl;
+        KLOGI << "Caller thread: " << caller_thread << std::endl;
+        KLOGI << "Safely ignored." << std::endl;
+        return;
+    }
+
+    js_->schedule(job_, caller_thread);
+}
+
+inline void Task<void>::wait(std::function<bool()> condition)
 {
     js_->wait_for(job_, condition);
 }
 
-inline bool JobHandle<void>::is_processed()
+inline bool Task<void>::is_processed()
 {
     return js_->is_work_done(job_);
 }

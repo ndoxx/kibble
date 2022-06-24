@@ -1,5 +1,4 @@
 #include "thread/job/job_system.h"
-#include "logger/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -114,7 +113,7 @@ void JobSystem::shutdown()
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
 
-Job *JobSystem::create_job_impl(JobKernel &&kernel, const JobMetadata &meta)
+Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 {
     Job *job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
@@ -122,7 +121,7 @@ Job *JobSystem::create_job_impl(JobKernel &&kernel, const JobMetadata &meta)
     return job;
 }
 
-void JobSystem::release_job_impl(Job *job)
+void JobSystem::release_job(Job *job)
 {
     // Make sure that the job was processed
     if (!job->finished.load(std::memory_order_acquire))
@@ -141,6 +140,7 @@ void JobSystem::release_job_impl(Job *job)
 
 void JobSystem::schedule(Job *job, tid_t caller_thread)
 {
+    // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
     scheduler_->dispatch(job, caller_thread);
     ss_->cv_wake.notify_all();
@@ -245,20 +245,20 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
     return ret;
 }
 
-void JobHandle<void>::release()
+void Task<void>::release()
 {
     if (js_ != nullptr && job_ != nullptr)
     {
         auto p_except = job_->p_except;
-        js_->release_job_impl(job_);
+        js_->release_job(job_);
         if (p_except != nullptr)
             std::rethrow_exception(p_except);
     }
 }
 
-JobHandle<void>::JobHandle(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
+Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
 {
-    job_ = js->create_job_impl(std::forward<JobKernel>(kernel), meta);
+    job_ = js->create_job(std::forward<JobKernel>(kernel), meta);
 }
 
 } // namespace th

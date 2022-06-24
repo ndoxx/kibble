@@ -107,7 +107,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
         KLOG("example", 1) << "Round " << kk << std::endl;
 
         // We save the job pointers in there so we can release them when we're done
-        std::vector<th::JobHnd> jobs;
+        std::vector<th::Task<>> jobs;
         // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
         // have an idea of the amount of job creation / scheduling overhead.
         milliClock clk;
@@ -129,11 +129,11 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 
             // Let's create a job and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
-            auto job = js.create_job(
+            auto job = js.create_task(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); }, meta);
 
             // Schedule the job, the workers will awake
-            js.schedule(job);
+            job.schedule();
             // Save the job handle for later cleanup (or the job pool will leak)
             jobs.push_back(job);
         }
@@ -180,7 +180,7 @@ int p1(size_t njobs, bool minload, bool disable_work_stealing)
     memory::HeapArea area(2_MB);
     th::JobSystem js(area, scheme);
 
-    std::vector<th::JobHnd> jobs;
+    std::vector<th::Task<>> jobs;
 
     KLOG("example", 1) << "Creating jobs." << std::endl;
 
@@ -191,7 +191,7 @@ int p1(size_t njobs, bool minload, bool disable_work_stealing)
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-        auto job = js.create_job(
+        auto job = js.create_task(
             [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 if (ii % 40 == 0)
@@ -202,7 +202,7 @@ int p1(size_t njobs, bool minload, bool disable_work_stealing)
             meta);
 
         // Schedule the job, the workers will awake
-        js.schedule(job);
+        job.schedule();
         // Save the job pointer for later cleanup (or the job pool will leak)
         jobs.push_back(job);
     }
@@ -267,8 +267,8 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::JobHandle<int>> load_jobs;
-        std::vector<th::JobHandle<float>> stage_jobs;
+        std::vector<th::Task<int>> load_jobs;
+        std::vector<th::Task<float>> stage_jobs;
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
         {
@@ -280,7 +280,7 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
             else
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto load_job = js.create_job<int>(
+            auto load_job = js.create_task<int>(
                 [&load_time, ii](std::promise<int> &prom) {
                     // Simulate loading time
                     std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
@@ -302,7 +302,7 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
 
             // Get the loading job future data so we can use it in the staging job
             auto fut = load_job.get_future();
-            auto stage_job = js.create_job<float>(
+            auto stage_job = js.create_task<float>(
                 [&stage_time, ii, fut](std::promise<float> &prom) {
                     // Simulate staging time
                     std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii]));
@@ -318,7 +318,7 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
             load_job.add_child(stage_job);
 
             // We only schedule the parent job here, or we're asking for problems
-            js.schedule(load_job);
+            load_job.schedule();
 
             // Both job pointers must be freed when we're done
             load_jobs.push_back(load_job);
