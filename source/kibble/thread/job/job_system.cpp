@@ -132,7 +132,7 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 void JobSystem::release_job(Job *job)
 {
     // Make sure that the job was processed
-    if (!job->finished.load(std::memory_order_acquire))
+    if (!job->is_processed())
     {
         KLOGW("thread") << "Tried to release unprocessed job." << std::endl;
         return;
@@ -149,7 +149,7 @@ void JobSystem::release_job(Job *job)
 void JobSystem::schedule(Job *job)
 {
     // Sanity check
-    if (!job->is_orphan.load())
+    if (!job->is_ready())
     {
         KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
         KLOGI << "Caller thread: " << this_thread_id() << std::endl;
@@ -182,7 +182,7 @@ bool JobSystem::is_busy() const
 
 bool JobSystem::is_work_done(Job *job) const
 {
-    return job->finished.load(std::memory_order_acquire);
+    return job->is_processed();
 }
 
 // NOTE(ndx): Instead of busy-waiting I tried

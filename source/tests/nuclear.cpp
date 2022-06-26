@@ -1,7 +1,8 @@
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
-#include "thread/job/impl/job_graph.h"
+#include "thread/job/job_graph.h"
+#include "thread/job/config.h"
 
 #include <algorithm>
 #include <array>

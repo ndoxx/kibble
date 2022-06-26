@@ -79,7 +79,7 @@ int p0(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
     // The job system needs some pre-allocated memory for the job pool
-    memory::HeapArea area(2_MB);
+    memory::HeapArea area(3_MB);
     th::JobSystem js(area, scheme);
 
     // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
@@ -177,7 +177,7 @@ int p1(size_t njobs, bool minload, bool disable_work_stealing)
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
-    memory::HeapArea area(2_MB);
+    memory::HeapArea area(3_MB);
     th::JobSystem js(area, scheme);
 
     std::vector<th::Task<>> jobs;
@@ -245,7 +245,7 @@ int p2(size_t nexp, size_t nloads, bool minload, bool disable_work_stealing)
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = minload ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
-    memory::HeapArea area(2_MB);
+    memory::HeapArea area(3_MB);
     th::JobSystem js(area, scheme);
     js.use_persistence_file("p2.jpp");
 

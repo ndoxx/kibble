@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <array>
 #include <atomic>
-#include "thread/job/config.h"
+#include <stdexcept>
 
 namespace kb
 {
