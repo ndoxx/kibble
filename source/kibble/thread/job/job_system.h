@@ -125,7 +125,7 @@ struct Job
     /**
      * @internal
      * @brief Get the number of pending dependencies.
-     * 
+     *
      * @return size_t The dependency count.
      */
     inline size_t get_pending() const

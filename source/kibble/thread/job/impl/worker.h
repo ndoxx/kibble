@@ -139,7 +139,7 @@ public:
      * @brief Get the system thread id.
      * In association with the JobSystem's thread id map, this allows to know the tid_t thread index
      * of the current context.
-     * 
+     *
      * @return std::thread::id
      */
     inline std::thread::id get_native_thread_id() const
