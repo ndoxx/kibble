@@ -37,6 +37,8 @@ target_compile_definitions(kibble
         CFG_JS_MAX_THREADS=8
         CFG_JS_MAX_JOBS_PER_WORKER=1024
         CFG_JS_STATS_QUEUE_CAPACITY=128
+        CFG_JS_MAX_CHILD_JOBS=8
+        CFG_JS_MAX_PARENT_JOBS=4
 )
 
 if(ENABLE_LOGGING)
