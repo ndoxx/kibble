@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cstdint>
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <stdexcept>
 
 namespace kb
@@ -36,6 +36,11 @@ public:
         return pending_in_.load() == 0;
     }
 
+    inline size_t get_pending() const
+    {
+        return pending_in_.load();
+    }
+
     inline bool is_processed() const
     {
         return processed_.load();
@@ -43,9 +48,10 @@ public:
 
     void mark_processed()
     {
-        processed_.store(true);
         for (auto *child : out_nodes_)
             child->pending_in_.fetch_sub(1);
+
+        processed_.store(true);
     }
 
 private:

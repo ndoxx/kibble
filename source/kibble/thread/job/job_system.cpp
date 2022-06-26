@@ -151,7 +151,8 @@ void JobSystem::schedule(Job *job)
     // Sanity check
     if (!job->is_ready())
     {
-        KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
+        KLOGW("thread") << "Tried to schedule job #" << job->meta.label << " with " << job->get_pending()
+                        << " unfinished dependencies." << std::endl;
         KLOGI << "Caller thread: " << this_thread_id() << std::endl;
         KLOGI << "Safely ignored." << std::endl;
         return;

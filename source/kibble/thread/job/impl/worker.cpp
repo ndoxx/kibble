@@ -139,12 +139,12 @@ void WorkerThread::process(Job *job)
     }
 
     job->meta.execution_time_us = clk.get_elapsed_time().count();
-    job->mark_processed();
 #if K_PROFILE_JOB_SYSTEM
     activity_.active_time_us += clk.get_elapsed_time().count();
     ++activity_.executed;
 #endif
 
+    job->mark_processed();
     schedule_children(job);
     ss_.pending.fetch_sub(1);
 }
@@ -153,10 +153,19 @@ void WorkerThread::schedule_children(Job *job)
 {
     for (Job *child : job->children)
     {
-        if (job->is_ready())
+        if (child->is_ready())
         {
+            /*
+                Without the following CAS loop, a job whose parents finish at the same time
+                could be submitted multiple times.
+            */
+            bool scheduled = child->scheduled.load();
+            while (!child->scheduled.compare_exchange_weak(scheduled, true))
+                ;
+
             // Thread-safe call as long as the scheduler implementation is thread-safe
-            js_.schedule(child);
+            if (!scheduled)
+                js_.schedule(child);
 #if K_PROFILE_JOB_SYSTEM
             ++activity_.scheduled;
 #endif

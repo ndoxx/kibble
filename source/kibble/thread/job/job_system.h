@@ -68,9 +68,11 @@ struct Job
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
     /// All jobs that have this one as a dependency
-    std::vector<Job *> children; // TODO: Add to node?
+    std::vector<Job *> children;
     /// Dependency information
     JobNode node;
+    /// To avoid multiple scheduling of children
+    std::atomic<bool> scheduled = false;
 
     /**
      * @internal
@@ -118,6 +120,17 @@ struct Job
     inline bool is_processed() const
     {
         return node.is_processed();
+    }
+
+    /**
+     * @internal
+     * @brief Get the number of pending dependencies.
+     * 
+     * @return size_t The dependency count.
+     */
+    inline size_t get_pending() const
+    {
+        return node.get_pending();
     }
 
     /**
@@ -232,7 +245,10 @@ public:
      *
      * @return true it the job was processed, false otherwise
      */
-    inline bool is_processed();
+    inline bool is_processed()
+    {
+        return job_->is_processed();
+    }
 
     /**
      * @brief Get a copy of the shared future data.
@@ -261,7 +277,7 @@ public:
      * @brief Make this task dependent on another one.
      *
      * @param task the parent to add.
-     * @tparam U future data type of the child job.
+     * @tparam U future data type of the parent job.
      */
     template <typename U>
     inline void add_parent(const Task<U> &task)
@@ -317,7 +333,10 @@ public:
     inline void wait(std::function<bool()> condition = []() { return true; });
 
     /// Non-blockingly check for task completion.
-    inline bool is_processed();
+    inline bool is_processed()
+    {
+        return job_->is_processed();
+    }
 
     /// Add a child task.
     inline void add_child(const Task &task)
@@ -662,12 +681,6 @@ inline void Task<T>::wait(std::function<bool()> condition)
 }
 
 template <typename T>
-inline bool Task<T>::is_processed()
-{
-    return js_->is_work_done(job_);
-}
-
-template <typename T>
 void Task<T>::release()
 {
     if (js_ != nullptr && job_ != nullptr)
@@ -682,11 +695,6 @@ inline void Task<void>::schedule()
 inline void Task<void>::wait(std::function<bool()> condition)
 {
     js_->wait_for(job_, condition);
-}
-
-inline bool Task<void>::is_processed()
-{
-    return js_->is_work_done(job_);
 }
 
 } // namespace th
