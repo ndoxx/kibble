@@ -1,5 +1,6 @@
 #pragma once
 
+#include "thread/alignment.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -10,12 +11,13 @@ namespace kb
 namespace th
 {
 
-template <size_t MAX_IN, size_t MAX_OUT>
+template <typename T, size_t MAX_IN, size_t MAX_OUT>
 class ProcessNode
 {
 public:
-    inline void connect(ProcessNode &to)
+    inline void connect(ProcessNode &to, T object)
     {
+        out_objects_[out_nodes_.count()] = object;
         out_nodes_.add(to);
         to.in_nodes_.add(*this);
         to.pending_in_.fetch_add(1);
@@ -46,6 +48,11 @@ public:
         return processed_.load();
     }
 
+    inline auto &scheduled()
+    {
+        return scheduled_;
+    }
+
     void mark_processed()
     {
         for (auto *child : out_nodes_)
@@ -53,6 +60,26 @@ public:
 
         processed_.store(true);
     }
+
+    bool mark_scheduled()
+    {
+        /*
+            Without the following CAS loop, a job whose parents finish at the same time
+            could be submitted multiple times.
+        */
+        bool scheduled = scheduled_.load();
+        while (!scheduled_.compare_exchange_weak(scheduled, true))
+            ;
+
+        return !scheduled;
+    }
+
+    // clang-format off
+    inline auto begin()        { return std::begin(out_objects_); }
+    inline auto end()          { return std::begin(out_objects_) + out_nodes_.count(); }
+    inline auto cbegin() const { return std::cbegin(out_objects_); }
+    inline auto cend() const   { return std::cbegin(out_objects_) + out_nodes_.count(); }
+    // clang-format on
 
 private:
     template <size_t SIZE>
@@ -84,10 +111,11 @@ private:
         }
 
         // clang-format off
-        inline auto begin()        { return std::begin(slots_); }
-        inline auto end()          { return std::begin(slots_) + count_; }
-        inline auto cbegin() const { return std::cbegin(slots_); }
-        inline auto cend() const   { return std::cbegin(slots_) + count_; }
+        inline auto begin()         { return std::begin(slots_); }
+        inline auto end()           { return std::begin(slots_) + count_; }
+        inline auto cbegin() const  { return std::cbegin(slots_); }
+        inline auto cend() const    { return std::cbegin(slots_) + count_; }
+        inline size_t count() const { return count_; }
         // clang-format on
 
     private:
@@ -96,10 +124,18 @@ private:
     };
 
 private:
-    std::atomic<size_t> pending_in_ = 0;
-    std::atomic<bool> processed_ = false;
-    Harness<MAX_IN> in_nodes_;
-    Harness<MAX_OUT> out_nodes_;
+    /// Dependencies
+    PAGE_ALIGN Harness<MAX_IN> in_nodes_;
+    /// Dependent nodes
+    PAGE_ALIGN Harness<MAX_OUT> out_nodes_;
+    /// Dependent objects
+    PAGE_ALIGN std::array<T, MAX_OUT> out_objects_;
+    /// Number of pending dependencies
+    PAGE_ALIGN std::atomic<size_t> pending_in_ = 0;
+    /// Set to true as soon as node has been processed
+    PAGE_ALIGN std::atomic<bool> processed_ = false;
+    /// To avoid multiple scheduling of children
+    PAGE_ALIGN std::atomic<bool> scheduled_ = false;
 };
 
 } // namespace th

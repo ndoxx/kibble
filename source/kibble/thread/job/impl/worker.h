@@ -1,5 +1,6 @@
 #pragma once
 #include "thread/job/impl/common.h"
+#include "thread/alignment.h"
 #include <atomic>
 #include <condition_variable>
 #include <mutex>

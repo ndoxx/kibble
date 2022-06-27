@@ -59,7 +59,7 @@ struct JobMetadata
  */
 struct Job
 {
-    using JobNode = ProcessNode<k_max_parent_jobs, k_max_child_jobs>;
+    using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
 
     /// Job metadata
     JobMetadata meta;
@@ -67,12 +67,8 @@ struct Job
     JobKernel kernel = JobKernel{};
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
-    /// All jobs that have this one as a dependency
-    std::vector<Job *> children;
-    /// Dependency information
+    /// Dependency information and shared state
     JobNode node;
-    /// To avoid multiple scheduling of children
-    std::atomic<bool> scheduled = false;
 
     /**
      * @internal
@@ -82,8 +78,7 @@ struct Job
      */
     inline void add_child(Job *job)
     {
-        children.push_back(job);
-        node.connect(job->node);
+        node.connect(job->node, job);
     }
 
     /**
@@ -94,8 +89,7 @@ struct Job
      */
     inline void add_parent(Job *job)
     {
-        job->children.push_back(this);
-        job->node.connect(node);
+        job->node.connect(node, this);
     }
 
     /**
@@ -141,6 +135,18 @@ struct Job
     inline void mark_processed()
     {
         node.mark_processed();
+    }
+
+    /**
+     * @internal
+     * @brief Try to mark this node scheduled.
+     * 
+     * @return true If calling thread can safely schedule this job.
+     * @return false Otherwise.
+     */
+    inline bool mark_scheduled()
+    {
+        return node.mark_scheduled();
     }
 };
 

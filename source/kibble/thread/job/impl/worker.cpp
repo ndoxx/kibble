@@ -151,26 +151,15 @@ void WorkerThread::process(Job *job)
 
 void WorkerThread::schedule_children(Job *job)
 {
-    for (Job *child : job->children)
+    for (Job *child : job->node)
     {
-        if (child->is_ready())
+        if (child->is_ready() && child->mark_scheduled())
         {
-            /*
-                Without the following CAS loop, a job whose parents finish at the same time
-                could be submitted multiple times.
-            */
-            bool scheduled = child->scheduled.load();
-            while (!child->scheduled.compare_exchange_weak(scheduled, true))
-                ;
-
-            if (!scheduled)
-            {
-                // Thread-safe call as long as the scheduler implementation is thread-safe
-                js_.schedule(child);
+            // Thread-safe call as long as the scheduler implementation is thread-safe
+            js_.schedule(child);
 #if K_PROFILE_JOB_SYSTEM
-                ++activity_.scheduled;
+            ++activity_.scheduled;
 #endif
-            }
         }
     }
 }

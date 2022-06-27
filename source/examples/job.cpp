@@ -471,7 +471,7 @@ int main(int argc, char **argv)
     scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
     // The job system needs some pre-allocated memory for the job pool
-    memory::HeapArea area(3_MB);
+    memory::HeapArea area(5_MB);
 
     // clang-format off
     switch(ex())

@@ -25,15 +25,6 @@ template <typename T>
 using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;
 
 
-// Size of a cache line -> controlling alignment prevents false sharing
-[[maybe_unused]] static constexpr size_t k_cache_line_size = 64;
-
-#ifdef K_ENABLE_SHARED_STATE_PAGE_ALIGN
-#define PAGE_ALIGN alignas(k_cache_line_size)
-#else
-#define PAGE_ALIGN
-#endif
-
 /**
  * @internal
  * @brief Worker activity report struct.

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "thread/job/impl/common.h"
+#include "thread/alignment.h"
+#include "thread/job/config.h"
 #include <cstdint>
+#include <array>
 
 namespace kb
 {
