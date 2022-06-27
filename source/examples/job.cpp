@@ -341,6 +341,15 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
 
 /**
  * @brief In this example, we submit a slightly more complex job graph to the job system.
+ * Multiple job graphs will be submitted, and each have the following diamond shape:
+ *
+ *                                           B
+ *                                         /   \
+ *                                       A       D
+ *                                         \   /
+ *                                           D
+ * So job 'A' needs to be executed first, then jobs 'B' and 'C' can run in parallel, and job
+ * 'D' waits for both 'B' and 'C' to complete before it can run.
  *
  * @param nexp number of experiments
  * @param ngraphs number of loading jobs
@@ -364,7 +373,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
             th::JobMetadata meta_a;
-            meta_a.label = HCOMBINE_("A"_h, uint64_t(ii + 1));
+            meta_a.label = "A"_h;
             meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
 
             auto job_a = js.create_task<int>(
@@ -375,7 +384,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
                 meta_a);
 
             th::JobMetadata meta_b;
-            meta_b.label = HCOMBINE_("B"_h, uint64_t(ii + 1));
+            meta_b.label = "B"_h;
             meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
 
             auto job_b = js.create_task<int>(
@@ -386,7 +395,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
                 meta_b);
 
             th::JobMetadata meta_c;
-            meta_c.label = HCOMBINE_("C"_h, uint64_t(ii + 1));
+            meta_c.label = "C"_h;
             meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
 
             auto job_c = js.create_task<int>(
@@ -397,7 +406,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
                 meta_c);
 
             th::JobMetadata meta_d;
-            meta_d.label = HCOMBINE_("D"_h, uint64_t(ii + 1));
+            meta_d.label = "D"_h;
             meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
 
             auto job_d = js.create_task<bool>(
@@ -470,8 +479,9 @@ int main(int argc, char **argv)
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
-    // The job system needs some pre-allocated memory for the job pool
-    memory::HeapArea area(5_MB);
+    // The job system needs some pre-allocated memory for the job pool.
+    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
+    memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
     // clang-format off
     switch(ex())

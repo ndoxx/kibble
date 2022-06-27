@@ -2,8 +2,8 @@
 
 #include "thread/alignment.h"
 #include "thread/job/config.h"
-#include <cstdint>
 #include <array>
+#include <cstdint>
 
 namespace kb
 {

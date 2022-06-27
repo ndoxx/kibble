@@ -2,9 +2,9 @@
 #include "assert/assert.h"
 #include "atomic_queue/atomic_queue.h"
 #include "logger/logger.h"
+#include "memory/atomic_pool_allocator.h"
 #include "memory/heap_area.h"
 #include "memory/memory.h"
-#include "memory/atomic_pool_allocator.h"
 #include "thread/job/config.h"
 
 namespace kb
@@ -23,7 +23,6 @@ using JobPoolArena = memory::MemoryArena<memory::AtomicPoolAllocator<k_max_jobs 
                                          memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 template <typename T>
 using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;
-
 
 /**
  * @internal

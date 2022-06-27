@@ -16,6 +16,12 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
+size_t JobSystem::get_memory_requirements()
+{
+    // Area will need to contain the memory arena, and enough space for each job
+    return sizeof(JobPoolArena) + k_max_threads * k_max_jobs * (k_job_node_size + JobPoolArena::DECORATION_SIZE);
+}
+
 JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {

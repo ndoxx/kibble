@@ -59,7 +59,7 @@ struct JobMetadata
  */
 struct Job
 {
-    using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
+    using JobNode = ProcessNode<Job *, k_max_parent_jobs, k_max_child_jobs>;
 
     /// Job metadata
     JobMetadata meta;
@@ -140,7 +140,7 @@ struct Job
     /**
      * @internal
      * @brief Try to mark this node scheduled.
-     * 
+     *
      * @return true If calling thread can safely schedule this job.
      * @return false Otherwise.
      */
@@ -383,6 +383,13 @@ public:
     template <typename T>
     friend class Task;
     friend class WorkerThread;
+
+    /**
+     * @brief Get the total amount of memory needed for the job pool.
+     *
+     * @return size_t Minimal size in bytes to allocate in a memory::HeapArea.
+     */
+    static size_t get_memory_requirements();
 
     /**
      * @brief Construct a new Job System.
