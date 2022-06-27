@@ -132,34 +132,35 @@ void WorkerThread::process(Job *job)
         /*
             Store any exception thrown by the kernel function, it will be rethrown
             when the job is released.
-            We should never get here when the future/promise API is used, as all
+            We should never get here when a non-void task is executed, as all
             exceptions thrown by the kernel are captured by the wrapper.
         */
         job->p_except = std::current_exception();
     }
 
     job->meta.execution_time_us = clk.get_elapsed_time().count();
-    job->finished.store(true, std::memory_order_release);
 #if K_PROFILE_JOB_SYSTEM
     activity_.active_time_us += clk.get_elapsed_time().count();
     ++activity_.executed;
 #endif
 
+    job->mark_processed();
     schedule_children(job);
     ss_.pending.fetch_sub(1);
 }
 
 void WorkerThread::schedule_children(Job *job)
 {
-    for (Job *child : job->children)
+    for (Job *child : job->node)
     {
-        // First, make the jobs orphans so they can be scheduled
-        child->is_orphan.store(true);
-        // Thread-safe call as long as the scheduler implementation is thread-safe
-        js_.schedule(child);
+        if (child->is_ready() && child->mark_scheduled())
+        {
+            // Thread-safe call as long as the scheduler implementation is thread-safe
+            js_.schedule(child);
 #if K_PROFILE_JOB_SYSTEM
-        ++activity_.scheduled;
+            ++activity_.scheduled;
 #endif
+        }
     }
 }
 

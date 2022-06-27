@@ -2,6 +2,7 @@
 
 #include "assert/assert.h"
 #include "thread/job/config.h"
+#include "thread/job/job_graph.h"
 #include <atomic>
 #include <cstdint>
 #include <exception>
@@ -58,30 +59,94 @@ struct JobMetadata
  */
 struct Job
 {
+    using JobNode = ProcessNode<Job *, k_max_parent_jobs, k_max_child_jobs>;
+
     /// Job metadata
     JobMetadata meta;
     /// The function to execute
     JobKernel kernel = JobKernel{};
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
-    /// All jobs that have this one as a dependency
-    std::vector<Job *> children;
-
-    // State
-    /// Set to false if job has a parent, only orphan jobs can be scheduled
-    std::atomic<bool> is_orphan = {true};
-    /// Set to true when this job has been processed
-    std::atomic<bool> finished = {false};
+    /// Dependency information and shared state
+    JobNode node;
 
     /**
+     * @internal
      * @brief Add a job that can only be executed once this job was processed.
      *
-     * @param child the child to add.
+     * @param job the child to add.
      */
-    inline void add_child(Job *child)
+    inline void add_child(Job *job)
     {
-        children.push_back(child);
-        child->is_orphan.store(false);
+        node.connect(job->node, job);
+    }
+
+    /**
+     * @internal
+     * @brief Make this job dependent on another job.
+     *
+     * @param job the parent to add.
+     */
+    inline void add_parent(Job *job)
+    {
+        job->node.connect(node, this);
+    }
+
+    /**
+     * @internal
+     * @brief Non-blockingly check if this job's dependencies are satisfied.
+     *
+     * @return true If the dependencies are satisfied and the job can be scheduled.
+     * @return false Otherwise.
+     */
+    inline bool is_ready() const
+    {
+        return node.is_ready();
+    }
+
+    /**
+     * @internal
+     * @brief Non-blockingly check if this job has been processed.
+     *
+     * @return true If the job has been processed.
+     * @return false Otherwise.
+     */
+    inline bool is_processed() const
+    {
+        return node.is_processed();
+    }
+
+    /**
+     * @internal
+     * @brief Get the number of pending dependencies.
+     *
+     * @return size_t The dependency count.
+     */
+    inline size_t get_pending() const
+    {
+        return node.get_pending();
+    }
+
+    /**
+     * @internal
+     * @brief Mark this job processed, and update dependency information.
+     *
+     */
+    inline void mark_processed()
+    {
+        node.mark_processed();
+    }
+
+    /**
+     * @internal
+     * @brief Try to mark this node scheduled.
+     *
+     * @return true If calling thread can safely schedule this job.
+     * @return false Otherwise.
+     */
+    inline bool mark_scheduled()
+    {
+        return node.mark_scheduled();
     }
 };
 
@@ -186,7 +251,10 @@ public:
      *
      * @return true it the job was processed, false otherwise
      */
-    inline bool is_processed();
+    inline bool is_processed()
+    {
+        return job_->is_processed();
+    }
 
     /**
      * @brief Get a copy of the shared future data.
@@ -202,13 +270,25 @@ public:
     /**
      * @brief Add a job that can only be executed once this job was processed.
      *
-     * @param child the child to add.
+     * @param task the child to add.
      * @tparam U future data type of the child job.
      */
     template <typename U>
-    inline void add_child(const Task<U> &child)
+    inline void add_child(const Task<U> &task)
     {
-        job_->add_child(child.job_);
+        job_->add_child(task.job_);
+    }
+
+    /**
+     * @brief Make this task dependent on another one.
+     *
+     * @param task the parent to add.
+     * @tparam U future data type of the parent job.
+     */
+    template <typename U>
+    inline void add_parent(const Task<U> &task)
+    {
+        job_->add_parent(task.job_);
     }
 
 private:
@@ -259,12 +339,21 @@ public:
     inline void wait(std::function<bool()> condition = []() { return true; });
 
     /// Non-blockingly check for task completion.
-    inline bool is_processed();
+    inline bool is_processed()
+    {
+        return job_->is_processed();
+    }
 
     /// Add a child task.
-    inline void add_child(const Task &child)
+    inline void add_child(const Task &task)
     {
-        job_->add_child(child.job_);
+        job_->add_child(task.job_);
+    }
+
+    /// Add a parent task.
+    inline void add_parent(const Task &task)
+    {
+        job_->add_parent(task.job_);
     }
 
 private:
@@ -294,6 +383,13 @@ public:
     template <typename T>
     friend class Task;
     friend class WorkerThread;
+
+    /**
+     * @brief Get the total amount of memory needed for the job pool.
+     *
+     * @return size_t Minimal size in bytes to allocate in a memory::HeapArea.
+     */
+    static size_t get_memory_requirements();
 
     /**
      * @brief Construct a new Job System.
@@ -598,12 +694,6 @@ inline void Task<T>::wait(std::function<bool()> condition)
 }
 
 template <typename T>
-inline bool Task<T>::is_processed()
-{
-    return js_->is_work_done(job_);
-}
-
-template <typename T>
 void Task<T>::release()
 {
     if (js_ != nullptr && job_ != nullptr)
@@ -618,11 +708,6 @@ inline void Task<void>::schedule()
 inline void Task<void>::wait(std::function<bool()> condition)
 {
     js_->wait_for(job_, condition);
-}
-
-inline bool Task<void>::is_processed()
-{
-    return js_->is_work_done(job_);
 }
 
 } // namespace th

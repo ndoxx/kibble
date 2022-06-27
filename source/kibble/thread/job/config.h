@@ -13,6 +13,10 @@ namespace th
 [[maybe_unused]] static constexpr std::size_t k_max_jobs = CFG_JS_MAX_JOBS_PER_WORKER;
 /// Maximum number of stats packets in the monitor queue
 [[maybe_unused]] static constexpr std::size_t k_stats_queue_capacity = CFG_JS_STATS_QUEUE_CAPACITY;
+// Maximum number of dependent jobs for each job
+[[maybe_unused]] static constexpr std::size_t k_max_child_jobs = CFG_JS_MAX_CHILD_JOBS;
+// Maximum number of job dependencies
+[[maybe_unused]] static constexpr std::size_t k_max_parent_jobs = CFG_JS_MAX_PARENT_JOBS;
 
 } // namespace th
 } // namespace kb

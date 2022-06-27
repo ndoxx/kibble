@@ -16,6 +16,12 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
+size_t JobSystem::get_memory_requirements()
+{
+    // Area will need to contain the memory arena, and enough space for each job
+    return sizeof(JobPoolArena) + k_max_threads * k_max_jobs * (k_job_node_size + JobPoolArena::DECORATION_SIZE);
+}
+
 JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     : scheme_(scheme), ss_(std::make_shared<SharedState>())
 {
@@ -132,7 +138,7 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 void JobSystem::release_job(Job *job)
 {
     // Make sure that the job was processed
-    if (!job->finished.load(std::memory_order_acquire))
+    if (!job->is_processed())
     {
         KLOGW("thread") << "Tried to release unprocessed job." << std::endl;
         return;
@@ -149,9 +155,10 @@ void JobSystem::release_job(Job *job)
 void JobSystem::schedule(Job *job)
 {
     // Sanity check
-    if (!job->is_orphan.load())
+    if (!job->is_ready())
     {
-        KLOGW("thread") << "Tried to schedule child job #" << job->meta.label << std::endl;
+        KLOGW("thread") << "Tried to schedule job #" << job->meta.label << " with " << job->get_pending()
+                        << " unfinished dependencies." << std::endl;
         KLOGI << "Caller thread: " << this_thread_id() << std::endl;
         KLOGI << "Safely ignored." << std::endl;
         return;
@@ -182,7 +189,7 @@ bool JobSystem::is_busy() const
 
 bool JobSystem::is_work_done(Job *job) const
 {
-    return job->finished.load(std::memory_order_acquire);
+    return job->is_processed();
 }
 
 // NOTE(ndx): Instead of busy-waiting I tried

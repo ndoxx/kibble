@@ -1,17 +1,50 @@
 #include "logger/dispatcher.h"
 #include "logger/logger.h"
 #include "logger/sink.h"
+#include "thread/job/config.h"
+#include "thread/job/job_graph.h"
 
-#include "memory/heap_area.h"
-#include "memory/memory.h"
-#include "memory/atomic_pool_allocator.h"
-
-#include <vector>
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <random>
+#include <stdexcept>
 #include <thread>
+#include <vector>
 
 using namespace kb;
-using namespace kb::memory;
+using namespace kb::th;
 
+struct Job
+{
+    using JobNode = ProcessNode<k_max_parent_jobs, k_max_child_jobs>;
+    JobNode node;
+
+    inline void add_child(Job *job)
+    {
+        node.connect(job->node);
+    }
+
+    inline void add_parent(Job *job)
+    {
+        job->node.connect(node);
+    }
+
+    inline bool is_ready() const
+    {
+        return node.is_ready();
+    }
+
+    inline bool is_processed() const
+    {
+        return node.is_processed();
+    }
+
+    inline void mark_processed()
+    {
+        node.mark_processed();
+    }
+};
 
 void init_logger()
 {
@@ -23,11 +56,14 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-struct Job
+void display(const std::vector<Job *> &jobs)
 {
-    size_t a = 0;
-    size_t b = 0;
-};
+    for (auto &&job : jobs)
+    {
+        KLOG("nuclear", 1) << job->is_ready() << '/' << job->is_processed() << ' ';
+    }
+    KLOG("nuclear", 1) << std::endl;
+}
 
 int main(int argc, char **argv)
 {
@@ -35,36 +71,42 @@ int main(int argc, char **argv)
     (void)argv;
     init_logger();
 
-    HeapArea area(1_MB);
-
-    constexpr size_t k_max_jobs = 128;
-    constexpr size_t k_max_threads = 4;
-    constexpr size_t k_cache_line_size = 64;
-    constexpr size_t k_job_max_align = k_cache_line_size - 1;
-    constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
-
-    using PoolArena = memory::MemoryArena<AtomicPoolAllocator<k_max_jobs * k_max_threads>,
-                                          memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
-                                          memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
-
-    PoolArena job_pool;
-
-    job_pool.init(area, k_job_node_size + PoolArena::DECORATION_SIZE, "JobPool");
-
     std::vector<Job *> jobs;
-    for (size_t ii = 0; ii < 10; ++ii)
+    for (size_t ii = 0; ii < 7; ++ii)
+        jobs.push_back(new Job);
+
+    jobs[0]->add_child(jobs[2]);
+    jobs[0]->add_child(jobs[3]);
+    jobs[1]->add_child(jobs[4]);
+    jobs[5]->add_parent(jobs[2]);
+    jobs[5]->add_parent(jobs[3]);
+    jobs[6]->add_parent(jobs[4]);
+    jobs[6]->add_parent(jobs[5]);
+
+    auto done = [end_job = jobs[6]]() { return end_job->is_processed(); };
+
+    std::vector<size_t> order(7, 0);
+    std::iota(order.begin(), order.end(), 0);
+    auto rng = std::default_random_engine{};
+    std::shuffle(std::begin(order), std::end(order), rng);
+
+    display(jobs);
+    while (!done())
     {
-        Job *job = K_NEW_ALIGN(Job, job_pool, k_cache_line_size);
-        job->a = ii;
-        job->b = ii + 1;
-        jobs.push_back(job);
+        for (size_t idx : order)
+        {
+            auto *job = jobs[idx];
+            if (job->is_ready() && !job->is_processed())
+            {
+                job->mark_processed();
+                KLOG("nuclear", 1) << "Processing job #" << idx << std::endl;
+                display(jobs);
+            }
+        }
     }
 
     for (Job *job : jobs)
-    {
-        KLOG("nuclear",1) << job->a << '/' << job->b << std::endl;
-        K_DELETE(job, job_pool);
-    }
+        delete job;
 
     return 0;
 }
