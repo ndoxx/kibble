@@ -70,11 +70,11 @@ void show_statistics(milliClock &clk, long serial_dur_ms)
 }
 
 /**
- * @brief In this example, we simulate multiple resource loading jobs being dispatched to worker threads. The loading
- * jobs are all independent.
+ * @brief In this example, we simulate multiple resource loading tasks being dispatched to worker threads. The loading
+ * tasks are all independent.
  *
  * @param nexp number of experiments
- * @param nloads number of loading jobs
+ * @param nloads number of loading tasks
  * @param scheme job system configuration
  * @param area initialized memory area
  * @return int
@@ -109,18 +109,16 @@ int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
 
-        // We save the job pointers in there so we can release them when we're done
-        std::vector<th::Task<>> jobs;
         // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
-        // have an idea of the amount of job creation / scheduling overhead.
+        // have an idea of the amount of task creation / scheduling overhead.
         milliClock clk;
 
-        // Create as many jobs as needed
+        // Create as many tasks as needed
         for (size_t ii = 0; ii < nloads; ++ii)
         {
-            // Each job has some metadata attached
+            // Each task has some metadata attached
             th::JobMetadata meta;
-            // A label uniquely identifies this job, so its execution time can be monitored
+            // A label uniquely identifies this task, so its execution time can be monitored
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             // A job's worker affinity property can be used to specify in which threads the job can or cannot be
             // executed. In this example, the first 70 (arbitrary) jobs must be executed asynchronously. The rest can be
@@ -130,15 +128,13 @@ int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
             else
                 meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            // Let's create a job and give it this simple lambda that waits a precise amount of time as a job kernel,
+            // Let's create a task and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
-            auto job = js.create_task(
+            auto tsk = js.create_task(
                 [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); }, meta);
 
-            // Schedule the job, the workers will awake
-            job.schedule();
-            // Save the job handle for later cleanup (or the job pool will leak)
-            jobs.push_back(job);
+            // Schedule the tsk, the workers will awake
+            tsk.schedule();
         }
         // Wait for all jobs to be executed. This introduces a sync point. The main thread will assist the workers
         // instead of just waiting idly.
@@ -146,10 +142,6 @@ int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
 
         // Show some stats!
         show_statistics(clk, serial_dur_ms);
-
-        // Cleanup
-        for (auto &&job : jobs)
-            job.release();
     }
 
     return 0;
@@ -158,29 +150,27 @@ int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
 /**
  * @brief Here we throw exceptions from job kernels and check that all is fine.
  *
- * @param njobs number of jobs
+ * @param ntasks number of jobs
  * @param minload use minimum load scheduler
  * @param disable_work_stealing
  * @return int
  */
-int p1(size_t njobs, const th::JobSystemScheme &scheme, memory::HeapArea &area)
+int p1(size_t ntasks, const th::JobSystemScheme &scheme, memory::HeapArea &area)
 {
     KLOGN("example") << "[JobSystem Example 1] throwing exceptions" << std::endl;
 
     th::JobSystem js(area, scheme);
 
-    std::vector<th::Task<>> jobs;
+    KLOG("example", 1) << "Creating tasks." << std::endl;
 
-    KLOG("example", 1) << "Creating jobs." << std::endl;
-
-    // Create as many jobs as needed
-    for (size_t ii = 0; ii < njobs; ++ii)
+    // Create as many tasks as needed
+    for (size_t ii = 0; ii < ntasks; ++ii)
     {
         th::JobMetadata meta;
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-        auto job = js.create_task(
+        auto tsk = js.create_task(
             [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 if (ii % 40 == 0)
@@ -190,25 +180,11 @@ int p1(size_t njobs, const th::JobSystemScheme &scheme, memory::HeapArea &area)
             },
             meta);
 
-        // Schedule the job, the workers will awake
-        job.schedule();
-        // Save the job pointer for later cleanup (or the job pool will leak)
-        jobs.push_back(job);
+        // Schedule the task, the workers will awake
+        tsk.schedule();
     }
-    js.wait();
-
     KLOG("example", 1) << "The exceptions should be rethrown now:" << std::endl;
-    for (auto &&job : jobs)
-    {
-        try
-        {
-            job.release();
-        }
-        catch (std::exception &e)
-        {
-            KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
-        }
-    }
+    js.wait();
 
     return 0;
 }
@@ -219,7 +195,7 @@ int p1(size_t njobs, const th::JobSystemScheme &scheme, memory::HeapArea &area)
  * Some loading jobs can fail and throw an exception.
  *
  * @param nexp number of experiments
- * @param nloads number of loading jobs
+ * @param nloads number of loading tasks
  * @param scheme job system configuration
  * @param area initialized memory area
  * @return int
@@ -249,12 +225,11 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::Task<int>> load_jobs;
-        std::vector<th::Task<float>> stage_jobs;
+        std::vector<th::Task<float>> stage_tasks;
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
         {
-            // Create both jobs like we did in the first example
+            // Create both tasks like we did in the first example
             th::JobMetadata load_meta;
             load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             if (ii < 70)
@@ -262,7 +237,7 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
             else
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto load_job = js.create_task<int>(
+            auto load_task = js.create_task<int>(
                 [&load_time, ii, nloads](std::promise<int> &prom) {
                     // Simulate loading time
                     std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
@@ -280,9 +255,9 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
             stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
             stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
 
-            // Get the loading job future data so we can use it in the staging job
-            auto fut = load_job.get_future();
-            auto stage_job = js.create_task<float>(
+            // Get the loading task future data so we can use it in the staging task
+            auto fut = load_task.get_future();
+            auto stage_task = js.create_task<float>(
                 [&stage_time, ii, fut](std::promise<float> &prom) {
                     // Simulate staging time
                     std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii]));
@@ -292,33 +267,28 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
                 },
                 stage_meta);
 
-            // But this time, we set the staging job as a child of the loading job. This means that the staging job will
+            // But this time, we set the staging task as a child of the loading task. This means that the staging job will
             // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
             // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
-            load_job.add_child(stage_job);
+            load_task.add_child(stage_task);
 
-            // We only schedule the parent job here, or we're asking for problems
-            load_job.schedule();
+            // We only schedule the parent task here, or we're asking for problems
+            load_task.schedule();
 
-            // Both job pointers must be freed when we're done
-            load_jobs.push_back(load_job);
-            stage_jobs.push_back(stage_job);
+            // Keep staging tasks so we can check their results
+            stage_tasks.push_back(stage_task);
         }
         js.wait();
 
         // Gather some statistics
         show_statistics(clk, serial_dur_ms);
 
-        // Release jobs and check end results
-        for (auto &job : load_jobs)
-            job.release();
-
         int ii = 0;
-        for (auto &job : stage_jobs)
+        for (auto &tsk : stage_tasks)
         {
             try
             {
-                [[maybe_unused]] float val = job.get();
+                [[maybe_unused]] float val = tsk.get();
                 // Check that the value is what we expect
                 [[maybe_unused]] float expect = float(ii) * 2.f * 1.23f;
                 [[maybe_unused]] constexpr float eps = 1e-10f;
@@ -329,9 +299,8 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
                 // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
                 // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
                 // we should catch them all right here.
-                KLOGE("example") << "Job #" << job.meta().label << " threw an exception: " << e.what() << std::endl;
+                KLOGE("example") << "Job #" << tsk.meta().label << " threw an exception: " << e.what() << std::endl;
             }
-            job.release();
             ++ii;
         }
     }
@@ -367,8 +336,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         KLOG("example", 1) << "Round " << kk << std::endl;
-        std::vector<th::Task<int>> dep_jobs;
-        std::vector<th::Task<bool>> end_jobs;
+        std::vector<th::Task<bool>> end_tasks;
         milliClock clk;
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
@@ -376,7 +344,7 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
             meta_a.label = "A"_h;
             meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto job_a = js.create_task<int>(
+            auto tsk_a = js.create_task<int>(
                 [ii](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     prom.set_value(int(ii));
@@ -387,8 +355,8 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
             meta_b.label = "B"_h;
             meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto job_b = js.create_task<int>(
-                [fut = job_a.get_future()](std::promise<int> &prom) {
+            auto tsk_b = js.create_task<int>(
+                [fut = tsk_a.get_future()](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     prom.set_value(fut.get() * 2);
                 },
@@ -398,8 +366,8 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
             meta_c.label = "C"_h;
             meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto job_c = js.create_task<int>(
-                [fut = job_a.get_future()](std::promise<int> &prom) {
+            auto tsk_c = js.create_task<int>(
+                [fut = tsk_a.get_future()](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(15));
                     prom.set_value(fut.get() * 3 - 10);
                 },
@@ -409,43 +377,35 @@ int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::H
             meta_d.label = "D"_h;
             meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
 
-            auto job_d = js.create_task<bool>(
-                [fut_b = job_b.get_future(), fut_c = job_c.get_future()](std::promise<bool> &prom) {
+            auto tsk_d = js.create_task<bool>(
+                [fut_b = tsk_b.get_future(), fut_c = tsk_c.get_future()](std::promise<bool> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     prom.set_value(fut_b.get() < fut_c.get());
                 },
                 meta_d);
 
-            job_b.add_parent(job_a);
-            job_c.add_parent(job_a);
-            job_b.add_child(job_d);
-            job_c.add_child(job_d);
+            tsk_b.add_parent(tsk_a);
+            tsk_c.add_parent(tsk_a);
+            tsk_b.add_child(tsk_d);
+            tsk_c.add_child(tsk_d);
 
-            job_a.schedule();
+            tsk_a.schedule();
 
-            dep_jobs.push_back(job_a);
-            dep_jobs.push_back(job_b);
-            dep_jobs.push_back(job_c);
-            end_jobs.push_back(job_d);
+            end_tasks.push_back(tsk_d);
         }
         js.wait();
 
         long estimated_serial_time_ms = long(ngraphs) * (5 + 10 + 15 + 5);
         show_statistics(clk, estimated_serial_time_ms);
 
-        // Release jobs and check end results
-        for (auto &job : dep_jobs)
-            job.release();
-
         int ii = 0;
-        for (auto &job : end_jobs)
+        for (auto &tsk : end_tasks)
         {
-            [[maybe_unused]] bool val = job.get();
+            [[maybe_unused]] bool val = tsk.get();
             // Check that the value is what we expect
             [[maybe_unused]] bool expect = 2 * ii < 3 * ii - 10;
             K_ASSERT(val == expect, "Value is not what we expect.");
 
-            job.release();
             ++ii;
         }
     }

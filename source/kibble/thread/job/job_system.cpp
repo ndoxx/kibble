@@ -1,5 +1,6 @@
 #include "thread/job/job_system.h"
 #include "logger/logger.h"
+#include "thread/job/impl/garbage_collector.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -57,6 +58,9 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     // Init job pool
     KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
     ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
+
+    // Create garbage collector
+    garbage_collector_ = new GarbageCollector(*this);
 
     // Spawn threads_count_-1 workers
     KLOG("thread", 0) << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
@@ -123,6 +127,7 @@ void JobSystem::shutdown()
 
     delete monitor_;
     delete scheduler_;
+    delete garbage_collector_;
 
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
@@ -138,18 +143,10 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 void JobSystem::release_job(Job *job)
 {
     // Make sure that the job was processed
-    if (!job->is_processed())
-    {
-        KLOGW("thread") << "Tried to release unprocessed job." << std::endl;
-        return;
-    }
+    K_ASSERT(job->is_processed(), "Tried to release unprocessed job.");
 
-    // Inform monitor about what happened with this job
-    if (scheduler_->is_dynamic())
-        monitor_->report_job_execution(job->meta);
-
-    // Return job to the pool
-    K_DELETE(job, ss_->job_pool);
+    // Can be called concurrently
+    garbage_collector_->release(job);
 }
 
 void JobSystem::schedule(Job *job)
@@ -220,6 +217,9 @@ void JobSystem::wait_until(std::function<bool()> condition)
         }
     }
 
+    // Cleanup
+    garbage_collector_->collect();
+
 #if K_PROFILE_JOB_SYSTEM
     auto &activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
@@ -269,15 +269,9 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
     return ret;
 }
 
-void Task<void>::release()
+void JobSystem::collect_garbage()
 {
-    if (js_ != nullptr && job_ != nullptr)
-    {
-        auto p_except = job_->p_except;
-        js_->release_job(job_);
-        if (p_except != nullptr)
-            std::rethrow_exception(p_except);
-    }
+    garbage_collector_->collect();
 }
 
 Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)

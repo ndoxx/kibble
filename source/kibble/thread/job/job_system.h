@@ -217,9 +217,6 @@ public:
      */
     inline void schedule();
 
-    /// Release the job to the job pool.
-    void release();
-
     /// Get job metadata.
     inline const auto &meta() const
     {
@@ -321,14 +318,6 @@ public:
     /// Schedule execution of this task.
     inline void schedule();
 
-    /**
-     * @brief Return the job to the job pool.
-     * Will rethrow any exception thrown by the kernel when the job
-     * was executed.
-     *
-     */
-    void release();
-
     /// Get job metadata.
     inline const auto &meta() const
     {
@@ -368,6 +357,7 @@ struct SharedState;
 class Scheduler;
 class Monitor;
 class WorkerThread;
+class GarbageCollector;
 
 /**
  * @brief Assign work to multiple worker threads.
@@ -460,6 +450,7 @@ public:
 
     /**
      * @brief Wait for an input condition to become false, synchronous work may be executed in the meantime.
+     * @note Will automatically release all finished jobs.
      *
      * @param condition predicate that will keep the function busy till it evaluates to false
      */
@@ -468,6 +459,7 @@ public:
     /**
      * @brief Hold execution on this thread until all jobs are processed or the input predicate returns false.
      * Allows to wait for all jobs to be processed. This marks a sync point in the caller code.
+     * @note Will automatically release all finished jobs.
      *
      * @param condition While this predicate evaluates to true, the function waits for job completion.
      * When it evaluates to false, the function exits regardless of pending jobs. This can be used to implement
@@ -490,6 +482,16 @@ public:
      * @return std::vector<WorkerThread*>
      */
     std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
+
+    /**
+     * @brief Manually release all finished jobs.
+     * This job system is designed for a game engine, where the wait() function is to be called
+     * each frame. This is where automatic garbage collection happens. If for some reason you
+     * don't plan on using the wait() function, you have to call this manually from time to
+     * time, so the job pool does not overflow.
+     * 
+     */
+    void collect_garbage();
 
     /// Get the list of workers (non-const).
     inline auto &get_workers()
@@ -637,6 +639,7 @@ private:
     std::map<std::thread::id, tid_t> thread_ids_;
     Scheduler *scheduler_;
     Monitor *monitor_;
+    GarbageCollector *garbage_collector_;
     std::shared_ptr<SharedState> ss_;
     fs::path persistence_file_;
     bool use_persistence_file_ = false;
@@ -691,13 +694,6 @@ template <typename T>
 inline void Task<T>::wait(std::function<bool()> condition)
 {
     js_->wait_for(job_, condition);
-}
-
-template <typename T>
-void Task<T>::release()
-{
-    if (js_ != nullptr && job_ != nullptr)
-        js_->release_job(job_);
 }
 
 inline void Task<void>::schedule()

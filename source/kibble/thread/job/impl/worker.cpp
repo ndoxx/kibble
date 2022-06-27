@@ -146,6 +146,7 @@ void WorkerThread::process(Job *job)
 
     job->mark_processed();
     schedule_children(job);
+    js_.release_job(job);
     ss_.pending.fetch_sub(1);
 }
 
