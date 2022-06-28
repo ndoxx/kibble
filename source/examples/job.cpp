@@ -318,7 +318,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
  */
 int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
 {
-    KLOGN("example") << "[JobSystem Example 3] mock async loading and staging" << std::endl;
+    KLOGN("example") << "[JobSystem Example 3] diamond graphs" << std::endl;
 
     for (size_t kk = 0; kk < nexp; ++kk)
     {
