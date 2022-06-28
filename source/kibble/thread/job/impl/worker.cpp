@@ -154,6 +154,11 @@ void WorkerThread::schedule_children(Job *job)
 {
     for (Job *child : job->node)
     {
+        /*
+            If two parents finish at the same time, they could potentially schedule their
+            children at the same time. The mark_scheduled() call makes sure that only
+            one parent will get to schedule the children jobs.
+        */
         if (child->is_ready() && child->mark_scheduled())
         {
             // Thread-safe call as long as the scheduler implementation is thread-safe

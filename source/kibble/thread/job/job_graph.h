@@ -63,15 +63,7 @@ public:
 
     bool mark_scheduled()
     {
-        /*
-            Without the following CAS loop, a job whose parents finish at the same time
-            could be submitted multiple times.
-        */
-        bool scheduled = scheduled_.load();
-        while (!scheduled_.compare_exchange_weak(scheduled, true))
-            ;
-
-        return !scheduled;
+        return !scheduled_.test_and_set();
     }
 
     // clang-format off
@@ -135,7 +127,7 @@ private:
     /// Set to true as soon as node has been processed
     PAGE_ALIGN std::atomic<bool> processed_ = false;
     /// To avoid multiple scheduling of children
-    PAGE_ALIGN std::atomic<bool> scheduled_ = false;
+    PAGE_ALIGN std::atomic_flag scheduled_ = ATOMIC_FLAG_INIT;
 };
 
 } // namespace th
