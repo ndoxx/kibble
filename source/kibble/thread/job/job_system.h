@@ -176,6 +176,14 @@ struct JobSystemScheme
     bool enable_work_stealing = true;
     /// Job scheduling policy
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
+
+    /**
+     * @brief Job execution persistence file, let empty if not used.
+     * This file will gather execution time statistics for labelled jobs, which will enable the minimum load scheduler
+     * to use past execution metada during this run.
+     * @note This feature is only relevant when the minimum load scheduler is selected.
+     */
+    std::string persistence_file = "";
 };
 
 class JobSystem;
@@ -400,15 +408,6 @@ public:
     ~JobSystem();
 
     /**
-     * @brief Setup a job profile persistence file to load/store monitor data.
-     * This file will gather execution time statistics for labelled jobs, which will enable the minimum load scheduler
-     * to use past execution metada during this run.
-     *
-     * @param filepath path to the persistence file
-     */
-    void use_persistence_file(const fs::path &filepath);
-
-    /**
      * @brief Wait for all jobs to finish, join worker threads and destroy system storage
      *
      */
@@ -489,7 +488,7 @@ public:
      * each frame. This is where automatic garbage collection happens. If for some reason you
      * don't plan on using the wait() function, you have to call this manually from time to
      * time, so the job pool does not overflow.
-     * 
+     *
      */
     void collect_garbage();
 
@@ -578,6 +577,16 @@ public:
     }
 
 private:
+    /**
+     * @internal
+     * @brief Setup a job profile persistence file to load/store monitor data.
+     * This file will gather execution time statistics for labelled jobs, which will enable the minimum load scheduler
+     * to use past execution metada during this run.
+     *
+     * @param filepath path to the persistence file
+     */
+    void use_persistence_file(const fs::path &filepath);
+
     /**
      * @internal
      * @brief Create a new job.

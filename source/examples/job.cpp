@@ -79,15 +79,9 @@ void show_statistics(milliClock &clk, long serial_dur_ms)
  * @param area initialized memory area
  * @return int
  */
-int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::HeapArea &area)
+int p0(size_t nexp, size_t nloads, th::JobSystem &js)
 {
     KLOGN("example") << "[JobSystem Example 0] mock async loading" << std::endl;
-
-    th::JobSystem js(area, scheme);
-
-    // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
-    // immediately use this information during the next run.
-    js.use_persistence_file("p0.jpp");
 
     // We have nloads loading operations to execute asynchronously, each of them take a random amount of time
     std::vector<long> load_time(nloads, 0l);
@@ -155,11 +149,9 @@ int p0(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
  * @param disable_work_stealing
  * @return int
  */
-int p1(size_t ntasks, const th::JobSystemScheme &scheme, memory::HeapArea &area)
+int p1(size_t ntasks, th::JobSystem &js)
 {
     KLOGN("example") << "[JobSystem Example 1] throwing exceptions" << std::endl;
-
-    th::JobSystem js(area, scheme);
 
     KLOG("example", 1) << "Creating tasks." << std::endl;
 
@@ -200,12 +192,9 @@ int p1(size_t ntasks, const th::JobSystemScheme &scheme, memory::HeapArea &area)
  * @param area initialized memory area
  * @return int
  */
-int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::HeapArea &area)
+int p2(size_t nexp, size_t nloads, th::JobSystem &js)
 {
     KLOGN("example") << "[JobSystem Example 2] mock async loading and staging" << std::endl;
-
-    th::JobSystem js(area, scheme);
-    js.use_persistence_file("p2.jpp");
 
     // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
     std::vector<long> load_time(nloads, 0l);
@@ -267,9 +256,10 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
                 },
                 stage_meta);
 
-            // But this time, we set the staging task as a child of the loading task. This means that the staging job will
-            // not be scheduled until its parent loading job is complete. This makes sense in a real world situation:
-            // first we need to load the resource from a file, then only can we upload it to OpenGL or whatever.
+            // But this time, we set the staging task as a child of the loading task. This means that the staging job
+            // will not be scheduled until its parent loading job is complete. This makes sense in a real world
+            // situation: first we need to load the resource from a file, then only can we upload it to OpenGL or
+            // whatever.
             load_task.add_child(stage_task);
 
             // We only schedule the parent task here, or we're asking for problems
@@ -326,12 +316,9 @@ int p2(size_t nexp, size_t nloads, const th::JobSystemScheme &scheme, memory::He
  * @param area initialized memory area
  * @return int
  */
-int p3(size_t nexp, size_t ngraphs, const th::JobSystemScheme &scheme, memory::HeapArea &area)
+int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
 {
     KLOGN("example") << "[JobSystem Example 3] mock async loading and staging" << std::endl;
-
-    th::JobSystem js(area, scheme);
-    js.use_persistence_file("p3.jpp");
 
     for (size_t kk = 0; kk < nexp; ++kk)
     {
@@ -433,23 +420,32 @@ int main(int argc, char **argv)
     size_t njob = std::min(size_t(nj()), 500ul);
 
     // First, we create a scheme to configure the job system
+    using namespace std::literals::string_literals;
+
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
     scheme.enable_work_stealing = !WS();
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
+    // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
+    // immediately use this information during the next run.
+    if (ml())
+        scheme.persistence_file = "p"s + std::to_string(ex()) + ".jpp"s;
+
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
     memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
+    th::JobSystem js(area, scheme);
+
     // clang-format off
     switch(ex())
     {
-        case 0: return p0(nexp, njob, scheme, area);
-        case 1: return p1(njob, scheme, area);
-        case 2: return p2(nexp, njob, scheme, area);
-        case 3: return p3(nexp, njob, scheme, area);
+        case 0: return p0(nexp, njob, js);
+        case 1: return p1(njob, js);
+        case 2: return p2(nexp, njob, js);
+        case 3: return p3(nexp, njob, js);
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;

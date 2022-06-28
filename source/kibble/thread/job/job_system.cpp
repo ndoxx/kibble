@@ -88,6 +88,10 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
                           << std::endl;
     }
 
+    // Setup persistence file if provided
+    if (!scheme_.persistence_file.empty())
+        use_persistence_file(scheme_.persistence_file);
+
     KLOGG("thread") << "[JobSystem] Ready." << std::endl;
 }
 
