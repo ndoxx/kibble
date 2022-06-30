@@ -45,9 +45,9 @@ public:
     /**
      * @brief Construct session and write header to stream.
      *
-     * @param stream Output json stream (typically to file).
+     * @param filepath Output json file path.
      */
-    InstrumentationSession(std::ostream &stream);
+    InstrumentationSession(const fs::path& filepath);
 
     /**
      * @brief Write footer to stream and destroy the session.
@@ -88,7 +88,7 @@ private:
     void write_footer();
 
 private:
-    std::ostream &stream_;
+    std::ofstream stream_;
     bool enabled_ = true;
     size_t profile_count_ = 0;
 };

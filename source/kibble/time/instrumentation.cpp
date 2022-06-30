@@ -4,7 +4,7 @@
 namespace kb
 {
 
-InstrumentationSession::InstrumentationSession(std::ostream &stream) : stream_(stream)
+InstrumentationSession::InstrumentationSession(const fs::path &filepath) : stream_(filepath)
 {
     try
     {
@@ -22,6 +22,7 @@ InstrumentationSession::~InstrumentationSession()
     try
     {
         write_footer();
+        stream_.close();
     }
     catch (std::exception &e)
     {

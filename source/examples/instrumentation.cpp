@@ -84,10 +84,8 @@ int main(int, char **)
 {
     init_logger();
 
-    // Open a stream to the desired profiling json file
-    std::ofstream ofs("example_profile.json");
     // Create an instrumentation session
-    session = new InstrumentationSession(ofs);
+    session = new InstrumentationSession("example_profile.json");
 
     // Call the test functions multiple times
     for (size_t ii = 0; ii < 10; ++ii)
@@ -96,7 +94,6 @@ int main(int, char **)
         test_func_02();
     }
 
-    // Make sure the session is deleted before the stream
     delete session;
     return 0;
 }
