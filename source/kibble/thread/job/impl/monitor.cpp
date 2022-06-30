@@ -1,6 +1,8 @@
 #include "thread/job/impl/monitor.h"
+#include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
+#include "time/instrumentation.h"
 
 #include <fstream>
 
@@ -17,15 +19,32 @@ Monitor::Monitor(JobSystem &js) : js_(js)
 
 void Monitor::report_job_execution(const JobMetadata &meta)
 {
-    if (meta.label == 0)
-        return;
+#if K_PROFILE_JOB_SYSTEM
+    // If an instrumentation session exists, write profile for this job
+    if (js_.has_instrumentation_session())
+    {
+        ProfileResult result;
+        result.name = meta.name;
+        result.category = "task";
+        result.start = meta.start_timestamp_us;
+        result.end = result.start + meta.execution_time_us;
+        result.thread_id = meta.thread_id;
+        js_.get_instrumentation_session().write_profile(result);
+    }
+#endif
 
-    // Update execution time associated to this label using a moving average
-    auto findit = job_size_.find(meta.label);
-    if (findit == job_size_.end())
-        job_size_.insert({meta.label, meta.execution_time_us});
-    else
-        findit->second = (findit->second + meta.execution_time_us) / 2;
+    if (js_.get_scheduler().is_dynamic())
+    {
+        if (meta.label == 0)
+            return;
+
+        // Update execution time associated to this label using a moving average
+        auto findit = job_size_.find(meta.label);
+        if (findit == job_size_.end())
+            job_size_.insert({meta.label, meta.execution_time_us});
+        else
+            findit->second = (findit->second + meta.execution_time_us) / 2;
+    }
 }
 
 void Monitor::wrap()

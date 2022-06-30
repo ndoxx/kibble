@@ -35,8 +35,7 @@ void GarbageCollector::collect()
         auto label = job->meta.label;
 
         // Inform monitor about what happened with this job
-        if (js_.get_scheduler().is_dynamic())
-            js_.get_monitor().report_job_execution(job->meta);
+        js_.get_monitor().report_job_execution(job->meta);
 
         // Return job to the pool
         K_DELETE(job, js_.get_shared_state().job_pool);

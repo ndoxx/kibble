@@ -19,6 +19,8 @@ namespace fs = std::filesystem;
 
 namespace kb
 {
+class InstrumentationSession;
+
 namespace memory
 {
 class HeapArea;
@@ -45,12 +47,20 @@ using tid_t = uint32_t;
  */
 struct JobMetadata
 {
+    /// Descriptive name for the job (only used when profiling)
+    std::string name;
     /// Uniquely identifies a job
     label_t label = 0;
     /// Workers this job can be pushed to
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
+
+    // Following data will be set by worker
+    /// Job start timestamp
+    int64_t start_timestamp_us = 0;
     /// The time in µs it took to complete the job
     int64_t execution_time_us = 0;
+    /// The thread id of the worker that took this job
+    std::thread::id thread_id;
 };
 
 /**
@@ -414,6 +424,16 @@ public:
     void shutdown();
 
     /**
+     * @brief Set the instrumentation session for profiling.
+     *
+     * @param session
+     */
+    inline void set_instrumentation_session(InstrumentationSession* session)
+    {
+        instrumentor_ = session;
+    }
+
+    /**
      * @brief Create a job with future data.
      *
      * @tparam T Future data type
@@ -576,6 +596,18 @@ public:
         return thread_ids_.at(std::this_thread::get_id());
     }
 
+    /// Get reference to instrumentation session (must exist)
+    inline InstrumentationSession &get_instrumentation_session()
+    {
+        return *instrumentor_;
+    }
+
+    /// Check if an instrumentation session has been provided
+    inline bool has_instrumentation_session() const
+    {
+        return instrumentor_ != nullptr;
+    }
+
 private:
     /**
      * @internal
@@ -652,6 +684,7 @@ private:
     std::shared_ptr<SharedState> ss_;
     fs::path persistence_file_;
     bool use_persistence_file_ = false;
+    InstrumentationSession* instrumentor_ = nullptr;
 };
 
 template <typename T>

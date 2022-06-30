@@ -27,7 +27,7 @@ InstrumentationSession *session = nullptr;
 // different names in the same function.
 #define CONCAT_IMPL(first, second) first##second
 #define CONCAT(first, second) CONCAT_IMPL(first, second)
-#define PROFILE_SCOPE(name, category) InstrumentationTimer CONCAT(timer_, __LINE__)(*session, name, category)
+#define PROFILE_SCOPE(name, category) InstrumentationTimer CONCAT(timer_, __LINE__)(session, name, category)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__, "function")
 
 // This function will be profiled

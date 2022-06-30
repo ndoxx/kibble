@@ -4,6 +4,7 @@
 #include <atomic>
 #include <filesystem>
 #include <map>
+#include <memory>
 
 #include "thread/job/impl/common.h"
 #include "thread/sanitizer.h"
@@ -12,6 +13,7 @@ namespace fs = std::filesystem;
 
 namespace kb
 {
+
 namespace th
 {
 

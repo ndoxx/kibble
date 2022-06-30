@@ -88,6 +88,7 @@ private:
     void write_footer();
 
 private:
+    const long long base_timestamp_us_;
     std::ofstream stream_;
     bool enabled_ = true;
     size_t profile_count_ = 0;
@@ -112,7 +113,7 @@ public:
      * @param name Name of the current work unit (displayed in chrome:tracing)
      * @param category Event type, to allow for filtering in chrome:tracing
      */
-    InstrumentationTimer(InstrumentationSession &session, const std::string &name, const std::string &category);
+    InstrumentationTimer(InstrumentationSession *session, const std::string &name, const std::string &category);
 
     /**
      * @brief Stop timer, and send execution information to the session.
@@ -123,7 +124,7 @@ public:
 private:
     using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-    InstrumentationSession &session_;
+    InstrumentationSession *session_;
     std::string name_;
     std::string category_;
     TimePoint start_;

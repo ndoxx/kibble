@@ -6,6 +6,7 @@
 #include "memory/memory_utils.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
+#include "time/instrumentation.h"
 
 #include <algorithm>
 #include <array>
@@ -112,6 +113,8 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js)
         {
             // Each task has some metadata attached
             th::JobMetadata meta;
+            // A name for profiling
+            meta.name = "Load";
             // A label uniquely identifies this task, so its execution time can be monitored
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             // A job's worker affinity property can be used to specify in which threads the job can or cannot be
@@ -159,6 +162,7 @@ int p1(size_t ntasks, th::JobSystem &js)
     for (size_t ii = 0; ii < ntasks; ++ii)
     {
         th::JobMetadata meta;
+        meta.name = "MyTask";
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -220,6 +224,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
         {
             // Create both tasks like we did in the first example
             th::JobMetadata load_meta;
+            load_meta.name = "Load";
             load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             if (ii < 70)
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
@@ -241,6 +246,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
 
             // Staging jobs are executed on the main thread
             th::JobMetadata stage_meta;
+            stage_meta.name = "Stage";
             stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
             stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
 
@@ -328,6 +334,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
             th::JobMetadata meta_a;
+            meta_a.name = "A_" + std::to_string(ii);
             meta_a.label = "A"_h;
             meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -339,6 +346,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_a);
 
             th::JobMetadata meta_b;
+            meta_b.name = "B_" + std::to_string(ii);
             meta_b.label = "B"_h;
             meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -350,6 +358,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_b);
 
             th::JobMetadata meta_c;
+            meta_c.name = "C_" + std::to_string(ii);
             meta_c.label = "C"_h;
             meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -361,6 +370,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_c);
 
             th::JobMetadata meta_d;
+            meta_d.name = "D_" + std::to_string(ii);
             meta_d.label = "D"_h;
             meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -430,27 +440,36 @@ int main(int argc, char **argv)
 
     // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
     // immediately use this information during the next run.
+    std::string file_stem = "p"s + std::to_string(ex());
     if (ml())
-        scheme.persistence_file = "p"s + std::to_string(ex()) + ".jpp"s;
+        scheme.persistence_file = file_stem + ".jpp"s;
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
     memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
-    th::JobSystem js(area, scheme);
+    auto *js = new th::JobSystem(area, scheme);
+
+    // Job system profiling (compile )
+    auto *session = new InstrumentationSession(file_stem + "_profile.json");
+    js->set_instrumentation_session(session);
 
     // clang-format off
+    int ret = 0;
     switch(ex())
     {
-        case 0: return p0(nexp, njob, js);
-        case 1: return p1(njob, js);
-        case 2: return p2(nexp, njob, js);
-        case 3: return p3(nexp, njob, js);
+        case 0: ret = p0(nexp, njob, *js);
+        case 1: ret = p1(njob, *js);
+        case 2: ret = p2(nexp, njob, *js);
+        case 3: ret = p3(nexp, njob, *js);
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;
-            return 0;
         }
     }
     // clang-format on
+
+    delete js;
+    delete session;
+    return ret;
 }
