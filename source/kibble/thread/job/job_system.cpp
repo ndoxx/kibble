@@ -4,6 +4,7 @@
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
+#include "time/instrumentation.h"
 
 #include <thread>
 
@@ -203,6 +204,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
 #if K_PROFILE_JOB_SYSTEM
+    volatile InstrumentationTimer tmr(instrumentor_, "wait_until", "function");
     int64_t idle_time_us = 0;
 #endif
     while (condition())
@@ -222,7 +224,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
     }
 
     // Cleanup
-    garbage_collector_->collect();
+    collect_garbage();
 
 #if K_PROFILE_JOB_SYSTEM
     auto &activity = workers_[0]->get_activity();
@@ -275,6 +277,9 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
 
 void JobSystem::collect_garbage()
 {
+#if K_PROFILE_JOB_SYSTEM
+    volatile InstrumentationTimer tmr(instrumentor_, "collect_garbage", "function");
+#endif
     garbage_collector_->collect();
 }
 

@@ -121,7 +121,7 @@ bool WorkerThread::get_job(Job *&job)
 
 void WorkerThread::process(Job *job)
 {
-    microClock clk;
+    auto start = std::chrono::high_resolution_clock::now();
 
     try
     {
@@ -138,9 +138,17 @@ void WorkerThread::process(Job *job)
         job->p_except = std::current_exception();
     }
 
-    job->meta.execution_time_us = clk.get_elapsed_time().count();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start).time_since_epoch().count();
+    auto stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
+    auto execution_duration_us = stop_us - start_us;
+
+    job->meta.execution_time_us = execution_duration_us;
+    job->meta.start_timestamp_us = start_us;
+    job->meta.thread_id = std::this_thread::get_id();
+
 #if K_PROFILE_JOB_SYSTEM
-    activity_.active_time_us += clk.get_elapsed_time().count();
+    activity_.active_time_us += execution_duration_us;
     ++activity_.executed;
 #endif
 

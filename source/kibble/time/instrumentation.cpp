@@ -4,7 +4,12 @@
 namespace kb
 {
 
-InstrumentationSession::InstrumentationSession(const fs::path &filepath) : stream_(filepath)
+InstrumentationSession::InstrumentationSession(const fs::path &filepath)
+    : base_timestamp_us_(
+          std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now())
+              .time_since_epoch()
+              .count()),
+      stream_(filepath)
 {
     try
     {
@@ -56,7 +61,7 @@ void InstrumentationSession::write_profile(const ProfileResult &result)
             << "\"ph\":\"X\","
             << "\"pid\":0,"
             << "\"tid\":" << result.thread_id << ','
-            << "\"ts\":" << result.start << '}';
+            << "\"ts\":" << result.start - base_timestamp_us_ << '}';
     // clang-format on
 
     stream_.flush();
@@ -68,7 +73,7 @@ void InstrumentationSession::write_footer()
     stream_.flush();
 }
 
-InstrumentationTimer::InstrumentationTimer(InstrumentationSession &session, const std::string &name,
+InstrumentationTimer::InstrumentationTimer(InstrumentationSession *session, const std::string &name,
                                            const std::string &category)
     : session_(session), name_(name), category_(category), start_(std::chrono::high_resolution_clock::now())
 {
@@ -76,13 +81,16 @@ InstrumentationTimer::InstrumentationTimer(InstrumentationSession &session, cons
 
 InstrumentationTimer::~InstrumentationTimer()
 {
+    if (session_ == nullptr)
+        return;
+
     auto stop = std::chrono::high_resolution_clock::now();
     long long start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start_).time_since_epoch().count();
     long long stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
 
     try
     {
-        session_.write_profile({name_, category_, std::this_thread::get_id(), start_us, stop_us});
+        session_->write_profile({name_, category_, std::this_thread::get_id(), start_us, stop_us});
     }
     catch (std::exception &e)
     {
