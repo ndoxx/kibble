@@ -334,7 +334,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
             th::JobMetadata meta_a;
-            meta_a.name = "A_" + std::to_string(ii);
+            meta_a.name = "A";
             meta_a.label = "A"_h;
             meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -346,7 +346,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_a);
 
             th::JobMetadata meta_b;
-            meta_b.name = "B_" + std::to_string(ii);
+            meta_b.name = "B";
             meta_b.label = "B"_h;
             meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -358,7 +358,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_b);
 
             th::JobMetadata meta_c;
-            meta_c.name = "C_" + std::to_string(ii);
+            meta_c.name = "C";
             meta_c.label = "C"_h;
             meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -370,7 +370,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_c);
 
             th::JobMetadata meta_d;
-            meta_d.name = "D_" + std::to_string(ii);
+            meta_d.name = "D";
             meta_d.label = "D"_h;
             meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
 
