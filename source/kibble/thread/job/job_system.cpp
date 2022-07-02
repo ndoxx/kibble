@@ -31,7 +31,7 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
 
     // Log scheme
     KLOG("thread", 0) << "Detail:" << std::endl;
-    KLOGI << "Work stealing: " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
+    // KLOGI << "Work stealing: " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
 
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
@@ -73,7 +73,6 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
         // TODO: Use K_NEW
         WorkerProperties props;
         props.is_background = (ii != 0);
-        props.can_steal = scheme_.enable_work_stealing;
         props.max_stealing_attempts = scheme_.max_stealing_attempts;
         props.tid = ii;
         workers_[ii] = new WorkerThread(props, *this);

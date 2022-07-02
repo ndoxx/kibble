@@ -30,6 +30,7 @@ set_target_properties(kibble
 option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
 option(ENABLE_LOGGING "Enable logging within Kibble" ON)
 option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
+option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
 option(ENABLE_SHARED_STATE_PAGE_ALIGN "Page align job system shared state members" ON)
 
 target_compile_definitions(kibble 
@@ -53,6 +54,10 @@ endif()
 
 if(ENABLE_JOB_SYSTEM_PROFILING)
     target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)
+endif()
+
+if(ENABLE_WORK_STEALING)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_WORK_STEALING)
 endif()
 
 if(ENABLE_SHARED_STATE_PAGE_ALIGN)

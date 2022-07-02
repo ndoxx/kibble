@@ -20,8 +20,6 @@ struct WorkerProperties
 {
     /// false if main thread, true otherwise
     bool is_background = false;
-    /// true if this worker can steal jobs from other worker's queues, false otherwise
-    bool can_steal = false;
     /// maximum allowable attempts at stealing a job
     size_t max_stealing_attempts = 16;
     /// worker id

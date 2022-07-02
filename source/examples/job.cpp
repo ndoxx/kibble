@@ -420,7 +420,6 @@ int main(int argc, char **argv)
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
     const auto &ml = parser.add_flag('m', "minload", "Use minimal load scheduler");
-    const auto &WS = parser.add_flag('W', "disable-work-stealing", "Disable the work stealing feature");
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -434,7 +433,6 @@ int main(int argc, char **argv)
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
-    scheme.enable_work_stealing = !WS();
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 

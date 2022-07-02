@@ -192,8 +192,6 @@ struct JobSystemScheme
     size_t max_workers = 0;
     /// Maximum number of stealing attempts before moving to the next worker
     size_t max_stealing_attempts = 16;
-    /// Allow idle workers to steal jobs from their siblings
-    bool enable_work_stealing = true;
     /// Job scheduling policy
     SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
 
