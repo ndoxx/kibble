@@ -31,7 +31,7 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
 
     // Log scheme
     KLOG("thread", 0) << "Detail:" << std::endl;
-    KLOGI << "Work stealing: " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
+    // KLOGI << "Work stealing: " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
 
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
@@ -72,8 +72,6 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     {
         // TODO: Use K_NEW
         WorkerProperties props;
-        props.is_background = (ii != 0);
-        props.can_steal = scheme_.enable_work_stealing;
         props.max_stealing_attempts = scheme_.max_stealing_attempts;
         props.tid = ii;
         workers_[ii] = new WorkerThread(props, *this);
@@ -157,14 +155,9 @@ void JobSystem::release_job(Job *job)
 void JobSystem::schedule(Job *job)
 {
     // Sanity check
-    if (!job->is_ready())
-    {
-        KLOGW("thread") << "Tried to schedule job #" << job->meta.label << " with " << job->get_pending()
-                        << " unfinished dependencies." << std::endl;
-        KLOGI << "Caller thread: " << this_thread_id() << std::endl;
-        KLOGI << "Safely ignored." << std::endl;
-        return;
-    }
+    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
+    K_ASSERT(get_threads_count() > 1 || job->meta.worker_affinity != WORKER_AFFINITY_ASYNC,
+             "Cannot enforce async execution.");
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);

@@ -31,8 +31,6 @@ struct WorkerStats
     unsigned long long total_executed = 0;
     /// Total number of tasks stolen by the worker
     unsigned long long total_stolen = 0;
-    /// Total number of tasks resubmitted by the worker
-    unsigned long long total_resubmit = 0;
     /// Total number of children tasks scheduled by the worker
     unsigned long long total_scheduled = 0;
     /// Number of sleep cycles

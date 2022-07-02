@@ -114,7 +114,7 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js)
             // Each task has some metadata attached
             th::JobMetadata meta;
             // A name for profiling
-            meta.name = "Load";
+            meta.set_profile_data("Load");
             // A label uniquely identifies this task, so its execution time can be monitored
             meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             // A job's worker affinity property can be used to specify in which threads the job can or cannot be
@@ -162,7 +162,7 @@ int p1(size_t ntasks, th::JobSystem &js)
     for (size_t ii = 0; ii < ntasks; ++ii)
     {
         th::JobMetadata meta;
-        meta.name = "MyTask";
+        meta.set_profile_data("MyTask");
         meta.label = ii + 1;
         meta.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -224,7 +224,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
         {
             // Create both tasks like we did in the first example
             th::JobMetadata load_meta;
-            load_meta.name = "Load";
+            load_meta.set_profile_data("Load");
             load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             if (ii < 70)
                 load_meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
@@ -246,7 +246,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
 
             // Staging jobs are executed on the main thread
             th::JobMetadata stage_meta;
-            stage_meta.name = "Stage";
+            stage_meta.set_profile_data("Stage");
             stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
             stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
 
@@ -334,7 +334,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
             th::JobMetadata meta_a;
-            meta_a.name = "A";
+            meta_a.set_profile_data("A");
             meta_a.label = "A"_h;
             meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -346,7 +346,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_a);
 
             th::JobMetadata meta_b;
-            meta_b.name = "B";
+            meta_b.set_profile_data("B");
             meta_b.label = "B"_h;
             meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -358,7 +358,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_b);
 
             th::JobMetadata meta_c;
-            meta_c.name = "C";
+            meta_c.set_profile_data("C");
             meta_c.label = "C"_h;
             meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -370,7 +370,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
                 meta_c);
 
             th::JobMetadata meta_d;
-            meta_d.name = "D";
+            meta_d.set_profile_data("D");
             meta_d.label = "D"_h;
             meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
 
@@ -420,7 +420,6 @@ int main(int argc, char **argv)
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
     const auto &ml = parser.add_flag('m', "minload", "Use minimal load scheduler");
-    const auto &WS = parser.add_flag('W', "disable-work-stealing", "Disable the work stealing feature");
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -434,7 +433,6 @@ int main(int argc, char **argv)
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
-    scheme.enable_work_stealing = !WS();
     scheme.max_stealing_attempts = 16;
     scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
 
@@ -458,10 +456,10 @@ int main(int argc, char **argv)
     int ret = 0;
     switch(ex())
     {
-        case 0: ret = p0(nexp, njob, *js);
-        case 1: ret = p1(njob, *js);
-        case 2: ret = p2(nexp, njob, *js);
-        case 3: ret = p3(nexp, njob, *js);
+        case 0: ret = p0(nexp, njob, *js); break;
+        case 1: ret = p1(njob, *js); break;
+        case 2: ret = p2(nexp, njob, *js); break;
+        case 3: ret = p3(nexp, njob, *js); break;
         default: 
         {
             KLOGW("example") << "Unknown example: " << ex() << std::endl;

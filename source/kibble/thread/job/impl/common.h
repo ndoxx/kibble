@@ -41,8 +41,6 @@ struct WorkerActivity
     size_t executed = 0;
     /// Number of tasks stolen by the worker
     size_t stolen = 0;
-    /// Number of tasks resubmitted by the worker
-    size_t resubmit = 0;
     /// Number of children tasks scheduled by the worker
     size_t scheduled = 0;
     /// Worker id
@@ -58,7 +56,6 @@ struct WorkerActivity
         idle_time_us = 0;
         executed = 0;
         stolen = 0;
-        resubmit = 0;
         scheduled = 0;
     }
 };

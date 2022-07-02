@@ -18,10 +18,6 @@ namespace th
  */
 struct WorkerProperties
 {
-    /// false if main thread, true otherwise
-    bool is_background = false;
-    /// true if this worker can steal jobs from other worker's queues, false otherwise
-    bool can_steal = false;
     /// maximum allowable attempts at stealing a job
     size_t max_stealing_attempts = 16;
     /// worker id
@@ -57,11 +53,10 @@ class JobSystem;
  * is empty, at which point it would become idle. This however can prove inefficient when the load is not evenly
  * balanced among workers: some workers would basically do nothing while others would have piles of work to process.
  * This implementation of a worker thread allows for work stealing, in an attempt to enhance load balancing naturally.
- * When a worker has processed all jobs in its queue, it will try to pop jobs from other worker's queues selected at
- * random.
+ * When a worker has processed all jobs in its queues, it will try to pop jobs from other worker's public queues.
  *
- * The job queue used behind the scene is a lock-free atomic queue, so there is no contention due to dispatching or work
- * stealing. This makes this implementation thread-safe and quite fast.
+ * The job queues used behind the scene are lock-free atomic queues, so there is no contention due to dispatching or
+ * work stealing. This makes this implementation thread-safe and quite fast.
  *
  */
 class WorkerThread
@@ -104,11 +99,18 @@ public:
     void join();
 
     /**
-     * @brief The Scheduler calls this function to enqueue a job.
+     * @brief The Scheduler calls this function to enqueue a job in the public queue.
      *
      * @param job the job to push
      */
-    void submit(Job *job);
+    void submit_public(Job *job);
+
+    /**
+     * @brief The Scheduler calls this function to enqueue a job in the private queue.
+     *
+     * @param job the job to push
+     */
+    void submit_private(Job *job);
 
     /**
      * @brief Only the main thread calls this function to pop and execute a single job.
@@ -123,7 +125,7 @@ public:
     /// Check whether this worker is a background worker.
     inline bool is_background() const
     {
-        return props_.is_background;
+        return props_.tid != 0;
     }
 
     /**
@@ -191,9 +193,11 @@ private:
     void run();
 
     /**
-     * @brief Get next job in the queue or steal work from another worker.
-     * First, the worker tries to pop a job from the queue. If the queue is empty, it will try to pop a job from a
-     * randomly selected worker's queue. If the job has incompatible affinity the job will be resubmitted.
+     * @internal
+     * @brief Get next locally available job or steal work from another worker.
+     * First, the worker tries to pop a job from its private queue. If the queue is empty, it will try to pop a job
+     * from the public queue. If the queue is empty, it will try to steal work from the next worker in the
+     * round robin.
      *
      * @param job Output variable that will contain the next job, or will be left uninitialized if no job could be
      * obtained.
@@ -202,7 +206,21 @@ private:
      */
     bool get_job(Job *&job);
 
+#ifdef K_ENABLE_WORK_STEALING
     /**
+     * @internal
+     * @brief Try to steal a job from the next worker in the round robin.
+     * 
+     * @param job Output variable that will contain the next job, or will be left uninitialized if no job could be
+     * obtained.
+     * @return true if a job was obtained
+     * @return false otherwise
+     */
+    bool steal_job(Job *&job);
+#endif
+
+    /**
+     * @internal
      * @brief Execute a job.
      *
      * @param job the job to execute
@@ -210,13 +228,25 @@ private:
     void process(Job *job);
 
     /**
-     * @brief If a job has children, schedule them to a random compatible queue.
+     * @internal
+     * @brief If a job has children with satisfied dependencies, schedule them.
      *
-     * Called by process, after a job kernel has been executed.
+     * Called by process(), after a job kernel has been executed.
      *
      * @param job
      */
     void schedule_children(Job *job);
+
+    /**
+     * @internal
+     * @brief Return the next round robin index in stealable workers list.
+     *
+     * @return size_t
+     */
+    inline size_t rr_next()
+    {
+        return (stealing_round_robin_++) % (stealable_workers_.size());
+    }
 
 private:
     WorkerProperties props_;
@@ -228,8 +258,13 @@ private:
 #if K_PROFILE_JOB_SYSTEM
     WorkerActivity activity_;
 #endif
+    std::vector<WorkerThread *> stealable_workers_;
+    size_t stealing_round_robin_ = 0;
 
-    JobQueue<Job *> jobs_; // SPMC queue
+    /// non-stealable MPMC queue
+    PAGE_ALIGN JobQueue<Job *> private_queue_;
+    /// stealable MPMC queue
+    PAGE_ALIGN JobQueue<Job *> public_queue_;
 };
 
 } // namespace th

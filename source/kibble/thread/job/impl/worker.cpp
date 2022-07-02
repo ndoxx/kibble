@@ -20,25 +20,38 @@ WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
 
 void WorkerThread::spawn()
 {
-    if (props_.is_background)
+    // Generate list of stealable workers
+    // Make sure that this worker cannot steal from itself
+    for (tid_t tid = 0; tid < js_.get_threads_count(); ++tid)
+        if (props_.tid != tid)
+            stealable_workers_.push_back(&js_.get_worker(tid));
+
+    // Spawn thread if it is not the main thread
+    if (is_background())
         thread_ = std::thread(&WorkerThread::run, this);
 }
 
 void WorkerThread::join()
 {
-    if (props_.is_background)
+    if (is_background())
         thread_.join();
 }
 
-void WorkerThread::submit(Job *job)
+void WorkerThread::submit_public(Job *job)
 {
-    ANNOTATE_HAPPENS_BEFORE(&jobs_); // Avoid false positives with TSan
-    jobs_.push(job);
+    ANNOTATE_HAPPENS_BEFORE(&public_queue_); // Avoid false positives with TSan
+    public_queue_.push(job);
+}
+
+void WorkerThread::submit_private(Job *job)
+{
+    ANNOTATE_HAPPENS_BEFORE(&private_queue_); // Avoid false positives with TSan
+    private_queue_.push(job);
 }
 
 void WorkerThread::run()
 {
-    K_ASSERT(props_.is_background, "run() should not be called in the main thread.");
+    K_ASSERT(is_background(), "run() should not be called in the main thread.");
 
     while (ss_.running.load(std::memory_order_acquire))
     {
@@ -61,7 +74,8 @@ void WorkerThread::run()
         // the pending jobs it holds.
         // The second condition forces workers to wake up when the job system shuts down.
         // This avoids another deadlock on exit.
-        ss_.cv_wake.wait(lock, [this]() { return !jobs_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
+        ss_.cv_wake.wait(
+            lock, [this]() { return !public_queue_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
 #if K_PROFILE_JOB_SYSTEM
         activity_.idle_time_us += clk.get_elapsed_time().count();
         js_.get_monitor().report_thread_activity(activity_);
@@ -74,50 +88,35 @@ void WorkerThread::run()
 
 bool WorkerThread::get_job(Job *&job)
 {
-    // First, try to pop a job from the queue
-    ANNOTATE_HAPPENS_AFTER(&jobs_); // Avoid false positives with TSan
-    bool has_job = jobs_.try_pop(job);
-
-    // If queue is empty, try to steal a job
-    if (!has_job && props_.can_steal)
-    {
-        // Random shuffle on candidate workers to avoid always stealing from the same worker(s)
-        std::vector<WorkerThread *> random_workers(js_.get_workers());
-        std::random_shuffle(random_workers.begin(), random_workers.end());
-        for (size_t ii = 0; ii < random_workers.size() && has_job == false; ++ii)
-        {
-            // Thou shalt not steal from yourself
-            if (ii == props_.tid)
-                continue;
-
-            auto &worker = *random_workers[ii];
-            ANNOTATE_HAPPENS_AFTER(&worker.jobs_); // Avoid false positives with TSan
-
-            for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
-            {
-                has_job = worker.jobs_.try_pop(job);
-                // If job has incompatible affinity, resubmit it
-                if (has_job && (job->meta.worker_affinity & (1 << props_.tid)) == 0)
-                {
-                    worker.jobs_.push(job);
-                    has_job = false;
-#if K_PROFILE_JOB_SYSTEM
-                    ++activity_.resubmit;
+    // First, try to pop a job from the private queue, then the public queue, only then try to steal
+    // Logical or is short-circuiting, only one job will be popped
+    ANNOTATE_HAPPENS_AFTER(&private_queue_); // Avoid false positives with TSan
+    ANNOTATE_HAPPENS_AFTER(&public_queue_);  // Avoid false positives with TSan
+#ifdef K_ENABLE_WORK_STEALING
+    return (private_queue_.try_pop(job) || public_queue_.try_pop(job) || steal_job(job));
+#else
+    return (private_queue_.try_pop(job) || public_queue_.try_pop(job));
 #endif
-                    continue;
-                }
-                else
-                    break;
-            }
-        }
+}
+
+#ifdef K_ENABLE_WORK_STEALING
+bool WorkerThread::steal_job(Job *&job)
+{
+    for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
+    {
+        auto *p_worker = stealable_workers_[rr_next()];
+        ANNOTATE_HAPPENS_AFTER(&p_worker->public_queue_); // Avoid false positives with TSan
+        if (p_worker->public_queue_.try_pop(job))
+        {
 #if K_PROFILE_JOB_SYSTEM
-        if (has_job)
             ++activity_.stolen;
 #endif
+            return true;
+        }
     }
-
-    return has_job;
+    return false;
 }
+#endif
 
 void WorkerThread::process(Job *job)
 {
@@ -141,14 +140,12 @@ void WorkerThread::process(Job *job)
     auto stop = std::chrono::high_resolution_clock::now();
     auto start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start).time_since_epoch().count();
     auto stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
-    auto execution_duration_us = stop_us - start_us;
-
-    job->meta.execution_time_us = execution_duration_us;
-    job->meta.start_timestamp_us = start_us;
-    job->meta.thread_id = std::this_thread::get_id();
+    job->meta.execution_time_us = stop_us - start_us;
 
 #if K_PROFILE_JOB_SYSTEM
-    activity_.active_time_us += execution_duration_us;
+    job->meta.start_timestamp_us = start_us;
+    job->meta.thread_id = std::this_thread::get_id();
+    activity_.active_time_us += job->meta.execution_time_us;
     ++activity_.executed;
 #endif
 
@@ -180,7 +177,7 @@ void WorkerThread::schedule_children(Job *job)
 
 bool WorkerThread::foreground_work()
 {
-    K_ASSERT(!props_.is_background, "foreground_work() should not be called in a background thread.");
+    K_ASSERT(!is_background(), "foreground_work() should not be called in a background thread.");
     Job *job = nullptr;
     if (get_job(job))
     {

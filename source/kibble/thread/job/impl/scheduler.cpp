@@ -23,11 +23,26 @@ RoundRobinScheduler::RoundRobinScheduler(JobSystem &js) : Scheduler(js)
 void RoundRobinScheduler::dispatch(Job *job)
 {
     std::size_t &rr = round_robin_[js_.this_thread_id()];
-    while ((job->meta.worker_affinity & (1 << rr)) == 0)
+    switch (job->meta.worker_affinity)
+    {
+    case WORKER_AFFINITY_MAIN: {
+        js_.get_worker(0).submit_private(job);
+        break;
+    }
+    case WORKER_AFFINITY_ASYNC: {
+        auto idx = (rr != 0) ? rr : rr + 1;
+        js_.get_worker(idx).submit_public(job);
         rr = (rr + 1) % js_.get_threads_count();
-
-    js_.get_worker(rr).submit(job);
-    rr = (rr + 1) % js_.get_threads_count();
+        break;
+    }
+    case WORKER_AFFINITY_ANY: {
+        js_.get_worker(rr).submit_public(job);
+        rr = (rr + 1) % js_.get_threads_count();
+        break;
+    }
+    default: {
+    }
+    }
 }
 
 MinimumLoadScheduler::MinimumLoadScheduler(JobSystem &js) : Scheduler(js)
@@ -37,6 +52,12 @@ MinimumLoadScheduler::MinimumLoadScheduler(JobSystem &js) : Scheduler(js)
 
 void MinimumLoadScheduler::dispatch(Job *job)
 {
+    if (job->meta.worker_affinity == WORKER_AFFINITY_MAIN)
+    {
+        js_.get_worker(0).submit_private(job);
+        return;
+    }
+
     // Create a vector of viable worker candidates based on affinity,
     // and select worker with minimal load
     if (job->meta.label != 0)
@@ -59,18 +80,29 @@ void MinimumLoadScheduler::dispatch(Job *job)
                 }
             }
             js_.get_monitor().add_load(min_load_tid, findit->second);
-            js_.get_worker(min_load_tid).submit(job);
+            js_.get_worker(min_load_tid).submit_public(job);
             return;
         }
     }
 
     // Fallback to round-robin selection
     std::size_t &rr = round_robin_[js_.this_thread_id()];
-    while ((job->meta.worker_affinity & (1 << rr)) == 0)
+    switch (job->meta.worker_affinity)
+    {
+    case WORKER_AFFINITY_ASYNC: {
+        auto idx = (rr != 0) ? rr : rr + 1;
+        js_.get_worker(idx).submit_public(job);
         rr = (rr + 1) % js_.get_threads_count();
-
-    js_.get_worker(rr).submit(job);
-    rr = (rr + 1) % js_.get_threads_count();
+        break;
+    }
+    case WORKER_AFFINITY_ANY: {
+        js_.get_worker(rr).submit_public(job);
+        rr = (rr + 1) % js_.get_threads_count();
+        break;
+    }
+    default: {
+    }
+    }
 }
 
 } // namespace th
