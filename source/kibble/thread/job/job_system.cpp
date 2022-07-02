@@ -155,14 +155,9 @@ void JobSystem::release_job(Job *job)
 void JobSystem::schedule(Job *job)
 {
     // Sanity check
-    if (!job->is_ready())
-    {
-        KLOGW("thread") << "Tried to schedule job #" << job->meta.label << " with " << job->get_pending()
-                        << " unfinished dependencies." << std::endl;
-        KLOGI << "Caller thread: " << this_thread_id() << std::endl;
-        KLOGI << "Safely ignored." << std::endl;
-        return;
-    }
+    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
+    K_ASSERT(get_threads_count() > 1 || job->meta.worker_affinity != WORKER_AFFINITY_ASYNC,
+             "Cannot enforce async execution.");
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);

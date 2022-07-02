@@ -206,6 +206,19 @@ private:
      */
     bool get_job(Job *&job);
 
+#ifdef K_ENABLE_WORK_STEALING
+    /**
+     * @internal
+     * @brief Try to steal a job from the next worker in the round robin.
+     * 
+     * @param job Output variable that will contain the next job, or will be left uninitialized if no job could be
+     * obtained.
+     * @return true if a job was obtained
+     * @return false otherwise
+     */
+    bool steal_job(Job *&job);
+#endif
+
     /**
      * @internal
      * @brief Execute a job.

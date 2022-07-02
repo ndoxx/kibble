@@ -88,36 +88,35 @@ void WorkerThread::run()
 
 bool WorkerThread::get_job(Job *&job)
 {
-    // First, try to pop a job from the private queue
+    // First, try to pop a job from the private queue, then the public queue, only then try to steal
+    // Logical or is short-circuiting, only one job will be popped
     ANNOTATE_HAPPENS_AFTER(&private_queue_); // Avoid false positives with TSan
-    if (private_queue_.try_pop(job))
-        return true;
-
-    // Then, try the public queue
-    ANNOTATE_HAPPENS_AFTER(&public_queue_); // Avoid false positives with TSan
-    bool has_job = public_queue_.try_pop(job);
+    ANNOTATE_HAPPENS_AFTER(&public_queue_);  // Avoid false positives with TSan
+#ifdef K_ENABLE_WORK_STEALING
+    return (private_queue_.try_pop(job) || public_queue_.try_pop(job) || steal_job(job));
+#else
+    return (private_queue_.try_pop(job) || public_queue_.try_pop(job));
+#endif
+}
 
 #ifdef K_ENABLE_WORK_STEALING
-    // If queue is empty, try to steal a job
-    if (!has_job)
+bool WorkerThread::steal_job(Job *&job)
+{
+    for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
-        for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
+        auto *p_worker = stealable_workers_[rr_next()];
+        ANNOTATE_HAPPENS_AFTER(&p_worker->public_queue_); // Avoid false positives with TSan
+        if (p_worker->public_queue_.try_pop(job))
         {
-            auto *p_worker = stealable_workers_[rr_next()];
-            ANNOTATE_HAPPENS_AFTER(&p_worker->public_queue_); // Avoid false positives with TSan
-            if (p_worker->public_queue_.try_pop(job))
-            {
 #if K_PROFILE_JOB_SYSTEM
-                ++activity_.stolen;
+            ++activity_.stolen;
 #endif
-                return true;
-            }
+            return true;
         }
     }
-#endif
-
-    return has_job;
+    return false;
 }
+#endif
 
 void WorkerThread::process(Job *job)
 {
