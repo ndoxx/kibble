@@ -84,36 +84,35 @@ bool WorkerThread::get_job(Job *&job)
     ANNOTATE_HAPPENS_AFTER(&jobs_); // Avoid false positives with TSan
     bool has_job = jobs_.try_pop(job);
 
+    if (has_job || !props_.can_steal)
+        return has_job;
+
     // If queue is empty, try to steal a job
-    if (props_.can_steal && !has_job)
+    for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
-        for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
+        auto *p_worker = stealable_workers_[rr_next()];
+        ANNOTATE_HAPPENS_AFTER(&p_worker->jobs_); // Avoid false positives with TSan
+        if (p_worker->jobs_.try_pop(job))
         {
-            auto *p_worker = stealable_workers_[rr_next()];
-            ANNOTATE_HAPPENS_AFTER(&p_worker->jobs_); // Avoid false positives with TSan
-            if (p_worker->jobs_.try_pop(job))
+            if ((job->meta.worker_affinity & (1 << props_.tid)) == 0)
             {
-                if ((job->meta.worker_affinity & (1 << props_.tid)) == 0)
-                {
-                    // If job has incompatible affinity, resubmit it
-                    p_worker->jobs_.push(job);
+                // If job has incompatible affinity, resubmit it
+                p_worker->jobs_.push(job);
 #if K_PROFILE_JOB_SYSTEM
-                    ++activity_.resubmit;
+                ++activity_.resubmit;
 #endif
-                    continue;
-                }
-                else
-                {
+            }
+            else
+            {
 #if K_PROFILE_JOB_SYSTEM
-                    ++activity_.stolen;
+                ++activity_.stolen;
 #endif
-                    return true;
-                }
+                return true;
             }
         }
     }
 
-    return has_job;
+    return false;
 }
 
 void WorkerThread::process(Job *job)
