@@ -72,7 +72,6 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     {
         // TODO: Use K_NEW
         WorkerProperties props;
-        props.is_background = (ii != 0);
         props.max_stealing_attempts = scheme_.max_stealing_attempts;
         props.tid = ii;
         workers_[ii] = new WorkerThread(props, *this);
