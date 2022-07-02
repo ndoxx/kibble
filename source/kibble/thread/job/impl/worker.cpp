@@ -20,6 +20,12 @@ WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
 
 void WorkerThread::spawn()
 {
+    // Generate list of stealable workers
+    // Make sure that this worker cannot steal from itself
+    for (tid_t tid = 0; tid < js_.get_threads_count(); ++tid)
+        if (props_.tid != tid)
+            stealable_workers_.push_back(&js_.get_worker(tid));
+
     if (props_.is_background)
         thread_ = std::thread(&WorkerThread::run, this);
 }
@@ -79,41 +85,32 @@ bool WorkerThread::get_job(Job *&job)
     bool has_job = jobs_.try_pop(job);
 
     // If queue is empty, try to steal a job
-    if (!has_job && props_.can_steal)
+    if (props_.can_steal && !has_job)
     {
-        // Random shuffle on candidate workers to avoid always stealing from the same worker(s)
-        std::vector<WorkerThread *> random_workers(js_.get_workers());
-        std::random_shuffle(random_workers.begin(), random_workers.end());
-        for (size_t ii = 0; ii < random_workers.size() && has_job == false; ++ii)
+        for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
         {
-            // Thou shalt not steal from yourself
-            if (ii == props_.tid)
-                continue;
-
-            auto &worker = *random_workers[ii];
-            ANNOTATE_HAPPENS_AFTER(&worker.jobs_); // Avoid false positives with TSan
-
-            for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
+            auto *p_worker = stealable_workers_[rr_next()];
+            ANNOTATE_HAPPENS_AFTER(&p_worker->jobs_); // Avoid false positives with TSan
+            if (p_worker->jobs_.try_pop(job))
             {
-                has_job = worker.jobs_.try_pop(job);
-                // If job has incompatible affinity, resubmit it
-                if (has_job && (job->meta.worker_affinity & (1 << props_.tid)) == 0)
+                if ((job->meta.worker_affinity & (1 << props_.tid)) == 0)
                 {
-                    worker.jobs_.push(job);
-                    has_job = false;
+                    // If job has incompatible affinity, resubmit it
+                    p_worker->jobs_.push(job);
 #if K_PROFILE_JOB_SYSTEM
                     ++activity_.resubmit;
 #endif
                     continue;
                 }
                 else
-                    break;
+                {
+#if K_PROFILE_JOB_SYSTEM
+                    ++activity_.stolen;
+#endif
+                    return true;
+                }
             }
         }
-#if K_PROFILE_JOB_SYSTEM
-        if (has_job)
-            ++activity_.stolen;
-#endif
     }
 
     return has_job;
@@ -144,10 +141,10 @@ void WorkerThread::process(Job *job)
     auto execution_duration_us = stop_us - start_us;
 
     job->meta.execution_time_us = execution_duration_us;
-    job->meta.start_timestamp_us = start_us;
-    job->meta.thread_id = std::this_thread::get_id();
 
 #if K_PROFILE_JOB_SYSTEM
+    job->meta.start_timestamp_us = start_us;
+    job->meta.thread_id = std::this_thread::get_id();
     activity_.active_time_us += execution_duration_us;
     ++activity_.executed;
 #endif

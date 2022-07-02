@@ -191,6 +191,7 @@ private:
     void run();
 
     /**
+     * @internal
      * @brief Get next job in the queue or steal work from another worker.
      * First, the worker tries to pop a job from the queue. If the queue is empty, it will try to pop a job from a
      * randomly selected worker's queue. If the job has incompatible affinity the job will be resubmitted.
@@ -203,6 +204,7 @@ private:
     bool get_job(Job *&job);
 
     /**
+     * @internal
      * @brief Execute a job.
      *
      * @param job the job to execute
@@ -210,6 +212,7 @@ private:
     void process(Job *job);
 
     /**
+     * @internal
      * @brief If a job has children, schedule them to a random compatible queue.
      *
      * Called by process, after a job kernel has been executed.
@@ -217,6 +220,17 @@ private:
      * @param job
      */
     void schedule_children(Job *job);
+
+    /**
+     * @internal
+     * @brief Return the next round robin index in stealable workers list.
+     *
+     * @return size_t
+     */
+    inline size_t rr_next()
+    {
+        return (stealing_round_robin_++) % (stealable_workers_.size());
+    }
 
 private:
     WorkerProperties props_;
@@ -228,8 +242,10 @@ private:
 #if K_PROFILE_JOB_SYSTEM
     WorkerActivity activity_;
 #endif
+    std::vector<WorkerThread *> stealable_workers_;
+    size_t stealing_round_robin_ = 0;
 
-    JobQueue<Job *> jobs_; // SPMC queue
+    PAGE_ALIGN JobQueue<Job *> jobs_; // MPMC queue
 };
 
 } // namespace th
