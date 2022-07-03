@@ -495,14 +495,6 @@ public:
     void wait(std::function<bool()> condition = []() { return true; });
 
     /**
-     * @brief Get a list of all workers compatible with the given affinity requirement.
-     *
-     * @param affinity
-     * @return std::vector<WorkerThread*>
-     */
-    std::vector<WorkerThread *> get_compatible_workers(worker_affinity_t affinity);
-
-    /**
      * @brief Get a list of ids of all workers compatible with the given affinity requirement.
      *
      * @param affinity
@@ -684,12 +676,12 @@ private:
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
     JobSystemScheme scheme_;
-    std::vector<WorkerThread *> workers_;
-    std::map<std::thread::id, tid_t> thread_ids_;
-    Scheduler *scheduler_;
-    Monitor *monitor_;
-    GarbageCollector *garbage_collector_;
+    std::vector<std::unique_ptr<WorkerThread>> workers_;
+    std::unique_ptr<Scheduler> scheduler_;
+    std::unique_ptr<Monitor> monitor_;
+    std::unique_ptr<GarbageCollector> garbage_collector_;
     std::shared_ptr<SharedState> ss_;
+    std::map<std::thread::id, tid_t> thread_ids_;
     fs::path persistence_file_;
     bool use_persistence_file_ = false;
     InstrumentationSession *instrumentor_ = nullptr;

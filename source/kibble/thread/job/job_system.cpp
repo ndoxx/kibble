@@ -25,7 +25,8 @@ size_t JobSystem::get_memory_requirements()
 }
 
 JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
-    : scheme_(scheme), ss_(std::make_shared<SharedState>())
+    : scheme_(scheme), monitor_(new Monitor(*this)), garbage_collector_(new GarbageCollector(*this)),
+      ss_(std::make_shared<SharedState>())
 {
     KLOGN("thread") << "[JobSystem] Initializing." << std::endl;
 
@@ -39,20 +40,17 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     size_t max_threads = (scheme_.max_workers != 0) ? std::min(k_max_threads, scheme_.max_workers + 1) : k_max_threads;
     threads_count_ = std::min(max_threads, CPU_cores_count_);
 
-    // Create monitor
-    monitor_ = new Monitor(*this);
-
     // Create scheduler
     KLOGI << "Scheduler:     ";
     switch (scheme_.scheduling_algorithm)
     {
     case SchedulingAlgorithm::round_robin:
         KLOGI << "round-robin" << std::endl;
-        scheduler_ = new RoundRobinScheduler(*this);
+        scheduler_ = std::make_unique<RoundRobinScheduler>(*this);
         break;
     case SchedulingAlgorithm::min_load:
         KLOGI << "minimum-load (dynamic)" << std::endl;
-        scheduler_ = new MinimumLoadScheduler(*this);
+        scheduler_ = std::make_unique<MinimumLoadScheduler>(*this);
         break;
     }
 
@@ -60,29 +58,26 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
     ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
 
-    // Create garbage collector
-    garbage_collector_ = new GarbageCollector(*this);
-
     // Spawn threads_count_-1 workers
     KLOG("thread", 0) << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
     KLOG("thread", 0) << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
 
-    if(threads_count_ == 1)
+    if (threads_count_ == 1)
     {
         KLOGW("thread") << "Tasks marked with WORKER_AFFINITY_ASYNC will be scheduled to the main thread." << std::endl;
     }
 
-    workers_.resize(threads_count_);
+    workers_.reserve(threads_count_);
     for (uint32_t ii = 0; ii < threads_count_; ++ii)
     {
         // TODO: Use K_NEW
         WorkerProperties props;
         props.max_stealing_attempts = scheme_.max_stealing_attempts;
         props.tid = ii;
-        workers_[ii] = new WorkerThread(props, *this);
+        workers_.push_back(std::make_unique<WorkerThread>(props, *this));
     }
     // Thread spawning is delayed to avoid a race condition of run() with other workers ctors
-    for (auto *worker : workers_)
+    for (auto &worker : workers_)
     {
         worker->spawn();
         auto native_id = worker->is_background() ? worker->get_native_thread_id() : std::this_thread::get_id();
@@ -114,28 +109,20 @@ void JobSystem::shutdown()
     // Notify all threads they are going to die
     ss_->running.store(false, std::memory_order_release);
     ss_->cv_wake.notify_all();
-    for (auto *worker : workers_)
+    for (auto &worker : workers_)
         worker->join();
 
 #if K_PROFILE_JOB_SYSTEM
     // Log worker statistics
     monitor_->update_statistics();
     KLOGN("thread") << "[JobSystem] Thread statistics:" << std::endl;
-    for (auto *thd : workers_)
-        monitor_->log_statistics(thd->get_tid());
+    for (auto &worker : workers_)
+        monitor_->log_statistics(worker->get_tid());
 #endif
 
     // Save job execution profiles
     if (use_persistence_file_)
         monitor_->export_job_profiles(persistence_file_);
-
-    // Cleanup
-    for (auto *worker : workers_)
-        delete worker;
-
-    delete monitor_;
-    delete scheduler_;
-    delete garbage_collector_;
 
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
@@ -249,16 +236,6 @@ void JobSystem::wait_for(Job *job, std::function<bool()> condition)
     {
         KLOG("thread", 0) << "[JobSystem] wait_for() exited early." << std::endl;
     }
-}
-
-std::vector<WorkerThread *> JobSystem::get_compatible_workers(worker_affinity_t affinity)
-{
-    std::vector<WorkerThread *> ret;
-    for (uint32_t ii = 0; ii < workers_.size(); ++ii)
-        if (affinity & (1 << ii))
-            ret.push_back(workers_[ii]);
-
-    return ret;
 }
 
 std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affinity)
