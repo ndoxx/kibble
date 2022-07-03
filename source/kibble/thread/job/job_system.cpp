@@ -67,6 +67,11 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     KLOG("thread", 0) << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
     KLOG("thread", 0) << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
 
+    if(threads_count_ == 1)
+    {
+        KLOGW("thread") << "Tasks marked with WORKER_AFFINITY_ASYNC will be scheduled to the main thread." << std::endl;
+    }
+
     workers_.resize(threads_count_);
     for (uint32_t ii = 0; ii < threads_count_; ++ii)
     {
@@ -156,8 +161,6 @@ void JobSystem::schedule(Job *job)
 {
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
-    K_ASSERT(get_threads_count() > 1 || job->meta.worker_affinity != WORKER_AFFINITY_ASYNC,
-             "Cannot enforce async execution.");
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);
