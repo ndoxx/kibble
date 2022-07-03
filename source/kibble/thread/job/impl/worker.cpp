@@ -1,5 +1,4 @@
 #include "thread/job/impl/worker.h"
-#include "random/random_operation.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/job_system.h"
 #include "thread/sanitizer.h"
@@ -24,7 +23,7 @@ void WorkerThread::spawn()
     // Make sure that this worker cannot steal from itself
     for (tid_t tid = 0; tid < js_.get_threads_count(); ++tid)
         if (props_.tid != tid)
-            stealable_workers_.push_back(&js_.get_worker(tid));
+            stealable_workers_.push_back(tid);
 
     // Spawn thread if it is not the main thread
     if (is_background())
@@ -104,9 +103,9 @@ bool WorkerThread::steal_job(Job *&job)
 {
     for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
-        auto *p_worker = stealable_workers_[rr_next()];
-        ANNOTATE_HAPPENS_AFTER(&p_worker->public_queue_); // Avoid false positives with TSan
-        if (p_worker->public_queue_.try_pop(job))
+        auto &worker = js_.get_worker(rr_next());
+        ANNOTATE_HAPPENS_AFTER(&worker.public_queue_); // Avoid false positives with TSan
+        if (worker.public_queue_.try_pop(job))
         {
 #if K_PROFILE_JOB_SYSTEM
             ++activity_.stolen;
@@ -122,6 +121,7 @@ void WorkerThread::process(Job *job)
 {
     auto start = std::chrono::high_resolution_clock::now();
 
+#ifdef K_ENABLE_JOB_EXCEPTIONS
     try
     {
         job->kernel();
@@ -136,6 +136,9 @@ void WorkerThread::process(Job *job)
         */
         job->p_except = std::current_exception();
     }
+#else
+    job->kernel();
+#endif
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start).time_since_epoch().count();

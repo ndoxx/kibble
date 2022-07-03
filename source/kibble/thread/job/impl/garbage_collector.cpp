@@ -31,8 +31,10 @@ void GarbageCollector::collect()
     Job *job;
     while (delete_queue_.try_pop(job))
     {
+#ifdef K_ENABLE_JOB_EXCEPTIONS
         auto p_except = job->p_except;
         auto label = job->meta.label;
+#endif
 
         // Inform monitor about what happened with this job
         js_.get_monitor().report_job_execution(job->meta);
@@ -40,6 +42,7 @@ void GarbageCollector::collect()
         // Return job to the pool
         K_DELETE(job, js_.get_shared_state().job_pool);
 
+#ifdef K_ENABLE_JOB_EXCEPTIONS
         // If (void) task threw an exception, rethrow, catch and log
         if (p_except != nullptr)
         {
@@ -52,6 +55,7 @@ void GarbageCollector::collect()
                 KLOGE("thread") << "Job #" << label << " threw an exception: " << e.what() << std::endl;
             }
         }
+#endif
     }
 }
 

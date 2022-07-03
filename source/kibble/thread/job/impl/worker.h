@@ -210,7 +210,7 @@ private:
     /**
      * @internal
      * @brief Try to steal a job from the next worker in the round robin.
-     * 
+     *
      * @param job Output variable that will contain the next job, or will be left uninitialized if no job could be
      * obtained.
      * @return true if a job was obtained
@@ -239,13 +239,13 @@ private:
 
     /**
      * @internal
-     * @brief Return the next round robin index in stealable workers list.
+     * @brief Return the next tid in the round robin.
      *
-     * @return size_t
+     * @return tid_t
      */
-    inline size_t rr_next()
+    inline tid_t rr_next()
     {
-        return (stealing_round_robin_++) % (stealable_workers_.size());
+        return stealable_workers_[(stealing_round_robin_++) % (stealable_workers_.size())];
     }
 
 private:
@@ -258,7 +258,7 @@ private:
 #if K_PROFILE_JOB_SYSTEM
     WorkerActivity activity_;
 #endif
-    std::vector<WorkerThread *> stealable_workers_;
+    std::vector<tid_t> stealable_workers_;
     size_t stealing_round_robin_ = 0;
 
     /// non-stealable MPMC queue

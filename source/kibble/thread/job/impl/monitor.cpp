@@ -13,7 +13,6 @@ namespace th
 
 Monitor::Monitor(JobSystem &js) : js_(js)
 {
-    (void)js_;
     wrap();
 }
 
@@ -33,11 +32,8 @@ void Monitor::report_job_execution(const JobMetadata &meta)
     }
 #endif
 
-    if (js_.get_scheduler().is_dynamic())
+    if (js_.get_scheduler().is_dynamic() && meta.label != 0)
     {
-        if (meta.label == 0)
-            return;
-
         // Update execution time associated to this label using a moving average
         auto findit = job_size_.find(meta.label);
         if (findit == job_size_.end())

@@ -85,8 +85,10 @@ struct Job
     JobMetadata meta;
     /// The function to execute
     JobKernel kernel = JobKernel{};
+#ifdef K_ENABLE_JOB_EXCEPTIONS
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
+#endif
     /// Dependency information and shared state
     JobNode node;
 
@@ -495,18 +497,10 @@ public:
     void wait(std::function<bool()> condition = []() { return true; });
 
     /**
-     * @brief Get a list of all workers compatible with the given affinity requirement.
-     *
-     * @param affinity
-     * @return std::vector<WorkerThread*>
-     */
-    std::vector<WorkerThread *> get_compatible_workers(worker_affinity_t affinity);
-
-    /**
      * @brief Get a list of ids of all workers compatible with the given affinity requirement.
      *
      * @param affinity
-     * @return std::vector<WorkerThread*>
+     * @return std::vector<tid_t>
      */
     std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
 
@@ -684,12 +678,12 @@ private:
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
     JobSystemScheme scheme_;
-    std::vector<WorkerThread *> workers_;
-    std::map<std::thread::id, tid_t> thread_ids_;
-    Scheduler *scheduler_;
-    Monitor *monitor_;
-    GarbageCollector *garbage_collector_;
+    std::vector<std::unique_ptr<WorkerThread>> workers_;
+    std::unique_ptr<Scheduler> scheduler_;
+    std::unique_ptr<Monitor> monitor_;
+    std::unique_ptr<GarbageCollector> garbage_collector_;
     std::shared_ptr<SharedState> ss_;
+    std::map<std::thread::id, tid_t> thread_ids_;
     fs::path persistence_file_;
     bool use_persistence_file_ = false;
     InstrumentationSession *instrumentor_ = nullptr;
@@ -709,6 +703,7 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
     */
     job_ = js_->create_job(
         [promise = promise_, kernel = std::move(kernel)]() {
+#ifdef K_ENABLE_JOB_EXCEPTIONS
             try
             {
                 kernel(*promise);
@@ -719,6 +714,9 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
                 // it will be rethrown when the future's get() function is called.
                 promise->set_exception(std::current_exception());
             }
+#else
+            kernel(*promise);
+#endif
         },
         meta);
 }

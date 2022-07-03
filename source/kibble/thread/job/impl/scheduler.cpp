@@ -30,8 +30,9 @@ void RoundRobinScheduler::dispatch(Job *job)
         break;
     }
     case WORKER_AFFINITY_ASYNC: {
-        auto idx = (rr != 0) ? rr : rr + 1;
-        js_.get_worker(idx).submit_public(job);
+        // Avoid thread 0
+        rr = (rr + (rr == 0)) % js_.get_threads_count();
+        js_.get_worker(rr).submit_public(job);
         rr = (rr + 1) % js_.get_threads_count();
         break;
     }
@@ -90,8 +91,8 @@ void MinimumLoadScheduler::dispatch(Job *job)
     switch (job->meta.worker_affinity)
     {
     case WORKER_AFFINITY_ASYNC: {
-        auto idx = (rr != 0) ? rr : rr + 1;
-        js_.get_worker(idx).submit_public(job);
+        rr = (rr + (rr == 0)) % js_.get_threads_count();
+        js_.get_worker(rr).submit_public(job);
         rr = (rr + 1) % js_.get_threads_count();
         break;
     }
