@@ -85,8 +85,10 @@ struct Job
     JobMetadata meta;
     /// The function to execute
     JobKernel kernel = JobKernel{};
+#ifdef K_ENABLE_JOB_EXCEPTIONS
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
+#endif
     /// Dependency information and shared state
     JobNode node;
 
@@ -498,7 +500,7 @@ public:
      * @brief Get a list of ids of all workers compatible with the given affinity requirement.
      *
      * @param affinity
-     * @return std::vector<WorkerThread*>
+     * @return std::vector<tid_t>
      */
     std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
 
@@ -701,6 +703,7 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
     */
     job_ = js_->create_job(
         [promise = promise_, kernel = std::move(kernel)]() {
+#ifdef K_ENABLE_JOB_EXCEPTIONS
             try
             {
                 kernel(*promise);
@@ -711,6 +714,9 @@ Task<T>::Task(JobSystem *js, Task<T>::TaskKernel &&kernel, const JobMetadata &me
                 // it will be rethrown when the future's get() function is called.
                 promise->set_exception(std::current_exception());
             }
+#else
+            kernel(*promise);
+#endif
         },
         meta);
 }

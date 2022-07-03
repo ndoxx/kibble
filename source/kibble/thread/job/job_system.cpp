@@ -221,10 +221,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
 void JobSystem::wait(std::function<bool()> condition)
 {
     wait_until([this, &condition]() { return is_busy() && condition(); });
-    if (!condition())
-    {
-        KLOG("thread", 0) << "[JobSystem] wait() exited early." << std::endl;
-    }
+
     if (!is_busy())
         monitor_->wrap();
 }
@@ -232,10 +229,6 @@ void JobSystem::wait(std::function<bool()> condition)
 void JobSystem::wait_for(Job *job, std::function<bool()> condition)
 {
     wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
-    if (!condition())
-    {
-        KLOG("thread", 0) << "[JobSystem] wait_for() exited early." << std::endl;
-    }
 }
 
 std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affinity)
