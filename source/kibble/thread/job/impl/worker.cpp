@@ -36,16 +36,11 @@ void WorkerThread::join()
         thread_.join();
 }
 
-void WorkerThread::submit_public(Job *job)
+void WorkerThread::submit(Job *job, bool stealable)
 {
-    ANNOTATE_HAPPENS_BEFORE(&public_queue_); // Avoid false positives with TSan
-    public_queue_.push(job);
-}
-
-void WorkerThread::submit_private(Job *job)
-{
-    ANNOTATE_HAPPENS_BEFORE(&private_queue_); // Avoid false positives with TSan
-    private_queue_.push(job);
+    size_t idx = size_t(!stealable);
+    ANNOTATE_HAPPENS_BEFORE(&queues_[idx]); // Avoid false positives with TSan
+    queues_[idx].push(job);
 }
 
 void WorkerThread::run()
@@ -68,13 +63,15 @@ void WorkerThread::run()
         microClock clk;
 #endif
         std::unique_lock<std::mutex> lock(ss_.wake_mutex);
-        // The first condition in passed lambda avoids a possible deadlock, where a worker can
-        // go to sleep with a non-empty queue and never wakes up, while the main thread waits for
-        // the pending jobs it holds.
-        // The second condition forces workers to wake up when the job system shuts down.
-        // This avoids another deadlock on exit.
-        ss_.cv_wake.wait(
-            lock, [this]() { return !public_queue_.was_empty() || !ss_.running.load(std::memory_order_acquire); });
+        /*
+            The first condition in passed lambda avoids a possible deadlock, where a worker can
+            go to sleep with a non-empty queue and never wakes up, while the main thread waits for
+            the pending jobs it holds.
+            The second condition forces workers to wake up when the job system shuts down.
+            This avoids another deadlock on exit.
+        */
+        ss_.cv_wake.wait(lock, [this]() { return had_pending_jobs() || !ss_.running.load(std::memory_order_acquire); });
+
 #if K_PROFILE_JOB_SYSTEM
         activity_.idle_time_us += clk.get_elapsed_time().count();
         js_.get_monitor().report_thread_activity(activity_);
@@ -89,12 +86,12 @@ bool WorkerThread::get_job(Job *&job)
 {
     // First, try to pop a job from the private queue, then the public queue, only then try to steal
     // Logical or is short-circuiting, only one job will be popped
-    ANNOTATE_HAPPENS_AFTER(&private_queue_); // Avoid false positives with TSan
-    ANNOTATE_HAPPENS_AFTER(&public_queue_);  // Avoid false positives with TSan
+    ANNOTATE_HAPPENS_AFTER(&queues_[Q_PRIVATE]); // Avoid false positives with TSan
+    ANNOTATE_HAPPENS_AFTER(&queues_[Q_PUBLIC]);  // Avoid false positives with TSan
 #ifdef K_ENABLE_WORK_STEALING
-    return (private_queue_.try_pop(job) || public_queue_.try_pop(job) || steal_job(job));
+    return (queues_[Q_PRIVATE].try_pop(job) || queues_[Q_PUBLIC].try_pop(job) || steal_job(job));
 #else
-    return (private_queue_.try_pop(job) || public_queue_.try_pop(job));
+    return (queues_[Q_PRIVATE].try_pop(job) || queues_[Q_PUBLIC].try_pop(job));
 #endif
 }
 
@@ -104,8 +101,8 @@ bool WorkerThread::steal_job(Job *&job)
     for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
         auto &worker = js_.get_worker(rr_next());
-        ANNOTATE_HAPPENS_AFTER(&worker.public_queue_); // Avoid false positives with TSan
-        if (worker.public_queue_.try_pop(job))
+        ANNOTATE_HAPPENS_AFTER(&worker.queues_[Q_PUBLIC]); // Avoid false positives with TSan
+        if (worker.queues_[Q_PUBLIC].try_pop(job))
         {
 #if K_PROFILE_JOB_SYSTEM
             ++activity_.stolen;

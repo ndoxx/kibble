@@ -78,6 +78,9 @@ public:
         Stopping
     };
 
+    static constexpr size_t Q_PUBLIC = 0;
+    static constexpr size_t Q_PRIVATE = 1;
+
     /**
      * @brief Construct and configure a new Worker Thread.
      *
@@ -99,18 +102,16 @@ public:
     void join();
 
     /**
-     * @brief The Scheduler calls this function to enqueue a job in the public queue.
+     * @brief The Scheduler calls this function to enqueue a job in one of the queues.
+     * 
+     * @note At the moment, the only non-stealable jobs are the ones to be executed on the main thread,
+     * so we could argue that the 'stealable' parameter is superfluous, as this information is contained in the
+     * metadata. But this is subject to change when I develop work groups and recurrent tasks.
      *
      * @param job the job to push
+     * @param stealable if the job is stealable it will be put in the public queue, otherwise, in the private queue.
      */
-    void submit_public(Job *job);
-
-    /**
-     * @brief The Scheduler calls this function to enqueue a job in the private queue.
-     *
-     * @param job the job to push
-     */
-    void submit_private(Job *job);
+    void submit(Job *job, bool stealable);
 
     /**
      * @brief Only the main thread calls this function to pop and execute a single job.
@@ -158,6 +159,17 @@ public:
     inline State query_state() const
     {
         return state_.load(std::memory_order_acquire);
+    }
+
+    /**
+     * @brief Check if there are pending jobs in the queues.
+     *
+     * @return true if either the private or public queue had pending jobs.
+     * @return false otherwise.
+     */
+    inline bool had_pending_jobs() const
+    {
+        return !queues_[Q_PUBLIC].was_empty() || !queues_[Q_PRIVATE].was_empty();
     }
 
 #if K_PROFILE_JOB_SYSTEM
@@ -261,10 +273,7 @@ private:
     std::vector<tid_t> stealable_workers_;
     size_t stealing_round_robin_ = 0;
 
-    /// non-stealable MPMC queue
-    PAGE_ALIGN JobQueue<Job *> private_queue_;
-    /// stealable MPMC queue
-    PAGE_ALIGN JobQueue<Job *> public_queue_;
+    PAGE_ALIGN std::array<JobQueue<Job *>, 2> queues_;
 };
 
 } // namespace th
