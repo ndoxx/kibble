@@ -85,6 +85,8 @@ struct Job
     JobMetadata meta;
     /// The function to execute
     JobKernel kernel = JobKernel{};
+    /// If true, job will not be returned to the pool once finished
+    bool keep_alive = false;
 #ifdef K_ENABLE_JOB_EXCEPTIONS
     /// Any exception thrown by the kernel function
     std::exception_ptr p_except = nullptr;
@@ -401,6 +403,7 @@ public:
     template <typename T>
     friend class Task;
     friend class WorkerThread;
+    friend class DaemonScheduler;
 
     /**
      * @brief Get the total amount of memory needed for the job pool.
