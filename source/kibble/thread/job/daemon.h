@@ -11,10 +11,9 @@ namespace th
 
 struct SchedulingData
 {
-    int64_t interval_ms = 0;
-    int64_t cooldown_ms = 0;
+    float interval_ms = 0;
+    float cooldown_ms = 0;
     int64_t ttl = 0;
-    bool marked_for_deletion = false;
 };
 
 /**
@@ -24,6 +23,7 @@ struct SchedulingData
 struct Daemon
 {
     SchedulingData scheduling_data;
+    bool marked_for_deletion = false;
     Job *job = nullptr;
 };
 
@@ -40,7 +40,7 @@ public:
 
     void kill(DaemonHandle hnd);
 
-    void update(int64_t delta_t_ms);
+    void update(float delta_t_ms);
 
 private:
     JobSystem &js_;

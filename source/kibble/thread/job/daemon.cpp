@@ -33,25 +33,30 @@ void DaemonScheduler::kill(DaemonHandle hnd)
 {
     auto findit = daemons_.find(hnd);
     K_ASSERT(findit != daemons_.end(), "Could not find daemon.");
-    findit->second.scheduling_data.marked_for_deletion = true;
+    findit->second.marked_for_deletion = true;
 }
 
-void DaemonScheduler::update(int64_t delta_t_ms)
+void DaemonScheduler::update(float delta_t_ms)
 {
+    // Iterate daemons, reschedule those whose cooldown reached zero
     for (auto &&[hnd, daemon] : daemons_)
     {
         SchedulingData &sd = daemon.scheduling_data;
 
-        if (sd.marked_for_deletion)
+        if (daemon.marked_for_deletion)
         {
+            // Job is not scheduled at this point, we need to manually release it
             daemon.job->keep_alive = false;
+            daemon.job->mark_processed();
+            js_.release_job(daemon.job);
             kill_list_.push_back(hnd);
             continue;
         }
 
+        // Update cooldown timer
         sd.cooldown_ms -= delta_t_ms;
 
-        if (sd.cooldown_ms <= 0)
+        if (sd.cooldown_ms <= 0.f)
         {
             sd.cooldown_ms = sd.interval_ms;
             if (sd.ttl > 0 && --sd.ttl == 0)
@@ -61,8 +66,11 @@ void DaemonScheduler::update(int64_t delta_t_ms)
         }
     }
 
+    // Cleanup
     for (auto hnd : kill_list_)
         daemons_.erase(hnd);
+
+    kill_list_.clear();
 }
 
 } // namespace th
