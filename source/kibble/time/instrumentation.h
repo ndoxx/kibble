@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <thread>
+#include <mutex>
 
 namespace fs = std::filesystem;
 
@@ -92,6 +93,7 @@ private:
     std::ofstream stream_;
     bool enabled_ = true;
     size_t profile_count_ = 0;
+    std::mutex stream_mtx_;
 };
 
 /**

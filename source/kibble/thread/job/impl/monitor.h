@@ -61,27 +61,6 @@ public:
     Monitor(JobSystem &js);
 
     /**
-     * @brief Export a file containing monitoring information for labeled jobs.
-     *
-     * @param filepath output file path
-     */
-    void export_job_profiles(const fs::path &filepath);
-
-    /**
-     * @brief Load a job profile information file.
-     *
-     * @param filepath input file path
-     */
-    void load_job_profiles(const fs::path &filepath);
-
-    /**
-     * @brief Call after a job has been executed to report its execution profile.
-     *
-     * @param meta job metadata
-     */
-    void report_job_execution(const JobMetadata &meta);
-
-    /**
      * @brief Process all worker activity reports in the queue.
      *
      */
@@ -100,16 +79,6 @@ public:
      *
      */
     void wrap();
-
-    /**
-     * @brief Get the map of all the job sizes.
-     *
-     * @return the job size map, with job sizes associated to job labels
-     */
-    inline const auto &get_job_size() const
-    {
-        return job_size_;
-    }
 
     /**
      * @brief Get the load of all worker threads.
@@ -171,7 +140,6 @@ private:
     }
 
 private:
-    std::map<uint64_t, int64_t> job_size_;
     // The load information is used by the Schedulers which are thread-safe objects, so
     // each load variable needs to be atomic.
     std::array<std::atomic<int64_t>, k_max_threads> load_;

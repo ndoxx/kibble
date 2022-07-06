@@ -16,33 +16,6 @@ Monitor::Monitor(JobSystem &js) : js_(js)
     wrap();
 }
 
-void Monitor::report_job_execution(const JobMetadata &meta)
-{
-#if K_PROFILE_JOB_SYSTEM
-    // If an instrumentation session exists, write profile for this job
-    if (js_.has_instrumentation_session())
-    {
-        ProfileResult result;
-        result.name = meta.name;
-        result.category = "task";
-        result.start = meta.start_timestamp_us;
-        result.end = result.start + meta.execution_time_us;
-        result.thread_id = meta.thread_id;
-        js_.get_instrumentation_session().write_profile(result);
-    }
-#endif
-
-    if (js_.get_scheduler().is_dynamic() && meta.label != 0)
-    {
-        // Update execution time associated to this label using a moving average
-        auto findit = job_size_.find(meta.label);
-        if (findit == job_size_.end())
-            job_size_.insert({meta.label, meta.execution_time_us});
-        else
-            findit->second = (findit->second + meta.execution_time_us) / 2;
-    }
-}
-
 void Monitor::wrap()
 {
     // NOTE(ndx): I suppose fill will use operator= which for an atomic is equivalent to
@@ -86,80 +59,6 @@ void Monitor::log_statistics(tid_t tid) const
     KLOGI << "Total scheduled:      " << stats.total_scheduled << " job" << ((stats.total_scheduled > 1) ? "s" : "") << std::endl;
     KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
     // clang-format on
-}
-
-/**
- * @internal
- * @brief Header for Job Profile Persistence files.
- *
- */
-struct JPPHeader
-{
-    /// Magic number to check file format validity
-    uint32_t magic;
-    /// Version major number
-    uint16_t version_major;
-    /// Version minor number
-    uint16_t version_minor;
-    /// Number of job labels in this file
-    uint64_t label_count;
-};
-
-#define JPP_MAGIC 0x4650504a // ASCII(JPPF)
-#define JPP_VERSION_MAJOR 1
-#define JPP_VERSION_MINOR 0
-
-void Monitor::export_job_profiles(const fs::path &filepath)
-{
-    KLOGN("thread") << "[Monitor] Exporting persistence file:" << std::endl;
-    KLOGI << KS_PATH_ << filepath << std::endl;
-
-    JPPHeader header;
-    header.magic = JPP_MAGIC;
-    header.version_major = JPP_VERSION_MAJOR;
-    header.version_minor = JPP_VERSION_MINOR;
-    header.label_count = job_size_.size();
-
-    auto ofs = std::ofstream(filepath, std::ios::binary);
-    ofs.write(reinterpret_cast<const char *>(&header), sizeof(JPPHeader));
-    for (auto &&[label, size] : job_size_)
-    {
-        ofs.write(reinterpret_cast<const char *>(&label), sizeof(uint64_t));
-        ofs.write(reinterpret_cast<const char *>(&size), sizeof(int64_t));
-    }
-    ofs.close();
-}
-
-void Monitor::load_job_profiles(const fs::path &filepath)
-{
-    if (!fs::exists(filepath))
-    {
-        KLOGW("thread") << "[Monitor] File does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << filepath << std::endl;
-        KLOGI << "Skipping persistence file loading." << std::endl;
-        return;
-    }
-
-    KLOGN("thread") << "[Monitor] Loading persistence file:" << std::endl;
-    KLOGI << KS_PATH_ << filepath << std::endl;
-    auto ifs = std::ifstream(filepath, std::ios::binary);
-
-    // Read header & sanity check
-    JPPHeader header;
-    ifs.read(reinterpret_cast<char *>(&header), sizeof(JPPHeader));
-    K_ASSERT(header.magic == JPP_MAGIC, "Invalid JPP file: magic number mismatch.");
-    K_ASSERT(header.version_major == JPP_VERSION_MAJOR, "Invalid JPP file: version (major) mismatch.");
-    K_ASSERT(header.version_minor == JPP_VERSION_MINOR, "Invalid JPP file: version (minor) mismatch.");
-
-    for (size_t ii = 0; ii < header.label_count; ++ii)
-    {
-        uint64_t label = 0;
-        int64_t size = 0;
-        ifs.read(reinterpret_cast<char *>(&label), sizeof(uint64_t));
-        ifs.read(reinterpret_cast<char *>(&size), sizeof(int64_t));
-        job_size_.insert({label, size});
-    }
-    ifs.close();
 }
 
 } // namespace th

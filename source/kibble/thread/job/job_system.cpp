@@ -1,6 +1,5 @@
 #include "thread/job/job_system.h"
 #include "logger/logger.h"
-#include "thread/job/impl/garbage_collector.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -25,7 +24,7 @@ size_t JobSystem::get_memory_requirements()
 }
 
 JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
-    : scheme_(scheme), monitor_(new Monitor(*this)), garbage_collector_(new GarbageCollector(*this)),
+    : scheme_(scheme), scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)),
       ss_(std::make_shared<SharedState>())
 {
     KLOGN("thread") << "[JobSystem] Initializing." << std::endl;
@@ -39,20 +38,6 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     // Select worker count based on scheme and CPU cores
     size_t max_threads = (scheme_.max_workers != 0) ? std::min(k_max_threads, scheme_.max_workers + 1) : k_max_threads;
     threads_count_ = std::min(max_threads, CPU_cores_count_);
-
-    // Create scheduler
-    KLOGI << "Scheduler:     ";
-    switch (scheme_.scheduling_algorithm)
-    {
-    case SchedulingAlgorithm::round_robin:
-        KLOGI << "round-robin" << std::endl;
-        scheduler_ = std::make_unique<RoundRobinScheduler>(*this);
-        break;
-    case SchedulingAlgorithm::min_load:
-        KLOGI << "minimum-load (dynamic)" << std::endl;
-        scheduler_ = std::make_unique<MinimumLoadScheduler>(*this);
-        break;
-    }
 
     // Init job pool
     KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
@@ -87,10 +72,6 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
                           << std::endl;
     }
 
-    // Setup persistence file if provided
-    if (!scheme_.persistence_file.empty())
-        use_persistence_file(scheme_.persistence_file);
-
     KLOGG("thread") << "[JobSystem] Ready." << std::endl;
 }
 
@@ -120,10 +101,6 @@ void JobSystem::shutdown()
         monitor_->log_statistics(worker->get_tid());
 #endif
 
-    // Save job execution profiles
-    if (use_persistence_file_)
-        monitor_->export_job_profiles(persistence_file_);
-
     KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
 }
 
@@ -137,11 +114,33 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 
 void JobSystem::release_job(Job *job)
 {
+#if K_PROFILE_JOB_SYSTEM
+    volatile InstrumentationTimer tmr(instrumentor_, "release", "function");
+#endif
+
     // Make sure that the job was processed
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.");
 
-    // Can be called concurrently
-    garbage_collector_->release(job);
+    // Inform monitor about what happened with this job
+#if K_PROFILE_JOB_SYSTEM
+    // If an instrumentation session exists, write profile for this job
+    if (has_instrumentation_session())
+    {
+        ProfileResult result;
+        result.name = job->meta.name;
+        result.category = "task";
+        result.start = job->meta.start_timestamp_us;
+        result.end = result.start + job->meta.execution_time_us;
+        result.thread_id = job->meta.thread_id;
+        instrumentor_->write_profile(result);
+    }
+#endif
+
+    // Return job to the pool
+    if (!job->keep_alive)
+    {
+        K_DELETE(job, ss_->job_pool);
+    }
 }
 
 void JobSystem::schedule(Job *job)
@@ -153,13 +152,6 @@ void JobSystem::schedule(Job *job)
     ss_->pending.fetch_add(1);
     scheduler_->dispatch(job);
     ss_->cv_wake.notify_all();
-}
-
-void JobSystem::use_persistence_file(const fs::path &filepath)
-{
-    persistence_file_ = filepath;
-    use_persistence_file_ = true;
-    monitor_->load_job_profiles(persistence_file_);
 }
 
 // Main thread and workers (on rescheduling) atomically increment pending each
@@ -206,9 +198,6 @@ void JobSystem::wait_until(std::function<bool()> condition)
         }
     }
 
-    // Cleanup
-    collect_garbage();
-
 #if K_PROFILE_JOB_SYSTEM
     auto &activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
@@ -239,14 +228,6 @@ std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affini
             ret.push_back(ii);
 
     return ret;
-}
-
-void JobSystem::collect_garbage()
-{
-#if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "collect_garbage", "function");
-#endif
-    garbage_collector_->collect();
 }
 
 Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
