@@ -40,7 +40,10 @@ void GarbageCollector::collect()
         js_.get_monitor().report_job_execution(job->meta);
 
         // Return job to the pool
-        K_DELETE(job, js_.get_shared_state().job_pool);
+        if (!job->keep_alive)
+        {
+            K_DELETE(job, js_.get_shared_state().job_pool);
+        }
 
 #ifdef K_ENABLE_JOB_EXCEPTIONS
         // If (void) task threw an exception, rethrow, catch and log
