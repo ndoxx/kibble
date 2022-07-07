@@ -419,7 +419,6 @@ int main(int argc, char **argv)
     const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
-    const auto &ml = parser.add_flag('m', "minload", "Use minimal load scheduler");
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -434,13 +433,6 @@ int main(int argc, char **argv)
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
     scheme.max_stealing_attempts = 16;
-    scheme.scheduling_algorithm = ml() ? th::SchedulingAlgorithm::min_load : th::SchedulingAlgorithm::round_robin;
-
-    // A persistency file can be used to save job profile during this session, so the minimum load scheduler can
-    // immediately use this information during the next run.
-    std::string file_stem = "p"s + std::to_string(ex());
-    if (ml())
-        scheme.persistence_file = file_stem + ".jpp"s;
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
@@ -449,7 +441,7 @@ int main(int argc, char **argv)
     auto *js = new th::JobSystem(area, scheme);
 
     // Job system profiling (compile )
-    auto *session = new InstrumentationSession(file_stem + "_profile.json");
+    auto *session = new InstrumentationSession("p"s + std::to_string(ex()) + "_profile.json");
     js->set_instrumentation_session(session);
 
     // clang-format off

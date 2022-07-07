@@ -123,15 +123,10 @@ void WorkerThread::process(Job *job)
     {
         job->kernel();
     }
-    catch (...)
+    catch (std::exception &e)
     {
-        /*
-            Store any exception thrown by the kernel function, it will be rethrown
-            when the job is released.
-            We should never get here when a non-void task is executed, as all
-            exceptions thrown by the kernel are captured by the wrapper.
-        */
-        job->p_except = std::current_exception();
+        KLOGE("thread") << "An exception occurred during job execution:" << std::endl;
+        KLOGI << e.what() << std::endl;
     }
 #else
     job->kernel();

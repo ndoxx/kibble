@@ -38,6 +38,7 @@ InstrumentationSession::~InstrumentationSession()
 
 void InstrumentationSession::write_header()
 {
+    const std::lock_guard<std::mutex> lock(stream_mtx_);
     stream_ << "{\"otherData\": {},\"traceEvents\":[";
     stream_.flush();
 }
@@ -47,6 +48,7 @@ void InstrumentationSession::write_profile(const ProfileResult &result)
     if (!enabled_)
         return;
 
+    const std::lock_guard<std::mutex> lock(stream_mtx_);
     if (profile_count_++ > 0)
         stream_ << ",";
 
@@ -69,6 +71,7 @@ void InstrumentationSession::write_profile(const ProfileResult &result)
 
 void InstrumentationSession::write_footer()
 {
+    const std::lock_guard<std::mutex> lock(stream_mtx_);
     stream_ << "]}";
     stream_.flush();
 }

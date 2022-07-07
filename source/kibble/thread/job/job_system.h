@@ -87,10 +87,6 @@ struct Job
     JobKernel kernel = JobKernel{};
     /// If true, job will not be returned to the pool once finished
     bool keep_alive = false;
-#ifdef K_ENABLE_JOB_EXCEPTIONS
-    /// Any exception thrown by the kernel function
-    std::exception_ptr p_except = nullptr;
-#endif
     /// Dependency information and shared state
     JobNode node;
 
@@ -175,18 +171,6 @@ struct Job
 };
 
 /**
- * @brief Enumerates the job scheduling algorithms.
- *
- */
-enum class SchedulingAlgorithm : uint8_t
-{
-    /// Round-robin selection of worker threads
-    round_robin,
-    /// Uses monitor's execution time database for smarter assignments
-    min_load,
-};
-
-/**
  * @brief Job system configuration structure.
  *
  */
@@ -196,16 +180,6 @@ struct JobSystemScheme
     size_t max_workers = 0;
     /// Maximum number of stealing attempts before moving to the next worker
     size_t max_stealing_attempts = 16;
-    /// Job scheduling policy
-    SchedulingAlgorithm scheduling_algorithm = SchedulingAlgorithm::round_robin;
-
-    /**
-     * @brief Job execution persistence file, let empty if not used.
-     * This file will gather execution time statistics for labelled jobs, which will enable the minimum load scheduler
-     * to use past execution metada during this run.
-     * @note This feature is only relevant when the minimum load scheduler is selected.
-     */
-    std::string persistence_file = "";
 };
 
 class JobSystem;
@@ -387,7 +361,6 @@ struct SharedState;
 class Scheduler;
 class Monitor;
 class WorkerThread;
-class GarbageCollector;
 
 /**
  * @brief Assign work to multiple worker threads.
@@ -497,25 +470,10 @@ public:
      * When it evaluates to false, the function exits regardless of pending jobs. This can be used to implement
      * a timeout functionality.
      */
-    void wait(std::function<bool()> condition = []() { return true; });
-
-    /**
-     * @brief Get a list of ids of all workers compatible with the given affinity requirement.
-     *
-     * @param affinity
-     * @return std::vector<tid_t>
-     */
-    std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
-
-    /**
-     * @brief Manually release all finished jobs.
-     * This job system is designed for a game engine, where the wait() function is to be called
-     * each frame. This is where automatic garbage collection happens. If for some reason you
-     * don't plan on using the wait() function, you have to call this manually from time to
-     * time, so the job pool does not overflow.
-     *
-     */
-    void collect_garbage();
+    inline void wait(std::function<bool()> condition = []() { return true; })
+    {
+        wait_until([this, &condition]() { return is_busy() && condition(); });
+    }
 
     /// Get the list of workers (non-const).
     inline auto &get_workers()
@@ -616,16 +574,6 @@ public:
 private:
     /**
      * @internal
-     * @brief Setup a job profile persistence file to load/store monitor data.
-     * This file will gather execution time statistics for labelled jobs, which will enable the minimum load scheduler
-     * to use past execution metada during this run.
-     *
-     * @param filepath path to the persistence file
-     */
-    void use_persistence_file(const fs::path &filepath);
-
-    /**
-     * @internal
      * @brief Create a new job.
      * @note The returned job belongs to an internal job pool and should never be deleted manually. Once caller code is
      * done with the job, the function release_job() should be called to return the job to the pool.
@@ -639,6 +587,10 @@ private:
     /**
      * @internal
      * @brief Return job to the pool.
+     * Also writes job profiling data to the instrumentation session if profiling is
+     * enabled.
+     *
+     * @note Can be called concurrently.
      *
      * @param job the job to release
      */
@@ -650,7 +602,7 @@ private:
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
-     * had no parent to begin with. Scheduling a non-orphan job will do nothing but raise a warning.
+     * had no parent to begin with. Scheduling a non-orphan job will trigger an assertion.
      *
      * @param job the job to submit
      */
@@ -665,8 +617,11 @@ private:
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
      * a timeout functionality.
      */
-    void wait_for(
-        Job *job, std::function<bool()> condition = []() { return true; });
+    inline void wait_for(
+        Job *job, std::function<bool()> condition = []() { return true; })
+    {
+        wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
+    }
 
     /**
      * @internal
@@ -684,11 +639,9 @@ private:
     std::vector<std::unique_ptr<WorkerThread>> workers_;
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<Monitor> monitor_;
-    std::unique_ptr<GarbageCollector> garbage_collector_;
     std::shared_ptr<SharedState> ss_;
     std::map<std::thread::id, tid_t> thread_ids_;
     fs::path persistence_file_;
-    bool use_persistence_file_ = false;
     InstrumentationSession *instrumentor_ = nullptr;
 };
 

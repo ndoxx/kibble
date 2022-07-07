@@ -13,72 +13,20 @@ namespace th
 
 Scheduler::Scheduler(JobSystem &js) : js_(js)
 {
-}
-
-RoundRobinScheduler::RoundRobinScheduler(JobSystem &js) : Scheduler(js)
-{
     std::fill(round_robin_.begin(), round_robin_.end(), 0);
 }
 
-void RoundRobinScheduler::dispatch(Job *job)
+void Scheduler::dispatch(Job *job)
 {
     std::size_t &rr = round_robin_[js_.this_thread_id()];
 
-    // The following code should be branchless (once optimized by the compiler) 
+    // The following code should be branchless (once optimized by the compiler)
     // Avoid worker 0 if job needs async execution
     rr = (job->meta.worker_affinity == WORKER_AFFINITY_ASYNC) ? (rr + (rr == 0)) % js_.get_threads_count() : rr;
     // If job is to be executed on the main thread, force worker index to 0, and submit to the private queue
     size_t idx = (job->meta.worker_affinity == WORKER_AFFINITY_MAIN) ? 0 : rr;
     js_.get_worker(idx).submit(job, (job->meta.worker_affinity != WORKER_AFFINITY_MAIN));
     // Advance round robin
-    rr = (rr + 1) % js_.get_threads_count();
-}
-
-MinimumLoadScheduler::MinimumLoadScheduler(JobSystem &js) : Scheduler(js)
-{
-    std::fill(round_robin_.begin(), round_robin_.end(), 0);
-}
-
-void MinimumLoadScheduler::dispatch(Job *job)
-{
-    // If job should be executed on the main thread, there's nothing to discuss !
-    if (job->meta.worker_affinity == WORKER_AFFINITY_MAIN)
-    {
-        js_.get_worker(0).submit(job, false);
-        return;
-    }
-
-    // Create a vector of viable worker candidates based on affinity,
-    // and select worker with minimal load
-    if (job->meta.label != 0)
-    {
-        const auto &job_size = js_.get_monitor().get_job_size();
-        auto findit = job_size.find(job->meta.label);
-        if (findit != job_size.end())
-        {
-            // Find worker with minimal load and assign it the job
-            int64_t min_load = std::numeric_limits<int64_t>::max();
-            size_t min_load_tid = 0;
-            auto compatible = js_.get_compatible_worker_ids(job->meta.worker_affinity);
-            for (auto tid : compatible)
-            {
-                auto load = js_.get_monitor().get_load(tid);
-                if (load < min_load)
-                {
-                    min_load = load;
-                    min_load_tid = tid;
-                }
-            }
-            js_.get_monitor().add_load(min_load_tid, findit->second);
-            js_.get_worker(min_load_tid).submit(job, true);
-            return;
-        }
-    }
-
-    // Fallback to round-robin selection
-    std::size_t &rr = round_robin_[js_.this_thread_id()];
-    rr = (job->meta.worker_affinity == WORKER_AFFINITY_ASYNC) ? (rr + (rr == 0)) % js_.get_threads_count() : rr;
-    js_.get_worker(rr).submit(job, true);
     rr = (rr + 1) % js_.get_threads_count();
 }
 

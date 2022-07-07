@@ -39,8 +39,6 @@ int main(int argc, char **argv)
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
     scheme.max_stealing_attempts = 16;
-    scheme.scheduling_algorithm = th::SchedulingAlgorithm::round_robin;
-    scheme.persistence_file = "nuclear.jpp";
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
