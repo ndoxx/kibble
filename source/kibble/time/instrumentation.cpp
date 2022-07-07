@@ -1,84 +1,63 @@
 #include "time/instrumentation.h"
 #include "logger/logger.h"
+#include <fstream>
 
 namespace kb
 {
 
-InstrumentationSession::InstrumentationSession(const fs::path &filepath)
+InstrumentationSession::InstrumentationSession()
     : base_timestamp_us_(
           std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now())
               .time_since_epoch()
-              .count()),
-      stream_(filepath)
+              .count())
 {
-    try
-    {
-        write_header();
-    }
-    catch (std::exception &e)
-    {
-        KLOGE("core") << "An exception occurred while trying to write profiling header:" << std::endl;
-        KLOGI << e.what() << std::endl;
-    }
 }
 
-InstrumentationSession::~InstrumentationSession()
-{
-    try
-    {
-        write_footer();
-        stream_.close();
-    }
-    catch (std::exception &e)
-    {
-        KLOGE("core") << "An exception occurred while trying to write profiling footer:" << std::endl;
-        KLOGI << e.what() << std::endl;
-    }
-}
-
-void InstrumentationSession::write_header()
-{
-    const std::lock_guard<std::mutex> lock(stream_mtx_);
-    stream_ << "{\"otherData\": {},\"traceEvents\":[";
-    stream_.flush();
-}
-
-void InstrumentationSession::write_profile(const ProfileResult &result)
+void InstrumentationSession::push(const ProfileResult &result)
 {
     if (!enabled_)
         return;
 
-    const std::lock_guard<std::mutex> lock(stream_mtx_);
-    if (profile_count_++ > 0)
-        stream_ << ",";
-
-    std::string name = result.name;
-    std::replace(name.begin(), name.end(), '"', '\'');
-
-    // clang-format off
-    stream_ << "{"
-            << "\"cat\":\"" << result.category << "\","
-            << "\"dur\":" << (result.end - result.start) << ',' 
-            << "\"name\":\"" << name << "\","
-            << "\"ph\":\"X\","
-            << "\"pid\":0,"
-            << "\"tid\":" << result.thread_id << ','
-            << "\"ts\":" << result.start - base_timestamp_us_ << '}';
-    // clang-format on
-
-    stream_.flush();
+    profile_data_[result.thread_id].push_back(result);
 }
 
-void InstrumentationSession::write_footer()
+void InstrumentationSession::write(const fs::path &filepath)
 {
-    const std::lock_guard<std::mutex> lock(stream_mtx_);
-    stream_ << "]}";
-    stream_.flush();
+    std::ofstream ofs(filepath);
+
+    ofs << "{\"otherData\": {},\"traceEvents\":[";
+
+    size_t profile_count = 0;
+    for (const auto &profiles : profile_data_)
+    {
+        for (const auto &profile : profiles)
+        {
+            if (profile_count++ > 0)
+                ofs << ",";
+
+            std::string name = profile.name;
+            std::replace(name.begin(), name.end(), '"', '\'');
+
+            // clang-format off
+            ofs << "{"
+                << "\"cat\":\"" << profile.category << "\","
+                << "\"dur\":" << (profile.end - profile.start) << ',' 
+                << "\"name\":\"" << name << "\","
+                << "\"ph\":\"X\","
+                << "\"pid\":0,"
+                << "\"tid\":" << profile.thread_id + 1 << ','
+                << "\"ts\":" << profile.start - base_timestamp_us_ << '}';
+            // clang-format on
+        }
+    }
+
+    ofs << "]}" << std::endl;
 }
 
 InstrumentationTimer::InstrumentationTimer(InstrumentationSession *session, const std::string &name,
-                                           const std::string &category)
-    : session_(session), name_(name), category_(category), start_(std::chrono::high_resolution_clock::now())
+                                           const std::string &category, size_t thread_id)
+    : session_(session), name_(name), category_(category), thread_id_(thread_id),
+      start_(std::chrono::high_resolution_clock::now())
 {
 }
 
@@ -91,15 +70,7 @@ InstrumentationTimer::~InstrumentationTimer()
     long long start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start_).time_since_epoch().count();
     long long stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
 
-    try
-    {
-        session_->write_profile({name_, category_, std::this_thread::get_id(), start_us, stop_us});
-    }
-    catch (std::exception &e)
-    {
-        KLOGE("core") << "An exception occurred while trying to write profiling data:" << std::endl;
-        KLOGI << e.what() << std::endl;
-    }
+    session_->push({name_, category_, thread_id_, start_us, stop_us});
 }
 
 } // namespace kb

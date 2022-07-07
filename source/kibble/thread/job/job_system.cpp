@@ -115,7 +115,7 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 void JobSystem::release_job(Job *job)
 {
 #if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "release", "function");
+    volatile InstrumentationTimer tmr(instrumentor_, "release", "function", this_thread_id());
 #endif
 
     // Make sure that the job was processed
@@ -131,8 +131,8 @@ void JobSystem::release_job(Job *job)
         result.category = "task";
         result.start = job->meta.start_timestamp_us;
         result.end = result.start + job->meta.execution_time_us;
-        result.thread_id = job->meta.thread_id;
-        instrumentor_->write_profile(result);
+        result.thread_id = thread_ids_.at(job->meta.thread_id);
+        instrumentor_->push(result);
     }
 #endif
 

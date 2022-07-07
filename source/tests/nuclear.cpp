@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     auto *ds = new th::DaemonScheduler(*js);
 
     // Job system profiling (compile )
-    auto *session = new InstrumentationSession("nuclear.json");
+    auto *session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 
     struct Message
@@ -57,7 +57,8 @@ int main(int argc, char **argv)
         float interval_ms;
     };
 
-    std::vector<Message> msgs = {{"hello", 100.f}, {"salut", 200.f}, {"sunt eu", 500.f}, {"un haiduc", 1000.f}};
+    std::vector<Message> msgs = {{"hello", 400.f}/*, {"salut", 200.f}, {"sunt eu", 500.f}, {"un haiduc", 1000.f}*/};
+    std::vector<DaemonHandle> hnds;
 
     for (const auto &msg : msgs)
     {
@@ -69,12 +70,14 @@ int main(int argc, char **argv)
         th::SchedulingData sd;
         sd.interval_ms = msg.interval_ms;
 
-        ds->create(
+        auto hnd = ds->create(
             [msg]() {
                 KLOG("nuclear", 1) << msg.message << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             },
             sd, meta);
+
+        hnds.push_back(hnd);
     }
 
     auto frame = std::chrono::microseconds(16670);
@@ -82,7 +85,7 @@ int main(int argc, char **argv)
     {
         microClock clk;
 
-        for (size_t jj = 0; jj < 100; ++jj)
+        for (size_t jj = 0; jj < 4; ++jj)
         {
             th::JobMetadata meta;
             meta.set_profile_data("A job");
@@ -93,6 +96,9 @@ int main(int argc, char **argv)
             tsk.schedule();
         }
 
+        if(ii == 30)
+            ds->kill(hnds[0]);
+
         ds->update(float(frame.count()) / 1000.f);
         js->wait();
         auto dur = clk.get_elapsed_time();
@@ -102,6 +108,8 @@ int main(int argc, char **argv)
 
     delete ds;
     delete js;
+
+    session->write("nuclear.json");
     delete session;
 
     return 0;

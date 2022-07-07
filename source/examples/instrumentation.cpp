@@ -85,7 +85,7 @@ int main(int, char **)
     init_logger();
 
     // Create an instrumentation session
-    session = new InstrumentationSession("example_profile.json");
+    session = new InstrumentationSession();
 
     // Call the test functions multiple times
     for (size_t ii = 0; ii < 10; ++ii)
@@ -93,6 +93,8 @@ int main(int, char **)
         test_func_01(ii);
         test_func_02();
     }
+
+    session->write("example_profile.json");
 
     delete session;
     return 0;

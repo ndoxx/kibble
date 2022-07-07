@@ -441,7 +441,7 @@ int main(int argc, char **argv)
     auto *js = new th::JobSystem(area, scheme);
 
     // Job system profiling (compile )
-    auto *session = new InstrumentationSession("p"s + std::to_string(ex()) + "_profile.json");
+    auto *session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 
     // clang-format off
@@ -460,6 +460,8 @@ int main(int argc, char **argv)
     // clang-format on
 
     delete js;
+
+    session->write("p"s + std::to_string(ex()) + "_profile.json");
     delete session;
     return ret;
 }
