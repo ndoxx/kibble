@@ -66,6 +66,18 @@ public:
         return !scheduled_.test_and_set();
     }
 
+    void reset()
+    {
+        scheduled_.clear();
+        processed_.store(false);
+
+        for (auto *child : out_nodes_)
+        {
+            child->pending_in_.fetch_add(1);
+            child->reset();
+        }
+    }
+
     // clang-format off
     inline auto begin()        { return std::begin(out_objects_); }
     inline auto end()          { return std::begin(out_objects_) + out_nodes_.count(); }

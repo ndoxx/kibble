@@ -3,6 +3,7 @@
 #include "thread/job/job_system.h"
 #include "thread/sanitizer.h"
 #include "time/clock.h"
+#include "time/instrumentation.h"
 
 namespace kb
 {
@@ -116,7 +117,9 @@ bool WorkerThread::steal_job(Job *&job)
 
 void WorkerThread::process(Job *job)
 {
+#if K_PROFILE_JOB_SYSTEM
     auto start = std::chrono::high_resolution_clock::now();
+#endif
 
 #ifdef K_ENABLE_JOB_EXCEPTIONS
     try
@@ -132,21 +135,33 @@ void WorkerThread::process(Job *job)
     job->kernel();
 #endif
 
+#if K_PROFILE_JOB_SYSTEM
     auto stop = std::chrono::high_resolution_clock::now();
     auto start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start).time_since_epoch().count();
     auto stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
-    job->meta.execution_time_us = stop_us - start_us;
 
-#if K_PROFILE_JOB_SYSTEM
-    job->meta.start_timestamp_us = start_us;
-    job->meta.thread_id = std::this_thread::get_id();
-    activity_.active_time_us += job->meta.execution_time_us;
+    activity_.active_time_us += stop_us - start_us;
     ++activity_.executed;
+
+    // If an instrumentation session exists, push profile for this job
+    if (js_.has_instrumentation_session())
+    {
+        ProfileResult result;
+        result.name = job->meta.name;
+        result.category = "task";
+        result.start = start_us;
+        result.end = stop_us;
+        result.thread_id = js_.this_thread_id();
+        js_.get_instrumentation_session().push(result);
+    }
 #endif
 
     job->mark_processed();
     schedule_children(job);
-    js_.release_job(job);
+
+    if (!job->keep_alive)
+        js_.release_job(job);
+
     ss_.pending.fetch_sub(1);
 }
 

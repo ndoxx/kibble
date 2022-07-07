@@ -46,7 +46,6 @@ void DaemonScheduler::update(float delta_t_ms)
         if (daemon.marked_for_deletion)
         {
             // Job is not scheduled at this point, we need to manually release it
-            daemon.job->keep_alive = false;
             daemon.job->mark_processed();
             js_.release_job(daemon.job);
             kill_list_.push_back(hnd);
@@ -62,6 +61,7 @@ void DaemonScheduler::update(float delta_t_ms)
             if (sd.ttl > 0 && --sd.ttl == 0)
                 daemon.job->keep_alive = false;
 
+            daemon.job->reset();
             js_.schedule(daemon.job);
         }
     }

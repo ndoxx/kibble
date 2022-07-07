@@ -51,14 +51,8 @@ struct JobMetadata
     label_t label = 0;
     /// Workers this job can be pushed to
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
-    /// The time in µs it took to complete the job
-    int64_t execution_time_us = 0;
 
 #if K_PROFILE_JOB_SYSTEM
-    /// Job start timestamp
-    int64_t start_timestamp_us = 0;
-    /// The thread id of the worker that took this job
-    std::thread::id thread_id;
     /// Descriptive name for the job (only used when profiling)
     std::string name;
 
@@ -89,6 +83,16 @@ struct Job
     bool keep_alive = false;
     /// Dependency information and shared state
     JobNode node;
+
+    /**
+     * @internal
+     * @brief Reset shared state
+     * 
+     */
+    inline void reset()
+    {
+        node.reset();
+    }
 
     /**
      * @internal

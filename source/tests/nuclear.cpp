@@ -57,7 +57,7 @@ int main(int argc, char **argv)
         float interval_ms;
     };
 
-    std::vector<Message> msgs = {{"hello", 400.f}/*, {"salut", 200.f}, {"sunt eu", 500.f}, {"un haiduc", 1000.f}*/};
+    std::vector<Message> msgs = {{"hello", 100.f}, {"salut", 200.f}, {"sunt eu", 500.f}, {"un haiduc", 1000.f}};
     std::vector<DaemonHandle> hnds;
 
     for (const auto &msg : msgs)
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     {
         microClock clk;
 
-        for (size_t jj = 0; jj < 4; ++jj)
+        for (size_t jj = 0; jj < 50; ++jj)
         {
             th::JobMetadata meta;
             meta.set_profile_data("A job");

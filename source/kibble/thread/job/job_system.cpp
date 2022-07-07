@@ -115,36 +115,22 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 void JobSystem::release_job(Job *job)
 {
 #if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "release", "function", this_thread_id());
+    volatile InstrumentationTimer tmr(instrumentor_, "release", "js_internal", this_thread_id());
 #endif
 
     // Make sure that the job was processed
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.");
 
-    // Inform monitor about what happened with this job
-#if K_PROFILE_JOB_SYSTEM
-    // If an instrumentation session exists, write profile for this job
-    if (has_instrumentation_session())
-    {
-        ProfileResult result;
-        result.name = job->meta.name;
-        result.category = "task";
-        result.start = job->meta.start_timestamp_us;
-        result.end = result.start + job->meta.execution_time_us;
-        result.thread_id = thread_ids_.at(job->meta.thread_id);
-        instrumentor_->push(result);
-    }
-#endif
-
     // Return job to the pool
-    if (!job->keep_alive)
-    {
-        K_DELETE(job, ss_->job_pool);
-    }
+    K_DELETE(job, ss_->job_pool);
 }
 
 void JobSystem::schedule(Job *job)
 {
+#if K_PROFILE_JOB_SYSTEM
+    volatile InstrumentationTimer tmr(instrumentor_, "schedule", "js_internal", this_thread_id());
+#endif
+
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
 
@@ -179,9 +165,10 @@ void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
 #if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "wait_until", "function");
+    volatile InstrumentationTimer tmr(instrumentor_, "wait_until", "js_internal");
     int64_t idle_time_us = 0;
 #endif
+
     while (condition())
     {
         if (!workers_[0]->foreground_work())
