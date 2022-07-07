@@ -55,7 +55,7 @@ class JobSystem;
  * This implementation of a worker thread allows for work stealing, in an attempt to enhance load balancing naturally.
  * When a worker has processed all jobs in its queues, it will try to pop jobs from other worker's public queues.
  *
- * The job queues used behind the scene are lock-free atomic queues, so there is no contention due to dispatching or
+ * The job queues used behind the scene are lock-free atomic queues, so there is low contention due to dispatching or
  * work stealing. This makes this implementation thread-safe and quite fast.
  *
  */
@@ -103,7 +103,7 @@ public:
 
     /**
      * @brief The Scheduler calls this function to enqueue a job in one of the queues.
-     * 
+     *
      * @note At the moment, the only non-stealable jobs are the ones to be executed on the main thread,
      * so we could argue that the 'stealable' parameter is superfluous, as this information is contained in the
      * metadata. But this is subject to change when I develop work groups and recurrent tasks.

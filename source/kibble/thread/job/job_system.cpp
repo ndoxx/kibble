@@ -207,29 +207,6 @@ void JobSystem::wait_until(std::function<bool()> condition)
 #endif
 }
 
-void JobSystem::wait(std::function<bool()> condition)
-{
-    wait_until([this, &condition]() { return is_busy() && condition(); });
-
-    if (!is_busy())
-        monitor_->wrap();
-}
-
-void JobSystem::wait_for(Job *job, std::function<bool()> condition)
-{
-    wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
-}
-
-std::vector<tid_t> JobSystem::get_compatible_worker_ids(worker_affinity_t affinity)
-{
-    std::vector<tid_t> ret;
-    for (tid_t ii = 0; ii < workers_.size(); ++ii)
-        if (affinity & (1 << ii))
-            ret.push_back(ii);
-
-    return ret;
-}
-
 Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
 {
     job_ = js->create_job(std::forward<JobKernel>(kernel), meta);

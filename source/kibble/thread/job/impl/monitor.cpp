@@ -13,14 +13,6 @@ namespace th
 
 Monitor::Monitor(JobSystem &js) : js_(js)
 {
-    wrap();
-}
-
-void Monitor::wrap()
-{
-    // NOTE(ndx): I suppose fill will use operator= which for an atomic is equivalent to
-    // calling store() with std::memory_order_seq_cst (thus release), so all is fine.
-    std::fill(load_.begin(), load_.end(), 0);
 }
 
 void Monitor::update_statistics()

@@ -470,15 +470,10 @@ public:
      * When it evaluates to false, the function exits regardless of pending jobs. This can be used to implement
      * a timeout functionality.
      */
-    void wait(std::function<bool()> condition = []() { return true; });
-
-    /**
-     * @brief Get a list of ids of all workers compatible with the given affinity requirement.
-     *
-     * @param affinity
-     * @return std::vector<tid_t>
-     */
-    std::vector<tid_t> get_compatible_worker_ids(worker_affinity_t affinity);
+    inline void wait(std::function<bool()> condition = []() { return true; })
+    {
+        wait_until([this, &condition]() { return is_busy() && condition(); });
+    }
 
     /// Get the list of workers (non-const).
     inline auto &get_workers()
@@ -592,6 +587,10 @@ private:
     /**
      * @internal
      * @brief Return job to the pool.
+     * Also writes job profiling data to the instrumentation session if profiling is
+     * enabled.
+     *
+     * @note Can be called concurrently.
      *
      * @param job the job to release
      */
@@ -603,7 +602,7 @@ private:
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
-     * had no parent to begin with. Scheduling a non-orphan job will do nothing but raise a warning.
+     * had no parent to begin with. Scheduling a non-orphan job will trigger an assertion.
      *
      * @param job the job to submit
      */
@@ -618,8 +617,11 @@ private:
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
      * a timeout functionality.
      */
-    void wait_for(
-        Job *job, std::function<bool()> condition = []() { return true; });
+    inline void wait_for(
+        Job *job, std::function<bool()> condition = []() { return true; })
+    {
+        wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
+    }
 
     /**
      * @internal

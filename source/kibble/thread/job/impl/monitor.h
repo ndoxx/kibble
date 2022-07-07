@@ -75,23 +75,6 @@ public:
     void log_statistics(tid_t tid) const;
 
     /**
-     * @brief Reset workers load info.
-     *
-     */
-    void wrap();
-
-    /**
-     * @brief Get the load of all worker threads.
-     * The load is the total job size a given worker has at some point.
-     *
-     * @return an array of loads, the size of the maximum amount of threads
-     */
-    inline auto get_load(tid_t tid) const
-    {
-        return load_[tid].load(std::memory_order_acquire);
-    }
-
-    /**
      * @brief Get a particular worker's statistics.
      *
      * @param tid worker id
@@ -100,17 +83,6 @@ public:
     inline const auto &get_statistics(tid_t tid) const
     {
         return stats_[tid];
-    }
-
-    /**
-     * @brief Add load to a particular worker.
-     *
-     * @param idx worker index
-     * @param job_size job size to add to the current load
-     */
-    inline void add_load(size_t idx, int64_t job_size)
-    {
-        load_[idx].fetch_add(job_size);
     }
 
     /**
@@ -140,9 +112,6 @@ private:
     }
 
 private:
-    // The load information is used by the Schedulers which are thread-safe objects, so
-    // each load variable needs to be atomic.
-    std::array<std::atomic<int64_t>, k_max_threads> load_;
     std::array<WorkerStats, k_max_threads> stats_;
     JobSystem &js_;
     ActivityQueue<WorkerActivity> activity_queue_;
