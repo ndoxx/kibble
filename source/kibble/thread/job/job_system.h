@@ -91,7 +91,7 @@ struct Job
      */
     inline void reset()
     {
-        node.reset();
+        node.reset_state();
     }
 
     /**

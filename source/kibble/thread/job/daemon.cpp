@@ -1,5 +1,6 @@
 #include "thread/job/daemon.h"
 #include "assert/assert.h"
+#include "time/instrumentation.h"
 
 namespace kb
 {
@@ -13,7 +14,10 @@ DaemonScheduler::DaemonScheduler(JobSystem &js) : js_(js)
 DaemonScheduler::~DaemonScheduler()
 {
     for (auto &&[hnd, daemon] : daemons_)
-        daemon.job->keep_alive = false;
+    {
+        daemon.job->mark_processed();
+        js_.release_job(daemon.job);
+    }
 }
 
 DaemonHandle DaemonScheduler::create(JobKernel &&kernel, const SchedulingData &scheduling_data, const JobMetadata &meta)
@@ -36,8 +40,15 @@ void DaemonScheduler::kill(DaemonHandle hnd)
     findit->second.marked_for_deletion = true;
 }
 
-void DaemonScheduler::update(float delta_t_ms)
+void DaemonScheduler::update()
 {
+#if K_PROFILE_JOB_SYSTEM
+    volatile InstrumentationTimer tmr(&js_.get_instrumentation_session(), "DaemonScheduler::update()", "js_internal");
+#endif
+
+    // Count time in ms since last call
+    delta_t_ms_ = float(clock_.restart().count()) / 1000.f;
+
     // Iterate daemons, reschedule those whose cooldown reached zero
     for (auto &&[hnd, daemon] : daemons_)
     {
@@ -53,13 +64,16 @@ void DaemonScheduler::update(float delta_t_ms)
         }
 
         // Update cooldown timer
-        sd.cooldown_ms -= delta_t_ms;
+        sd.cooldown_ms -= delta_t_ms_;
 
         if (sd.cooldown_ms <= 0.f)
         {
             sd.cooldown_ms = sd.interval_ms;
             if (sd.ttl > 0 && --sd.ttl == 0)
+            {
                 daemon.job->keep_alive = false;
+                kill_list_.push_back(hnd);
+            }
 
             daemon.job->reset();
             js_.schedule(daemon.job);

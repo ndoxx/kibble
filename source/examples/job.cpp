@@ -440,7 +440,7 @@ int main(int argc, char **argv)
 
     auto *js = new th::JobSystem(area, scheme);
 
-    // Job system profiling (compile )
+    // Job system profiling
     auto *session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 
