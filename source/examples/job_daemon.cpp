@@ -44,9 +44,9 @@ int main(int argc, char **argv)
 {
     init_logger();
 
-    ap::ArgParse parser("job_system_example", "0.1");
+    ap::ArgParse parser("daemon_example", "0.1");
     parser.set_log_output([](const std::string &str) { KLOG("kibble", 1) << str << std::endl; });
-    const auto &nf = parser.add_variable<int>('f', "experiments", "Number of frames", 200);
+    const auto &nf = parser.add_variable<int>('f', "frames", "Number of frames", 200);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 50);
 
     bool success = parser.parse(argc, argv);
