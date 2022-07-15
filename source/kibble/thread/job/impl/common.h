@@ -60,5 +60,18 @@ struct WorkerActivity
     }
 };
 
+// The following macros simplify the declaration of an instrumentation timer.
+// The token pasting stuff allows to declare multiple timers with different names in the same function.
+#ifdef K_PROFILE_JOB_SYSTEM
+#define CONCAT_IMPL(first, second) first##second
+#define CONCAT(first, second) CONCAT_IMPL(first, second)
+#define JS_PROFILE_SCOPE(session, name, thread_id)                                                                     \
+    volatile InstrumentationTimer CONCAT(timer_000_, __LINE__)(session, name, "js_internal", thread_id)
+#define JS_PROFILE_FUNCTION(session, thread_id) JS_PROFILE_SCOPE(session, __PRETTY_FUNCTION__, thread_id)
+#else
+#define JS_PROFILE_SCOPE(session, name, thread_id)
+#define JS_PROFILE_FUNCTION(session, thread_id)
+#endif
+
 } // namespace th
 } // namespace kb

@@ -82,6 +82,9 @@ This library is under heavy development, and the API is subject to change. Use a
 * Custom assertion
     - More helpful assert macro, user can debug break / continue / print stack trace / exit
     - printf-style formatted assertions
+* Profiling utility
+    - Easily profile execution time
+    - Produce a Chrome Tracing json output
 * Config system
     - Read and save settings from / to multiple TOML files with a single structure
     - Each property is referenced by an intuitive hash string reflecting the property's hierarchy
@@ -97,9 +100,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * Job system
     - Launch multiple worker threads and execute tasks asynchronously
     - Lock-free
-    - Work stealing scheme
-    - Task execution time monitoring / "smart" load prediction for better scheduling
+    - Work stealing scheme for load balancing
+    - Dependency graph
     - Worker affinity
+    - Recurring tasks
+    - Task monitoring and profiling (using the profiling utility)
 * Undo engine
     - Qt-like API
     - Push custom commands in a stack-like object that handles the undo / redo logic
@@ -129,8 +134,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * Multiple string utilities to avoid boilerplate
     - trimming, stripping, case transform, text centering, tokenization, regex replace
     - Base64 encoding / decoding
+* Compile-time type information
+    - Drop-in replacement for some features of the CTTI lib
+    - Compile-time type name and type ID (as a name hash)
 * Memory arena system
-    - Fast custom allocators (linear and pool)
+    - Fast custom allocators (linear, pool, atomic pool)
     - May be deprecated at some point due to std::pmr
 * Basic TCP socket abstraction
     - Simple Berkeley socket wrapper using the Stream / Acceptor / Connector model

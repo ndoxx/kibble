@@ -1,5 +1,6 @@
 #include "thread/job/daemon.h"
 #include "assert/assert.h"
+#include "thread/job/impl/common.h"
 #include "time/instrumentation.h"
 
 namespace kb
@@ -22,6 +23,8 @@ DaemonScheduler::~DaemonScheduler()
 
 DaemonHandle DaemonScheduler::create(JobKernel &&kernel, const SchedulingData &scheduling_data, const JobMetadata &meta)
 {
+    JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
+
     auto &&[it, inserted] = daemons_.insert({current_handle_++, Daemon{}});
     K_ASSERT(inserted, "Could not insert new daemon.");
 
@@ -35,6 +38,8 @@ DaemonHandle DaemonScheduler::create(JobKernel &&kernel, const SchedulingData &s
 
 void DaemonScheduler::kill(DaemonHandle hnd)
 {
+    JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
+
     auto findit = daemons_.find(hnd);
     K_ASSERT(findit != daemons_.end(), "Could not find daemon.");
     findit->second.marked_for_deletion = true;
@@ -42,9 +47,7 @@ void DaemonScheduler::kill(DaemonHandle hnd)
 
 void DaemonScheduler::update()
 {
-#if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(&js_.get_instrumentation_session(), "DaemonScheduler::update()", "js_internal");
-#endif
+    JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     // Count time in ms since last call
     delta_t_ms_ = float(clock_.restart().count()) / 1000.f;

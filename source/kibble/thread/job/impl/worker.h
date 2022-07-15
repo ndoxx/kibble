@@ -172,7 +172,7 @@ public:
         return !queues_[Q_PUBLIC].was_empty() || !queues_[Q_PRIVATE].was_empty();
     }
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     /**
      * @internal
      * @brief Get this worker's activity report
@@ -267,7 +267,7 @@ private:
     std::atomic<State> state_;
     std::thread thread_;
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     WorkerActivity activity_;
 #endif
     std::vector<tid_t> stealable_workers_;

@@ -112,18 +112,11 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js)
         for (size_t ii = 0; ii < nloads; ++ii)
         {
             // Each task has some metadata attached
-            th::JobMetadata meta;
-            // A name for profiling
-            meta.set_profile_data("Load");
-            // A label uniquely identifies this task, so its execution time can be monitored
-            meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
             // A job's worker affinity property can be used to specify in which threads the job can or cannot be
             // executed. In this example, the first 70 (arbitrary) jobs must be executed asynchronously. The rest can be
             // executed on any thread, including the main thread
-            if (ii < 70)
-                meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
-            else
-                meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+            // Also provide a name for profiling
+            th::JobMetadata meta((ii < 70 ? th::WORKER_AFFINITY_ASYNC : th::WORKER_AFFINITY_ANY), "Load");
 
             // Let's create a task and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
@@ -161,11 +154,6 @@ int p1(size_t ntasks, th::JobSystem &js)
     // Create as many tasks as needed
     for (size_t ii = 0; ii < ntasks; ++ii)
     {
-        th::JobMetadata meta;
-        meta.set_profile_data("MyTask");
-        meta.label = ii + 1;
-        meta.worker_affinity = th::WORKER_AFFINITY_ANY;
-
         auto tsk = js.create_task(
             [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -174,7 +162,7 @@ int p1(size_t ntasks, th::JobSystem &js)
                 else if (ii % 20 == 0)
                     throw std::logic_error("Logic error!");
             },
-            meta);
+            th::JobMetadata(th::WORKER_AFFINITY_ANY, "MyTask"));
 
         // Schedule the task, the workers will awake
         tsk.schedule();
@@ -223,13 +211,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
         for (size_t ii = 0; ii < nloads; ++ii)
         {
             // Create both tasks like we did in the first example
-            th::JobMetadata load_meta;
-            load_meta.set_profile_data("Load");
-            load_meta.label = HCOMBINE_("Load"_h, uint64_t(ii + 1));
-            if (ii < 70)
-                load_meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
-            else
-                load_meta.worker_affinity = th::WORKER_AFFINITY_ANY;
+            th::JobMetadata load_meta((ii < 70 ? th::WORKER_AFFINITY_ASYNC : th::WORKER_AFFINITY_ANY), "Load");
 
             auto load_task = js.create_task<int>(
                 [&load_time, ii, nloads](std::promise<int> &prom) {
@@ -244,12 +226,6 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
                 },
                 load_meta);
 
-            // Staging jobs are executed on the main thread
-            th::JobMetadata stage_meta;
-            stage_meta.set_profile_data("Stage");
-            stage_meta.label = HCOMBINE_("Stage"_h, uint64_t(ii + 1));
-            stage_meta.worker_affinity = th::WORKER_AFFINITY_MAIN;
-
             // Get the loading task future data so we can use it in the staging task
             auto fut = load_task.get_future();
             auto stage_task = js.create_task<float>(
@@ -260,7 +236,8 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
                     // For this example, we just multiply by some arbitrary float...
                     prom.set_value(float(fut.get()) * 1.23f);
                 },
-                stage_meta);
+                // Staging jobs are executed on the main thread
+                th::JobMetadata(th::WORKER_AFFINITY_MAIN, "Stage"));
 
             // But this time, we set the staging task as a child of the loading task. This means that the staging job
             // will not be scheduled until its parent loading job is complete. This makes sense in a real world
@@ -295,7 +272,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js)
                 // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
                 // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
                 // we should catch them all right here.
-                KLOGE("example") << "Job #" << tsk.meta().label << " threw an exception: " << e.what() << std::endl;
+                KLOGE("example") << "A job threw an exception: " << e.what() << std::endl;
             }
             ++ii;
         }
@@ -333,53 +310,33 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js)
         milliClock clk;
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
-            th::JobMetadata meta_a;
-            meta_a.set_profile_data("A");
-            meta_a.label = "A"_h;
-            meta_a.worker_affinity = th::WORKER_AFFINITY_ANY;
-
             auto tsk_a = js.create_task<int>(
                 [ii](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     prom.set_value(int(ii));
                 },
-                meta_a);
-
-            th::JobMetadata meta_b;
-            meta_b.set_profile_data("B");
-            meta_b.label = "B"_h;
-            meta_b.worker_affinity = th::WORKER_AFFINITY_ANY;
+                th::JobMetadata(th::WORKER_AFFINITY_ANY, "A"));
 
             auto tsk_b = js.create_task<int>(
                 [fut = tsk_a.get_future()](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     prom.set_value(fut.get() * 2);
                 },
-                meta_b);
-
-            th::JobMetadata meta_c;
-            meta_c.set_profile_data("C");
-            meta_c.label = "C"_h;
-            meta_c.worker_affinity = th::WORKER_AFFINITY_ANY;
+                th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"));
 
             auto tsk_c = js.create_task<int>(
                 [fut = tsk_a.get_future()](std::promise<int> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(15));
                     prom.set_value(fut.get() * 3 - 10);
                 },
-                meta_c);
-
-            th::JobMetadata meta_d;
-            meta_d.set_profile_data("D");
-            meta_d.label = "D"_h;
-            meta_d.worker_affinity = th::WORKER_AFFINITY_ANY;
+                th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"));
 
             auto tsk_d = js.create_task<bool>(
                 [fut_b = tsk_b.get_future(), fut_c = tsk_c.get_future()](std::promise<bool> &prom) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     prom.set_value(fut_b.get() < fut_c.get());
                 },
-                meta_d);
+                th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"));
 
             tsk_b.add_parent(tsk_a);
             tsk_c.add_parent(tsk_a);

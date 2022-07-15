@@ -86,10 +86,7 @@ int main(int argc, char **argv)
     // Launch daemons
     for (const auto &msg : msgs)
     {
-        th::JobMetadata meta;
-        meta.set_profile_data(msg.message);
-        meta.label = H_(msg.message);
-        meta.worker_affinity = th::WORKER_AFFINITY_ASYNC;
+        th::JobMetadata meta(th::WORKER_AFFINITY_ASYNC, msg.message);
 
         th::SchedulingData sd;
         // Set the interval in ms at which the tasks will be rescheduled
@@ -120,12 +117,8 @@ int main(int argc, char **argv)
         // Create a few independent tasks each frame
         for (size_t jj = 0; jj < size_t(nj()); ++jj)
         {
-            th::JobMetadata meta;
-            meta.set_profile_data("job");
-            meta.label = jj;
-            meta.worker_affinity = th::WORKER_AFFINITY_ANY;
-
-            auto tsk = js->create_task([]() { std::this_thread::sleep_for(std::chrono::microseconds(500)); }, meta);
+            auto tsk = js->create_task([]() { std::this_thread::sleep_for(std::chrono::microseconds(500)); },
+                                       th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"));
             tsk.schedule();
         }
 

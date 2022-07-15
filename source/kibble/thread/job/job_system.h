@@ -3,19 +3,9 @@
 #include "assert/assert.h"
 #include "thread/job/config.h"
 #include "thread/job/job_graph.h"
-#include <atomic>
-#include <cstdint>
-#include <exception>
-#include <filesystem>
-#include <functional>
 #include <future>
-#include <limits>
 #include <map>
-#include <memory>
-#include <stdexcept>
 #include <vector>
-
-namespace fs = std::filesystem;
 
 namespace kb
 {
@@ -31,7 +21,6 @@ namespace th
 
 using JobKernel = std::function<void(void)>;
 using worker_affinity_t = uint32_t;
-using label_t = uint64_t;
 using tid_t = uint32_t;
 
 /// A job with this affinity can be executed on any worker
@@ -47,23 +36,15 @@ using tid_t = uint32_t;
  */
 struct JobMetadata
 {
-    /// Uniquely identifies a job
-    label_t label = 0;
+    JobMetadata() = default;
+    JobMetadata(worker_affinity_t affinity, const std::string &profile_name);
+
     /// Workers this job can be pushed to
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     /// Descriptive name for the job (only used when profiling)
     std::string name;
-
-    inline void set_profile_data(const std::string &profile_name)
-    {
-        name = profile_name;
-    }
-#else
-    inline void set_profile_data(const std::string &)
-    {
-    }
 #endif
 };
 
@@ -87,7 +68,7 @@ struct Job
     /**
      * @internal
      * @brief Reset shared state
-     * 
+     *
      */
     inline void reset()
     {
@@ -533,18 +514,6 @@ public:
         return *monitor_;
     }
 
-    /// Get the scheduler (non-const).
-    inline auto &get_scheduler()
-    {
-        return *scheduler_;
-    }
-
-    /// Get the scheduler (const).
-    inline const auto &get_scheduler() const
-    {
-        return *scheduler_;
-    }
-
     /// Get the shared state (non-const).
     inline auto &get_shared_state()
     {
@@ -563,16 +532,10 @@ public:
         return thread_ids_.at(std::this_thread::get_id());
     }
 
-    /// Get reference to instrumentation session (must exist)
-    inline InstrumentationSession &get_instrumentation_session()
+    /// Get pointer to instrumentation session
+    inline InstrumentationSession *get_instrumentation_session()
     {
-        return *instrumentor_;
-    }
-
-    /// Check if an instrumentation session has been provided
-    inline bool has_instrumentation_session() const
-    {
-        return instrumentor_ != nullptr;
+        return instrumentor_;
     }
 
 private:
@@ -645,7 +608,6 @@ private:
     std::unique_ptr<Monitor> monitor_;
     std::shared_ptr<SharedState> ss_;
     std::map<std::thread::id, tid_t> thread_ids_;
-    fs::path persistence_file_;
     InstrumentationSession *instrumentor_ = nullptr;
 };
 

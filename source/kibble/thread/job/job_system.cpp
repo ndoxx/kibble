@@ -17,6 +17,15 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
+JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string &profile_name) : worker_affinity(affinity)
+{
+#ifdef K_PROFILE_JOB_SYSTEM
+    name = profile_name;
+#else
+    (void)profile_name;
+#endif
+}
+
 size_t JobSystem::get_memory_requirements()
 {
     // Area will need to contain the memory arena, and enough space for each job
@@ -93,7 +102,7 @@ void JobSystem::shutdown()
     for (auto &worker : workers_)
         worker->join();
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     // Log worker statistics
     monitor_->update_statistics();
     KLOGN("thread") << "[JobSystem] Thread statistics:" << std::endl;
@@ -106,6 +115,8 @@ void JobSystem::shutdown()
 
 Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 {
+    JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
+
     Job *job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
     job->meta = meta;
@@ -114,9 +125,7 @@ Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
 
 void JobSystem::release_job(Job *job)
 {
-#if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "release", "js_internal", this_thread_id());
-#endif
+    JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Make sure that the job was processed
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.");
@@ -127,9 +136,7 @@ void JobSystem::release_job(Job *job)
 
 void JobSystem::schedule(Job *job)
 {
-#if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "schedule", "js_internal", this_thread_id());
-#endif
+    JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
@@ -164,8 +171,8 @@ bool JobSystem::is_work_done(Job *job) const
 void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
-#if K_PROFILE_JOB_SYSTEM
-    volatile InstrumentationTimer tmr(instrumentor_, "wait_until", "js_internal");
+    JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
+#ifdef K_PROFILE_JOB_SYSTEM
     int64_t idle_time_us = 0;
 #endif
 
@@ -174,18 +181,18 @@ void JobSystem::wait_until(std::function<bool()> condition)
         if (!workers_[0]->foreground_work())
         {
             // There's nothing we can do, just wait. Some work may come to us.
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
             microClock clk;
 #endif
             ss_->cv_wake.notify_all(); // wake worker threads
             std::this_thread::yield(); // allow this thread to be rescheduled
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
             idle_time_us += clk.get_elapsed_time().count();
 #endif
         }
     }
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     auto &activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
     monitor_->report_thread_activity(activity);

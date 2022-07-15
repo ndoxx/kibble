@@ -13,7 +13,7 @@ namespace th
 WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
     : props_(props), js_(jobsys), ss_(js_.get_shared_state())
 {
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     activity_.tid = props_.tid;
 #endif
 }
@@ -60,7 +60,7 @@ void WorkerThread::run()
         }
 
         state_.store(State::Idle, std::memory_order_release);
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
         microClock clk;
 #endif
         std::unique_lock<std::mutex> lock(ss_.wake_mutex);
@@ -73,7 +73,7 @@ void WorkerThread::run()
         */
         ss_.cv_wake.wait(lock, [this]() { return had_pending_jobs() || !ss_.running.load(std::memory_order_acquire); });
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
         activity_.idle_time_us += clk.get_elapsed_time().count();
         js_.get_monitor().report_thread_activity(activity_);
         activity_.reset();
@@ -105,7 +105,7 @@ bool WorkerThread::steal_job(Job *&job)
         ANNOTATE_HAPPENS_AFTER(&worker.queues_[Q_PUBLIC]); // Avoid false positives with TSan
         if (worker.queues_[Q_PUBLIC].try_pop(job))
         {
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
             ++activity_.stolen;
 #endif
             return true;
@@ -117,7 +117,7 @@ bool WorkerThread::steal_job(Job *&job)
 
 void WorkerThread::process(Job *job)
 {
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     auto start = std::chrono::high_resolution_clock::now();
 #endif
 
@@ -135,7 +135,7 @@ void WorkerThread::process(Job *job)
     job->kernel();
 #endif
 
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
     auto stop = std::chrono::high_resolution_clock::now();
     auto start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start).time_since_epoch().count();
     auto stop_us = std::chrono::time_point_cast<std::chrono::microseconds>(stop).time_since_epoch().count();
@@ -144,7 +144,7 @@ void WorkerThread::process(Job *job)
     ++activity_.executed;
 
     // If an instrumentation session exists, push profile for this job
-    if (js_.has_instrumentation_session())
+    if (auto *instr = js_.get_instrumentation_session())
     {
         ProfileResult result;
         result.name = job->meta.name;
@@ -152,7 +152,7 @@ void WorkerThread::process(Job *job)
         result.start = start_us;
         result.end = stop_us;
         result.thread_id = js_.this_thread_id();
-        js_.get_instrumentation_session().push(result);
+        instr->push(result);
     }
 #endif
 
@@ -178,7 +178,7 @@ void WorkerThread::schedule_children(Job *job)
         {
             // Thread-safe call as long as the scheduler implementation is thread-safe
             js_.schedule(child);
-#if K_PROFILE_JOB_SYSTEM
+#ifdef K_PROFILE_JOB_SYSTEM
             ++activity_.scheduled;
 #endif
         }
