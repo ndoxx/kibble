@@ -26,7 +26,7 @@ set_target_properties(kibble
         POSITION_INDEPENDENT_CODE ON
     )
 
-set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid-v4.cpp"
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
     PROPERTIES COMPILE_FLAGS -mavx2
     )
 

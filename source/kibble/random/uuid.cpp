@@ -1,4 +1,4 @@
-#include "random/uuid-v4.h"
+#include "random/uuid.h"
 #include "random/impl/endian.h"
 
 #include <emmintrin.h>
@@ -6,6 +6,8 @@
 #include <smmintrin.h>
 
 namespace kb
+{
+namespace UUIDv4
 {
 
 /**
@@ -239,4 +241,5 @@ std::istream &operator>>(std::istream &stream, UUID &uuid)
     return stream;
 }
 
+} // namespace UUIDv4
 } // namespace kb

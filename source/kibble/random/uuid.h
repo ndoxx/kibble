@@ -26,6 +26,8 @@
 namespace kb
 {
 
+namespace UUIDv4
+{
 /**
  * @brief Represents a 128bits random UUIDv4 (RFC-4122 compliant)
  *
@@ -158,7 +160,7 @@ class UUIDGenerator
 public:
     /**
      * @brief Initialize generator with a random seed
-     * 
+     *
      */
     UUIDGenerator()
         : generator_(new RNG(std::random_device()())),
@@ -168,8 +170,8 @@ public:
 
     /**
      * @brief Initialize generator with a set seed
-     * 
-     * @param seed 
+     *
+     * @param seed
      */
     UUIDGenerator(uint64_t seed)
         : generator_(new RNG(seed)),
@@ -179,8 +181,8 @@ public:
 
     /**
      * @brief Initialize generator with an existing RNG instance
-     * 
-     * @param gen 
+     *
+     * @param gen
      */
     UUIDGenerator(RNG &gen)
         : generator_(gen), distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
@@ -189,8 +191,8 @@ public:
 
     /**
      * @brief Generates a new UUID
-     * 
-     * @return UUID 
+     *
+     * @return UUID
      */
     inline UUID get()
     {
@@ -199,8 +201,8 @@ public:
 
     /**
      * @brief Generates a new UUID
-     * 
-     * @return UUID 
+     *
+     * @return UUID
      */
     inline UUID operator()()
     {
@@ -212,14 +214,15 @@ private:
     std::uniform_int_distribution<uint64_t> distribution_;
 };
 
+} // namespace UUIDv4
 } // namespace kb
 
 namespace std
 {
 template <>
-struct hash<kb::UUID>
+struct hash<kb::UUIDv4::UUID>
 {
-    size_t operator()(const kb::UUID &uuid) const
+    size_t operator()(const kb::UUIDv4::UUID &uuid) const
     {
         return uuid.hash();
     }
