@@ -115,6 +115,8 @@ This library is under heavy development, and the API is subject to change. Use a
 * Random number generation
     - Fast XOR shift engine
     - Coherent noise generation (simplex, octave)
+* UUIDv4 generation
+    - adapted from: [https://github.com/crashoz/uuid_v4](https://github.com/crashoz/uuid_v4)
 * Multiple math utilities
     - Bezier and cubic Hermite spline interpolation (arc-length parameterized)
     - Catenary curve (arc-length parameterized)
