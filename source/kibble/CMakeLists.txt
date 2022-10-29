@@ -24,7 +24,11 @@ set_target_properties(kibble
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
         POSITION_INDEPENDENT_CODE ON
-)
+    )
+
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid-v4.cpp"
+    PROPERTIES COMPILE_FLAGS -mavx2
+    )
 
 # Configuration
 option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
