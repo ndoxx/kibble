@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <istream>
+#include <memory>
 #include <ostream>
+#include <random>
 
 /**
  * @brief UUIDv4 implementation
@@ -13,9 +15,9 @@
  * - main author is crashoz (https://github.com/crashoz)
  *
  * Modifications are:
- * - header / implementation separation
- * - naming convention
- * - hiding intrinsics
+ * - separated header / implementation
+ * - changed naming convention
+ * - hid intrinsics
  * - replaced C-style casts and implicit conversions
  * - minor changes to the interface
  * - documentation
@@ -24,41 +26,86 @@
 namespace kb
 {
 
-/*
- * UUIDv4 (random 128-bits) RFC-4122
+/**
+ * @brief Represents a 128bits random UUIDv4 (RFC-4122 compliant)
+ *
  */
 class UUID
 {
 public:
     UUID() = default;
 
+    /**
+     * @brief Copy ctor
+     *
+     * @param other
+     */
     UUID(const UUID &other);
 
-    /* Builds a 128-bits UUID */
+    /**
+     * @brief Builds a 128-bits UUID
+     *
+     * @param x upper 64 bits
+     * @param y lower 64 bits
+     */
     UUID(uint64_t x, uint64_t y);
 
-    UUID(const uint8_t *bytes);
+    /**
+     * @brief Builds an UUID from a bytes array
+     *
+     * @param bytes
+     */
+    explicit UUID(const uint8_t *bytes);
 
-    inline uint8_t *data()
-    {
-        return data_;
-    }
-
-    inline const uint8_t *data() const
-    {
-        return data_;
-    }
-
-    /* Builds an UUID from a byte string (16 bytes long) */
+    /**
+     * @brief Builds an UUID from a byte string (16 bytes long)
+     *
+     * @param bytes
+     */
     explicit UUID(const std::string &bytes);
 
-    /* Static factory to parse an UUID from its string representation */
+    /**
+     * @brief Builds an UUID from raw data
+     *
+     * @param raw
+     */
+    explicit UUID(const char *raw);
+
+    /**
+     * @brief Static factory to parse an UUID from its string representation
+     *
+     * @param s
+     * @return UUID
+     */
     static UUID from_str_factory(const std::string &s);
 
+    /**
+     * @brief Static factory to parse an UUID from its string representation
+     *
+     * Raw pointer version
+     *
+     * @param s
+     * @return UUID
+     */
     static UUID from_str_factory(const char *raw);
 
-    void from_str(const char *raw);
+    /**
+     * @brief Static factory to build a UUID from random upper and lower bits
+     *
+     * This will also set the UUID version (4) and variant (1) fields
+     *
+     * @param upper
+     * @param lower
+     * @return UUID
+     */
+    static UUID from_upper_lower(uint64_t upper, uint64_t lower);
 
+    /**
+     * @brief Assignment operator
+     *
+     * @param other
+     * @return UUID&
+     */
     UUID &operator=(const UUID &other);
 
     friend bool operator==(const UUID &lhs, const UUID &rhs);
@@ -91,8 +138,90 @@ public:
         return *(reinterpret_cast<const uint64_t *>(data_)) ^ *(reinterpret_cast<const uint64_t *>(data_) + 8);
     }
 
+    inline uint8_t *data()
+    {
+        return data_;
+    }
+
+    inline const uint8_t *data() const
+    {
+        return data_;
+    }
+
 private:
     alignas(128) uint8_t data_[16];
 };
 
+template <typename RNG>
+class UUIDGenerator
+{
+public:
+    /**
+     * @brief Initialize generator with a random seed
+     * 
+     */
+    UUIDGenerator()
+        : generator_(new RNG(std::random_device()())),
+          distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
+    {
+    }
+
+    /**
+     * @brief Initialize generator with a set seed
+     * 
+     * @param seed 
+     */
+    UUIDGenerator(uint64_t seed)
+        : generator_(new RNG(seed)),
+          distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
+    {
+    }
+
+    /**
+     * @brief Initialize generator with an existing RNG instance
+     * 
+     * @param gen 
+     */
+    UUIDGenerator(RNG &gen)
+        : generator_(gen), distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
+    {
+    }
+
+    /**
+     * @brief Generates a new UUID
+     * 
+     * @return UUID 
+     */
+    inline UUID get()
+    {
+        return UUID::from_upper_lower(distribution_(*generator_), distribution_(*generator_));
+    }
+
+    /**
+     * @brief Generates a new UUID
+     * 
+     * @return UUID 
+     */
+    inline UUID operator()()
+    {
+        return get();
+    }
+
+private:
+    std::shared_ptr<RNG> generator_;
+    std::uniform_int_distribution<uint64_t> distribution_;
+};
+
 } // namespace kb
+
+namespace std
+{
+template <>
+struct hash<kb::UUID>
+{
+    size_t operator()(const kb::UUID &uuid) const
+    {
+        return uuid.hash();
+    }
+};
+} // namespace std

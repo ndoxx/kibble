@@ -130,6 +130,11 @@ UUID::UUID(const std::string &bytes)
     _mm_store_si128(reinterpret_cast<__m128i *>(data_), x);
 }
 
+UUID::UUID(const char *raw)
+{
+    _mm_store_si128(reinterpret_cast<__m128i *>(data_), stom128i(raw));
+}
+
 /* Static factory to parse an UUID from its string representation */
 UUID UUID::from_str_factory(const std::string &s)
 {
@@ -141,9 +146,20 @@ UUID UUID::from_str_factory(const char *raw)
     return UUID_factory(stom128i(raw));
 }
 
-void UUID::from_str(const char *raw)
+// These masks are used to set the UUID version to 4 and variant to 1
+constexpr auto k_u_and_mask = 0xFFFFFFFFFFFFFF3Full;
+constexpr auto k_l_and_mask = 0xFF0FFFFFFFFFFFFFull;
+constexpr auto k_u_or_mask = 0x0000000000000080ull;
+constexpr auto k_l_or_mask = 0x0040000000000000ull;
+
+UUID UUID::from_upper_lower(uint64_t upper, uint64_t lower)
 {
-    _mm_store_si128(reinterpret_cast<__m128i *>(data_), stom128i(raw));
+    const __m128i and_mask = _mm_set_epi64x(static_cast<long long>(k_u_and_mask), static_cast<long long>(k_l_and_mask));
+    const __m128i or_mask = _mm_set_epi64x(static_cast<long long>(k_u_or_mask), static_cast<long long>(k_l_or_mask));
+    __m128i n = _mm_set_epi64x(static_cast<long long>(upper), static_cast<long long>(lower));
+    __m128i uuid = _mm_or_si128(_mm_and_si128(n, and_mask), or_mask);
+
+    return UUID_factory(uuid);
 }
 
 UUID &UUID::operator=(const UUID &other)
