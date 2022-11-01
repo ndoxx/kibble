@@ -1,8 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <ostream>
+#include <cmath>
 
 namespace kb
 {
@@ -15,6 +17,8 @@ namespace math
  * so the whole sequence of numbers need not be memorized. This guarantees constant time computation of all statistics.
  * Inspired by https://github.com/vectorgraphics/asymptote/blob/master/statistics.h
  */
+template <typename FloatT = float>
+requires std::floating_point<FloatT>
 class Statistics
 {
 public:
@@ -23,13 +27,25 @@ public:
      *
      * @param val New value to take into account
      */
-    void push(float val);
+    void push(FloatT val)
+    {
+        FloatT diff = val - mean_;
+        mean_ += diff / ++count_;
+        FloatT var = diff * (val - mean_);
+        var_[size_t(diff >= FloatT(0))] += var;
+    }
 
     /**
      * @brief Reset the statistics.
      *
      */
-    void reset();
+    void reset()
+    {
+        count_ = {0};
+        mean_ = {0};
+        var_[0] = {0};
+        var_[1] = {0};
+    }
 
     /**
      * @brief Push all values within an iterator range.
@@ -41,7 +57,7 @@ public:
     template <class InputIt>
     inline void run(InputIt first, InputIt last)
     {
-        std::for_each(first, last, [this](float val) { push(val); });
+        std::for_each(first, last, [this](FloatT val) { push(val); });
     }
 
     /**
@@ -57,9 +73,9 @@ public:
     /**
      * @brief Get the mean
      *
-     * @return float
+     * @return FloatT
      */
-    inline float mean() const
+    inline FloatT mean() const
     {
         return mean_;
     }
@@ -67,31 +83,31 @@ public:
     /**
      * @brief Get the standard deviation
      *
-     * @return float
+     * @return FloatT
      */
-    inline float stdev() const
+    inline FloatT stdev() const
     {
-        return stdev(var_[0] + var_[1], 1.f);
+        return stdev(var_[0] + var_[1], {1});
     }
 
     /**
      * @brief Get the lower deviation (typical deviation under the mean)
      *
-     * @return float
+     * @return FloatT
      */
-    inline float stdev_l() const
+    inline FloatT stdev_l() const
     {
-        return stdev(var_[0], 2.f);
+        return stdev(var_[0], {2});
     }
 
     /**
      * @brief Get the upper deviation (typical deviation over the mean)
      *
-     * @return float
+     * @return FloatT
      */
-    inline float stdev_u() const
+    inline FloatT stdev_u() const
     {
-        return stdev(var_[1], 2.f);
+        return stdev(var_[1], {2});
     }
 
     /**
@@ -101,15 +117,24 @@ public:
      * @param stats
      * @return std::ostream&
      */
-    friend std::ostream &operator<<(std::ostream &stream, const Statistics &stats);
+    friend std::ostream &operator<<(std::ostream &stream, const Statistics &stats)
+    {
+        stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u()
+               << ')';
+        return stream;
+    }
 
 private:
-    float stdev(float var, float f) const;
+    FloatT stdev(FloatT var, FloatT f) const
+    {
+        FloatT factor = count_ > f ? f / (count_ - f) : FloatT(0);
+        return std::sqrt(var * factor);
+    }
 
 private:
-    float count_ = 0;
-    float mean_ = 0;
-    float var_[2] = {0, 0};
+    FloatT count_ = {0};
+    FloatT mean_ = {0};
+    FloatT var_[2] = {{0}, {0}};
 };
 
 } // namespace math
