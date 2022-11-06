@@ -4,6 +4,7 @@ build/
 data/
 doxygen/
 source/research/
+source/tests/nuclear.cpp
 kibble.sublime-workspace
 workspace.code-workspace
 NOTES.md

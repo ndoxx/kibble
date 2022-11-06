@@ -182,6 +182,15 @@ public:
     const fs::path& get_app_data_directory();
 
     /**
+     * @brief Get the app data directory of another project.
+     * 
+     * @param vendor 
+     * @param appname 
+     * @return fs::path 
+     */
+    fs::path get_app_data_directory(std::string vendor, std::string appname);
+
+    /**
      * @brief Compare the creation / modification dates of two files.
      * Return true if the file/directory pointed to by the first argument is older than the second one. Both paths MUST
      * exist.

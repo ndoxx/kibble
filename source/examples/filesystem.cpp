@@ -19,7 +19,7 @@ void init_logger()
     KLOGGER(set_backtrace_on_error(false));
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
@@ -29,12 +29,17 @@ int main(int argc, char** argv)
     kfs::FileSystem filesystem;
     filesystem.setup_settings_directory("ndoxx", "nuclear");
     filesystem.setup_app_data_directory("ndoxx", "nuclear");
-    const auto& cfg_dir = filesystem.get_settings_directory();
-    const auto& appdata_dir = filesystem.get_app_data_directory();
+    const auto &cfg_dir = filesystem.get_settings_directory();
+    const auto &appdata_dir = filesystem.get_app_data_directory();
     KLOG("nuclear", 1) << "Config directory:   " << KS_PATH_ << cfg_dir << std::endl;
     KLOG("nuclear", 1) << "App data directory: " << KS_PATH_ << appdata_dir << std::endl;
 
-    const auto& self_dir = filesystem.get_self_directory();
+    // Grabbing another app data directory
+    // Change "vendor" and "appname" for something that exists or this will produce an error
+    // KLOG("nuclear", 1) << "Third party app data directory: " << KS_PATH_ <<
+    // filesystem.get_app_data_directory("vendor", "appname") << std::endl;
+
+    const auto &self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
 
     kfs::PackFile::pack_directory(filesystem.regular_path("data://iotest/resources"),

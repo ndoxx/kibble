@@ -1,9 +1,11 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <random>
-#include <iostream>
+
+#include "math/numeric.h"
 
 namespace kb
 {
@@ -23,20 +25,20 @@ template <typename ControlT>
 struct DescentParameters
 {
     /// Initial values used as a starting point in the optimization process
-    ControlT initial_control;          
+    ControlT initial_control;
     /// Initial value @f$a@f$ of the learning rate (gain sequence @f$a_n@f$)
-    float initial_step = 1.f;          
+    float initial_step = 1.f;
     /// Initial value @f$c@f$ of the perturbation radius (gain sequence @f$c_n@f$)
-    float initial_radius = 0.5f;       
+    float initial_radius = 0.5f;
     /// Bias term @f$A@f$ in the denominator of the power law for @f$a_n@f$
-    float learning_bias = 0.f;         
+    float learning_bias = 0.f;
     /// Loss function difference convergence criterion @f$\delta@f$
-    float convergence_delta = 0.0005f; 
+    float convergence_delta = 0.0005f;
     /// Power law exponent for the @f$a_n@f$ schedule
-    float alpha = 0.602f;              
+    float alpha = 0.602f;
     /// Power law exponent for the @f$c_n@f$ schedule
-    float gamma = 0.101f;    
-    /// Maximum number of iterations          
+    float gamma = 0.101f;
+    /// Maximum number of iterations
     size_t max_iter = 200;
 };
 
@@ -217,7 +219,7 @@ public:
             // IIR filter applied to the current loss to limit sensitivity to loss jittering
             float current_loss = 0.5f * (forward_loss + backward_loss);
             old_loss = filtered_loss;
-            exponential_moving_average(filtered_loss, current_loss, 0.1f);
+            math::exponential_moving_average(filtered_loss, current_loss, 0.1f);
 
             iter_callback_(iter++, uu, filtered_loss);
         }
@@ -268,7 +270,7 @@ public:
 
             // IIR filter applied to the current loss to limit sensitivity to loss jittering
             old_loss = filtered_loss;
-            exponential_moving_average(filtered_loss, current_loss, 0.1f);
+            math::exponential_moving_average(filtered_loss, current_loss, 0.1f);
 
             iter_callback_(iter++, uu, filtered_loss);
         }
@@ -280,12 +282,6 @@ private:
     inline float bernoulli_remap(bool value)
     {
         return value ? 1.f : -1.f;
-    }
-
-    // IIR filter to avoid bad convergence due to loss jittering
-    inline void exponential_moving_average(float &accumulator, float new_value, float alpha)
-    {
-        accumulator = (alpha * new_value) + (1.f - alpha) * accumulator;
     }
 
 private:

@@ -1,5 +1,5 @@
-#include "assert/assert.h"
 #include "filesystem/filesystem.h"
+#include "assert/assert.h"
 #include "filesystem/resource_pack.h"
 #include "logger/logger.h"
 #include "string/string.h"
@@ -152,6 +152,47 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     return true;
 }
 
+fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appname)
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#ifdef __linux__
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char *homebuf;
+    if ((homebuf = getenv("HOME")) == NULL)
+        homebuf = getpwuid(getuid())->pw_dir;
+
+    fs::path home_directory = fs::canonical(homebuf);
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+
+    // Check if ~/.local/share/<vendor>/<appname> exists, if not, fallback to
+    // ~/.<vendor>/<appname>/appdata
+    auto candidate1 = home_directory / ".local/share" / vendor / appname;
+    auto candidate2 = home_directory / su::concat('.', vendor) / appname / "appdata";
+
+    if (fs::exists(candidate1))
+        return candidate1;
+    else if (fs::exists(candidate2))
+        return candidate2;
+    else
+    {
+        KLOGE("ios") << "Application data directory does not exist for:\n";
+        KLOGE("ios") << "Vendor: " << vendor << '\n';
+        KLOGE("ios") << "App name: " << appname << '\n';
+        KLOGE("ios") << "Searched the following paths:\n";
+        KLOGE("ios") << KS_PATH_ << candidate1 << '\n';
+        KLOGE("ios") << KS_PATH_ << candidate2 << KC_ << '\n';
+        KLOGE("ios") << "Returning empty path." << std::endl;
+        return "";
+    }
+
+#else
+#error get_app_data_directory(2) not yet implemented for this platform.
+#endif
+}
 
 const fs::path &FileSystem::get_settings_directory()
 {
