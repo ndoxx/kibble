@@ -152,7 +152,7 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     return true;
 }
 
-fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appname)
+fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appname) const
 {
     // Strip spaces in provided arguments
     su::strip_spaces(vendor);
@@ -194,7 +194,7 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
 #endif
 }
 
-const fs::path &FileSystem::get_settings_directory()
+const fs::path &FileSystem::get_settings_directory() const
 {
     if (app_settings_directory_.empty())
     {
@@ -205,7 +205,7 @@ const fs::path &FileSystem::get_settings_directory()
     return app_settings_directory_;
 }
 
-const fs::path &FileSystem::get_app_data_directory()
+const fs::path &FileSystem::get_app_data_directory() const
 {
     if (app_data_directory_.empty())
     {
@@ -216,7 +216,7 @@ const fs::path &FileSystem::get_app_data_directory()
     return app_data_directory_;
 }
 
-bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2)
+bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2) const
 {
     auto path_1 = regular_path(unipath_1);
     auto path_2 = regular_path(unipath_2);

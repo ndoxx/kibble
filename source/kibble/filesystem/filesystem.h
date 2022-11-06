@@ -171,7 +171,7 @@ public:
      *
      * @return const fs::path&
      */
-    const fs::path &get_settings_directory();
+    const fs::path &get_settings_directory() const;
 
     /**
      * @brief Get the application data directory.
@@ -179,7 +179,7 @@ public:
      * 
      * @return const fs::path& 
      */
-    const fs::path& get_app_data_directory();
+    const fs::path& get_app_data_directory() const;
 
     /**
      * @brief Get the app data directory of another project.
@@ -188,7 +188,7 @@ public:
      * @param appname 
      * @return fs::path 
      */
-    fs::path get_app_data_directory(std::string vendor, std::string appname);
+    fs::path get_app_data_directory(std::string vendor, std::string appname) const;
 
     /**
      * @brief Compare the creation / modification dates of two files.
@@ -200,7 +200,7 @@ public:
      * @return true if the first file is older
      * @return false otherwise
      */
-    bool is_older(const std::string &unipath_1, const std::string &unipath_2);
+    bool is_older(const std::string &unipath_1, const std::string &unipath_2) const;
 
     /**
      * @brief Check if a file exists at a given universal path
@@ -209,7 +209,7 @@ public:
      * @return true if the file exists
      * @return false otherwise
      */
-    inline bool exists(const std::string &unipath)
+    inline bool exists(const std::string &unipath) const
     {
         return fs::exists(regular_path(unipath));
     }
@@ -223,7 +223,7 @@ public:
      * @return true if the extension matches
      * @return false otherwise
      */
-    inline bool check_extension(const std::string &unipath, const std::string &ext)
+    inline bool check_extension(const std::string &unipath, const std::string &ext) const
     {
         return !regular_path(unipath).extension().compare(ext);
     }
@@ -234,7 +234,7 @@ public:
      * @param unipath Universal path to the file
      * @return std::string The extension string, dot included
      */
-    inline std::string extension(const std::string &unipath)
+    inline std::string extension(const std::string &unipath) const
     {
         return regular_path(unipath).extension();
     }
