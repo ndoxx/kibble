@@ -137,7 +137,7 @@ public:
 
     inline std::size_t hash() const
     {
-        return *(reinterpret_cast<const uint64_t *>(data_)) ^ *(reinterpret_cast<const uint64_t *>(data_) + 8);
+        return *(reinterpret_cast<const uint64_t *>(data_)) ^ *(reinterpret_cast<const uint64_t *>(data_ + 8));
     }
 
     inline uint8_t *data()
