@@ -221,8 +221,8 @@ bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipa
     auto path_1 = regular_path(unipath_1);
     auto path_2 = regular_path(unipath_2);
 
-    K_ASSERT(fs::exists(path_1), "First path does not exist.");
-    K_ASSERT(fs::exists(path_2), "Second path does not exist.");
+    K_ASSERT_FMT(fs::exists(path_1), "First path does not exist: %s", unipath_1.c_str());
+    K_ASSERT_FMT(fs::exists(path_2), "Second path does not exist: %s", unipath_2.c_str());
 
     std::time_t cftime_1 = to_time_t(fs::last_write_time(path_1));
     std::time_t cftime_2 = to_time_t(fs::last_write_time(path_2));
@@ -364,8 +364,8 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
     KLOGI << "source:    " << KS_INST_ << "regular file" << std::endl;
     KLOGI << "path:      " << KS_PATH_ << filepath << std::endl;
 
-    K_ASSERT(fs::exists(filepath), "File does not exist.");
-    K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
+    K_ASSERT_FMT(fs::exists(filepath), "File does not exist: %s", unipath.c_str());
+    K_ASSERT_FMT(fs::is_regular_file(filepath), "Not a file: %s", unipath.c_str());
 
     auto mode = std::ios::in;
     if (binary)
