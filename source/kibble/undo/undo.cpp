@@ -242,8 +242,7 @@ bool UndoGroup::add_stack(hash_t stack_name)
 
 bool UndoGroup::remove_stack(hash_t stack_name)
 {
-    auto findit = stacks_.find(stack_name);
-    if (findit != stacks_.end())
+    if (auto findit = stacks_.find(stack_name); findit != stacks_.end())
     {
         stacks_.erase(findit);
         if (active_stack_ == stack_name)
@@ -260,10 +259,25 @@ bool UndoGroup::set_active(hash_t stack_name)
     if (active_stack_ == stack_name)
         return true;
 
-    auto findit = stacks_.find(stack_name);
-    if (findit != stacks_.end())
+    if (auto findit = stacks_.find(stack_name); findit != stacks_.end())
     {
         change_active_stack(stack_name);
+        return true;
+    }
+    return false;
+}
+
+bool UndoGroup::relabel_stack(hash_t old_name, hash_t new_name)
+{
+    if (auto findit = stacks_.find(old_name); findit != stacks_.end())
+    {
+        auto nh = stacks_.extract(old_name);
+        nh.key() = new_name;
+        stacks_.insert(std::move(nh));
+
+        if (active_stack_ == old_name)
+            active_stack_ = new_name;
+
         return true;
     }
     return false;
