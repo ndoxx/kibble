@@ -8,7 +8,7 @@ DefaultSeverityLevelPolicy::DefaultSeverityLevelPolicy(Severity level) : level_{
 {
 }
 
-bool DefaultSeverityLevelPolicy::filter(const struct LogEntry &entry)
+bool DefaultSeverityLevelPolicy::filter(const struct LogEntry &entry) const
 {
     return entry.severity <= level_;
 }

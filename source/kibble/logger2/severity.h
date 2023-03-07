@@ -35,7 +35,7 @@ class DefaultSeverityLevelPolicy : public Policy
 {
 public:
     DefaultSeverityLevelPolicy(Severity level);
-    bool filter(const struct LogEntry &entry) override;
+    bool filter(const struct LogEntry &entry) const override;
 
 private:
     Severity level_;
