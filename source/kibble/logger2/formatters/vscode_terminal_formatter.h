@@ -5,7 +5,7 @@
 namespace kb::log
 {
 
-class ConsoleFormatter : public Formatter
+class VSCodeTerminalFormatter : public Formatter
 {
 public:
     std::string format_string(const LogEntry &, const ChannelPresentation &) override;

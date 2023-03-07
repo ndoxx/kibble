@@ -4,3 +4,6 @@
 [submodule "source/vendor/tomlplusplus"]
 	path = source/vendor/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+[submodule "source/vendor/backward-cpp"]
+	path = source/vendor/backward-cpp
+	url = https://github.com/bombela/backward-cpp.git

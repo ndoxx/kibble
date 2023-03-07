@@ -14,6 +14,7 @@ target_include_directories(kibble
 
 target_include_directories(kibble
     SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
     )
