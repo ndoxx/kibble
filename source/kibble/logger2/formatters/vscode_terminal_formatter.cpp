@@ -43,16 +43,22 @@ void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation
     );
     // clang-format on
 
-    // print context info if present
-    if (e.source_file)
+    // print context info if needed
+    if (uint8_t(e.severity) <= 2)
     {
         // clang-format off
         fmt::print("@ {}\n{}:{}\n", 
-            e.source_function, 
-            fmt::styled(e.source_file, fmt::emphasis::underline),
-            e.source_line
+            e.source_location.function, 
+            fmt::styled(e.source_location.file, fmt::emphasis::underline),
+            e.source_location.line
         );
         // clang-format on
+    }
+
+    // print stack trace
+    if(e.stack_trace.has_value())
+    {
+        fmt::print("{}", e.stack_trace->format());
     }
 }
 

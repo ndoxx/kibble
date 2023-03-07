@@ -8,14 +8,19 @@
 namespace kb::log
 {
 
+struct SourceLocation
+{
+    const char *file = nullptr;
+    const char *function = nullptr;
+    int line = -1;
+};
+
 struct LogEntry
 {
     Severity severity = Severity::Info;
-    const char *source_file = nullptr;
-    const char *source_function = nullptr;
-    int source_line = -1;
+    SourceLocation source_location;
     TimeBase::TimeStamp timestamp;
-    std::string message;
+    std::string message; // TODO: use string_view, string should be managed
     std::optional<StackTrace> stack_trace = {};
 };
 

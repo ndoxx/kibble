@@ -1,8 +1,9 @@
 #pragma once
+#include "policy.h"
+#include "severity.h"
+#include "sink.h"
 #include <memory>
 #include <vector>
-#include "sink.h"
-#include "policy.h"
 
 namespace kb::log
 {
@@ -16,17 +17,24 @@ struct ChannelPresentation
 class Channel
 {
 public:
-    Channel(const ChannelPresentation& presentation);
+    Channel(Severity level, const ChannelPresentation &presentation);
 
     void attach_sink(std::shared_ptr<Sink> psink);
     void attach_policy(std::shared_ptr<Policy> ppolicy);
 
-    void submit(const struct LogEntry& entry);
+    inline void set_severity_level(Severity level)
+    {
+        level_ = level;
+    }
+
+    void submit(struct LogEntry &entry);
 
 private:
     ChannelPresentation presentation_;
     std::vector<std::shared_ptr<Sink>> sinks_;
     std::vector<std::shared_ptr<Policy>> policies_;
+
+    Severity level_;
 };
 
-}
+} // namespace kb::log

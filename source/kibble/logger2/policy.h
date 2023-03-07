@@ -7,7 +7,7 @@ class Policy
 {
 public:
     virtual ~Policy() = default;
-    virtual bool filter(const struct LogEntry &entry) const = 0;
+    virtual bool transform_filter(struct LogEntry &entry) const = 0;
 };
 
 } // namespace kb::log

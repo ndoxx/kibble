@@ -14,7 +14,7 @@ namespace kb
 class StackTrace
 {
 public:
-    StackTrace();
+    StackTrace(size_t skip);
     StackTrace(const StackTrace &);
     StackTrace &operator=(const StackTrace &);
 
@@ -23,6 +23,7 @@ public:
 private:
     friend struct internal_deleter::Deleter<backward::StackTrace>;
     internal_ptr<backward::StackTrace> ptrace_ = nullptr;
+    size_t skip_ = 0;
 };
 
 } // namespace kb

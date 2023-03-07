@@ -4,7 +4,7 @@
 namespace kb::log
 {
 
-Channel::Channel(const ChannelPresentation &presentation) : presentation_{presentation}
+Channel::Channel(Severity level, const ChannelPresentation &presentation) : presentation_{presentation}, level_(level)
 {
 }
 
@@ -19,11 +19,15 @@ void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
     policies_.push_back(ppolicy);
 }
 
-void Channel::submit(const struct LogEntry &entry)
+void Channel::submit(struct LogEntry &entry) 
 {
+    // Check if the severity level is high enough
+    if (entry.severity > level_)
+        return;
+
     // Check compliance with policies
     for (const auto &ppol : policies_)
-        if (!ppol->filter(entry))
+        if (!ppol->transform_filter(entry))
             return;
 
     // Send to all attached sinks

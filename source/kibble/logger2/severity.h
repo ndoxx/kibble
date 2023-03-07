@@ -31,14 +31,4 @@ constexpr std::string_view to_str(Severity severity)
     // clang-format on
 }
 
-class DefaultSeverityLevelPolicy : public Policy
-{
-public:
-    DefaultSeverityLevelPolicy(Severity level);
-    bool filter(const struct LogEntry &entry) const override;
-
-private:
-    Severity level_;
-};
-
 } // namespace kb::log
