@@ -26,11 +26,6 @@ constexpr std::array<fmt::color, 6> k_text_color = {
     fmt::color::white       // verbose
 };
 
-std::string VSCodeTerminalFormatter::format_string(const LogEntry &, const ChannelPresentation &)
-{
-    return "";
-}
-
 void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation &chan)
 {
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
@@ -48,8 +43,8 @@ void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation
     {
         // clang-format off
         fmt::print("@ {}\n{}:{}\n", 
-            e.source_location.function, 
-            fmt::styled(e.source_location.file, fmt::emphasis::underline),
+            e.source_location.function_name, 
+            fmt::styled(e.source_location.file_name, fmt::emphasis::underline),
             e.source_location.line
         );
         // clang-format on

@@ -10,8 +10,8 @@ namespace kb::log
 struct EntryBuilder : private LogEntry
 {
 public:
-    EntryBuilder(const char *source_file, const char *source_function, int source_line)
-        : LogEntry{.source_location = {source_file, source_function, source_line},
+    EntryBuilder(int source_line, const char *source_file, const char *source_function)
+        : LogEntry{.source_location = {source_line, source_file, source_function},
                    .timestamp = kb::TimeBase::timestamp()}
     {
     }
@@ -22,55 +22,41 @@ public:
         return *this;
     }
 
-    EntryBuilder &verbose(const std::string &m)
+    inline EntryBuilder &verbose(std::string_view m)
     {
-        severity = Severity::Verbose;
-        message = std::move(m);
-        if (channel_)
-            channel_->submit(*this);
-        return *this;
+        return log(Severity::Verbose, m);
     }
 
-    EntryBuilder &debug(const std::string &m)
+    inline EntryBuilder &debug(std::string_view m)
     {
-        severity = Severity::Debug;
-        message = std::move(m);
-        if (channel_)
-            channel_->submit(*this);
-        return *this;
+        return log(Severity::Debug, m);
     }
 
-    EntryBuilder &info(const std::string &m)
+    inline EntryBuilder &info(std::string_view m)
     {
-        severity = Severity::Info;
-        message = std::move(m);
-        if (channel_)
-            channel_->submit(*this);
-        return *this;
+        return log(Severity::Info, m);
     }
 
-    EntryBuilder &warn(const std::string &m)
+    inline EntryBuilder &warn(std::string_view m)
     {
-        severity = Severity::Warn;
-        message = std::move(m);
-        if (channel_)
-            channel_->submit(*this);
-        return *this;
+        return log(Severity::Warn, m);
     }
 
-    EntryBuilder &error(const std::string &m)
+    inline EntryBuilder &error(std::string_view m)
     {
-        severity = Severity::Error;
-        message = std::move(m);
-        if (channel_)
-            channel_->submit(*this);
-        return *this;
+        return log(Severity::Error, m);
     }
 
-    EntryBuilder &fatal(const std::string &m)
+    inline EntryBuilder &fatal(std::string_view m)
     {
-        severity = Severity::Fatal;
-        message = std::move(m);
+        return log(Severity::Fatal, m);
+    }
+
+private:
+    EntryBuilder &log(Severity s, std::string_view m)
+    {
+        severity = s;
+        message = m;
         if (channel_)
             channel_->submit(*this);
         return *this;
@@ -80,6 +66,6 @@ private:
     Channel *channel_ = nullptr;
 };
 
-}
+} // namespace kb::log
 
-#define klog kb::log::EntryBuilder(__FILE__, __PRETTY_FUNCTION__, __LINE__)
+#define klog kb::log::EntryBuilder(__LINE__, __FILE__, __PRETTY_FUNCTION__)

@@ -1,10 +1,24 @@
 #include "channel.h"
 #include "entry.h"
+#include <fmt/color.h>
+#include <fmt/core.h>
 
 namespace kb::log
 {
 
-Channel::Channel(Severity level, const ChannelPresentation &presentation) : presentation_{presentation}, level_(level)
+inline auto to_rgb(math::argb32_t color)
+{
+    return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
+}
+
+inline std::string create_channel_tag(const std::string &short_name, math::argb32_t color)
+{
+    return fmt::format(
+        "{}", fmt::styled(short_name, fmt::bg(to_rgb(color)) | fmt::fg(fmt::color::white) | fmt::emphasis::bold));
+}
+
+Channel::Channel(Severity level, const std::string &full_name, const std::string &short_name, math::argb32_t tag_color)
+    : presentation_{full_name, create_channel_tag(short_name, tag_color)}, level_(level)
 {
 }
 
@@ -19,7 +33,7 @@ void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
     policies_.push_back(ppolicy);
 }
 
-void Channel::submit(struct LogEntry &entry) 
+void Channel::submit(struct LogEntry &entry)
 {
     // Check if the severity level is high enough
     if (entry.severity > level_)
