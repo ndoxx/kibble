@@ -1,5 +1,6 @@
 #include "channel.h"
 #include "entry.h"
+#include "thread/job/job_system.h"
 #include <fmt/color.h>
 #include <fmt/core.h>
 
@@ -45,8 +46,22 @@ void Channel::submit(struct LogEntry &entry)
             return;
 
     // Send to all attached sinks
-    for (auto &psink : sinks_)
-        psink->submit(entry, presentation_);
+    if (js_ == nullptr)
+    {
+        for (auto &psink : sinks_)
+            psink->submit_lock(entry, presentation_);
+    }
+    else
+    {
+        // Schedule logging task. Log entry is copied.
+        js_->create_task(
+               [this, entry]() {
+                   for (auto &psink : sinks_)
+                       psink->submit(entry, presentation_);
+               },
+               th::JobMetadata(th::force_worker(worker_), "Log"))
+            .schedule();
+    }
 }
 
 } // namespace kb::log

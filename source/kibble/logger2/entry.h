@@ -3,7 +3,7 @@
 #include "severity.h"
 #include "util/stack_trace.h"
 #include <optional>
-#include <string_view>
+#include <string>
 
 namespace kb::log
 {
@@ -20,7 +20,7 @@ struct LogEntry
     Severity severity = Severity::Info;
     SourceLocation source_location;
     TimeBase::TimeStamp timestamp;
-    std::string_view message;
+    std::string message;
     std::optional<StackTrace> stack_trace = {};
 };
 

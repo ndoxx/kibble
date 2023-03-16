@@ -68,4 +68,4 @@ private:
 
 } // namespace kb::log
 
-#define klog kb::log::EntryBuilder(__LINE__, __FILE__, __PRETTY_FUNCTION__)
+#define klog2 kb::log::EntryBuilder(__LINE__, __FILE__, __PRETTY_FUNCTION__)
