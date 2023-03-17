@@ -14,6 +14,7 @@ target_include_directories(kibble
 
 target_include_directories(kibble
     SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
     )
@@ -80,6 +81,7 @@ target_link_libraries(kibble
         pthread
         atomic
         stdc++fs
+        fmt
 )
 
 # Install rules
@@ -114,6 +116,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
+
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/logger2)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/math)
