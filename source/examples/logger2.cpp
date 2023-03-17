@@ -25,7 +25,6 @@ void init_logger()
 {
     KLOGGER_START();
 
-    KLOGGER(create_channel("memory", 3));
     KLOGGER(create_channel("thread", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<kb::klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
@@ -72,22 +71,6 @@ int main()
     // TMP
     init_logger();
 
-    // * Job system configuration, so we can use the logger in async mode
-    // First, we create a scheme to configure the job system
-    kb::th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.max_stealing_attempts = 16;
-
-    // The job system needs some pre-allocated memory for the job pool.
-    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements());
-
-    auto *js = new kb::th::JobSystem(area, scheme);
-
-    // Job system profiling
-    auto *session = new kb::InstrumentationSession();
-    js->set_instrumentation_session(session);
-
     // * Create shared objects for the logger
     // This console formatter is optimized for the VSCode integrated terminal:
     // you can ctrl+click on file paths to jump to the relevant code section in the editor
@@ -98,6 +81,30 @@ int main()
     console_sink->set_formatter(console_formatter);
     // This sink will dump the data it receives to a text file
     auto file_sink = std::make_shared<FileSink>("test.log");
+
+
+    Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::aliceblue);
+    // This channel will log to the console only
+    chan_memory.attach_sink(console_sink);
+
+
+
+    // * Job system configuration, so we can use the logger in async mode
+    // First, we create a scheme to configure the job system
+    kb::th::JobSystemScheme scheme;
+    scheme.max_workers = 0;
+    scheme.max_stealing_attempts = 16;
+
+    // The job system needs some pre-allocated memory for the job pool.
+    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
+    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements(), &chan_memory);
+
+    auto *js = new kb::th::JobSystem(area, scheme);
+
+    // Job system profiling
+    auto *session = new kb::InstrumentationSession();
+    js->set_instrumentation_session(session);
+
 
     // Set logger in async mode by providing a JobSystem instance
     // By default, thread #1 is used for logging, this is an optional argument of set_async()
@@ -154,7 +161,6 @@ int main()
 
     // Formatted text is handled by FMTlib
     klog2(chan_graphics).verbose("Hello {} {} {}", "world", 2, -5.6f);
-
 
     // * Wait for tasks to finish, and end program
     js->wait();

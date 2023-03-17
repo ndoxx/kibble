@@ -28,6 +28,9 @@ constexpr std::array<fmt::color, 6> k_text_color = {
 
 void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation &chan)
 {
+    if (e.raw_text)
+        return fmt::print("{}\n", e.message);
+
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
     // clang-format off
     fmt::print("T{}:{:6.f} {} {} {}\n",

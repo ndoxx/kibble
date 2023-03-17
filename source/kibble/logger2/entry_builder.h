@@ -8,47 +8,50 @@
 namespace kb::log
 {
 
-template <typename... ArgsT>
-using format_string_t = fmt::v9::format_string<ArgsT...>;
-
 struct EntryBuilder : private LogEntry
 {
 public:
     EntryBuilder(const Channel &channel, int source_line, const char *source_file, const char *source_function);
     EntryBuilder(const Channel *channel, int source_line, const char *source_file, const char *source_function);
 
+    inline EntryBuilder& raw()
+    {
+        raw_text = true;
+        return *this;
+    }
+
     template <typename... ArgsT>
-    inline void verbose(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Verbose, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     template <typename... ArgsT>
-    inline void debug(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void debug(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Debug, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     template <typename... ArgsT>
-    inline void info(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void info(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Info, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     template <typename... ArgsT>
-    inline void warn(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void warn(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Warn, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     template <typename... ArgsT>
-    inline void error(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void error(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Error, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     template <typename... ArgsT>
-    inline void fatal(format_string_t<ArgsT...> fstr, ArgsT &&...args)
+    inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Fatal, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }

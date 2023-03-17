@@ -22,6 +22,7 @@ struct LogEntry
     TimeBase::TimeStamp timestamp;
     std::string message;
     uint32_t thread_id = 0;
+    bool raw_text = false;
     std::optional<StackTrace> stack_trace = {};
 };
 
