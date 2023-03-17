@@ -25,9 +25,7 @@ void init_logger()
 {
     KLOGGER_START();
 
-    KLOGGER(create_channel("example", 3));
     KLOGGER(create_channel("memory", 3));
-    KLOGGER(create_channel("kibble", 3));
     KLOGGER(create_channel("thread", 3));
     KLOGGER(attach_all("console_sink", std::make_unique<kb::klog::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
@@ -102,6 +100,7 @@ int main()
     auto file_sink = std::make_shared<FileSink>("test.log");
 
     // Set logger in async mode by providing a JobSystem instance
+    // By default, thread #1 is used for logging, this is an optional argument of set_async()
     Channel::set_async(js);
 
     // * Create and configure channels
@@ -125,7 +124,7 @@ int main()
 
     // * Let's log stuff
     // We create a task on thread 2 that will spam messages every millisecond or so
-    // In asynchronous mode, the logger is able to tell which thread is logging
+    // In asynchronous mode, the logger is able to tell which thread issued the log entry
     // These messages will mention "T2" at the beginning
     js->create_task(
           [&chan_sound]() {

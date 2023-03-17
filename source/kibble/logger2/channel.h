@@ -39,14 +39,14 @@ public:
         s_worker_ = worker;
     }
 
-    void submit(struct LogEntry &entry);
+    void submit(struct LogEntry &&entry);
 
 private:
     ChannelPresentation presentation_;
     std::vector<std::shared_ptr<Sink>> sinks_;
     std::vector<std::shared_ptr<Policy>> policies_;
     Severity level_;
-    
+
     static th::JobSystem *s_js_;
     static uint32_t s_worker_;
 };

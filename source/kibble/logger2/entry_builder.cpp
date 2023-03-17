@@ -13,7 +13,7 @@ void EntryBuilder::log(Severity s, std::string_view m)
 {
     severity = s;
     message = m;
-    channel_.submit(*this);
+    channel_.submit(std::move(*this));
 }
 
 } // namespace kb::log

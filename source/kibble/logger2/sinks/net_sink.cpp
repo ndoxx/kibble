@@ -14,7 +14,7 @@ NetSink::~NetSink()
     }
 }
 
-void NetSink::submit(const struct LogEntry &e, const struct ChannelPresentation &p)
+void NetSink::submit(const LogEntry &e, const struct ChannelPresentation &p)
 {
     stream_->send(formatter_->format_string(e, p));
 }

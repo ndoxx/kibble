@@ -37,7 +37,7 @@ void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
     policies_.push_back(ppolicy);
 }
 
-void Channel::submit(struct LogEntry &entry)
+void Channel::submit(LogEntry &&entry)
 {
     // Check if the severity level is high enough
     if (entry.severity > level_)
@@ -58,10 +58,10 @@ void Channel::submit(struct LogEntry &entry)
     {
         // Set thread id
         entry.thread_id = s_js_->this_thread_id();
-        // Schedule logging task. Log entry is copied.
+        // Schedule logging task. Log entry is moved.
         s_js_
             ->create_task(
-                [this, entry]() {
+                [this, entry = std::move(entry)]() {
                     for (auto &psink : sinks_)
                         psink->submit(entry, presentation_);
                 },
