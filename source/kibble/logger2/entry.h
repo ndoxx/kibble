@@ -21,6 +21,7 @@ struct LogEntry
     SourceLocation source_location;
     TimeBase::TimeStamp timestamp;
     std::string message;
+    uint32_t thread_id = 0;
     std::optional<StackTrace> stack_trace = {};
 };
 

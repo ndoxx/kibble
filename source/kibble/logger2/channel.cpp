@@ -7,6 +7,9 @@
 namespace kb::log
 {
 
+th::JobSystem *Channel::s_js_ = nullptr;
+uint32_t Channel::s_worker_ = 1;
+
 inline auto to_rgb(math::argb32_t color)
 {
     return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
@@ -46,20 +49,23 @@ void Channel::submit(struct LogEntry &entry)
             return;
 
     // Send to all attached sinks
-    if (js_ == nullptr)
+    if (s_js_ == nullptr)
     {
         for (auto &psink : sinks_)
             psink->submit_lock(entry, presentation_);
     }
     else
     {
+        // Set thread id
+        entry.thread_id = s_js_->this_thread_id();
         // Schedule logging task. Log entry is copied.
-        js_->create_task(
-               [this, entry]() {
-                   for (auto &psink : sinks_)
-                       psink->submit(entry, presentation_);
-               },
-               th::JobMetadata(th::force_worker(worker_), "Log"))
+        s_js_
+            ->create_task(
+                [this, entry]() {
+                    for (auto &psink : sinks_)
+                        psink->submit(entry, presentation_);
+                },
+                th::JobMetadata(th::force_worker(s_worker_), "Log"))
             .schedule();
     }
 }

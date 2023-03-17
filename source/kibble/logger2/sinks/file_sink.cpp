@@ -37,7 +37,7 @@ FileSink::FileSink(const fs::path &filepath) : filepath_{filepath}
 void FileSink::submit(const struct LogEntry &e, const struct ChannelPresentation &p)
 {
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
-    internal_->out.print("{:6.f} [{}] [{}] {}\n", ts, p.full_name, to_str(e.severity), e.message);
+    internal_->out.print("T{}:{:6.f} [{}] [{}] {}\n", e.thread_id, ts, p.full_name, to_str(e.severity), e.message);
 
     // print context info if needed
     if (uint8_t(e.severity) <= 2)

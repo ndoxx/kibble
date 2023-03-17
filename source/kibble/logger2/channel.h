@@ -33,10 +33,10 @@ public:
         level_ = level;
     }
 
-    inline void set_async(th::JobSystem *js, uint32_t worker = 1)
+    static inline void set_async(th::JobSystem *js, uint32_t worker = 1)
     {
-        js_ = js;
-        worker_ = worker;
+        s_js_ = js;
+        s_worker_ = worker;
     }
 
     void submit(struct LogEntry &entry);
@@ -45,10 +45,10 @@ private:
     ChannelPresentation presentation_;
     std::vector<std::shared_ptr<Sink>> sinks_;
     std::vector<std::shared_ptr<Policy>> policies_;
-
     Severity level_;
-    th::JobSystem *js_ = nullptr;
-    uint32_t worker_ = 1;
+    
+    static th::JobSystem *s_js_;
+    static uint32_t s_worker_;
 };
 
 } // namespace kb::log

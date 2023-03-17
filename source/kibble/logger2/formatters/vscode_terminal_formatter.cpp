@@ -30,7 +30,8 @@ void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation
 {
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
     // clang-format off
-    fmt::print("{:6.f} {} {} {}\n",
+    fmt::print("T{}:{:6.f} {} {} {}\n",
+        e.thread_id,
         fmt::styled(ts, fmt::fg(fmt::color::dark_green)),
         chan.tag,
         k_icons[size_t(e.severity)],
@@ -51,7 +52,7 @@ void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation
     }
 
     // print stack trace
-    if(e.stack_trace.has_value())
+    if (e.stack_trace.has_value())
     {
         fmt::print("{}", e.stack_trace->format());
     }
