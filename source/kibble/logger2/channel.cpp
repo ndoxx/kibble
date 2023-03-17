@@ -37,7 +37,7 @@ void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
     policies_.push_back(ppolicy);
 }
 
-void Channel::submit(LogEntry &&entry)
+void Channel::submit(LogEntry &&entry) const
 {
     // Check if the severity level is high enough
     if (entry.severity > level_)

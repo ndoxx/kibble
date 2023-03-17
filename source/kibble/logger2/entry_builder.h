@@ -14,7 +14,8 @@ using format_string_t = fmt::v9::format_string<ArgsT...>;
 struct EntryBuilder : private LogEntry
 {
 public:
-    EntryBuilder(Channel &channel, int source_line, const char *source_file, const char *source_function);
+    EntryBuilder(const Channel &channel, int source_line, const char *source_file, const char *source_function);
+    EntryBuilder(const Channel *channel, int source_line, const char *source_file, const char *source_function);
 
     template <typename... ArgsT>
     inline void verbose(format_string_t<ArgsT...> fstr, ArgsT &&...args)
@@ -56,7 +57,7 @@ private:
     void log(Severity s, std::string_view m);
 
 private:
-    Channel& channel_;
+    const Channel *channel_ = nullptr;
 };
 
 } // namespace kb::log

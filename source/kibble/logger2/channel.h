@@ -39,7 +39,7 @@ public:
         s_worker_ = worker;
     }
 
-    void submit(struct LogEntry &&entry);
+    void submit(struct LogEntry &&entry) const;
 
 private:
     ChannelPresentation presentation_;
