@@ -1,7 +1,6 @@
 #pragma once
 #include "assert/assert.h"
 #include "atomic_queue/atomic_queue.h"
-#include "logger/logger.h"
 #include "memory/atomic_pool_allocator.h"
 #include "memory/heap_area.h"
 #include "memory/memory.h"

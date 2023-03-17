@@ -14,21 +14,7 @@
 #include <fmt/core.h>
 #include <fmt/os.h>
 
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
-
 using namespace kb::log;
-
-// TMP
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("thread", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<kb::klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
 
 void some_func(Channel &chan)
 {
@@ -68,9 +54,6 @@ void foo(Channel &chan)
 
 int main()
 {
-    // TMP
-    init_logger();
-
     // * Create shared objects for the logger
     // This console formatter is optimized for the VSCode integrated terminal:
     // you can ctrl+click on file paths to jump to the relevant code section in the editor
@@ -83,34 +66,32 @@ int main()
     auto file_sink = std::make_shared<FileSink>("test.log");
 
 
+    // * Create a few logging channels for the Kibble systems we're going to use
+    // This is optional
     Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::aliceblue);
-    // This channel will log to the console only
     chan_memory.attach_sink(console_sink);
-
+    Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::aquamarine);
+    chan_thread.attach_sink(console_sink);
 
 
     // * Job system configuration, so we can use the logger in async mode
-    // First, we create a scheme to configure the job system
-    kb::th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.max_stealing_attempts = 16;
-
-    // The job system needs some pre-allocated memory for the job pool.
-    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
+    // Here, we pass the "memory" logging channel to the HeapArea object, so it can log allocations
     kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements(), &chan_memory);
 
-    auto *js = new kb::th::JobSystem(area, scheme);
+    // Here, we pass the "thread" logging channel to the JobSystem object, so it can log its status
+    auto *js = new kb::th::JobSystem(area, {}, &chan_thread);
 
-    // Job system profiling
+    // Job system profiling: this will output a json file that can be viewed in the chrome tracing utility
     auto *session = new kb::InstrumentationSession();
     js->set_instrumentation_session(session);
 
 
     // Set logger in async mode by providing a JobSystem instance
     // By default, thread #1 is used for logging, this is an optional argument of set_async()
+    // When the job system is killed, it will automatically switch the logger back to synchronous mode
     Channel::set_async(js);
 
-    // * Create and configure channels
+    // * Create and configure test channels
     // Here, we choose to log messages with severity of at least Verbose level (all messages)
     // The channel short name is "gfx" and the channel tag is displayed in crimson color in sinks that can display color
     Channel chan_graphics(Severity::Verbose, "graphics", "gfx", kb::col::crimson);

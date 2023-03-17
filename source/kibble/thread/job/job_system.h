@@ -7,6 +7,11 @@
 #include <map>
 #include <vector>
 
+namespace kb::log
+{
+class Channel;
+}
+
 namespace kb
 {
 class InstrumentationSession;
@@ -411,7 +416,7 @@ public:
      * @param area heap area for the job pool
      * @param scheme configuration structure
      */
-    JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme);
+    JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme, const kb::log::Channel *log_channel = nullptr);
 
     /**
      * @brief Calls shutdown() before destruction.
@@ -640,6 +645,7 @@ private:
     std::shared_ptr<SharedState> ss_;
     std::map<std::thread::id, tid_t> thread_ids_;
     InstrumentationSession *instrumentor_ = nullptr;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 template <typename T>

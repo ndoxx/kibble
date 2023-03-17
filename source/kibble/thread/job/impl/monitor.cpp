@@ -1,4 +1,5 @@
 #include "thread/job/impl/monitor.h"
+#include "logger2/logger.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
@@ -30,7 +31,7 @@ void Monitor::update_statistics()
     }
 }
 
-void Monitor::log_statistics(tid_t tid) const
+void Monitor::log_statistics(tid_t tid, const kb::log::Channel *channel) const
 {
     K_ASSERT(tid < js_.get_threads_count(), "Worker TID out of range.");
 
@@ -40,17 +41,18 @@ void Monitor::log_statistics(tid_t tid) const
     double mean_activity = 100.0 * mean_active_ms / (mean_idle_ms + mean_active_ms);
     float jobs_per_cycle = float(stats.total_executed) / float(stats.cycles);
 
-    // clang-format off
-    KLOG("thread", 1) << KS_INST_ << "Thread #" << tid << std::endl;
-    KLOGI << "Sleep cycles:         " << stats.cycles << std::endl;
-    KLOGI << "Mean active time:     " << mean_active_ms << "ms" << std::endl;
-    KLOGI << "Mean idle time:       " << mean_idle_ms << "ms" << std::endl;
-    KLOGI << "Mean activity ratio:  " << mean_activity << '%' << std::endl;
-    KLOGI << "Total executed:       " << stats.total_executed << " job" << ((stats.total_executed > 1) ? "s" : "") << std::endl;
-    KLOGI << "Total stolen:         " << stats.total_stolen << " job" << ((stats.total_stolen > 1) ? "s" : "") << std::endl;
-    KLOGI << "Total scheduled:      " << stats.total_scheduled << " job" << ((stats.total_scheduled > 1) ? "s" : "") << std::endl;
-    KLOGI << "Average jobs / cycle: " << jobs_per_cycle << " job" << ((jobs_per_cycle > 1.f) ? "s" : "") << std::endl;
-    // clang-format on
+    klog2(channel).debug(
+        R"([Monitor] Thread #{}
+Sleep cycles:         {}
+Mean active time:     {}ms
+Mean idle time:       {}ms
+Mean activity ratio:  {}%
+Total executed:       {} jobs
+Total stolen:         {} jobs
+Total scheduled:      {} jobs
+Average jobs / cycle: {})",
+        tid, stats.cycles, mean_active_ms, mean_idle_ms, mean_activity, stats.total_executed, stats.total_stolen,
+        stats.total_scheduled, jobs_per_cycle);
 }
 
 } // namespace th
