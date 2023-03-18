@@ -12,7 +12,7 @@
 
 namespace kb
 {
-namespace klog
+namespace log_deprec
 {
 
 #if ANSI_3
@@ -136,7 +136,7 @@ void NetSink::on_attach()
     }
 }
 
-void NetSink::send(const kb::klog::LogStatement &stmt, const kb::klog::LogChannel &chan)
+void NetSink::send(const kb::log_deprec::LogStatement &stmt, const kb::log_deprec::LogChannel &chan)
 {
     // Send JSON formatted message
     std::stringstream ss;
@@ -153,5 +153,5 @@ void NetSink::send_raw(const std::string &message)
     stream_->send(message);
 }
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb

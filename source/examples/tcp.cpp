@@ -38,22 +38,22 @@ int main(int argc, char **argv)
         // Start listening
         if (!acceptor.start())
         {
-            klog2(chan_server).error("Cannot start TCPAcceptor");
+            klog(chan_server).error("Cannot start TCPAcceptor");
             return;
         }
-        klog2(chan_server).info("Starting server");
+        klog(chan_server).info("Starting server");
 
         // Accept the first connection
         // This is a blocking call
         auto *a_stream = acceptor.accept();
-        klog2(chan_server).info("Connection accepted");
+        klog(chan_server).info("Connection accepted");
 
         // The stream can work with generic char* buffers, but for the sake of the example, we are going to use the
         // function that is specialized for strings.
         // This is a blocking call
         a_stream->receive(buf);
 
-        klog2(chan_server).verbose("Received: \"{}\"", buf);
+        klog(chan_server).verbose("Received: \"{}\"", buf);
 
         // Cleanup
         delete a_stream;
@@ -66,19 +66,19 @@ int main(int argc, char **argv)
     // If the connection is not successful, no stream is returned
     if (c_stream == nullptr)
     {
-        klog2(chan_client).error("Cannot connect to server");
+        klog(chan_client).error("Cannot connect to server");
         server.join();
         return 0;
     }
 
     // We made it here, so everything went fine
-    klog2(chan_client).info("Successfully connected to server, sending message");
+    klog(chan_client).info("Successfully connected to server, sending message");
     // Let's send some data to the server
     auto sz = c_stream->send("hello there!");
 
     if (sz == -1)
     {
-        klog2(chan_client).error("write error");
+        klog(chan_client).error("write error");
     }
 
     // At this point, we're past the blocking call to receive() server-side, so the thread is joinable

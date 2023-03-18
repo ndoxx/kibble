@@ -12,7 +12,7 @@ namespace net
 class TCPStream;
 }
 
-namespace klog
+namespace log_deprec
 {
 
 struct LogStatement;
@@ -251,5 +251,5 @@ private:
     kb::net::TCPStream *stream_ = nullptr;
 };
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb

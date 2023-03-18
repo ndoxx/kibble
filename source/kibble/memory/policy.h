@@ -223,7 +223,7 @@ public:
     {
         if (num_allocs_)
         {
-            klog2(log_channel).uid("MemoryTracker").error("Alloc-dealloc mismatch: {}", num_allocs_);
+            klog(log_channel).uid("MemoryTracker").error("Alloc-dealloc mismatch: {}", num_allocs_);
         }
     }
 

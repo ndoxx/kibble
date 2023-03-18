@@ -28,9 +28,9 @@ using namespace kb::log;
 void show_error_and_die(ap::ArgParse &parser, const Channel& chan)
 {
     for (const auto &msg : parser.get_errors())
-        klog2(chan).warn(msg);
+        klog(chan).warn(msg);
 
-    klog2(chan).raw().info(parser.usage());
+    klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
@@ -53,12 +53,12 @@ int main(int argc, char **argv)
     fs::path cfg_path(cfg_path_str());
     if (!fs::exists(cfg_path))
     {
-        klog2(chan).error("Directory does not exist:\n{}", cfg_path);
+        klog(chan).error("Directory does not exist:\n{}", cfg_path);
         return 0;
     }
     if (!fs::is_directory(cfg_path))
     {
-        klog2(chan).error("Not a directory:\n{}", cfg_path);
+        klog(chan).error("Not a directory:\n{}", cfg_path);
         return 0;
     }
 
@@ -71,23 +71,23 @@ int main(int argc, char **argv)
 
     settings.debug_dump();
 
-    klog2(chan).info("Displaying some properties:");
-    klog2(chan).verbose("client window title:  {}", settings.get<std::string>("client.window.title"_h, "MaBalls"));
-    klog2(chan).verbose("client window width:  {}", settings.get<int64_t>("client.window.width"_h, 1024));
-    klog2(chan).verbose("client window width:  {}", settings.get<size_t>("client.window.width"_h, 1024));
-    klog2(chan).verbose("client window height: {}", settings.get<size_t>("client.window.height"_h, 768));
-    klog2(chan).verbose("unknown property:     {}", settings.get<size_t>("client.window.i_dont_exist"_h, 42));
+    klog(chan).info("Displaying some properties:");
+    klog(chan).verbose("client window title:  {}", settings.get<std::string>("client.window.title"_h, "MaBalls"));
+    klog(chan).verbose("client window width:  {}", settings.get<int64_t>("client.window.width"_h, 1024));
+    klog(chan).verbose("client window width:  {}", settings.get<size_t>("client.window.width"_h, 1024));
+    klog(chan).verbose("client window height: {}", settings.get<size_t>("client.window.height"_h, 768));
+    klog(chan).verbose("unknown property:     {}", settings.get<size_t>("client.window.i_dont_exist"_h, 42));
 
-    klog2(chan).info("Displaying array properties:");
+    klog(chan).info("Displaying array properties:");
     for (size_t ii = 0; ii < settings.get_array_size("erwin.logger.channels"_h); ++ii)
     {
         std::string channel_name = settings.get<std::string>(su::h_concat("erwin.logger.channels[", ii, "].name"), "");
         size_t verbosity = settings.get<size_t>(su::h_concat("erwin.logger.channels[", ii, "].verbosity"), 0);
 
-        klog2(chan).verbose("Channel #{}: verb= {}", channel_name, verbosity);
+        klog(chan).verbose("Channel #{}: verb= {}", channel_name, verbosity);
     }
 
-    klog2(chan).info("Modifying and serializing data");
+    klog(chan).info("Modifying and serializing data");
     settings.set<size_t>("mutable.player.hp"_h, 88888);
     settings.set<std::string>("mutable.player.location"_h, "behind you");
 

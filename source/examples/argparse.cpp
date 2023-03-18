@@ -1,93 +1,95 @@
 #include "argparse/argparse.h"
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "logger2/formatters/vscode_terminal_formatter.h"
+#include "logger2/logger.h"
+#include "logger2/sinks/console_sink.h"
+#include "math/color_table.h"
 
 #include <exception>
+#include <fmt/color.h>
+#include <fmt/std.h>
 #include <regex>
 #include <string>
 
 using namespace kb;
+using namespace kb::log;
 
-void init_logger()
+void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
 {
-    KLOGGER_START();
+    for (const auto &msg : parser.get_errors())
+        klog(chan).warn(msg);
 
-    KLOGGER(create_channel("kibble", 3));
-    KLOGGER(create_channel("captain", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
-void show_error_and_die(ap::ArgParse& parser)
-{
-    for(const auto& msg : parser.get_errors())
-        KLOGW("kibble") << msg << std::endl;
-
-    KLOG("kibble", 1) << parser.usage() << std::endl;
+    klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-int p0(int argc, char** argv)
+int p0(int argc, char **argv, const Channel &chan)
 {
-    for(int ii = 0; ii < argc; ++ii)
+    for (int ii = 0; ii < argc; ++ii)
     {
-        KLOG("kibble", 1) << ii << " = " << argv[ii] << std::endl;
+        klog(chan).info("{} = {}", ii, argv[ii]);
     }
 
     return 0;
 }
 
-int p1(int argc, char** argv)
+int p1(int argc, char **argv, const Channel &chan)
 {
-    ap::ArgParse parser("nuclear", "0.1");
+    ap::ArgParse parser("example", "0.1");
 
-    const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
-    const auto& yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
-    const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    const auto &orange = parser.add_flag('o', "orange", "Use the best color in the world");
+    const auto &yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
+    const auto &age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-        show_error_and_die(parser);
+    if (!success)
+        show_error_and_die(parser, chan);
 
-    if(orange())
+    if (orange())
     {
-        KLOG("kibble", 1) << KF_(255, 190, 0);
+        klog(chan).info("Age of the captain: {}", fmt::styled(age(), fmt::fg(fmt::color::orange)));
     }
-    KLOG("kibble", 1) << "Age of the captain: " << age() << std::endl;
-    if(yarr())
+    else
     {
-        KLOG("captain", 1) << "Yarrrrrr!" << std::endl;
+        klog(chan).info("Age of the captain: {}", age());
+    }
+
+    if (yarr())
+    {
+        klog(chan).uid("Captain").info("Yarrrrrr!");
     }
 
     return 0;
 }
 
-int p2(int argc, char** argv)
+int p2(int argc, char **argv, const Channel &chan)
 {
-    ap::ArgParse parser("nuclear", "0.1");
+    ap::ArgParse parser("example", "0.1");
 
-    const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
-    const auto& A = parser.add_positional<int>("first_number", "the first number to be added");
-    const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
+    const auto &orange = parser.add_flag('o', "orange", "Use the best color in the world");
+    const auto &A = parser.add_positional<int>("first_number", "the first number to be added");
+    const auto &B = parser.add_positional<int>("second_number", "the second number to be added");
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-        show_error_and_die(parser);
+    if (!success)
+        show_error_and_die(parser, chan);
 
-    if(orange())
+    auto fmtstr = fmt::format("The sum of {} and {} is {}", A(), B(), A() + B());
+    if (orange())
     {
-        KLOG("kibble", 1) << KF_(255, 190, 0);
+        klog(chan).info("{}", fmt::styled(fmtstr, fmt::fg(fmt::color::orange)));
     }
-    KLOG("kibble", 1) << "The sum of " << A() << " and " << B() << " is " << A() + B() << std::endl;
+    else
+    {
+        klog(chan).info(fmtstr);
+    }
 
     return 0;
 }
 
-int p3(int argc, char** argv)
+int p3(int argc, char **argv, const Channel &chan)
 {
-    ap::ArgParse parser("nuclear", "0.1");
-    parser.set_log_output([](const std::string& str) { KLOG("kibble", 1) << str << std::endl; });
+    ap::ArgParse parser("example", "0.1");
+    parser.set_log_output([&chan](const std::string &str) { klog(chan).uid("ArgParse").info(str); });
 
     parser.add_flag('A', "param_A", "The parameter A");
     parser.add_flag('B', "param_B", "The parameter B");
@@ -107,64 +109,64 @@ int p3(int argc, char** argv)
     parser.set_dependency('D', 'E');
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-        show_error_and_die(parser);
+    if (!success)
+        show_error_and_die(parser, chan);
 
     return 0;
 }
 
-int p4(int argc, char** argv)
+int p4(int argc, char **argv, const Channel &chan)
 {
-    ap::ArgParse parser("nuclear", "0.1");
-    parser.set_log_output([](const std::string& str) { KLOG("kibble", 1) << str << std::endl; });
+    ap::ArgParse parser("example", "0.1");
+    parser.set_log_output([&chan](const std::string &str) { klog(chan).uid("ArgParse").info(str); });
 
     parser.add_flag('x', "param_x", "The parameter x");
     parser.add_flag('y', "param_y", "The parameter y");
     parser.add_flag('z', "param_z", "The parameter z");
-    const auto& l = parser.add_list<int>('l', "list_l", "A list of values");
-    const auto& mm = parser.add_variable<int>('m', "var_m", "The variable m", 10);
+    const auto &l = parser.add_list<int>('l', "list_l", "A list of values");
+    const auto &mm = parser.add_variable<int>('m', "var_m", "The variable m", 10);
     parser.add_positional<int>("MAGIC", "The magic number");
     parser.set_dependency('y', 'x');
 
     bool success = parser.parse(argc, argv);
-    if(!success)
-        show_error_and_die(parser);
+    if (!success)
+        show_error_and_die(parser, chan);
 
-    if(mm.is_set)
+    if (mm.is_set)
     {
-        KLOG("kibble", 1) << "m: " << mm() << std::endl;
+        klog(chan).info("m: {}", mm());
     }
 
-    for(int v : l())
-        KLOG("kibble", 1) << v << std::endl;
+    for (int v : l())
+        klog(chan).info("v: {}", v);
 
-    KLOGN("kibble") << "done" << std::endl;
+    klog(chan).info("Done.");
     return 0;
 }
 
-int p5(int argc, char** argv)
+int p5(int argc, char **argv, const Channel &chan)
 {
-    ap::ArgParse parser("nuclear", "0.1");
-    const auto& target = parser.add_positional<std::string>("ROM_PATH", "Path to the ROM");
+    ap::ArgParse parser("example", "0.1");
+    const auto &target = parser.add_positional<std::string>("ROM_PATH", "Path to the ROM");
     parser.parse(argc, argv);
 
-    KLOGN("kibble") << "Extracting from: " << std::endl;
-    KLOGI << KS_PATH_ << target() << std::endl;
+    klog(chan).info("Extracting from:\n{}", target());
 
     return 0;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
+    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    auto console_sink = std::make_shared<ConsoleSink>();
+    console_sink->set_formatter(console_formatter);
+    Channel chan(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
+    chan.attach_sink(console_sink);
 
-    init_logger();
-
-    // return p0(argc, argv);
-    // return p1(argc, argv);
-    // return p2(argc, argv);
-    return p3(argc, argv);
-    // return p4(argc, argv);
-    // return p5(argc, argv);
+    // return p0(argc, argv, chan);
+    // return p1(argc, argv, chan);
+    return p2(argc, argv, chan);
+    // return p3(argc, argv, chan);
+    // return p4(argc, argv, chan);
+    // return p5(argc, argv, chan);
 }

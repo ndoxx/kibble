@@ -5,7 +5,7 @@
 
 namespace kb
 {
-namespace klog
+namespace log_deprec
 {
 
 const std::array<KF_, size_t(MsgType::COUNT)> Style::s_colors = {
@@ -28,7 +28,7 @@ const std::array<std::string, size_t(MsgType::COUNT)> Style::s_icons = {
     "\033[1;48;2;50;10;10m \u2054 \033[1;49m ",
 };
 
-} // namespace klog
+} // namespace log_deprec
 
 std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
 {

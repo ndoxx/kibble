@@ -111,7 +111,7 @@ void Settings::load_toml(const fs::path &filepath, const std::string &_root_name
 {
     if (!fs::exists(filepath))
     {
-        klog2(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
+        klog(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
         return;
     }
 
@@ -128,7 +128,7 @@ void Settings::save_toml(const fs::path &filepath, const std::string &_root_name
 {
     if (!fs::exists(filepath))
     {
-        klog2(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
+        klog(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
         return;
     }
 
@@ -166,24 +166,24 @@ hash_t Settings::get_hash_upper(hash_t hash, const std::string &def)
 
 void Settings::debug_dump() const
 {
-    klog2(log_channel_).uid("Settings").verbose("-- DUMP --");
+    klog(log_channel_).uid("Settings").verbose("-- DUMP --");
     for (auto &&[key, val] : storage_.scalars)
     {
         if (std::holds_alternative<int64_t>(val))
         {
-            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<int64_t>(val));
+            klog(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<int64_t>(val));
         }
         else if (std::holds_alternative<double>(val))
         {
-            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<double>(val));
+            klog(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<double>(val));
         }
         else if (std::holds_alternative<bool>(val))
         {
-            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<bool>(val));
+            klog(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<bool>(val));
         }
         else if (std::holds_alternative<std::string>(val))
         {
-            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<std::string>(val));
+            klog(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<std::string>(val));
         }
     }
 }

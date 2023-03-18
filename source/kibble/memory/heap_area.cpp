@@ -29,7 +29,7 @@ void HeapArea::debug_show_content()
     uint8_t G = uint8_t((1.f - usage) * G1 + usage * G2);
     uint8_t B = uint8_t((1.f - usage) * B1 + usage * B2);
 
-    klog2(log_channel_)
+    klog(log_channel_)
         .uid("HeapArea")
         .debug("Usage: {} / {} ({}%)", utils::human_size(used_mem), utils::human_size(size_),
                fmt::styled(100 * usage, fmt::fg(fmt::rgb{R, G, B})));
@@ -44,7 +44,7 @@ void HeapArea::debug_show_content()
         std::string name(item.name);
         kb::su::center(name, 22);
 
-        klog2(log_channel_)
+        klog(log_channel_)
             .raw()
             .debug("    {:#x} [{}] {:#x} s={}", reinterpret_cast<size_t>(item.begin),
                    fmt::styled(name, fmt::fg(fmt::rgb{R, G, B})), reinterpret_cast<size_t>(item.end),
@@ -86,7 +86,7 @@ bool HeapArea::init(size_t size)
 #ifdef HEAP_AREA_MEMSET_ENABLED
     memset(begin_, AREA_MEMSET_VALUE, size_);
 #endif
-    klog2(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", utils::human_size(size_), uint64_t(begin_));
+    klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", utils::human_size(size_), uint64_t(begin_));
 
     return true;
 }
@@ -108,7 +108,7 @@ std::pair<void *, void *> HeapArea::require_block(size_t size, const char *debug
 
     items_.push_back({debug_name ? debug_name : "block", ptr_range.first, ptr_range.second, size + padding});
 
-    klog2(log_channel_)
+    klog(log_channel_)
         .uid("HeapArea")
         .debug(
             R"(allocated aligned block:

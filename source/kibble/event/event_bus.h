@@ -618,12 +618,12 @@ private:
             {
                 std::stringstream ss;
                 ss << event;
-                klog2(log_channel_)
+                klog(log_channel_)
                     .debug("[{}] {}: {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>(), ss.str());
             }
             else
             {
-                klog2(log_channel_).debug("[{}] {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>());
+                klog(log_channel_).debug("[{}] {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>());
             }
         }
     }

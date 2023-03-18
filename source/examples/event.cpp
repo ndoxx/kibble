@@ -60,14 +60,14 @@ public:
     // Member function to handle StreamableExampleEvent events
     bool handle_streamable_event(const StreamableExampleEvent &e) const
     {
-        klog2(log_channel_).uid("ExampleHandler::handle_streamable_event()").info("{} {}", e.first, e.second);
+        klog(log_channel_).uid("ExampleHandler::handle_streamable_event()").info("{} {}", e.first, e.second);
         return false;
     }
 
     // Member function to handle ExampleEvent events
     bool handle_event(const ExampleEvent &e)
     {
-        klog2(log_channel_).uid("ExampleHandler::handle_event()").info("{} {}", e.first, e.second);
+        klog(log_channel_).uid("ExampleHandler::handle_event()").info("{} {}", e.first, e.second);
         return false;
     }
 
@@ -95,7 +95,7 @@ public:
 
     bool handle_poke(const PokeEvent &) override
     {
-        klog2(log_channel_).uid("DogHandler").info("Woof!");
+        klog(log_channel_).uid("DogHandler").info("Woof!");
         return false;
     }
 
@@ -112,7 +112,7 @@ public:
 
     bool handle_poke(const PokeEvent &) override
     {
-        klog2(log_channel_).uid("CatHandler").info("Meow.");
+        klog(log_channel_).uid("CatHandler").info("Meow.");
         return false;
     }
 
@@ -145,25 +145,25 @@ int main(int argc, char **argv)
     Channel chan_event(Severity::Verbose, "event", "evt", kb::col::turquoise);
     chan_event.attach_sink(console_sink);
 
-    klog2(chan_kibble).info("Using the Delegate class");
+    klog(chan_kibble).info("Using the Delegate class");
     auto d1 = Delegate<int(int)>::create<&square>();
-    klog2(chan_kibble).verbose("{}", d1(2));
+    klog(chan_kibble).verbose("{}", d1(2));
 
     auto str = std::string{"Hello"};
     auto d2 = Delegate<size_t()>::create<&std::string::size>(&str);
-    klog2(chan_kibble).verbose("{}", d2());
+    klog(chan_kibble).verbose("{}", d2());
 
     auto d3 = Delegate<void(int)>::create<&std::string::push_back>(&str);
     d3('!');
-    klog2(chan_kibble).verbose(str);
+    klog(chan_kibble).verbose(str);
 
-    klog2(chan_kibble).info("Checking delegate equality");
+    klog(chan_kibble).info("Checking delegate equality");
     auto d1_2 = Delegate<int(int)>::create<&square>();
     auto d4 = Delegate<int(int)>::create<&cube>();
-    klog2(chan_kibble).verbose("d1 == d1_2: {}", (d1 == d1_2));
-    klog2(chan_kibble).verbose("d1 == d4: {}", (d1 == d4));
+    klog(chan_kibble).verbose("d1 == d1_2: {}", (d1 == d1_2));
+    klog(chan_kibble).verbose("d1 == d4: {}", (d1 == d4));
 
-    klog2(chan_kibble).info("Using the EventBus class");
+    klog(chan_kibble).info("Using the EventBus class");
 
     ExampleHandler example_handler(chan_handler);
     EventBus event_bus;
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
     event_bus.subscribe<&handle_streamable_event>();
 
     // Enqueue events
-    klog2(chan_kibble).info("Queued events are logged instantly...");
+    klog(chan_kibble).info("Queued events are logged instantly...");
     // When an event is enqueued, the logging information will show a [q] flag before the event
     // name, and the label color will be turquoise.
     // This event does not define a stream operator, the logging information will only
@@ -204,11 +204,11 @@ int main(int argc, char **argv)
     std::this_thread::sleep_for(500ms);
 
     // Dispatch all events
-    klog2(chan_kibble).info("... and handled in a deferred fashion");
+    klog(chan_kibble).info("... and handled in a deferred fashion");
     event_bus.dispatch();
 
     // Supports polymorphism
-    klog2(chan_kibble).info("Polymorphism works out of the box");
+    klog(chan_kibble).info("Polymorphism works out of the box");
     std::unique_ptr<BasePokeHandler> a = std::make_unique<DogHandler>(chan_handler);
     std::unique_ptr<BasePokeHandler> b = std::make_unique<CatHandler>(chan_handler);
 

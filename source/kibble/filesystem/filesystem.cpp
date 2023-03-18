@@ -80,16 +80,16 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     {
         if (!fs::create_directories(app_settings_directory_))
         {
-            klog2(log_channel_)
+            klog(log_channel_)
                 .uid("FileSystem")
                 .error("Failed to create config directory at:\n{}", app_settings_directory_);
             return false;
         }
-        klog2(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_settings_directory_);
+        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_settings_directory_);
     }
     else
     {
-        klog2(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_settings_directory_);
+        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_settings_directory_);
     }
 
     // Alias the config directory
@@ -131,16 +131,16 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     {
         if (!fs::create_directories(app_data_directory_))
         {
-            klog2(log_channel_)
+            klog(log_channel_)
                 .uid("FileSystem")
                 .error("Failed to create application data directory at:\n{}", app_data_directory_);
             return false;
         }
-        klog2(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_);
+        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_);
     }
     else
     {
-        klog2(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_data_directory_);
+        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_data_directory_);
     }
 
     // Alias the data directory
@@ -178,7 +178,7 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
         return candidate2;
     else
     {
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("FileSystem")
             .error(R"(Application data directory does not exist for:
 Vendor:   {}
@@ -200,7 +200,7 @@ const fs::path &FileSystem::get_settings_directory() const
 {
     if (app_settings_directory_.empty())
     {
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("FileSystem")
             .warn("Application config directory has not been setup.\nCall setup_config_directory() after FileSystem "
                   "construction.\nAn empty path will be returned.");
@@ -212,7 +212,7 @@ const fs::path &FileSystem::get_app_data_directory() const
 {
     if (app_data_directory_.empty())
     {
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("FileSystem")
             .warn("Application data directory has not been setup.\nCall setup_app_data_directory() after FileSystem "
                   "construction.\nAn empty path will be returned.");
@@ -241,7 +241,7 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
 
     if (!fs::exists(dir_path))
     {
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("FileSystem")
             .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path);
         return false;
@@ -255,11 +255,11 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
         auto &entry = findit->second;
         entry.alias = alias;
         entry.base = dir_path;
-        klog2(log_channel_).uid("FileSystem").debug("Overloaded directory alias:\n{}:// <=> {}", alias, dir_path);
+        klog(log_channel_).uid("FileSystem").debug("Overloaded directory alias:\n{}:// <=> {}", alias, dir_path);
     }
     else
     {
-        klog2(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path);
+        klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path);
         aliases_.insert({alias_hash, {alias, dir_path, {}}});
     }
 
@@ -270,7 +270,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
 {
     if (!fs::exists(pack_path))
     {
-        klog2(log_channel_).uid("FileSystem").error("Cannot add pack alias. File does not exist:\n{}", pack_path);
+        klog(log_channel_).uid("FileSystem").error("Cannot add pack alias. File does not exist:\n{}", pack_path);
         return false;
     }
     K_ASSERT(fs::is_regular_file(pack_path), "Not a file.");
@@ -290,7 +290,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
         aliases_.insert({alias_hash, {alias, pack_path.parent_path() / pack_path.stem(), {new PackFile(pack_path)}}});
     }
 
-    klog2(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}:// <=> {}", alias, pack_path);
+    klog(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}:// <=> {}", alias, pack_path);
     return true;
 }
 
@@ -342,7 +342,7 @@ fs::path FileSystem::to_regular_path(const UpathParsingResult &result) const
 
 IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary) const
 {
-    klog2(log_channel_).uid("FileSystem").debug("Opening stream. Universal path: {}", unipath);
+    klog(log_channel_).uid("FileSystem").debug("Opening stream. Universal path: {}", unipath);
 
     auto result = parse_universal_path(unipath);
     // If a pack file is aliased at this name, try to find entry in pack
@@ -353,7 +353,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
             auto findit = ppack->find(result.path_component);
             if (findit != ppack->end())
             {
-                klog2(log_channel_).uid("FileSystem").verbose("source: pack");
+                klog(log_channel_).uid("FileSystem").verbose("source: pack");
                 return ppack->get_input_stream(findit->second);
             }
         }
@@ -362,8 +362,8 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
     // If we got here, either the file does not exist at all, or it is in a regular directory
     auto filepath = to_regular_path(result);
 
-    klog2(log_channel_).uid("FileSystem").verbose("source: regular file");
-    klog2(log_channel_).uid("FileSystem").verbose("path:   {}", filepath);
+    klog(log_channel_).uid("FileSystem").verbose("source: regular file");
+    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath);
 
     K_ASSERT_FMT(fs::exists(filepath), "File does not exist: %s", unipath.c_str());
     K_ASSERT_FMT(fs::is_regular_file(filepath), "Not a file: %s", unipath.c_str());

@@ -18,28 +18,28 @@ using namespace kb::log;
 
 void some_func(Channel &chan)
 {
-    klog2(chan).verbose("Verbose");
-    klog2(chan).debug("Debug");
-    klog2(chan).info("Info");
-    klog2(chan).warn("Warn");
-    klog2(chan).error("Error");
-    klog2(chan).fatal("Fatal");
+    klog(chan).verbose("Verbose");
+    klog(chan).debug("Debug");
+    klog(chan).info("Info");
+    klog(chan).warn("Warn");
+    klog(chan).error("Error");
+    klog(chan).fatal("Fatal");
 }
 
 void some_other_func(Channel &chan)
 {
-    klog2(chan).verbose("Verbose");
-    klog2(chan).debug("Debug");
-    klog2(chan).info("Info");
-    klog2(chan).warn("Warn");
-    klog2(chan).error("Error");
-    klog2(chan).fatal("Fatal");
+    klog(chan).verbose("Verbose");
+    klog(chan).debug("Debug");
+    klog(chan).info("Info");
+    klog(chan).warn("Warn");
+    klog(chan).error("Error");
+    klog(chan).fatal("Fatal");
 }
 
 void baz(Channel &chan)
 {
-    klog2(chan).warn("Warning message does not trigger a stack trace.");
-    klog2(chan).error("Error message triggers a stack trace.");
+    klog(chan).warn("Warning message does not trigger a stack trace.");
+    klog(chan).error("Error message triggers a stack trace.");
 }
 
 void bar(Channel &chan)
@@ -88,6 +88,10 @@ int main()
     // When the job system is killed, it will automatically switch the logger back to synchronous mode
     Channel::set_async(js);
 
+    // By default, a fatal error will terminate thread execution and shutdown the program
+    // We don't need this behavior here so we disable it
+    Channel::exit_on_fatal_error(false);
+
     // * Create and configure test channels
     // Here, we choose to log messages with severity of at least Verbose level (all messages)
     // The channel short name is "gfx" and the channel tag is displayed in crimson color in sinks that can display color
@@ -109,6 +113,23 @@ int main()
     chan_filesystem.attach_policy(std::make_shared<StackTracePolicy>(Severity::Error));
 
     // * Let's log stuff
+    // Formatted text is handled by FMTlib
+    klog(chan_graphics).verbose("Hello {} {} {}", "world", 2, -5.6f);
+    klog(chan_graphics).verbose("I'm {} da ba dee da ba daa", fmt::styled("blue", fmt::fg(fmt::color::blue)));
+
+    // To skip the log entry header and display raw text, chain the call after raw():
+    klog(chan_graphics).raw().info("Raw text");
+
+    // Channels can be shared by multiple subsystems, using UIDs can help better distinguish between these
+    // Also, it is possible to devise a policy to filter through such UIDs
+    klog(chan_graphics).uid("Texture").info("Texture related stuff");
+    klog(chan_graphics).uid("Backend").info("Renderer backend related stuff");
+    klog(chan_graphics).uid("Mesh").info("Mesh related stuff");
+
+    // printf-debugging, here we come
+    kbang(chan_graphics);
+
+    // A logging channel can be used on another thread
     // We create a task on thread 2 that will spam messages every millisecond or so
     // In asynchronous mode, the logger is able to tell which thread issued the log entry
     // These messages will mention "T2" at the beginning
@@ -116,7 +137,7 @@ int main()
           [&chan_sound]() {
               for (size_t ii = 0; ii < 8; ++ii)
               {
-                  klog2(chan_sound).warn("Hello from sound thread #{}", ii);
+                  klog(chan_sound).warn("Hello from sound thread #{}", ii);
                   std::this_thread::sleep_for(std::chrono::milliseconds(1));
               }
           },
@@ -137,9 +158,6 @@ int main()
 
     // Test the stack trace
     foo(chan_filesystem);
-
-    // Formatted text is handled by FMTlib
-    klog2(chan_graphics).verbose("Hello {} {} {}", "world", 2, -5.6f);
 
     // * Wait for tasks to finish, and end program
     js->wait();

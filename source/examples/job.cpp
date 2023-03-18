@@ -26,9 +26,9 @@ using namespace kb::log;
 void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
 {
     for (const auto &msg : parser.get_errors())
-        klog2(chan).warn(msg);
+        klog(chan).warn(msg);
 
-    klog2(chan).raw().info(parser.usage());
+    klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
@@ -55,10 +55,10 @@ void show_statistics(milliClock &clk, long serial_dur_ms, const kb::log::Channel
     auto parallel_dur_ms = clk.get_elapsed_time().count();
     float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
     float factor = float(serial_dur_ms) / float(parallel_dur_ms);
-    klog2(chan).verbose("Estimated serial time: {}ms", serial_dur_ms);
-    klog2(chan).verbose("Parallel time:         {}ms", parallel_dur_ms);
-    klog2(chan).verbose("Factor:                {}", factor);
-    klog2(chan).verbose("Gain:                  {}%", gain_percent);
+    klog(chan).verbose("Estimated serial time: {}ms", serial_dur_ms);
+    klog(chan).verbose("Parallel time:         {}ms", parallel_dur_ms);
+    klog(chan).verbose("Factor:                {}", factor);
+    klog(chan).verbose("Gain:                  {}%", gain_percent);
 }
 
 /**
@@ -73,7 +73,7 @@ void show_statistics(milliClock &clk, long serial_dur_ms, const kb::log::Channel
  */
 int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &chan)
 {
-    klog2(chan).info("[JobSystem Example 0] mock async loading");
+    klog(chan).info("[JobSystem Example 0] mock async loading");
 
     // We have nloads loading operations to execute asynchronously, each of them take a random amount of time
     std::vector<long> load_time(nloads, 0l);
@@ -83,16 +83,16 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
     // performance to.
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
 
-    klog2(chan).verbose("Asset loading times:");
+    klog(chan).verbose("Asset loading times:");
     for (long lt : load_time)
     {
-        klog2(chan).verbose("{}", lt);
+        klog(chan).verbose("{}", lt);
     }
 
     // We repeat the experiment nexp times
     for (size_t kk = 0; kk < nexp; ++kk)
     {
-        klog2(chan).info("Round #{}", kk);
+        klog(chan).info("Round #{}", kk);
 
         // Let's measure the total amount of time it takes to execute the tasks in parallel. Start the timer here so we
         // have an idea of the amount of task creation / scheduling overhead.
@@ -137,8 +137,8 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
  */
 int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
 {
-    klog2(chan).info("[JobSystem Example 1] throwing exceptions");
-    klog2(chan).info("Creating tasks.");
+    klog(chan).info("[JobSystem Example 1] throwing exceptions");
+    klog(chan).info("Creating tasks.");
 
     // Create as many tasks as needed
     for (size_t ii = 0; ii < ntasks; ++ii)
@@ -156,7 +156,7 @@ int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
         // Schedule the task, the workers will awake
         tsk.schedule();
     }
-    klog2(chan).info("The exceptions should be rethrown now:");
+    klog(chan).info("The exceptions should be rethrown now:");
     js.wait();
 
     return 0;
@@ -175,7 +175,7 @@ int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
  */
 int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &chan)
 {
-    klog2(chan).info("[JobSystem Example 2] mock async loading and staging");
+    klog(chan).info("[JobSystem Example 2] mock async loading and staging");
 
     // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
     std::vector<long> load_time(nloads, 0l);
@@ -185,15 +185,15 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
     long serial_dur_ms = std::accumulate(load_time.begin(), load_time.end(), 0l);
     serial_dur_ms += std::accumulate(stage_time.begin(), stage_time.end(), 0l);
 
-    klog2(chan).verbose("Assets loading / staging time:");
+    klog(chan).verbose("Assets loading / staging time:");
     for (size_t ii = 0; ii < nloads; ++ii)
     {
-        klog2(chan).verbose("{} / {}", load_time[ii], stage_time[ii]);
+        klog(chan).verbose("{} / {}", load_time[ii], stage_time[ii]);
     }
 
     for (size_t kk = 0; kk < nexp; ++kk)
     {
-        klog2(chan).verbose("Round #", kk);
+        klog(chan).verbose("Round #", kk);
         std::vector<th::Task<float>> stage_tasks;
         milliClock clk;
         for (size_t ii = 0; ii < nloads; ++ii)
@@ -260,7 +260,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
                 // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
                 // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
                 // we should catch them all right here.
-                klog2(chan).error("A job threw an exception:\n{}", e.what());
+                klog(chan).error("A job threw an exception:\n{}", e.what());
             }
             ++ii;
         }
@@ -289,11 +289,11 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
  */
 int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &chan)
 {
-    klog2(chan).info("[JobSystem Example 3] diamond graphs");
+    klog(chan).info("[JobSystem Example 3] diamond graphs");
 
     for (size_t kk = 0; kk < nexp; ++kk)
     {
-        klog2(chan).info("Round #{}", kk);
+        klog(chan).info("Round #{}", kk);
         std::vector<th::Task<bool>> end_tasks;
         milliClock clk;
         for (size_t ii = 0; ii < ngraphs; ++ii)
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
     chan_thread.attach_sink(console_sink);
 
     ap::ArgParse parser("job_system_example", "0.1");
-    parser.set_log_output([&chan_kibble](const std::string &str) { klog2(chan_kibble).uid("ArgParse").info(str); });
+    parser.set_log_output([&chan_kibble](const std::string &str) { klog(chan_kibble).uid("ArgParse").info(str); });
     const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
     const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
@@ -406,7 +406,7 @@ int main(int argc, char **argv)
         case 3: ret = p3(nexp, njob, *js, chan_kibble); break;
         default: 
         {
-            klog2(chan_kibble).warn("Unknown example: {}", ex());
+            klog(chan_kibble).warn("Unknown example: {}", ex());
         }
     }
     // clang-format on

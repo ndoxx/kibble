@@ -9,7 +9,7 @@
 
 namespace kb
 {
-namespace klog
+namespace log_deprec
 {
 
 class Sink;
@@ -191,12 +191,12 @@ struct Logger
     static std::shared_ptr<LogDispatcher> DISPATCHER;
 };
 
-} // namespace klog
+} // namespace log_deprec
 
 #if LOGGING_ENABLED == 1
-#define KLOGGER_START() kb::klog::Logger::DISPATCHER = std::make_shared<kb::klog::LogDispatcher>()
-#define KLOGGER_SHARE_INSTANCE(INSTANCE) kb::klog::Logger::DISPATCHER = INSTANCE // TODO: Also share time base
-#define KLOGGER(INSTR) (*kb::klog::Logger::DISPATCHER).INSTR;
+#define KLOGGER_START() kb::log_deprec::Logger::DISPATCHER = std::make_shared<kb::log_deprec::LogDispatcher>()
+#define KLOGGER_SHARE_INSTANCE(INSTANCE) kb::log_deprec::Logger::DISPATCHER = INSTANCE // TODO: Also share time base
+#define KLOGGER(INSTR) (*kb::log_deprec::Logger::DISPATCHER).INSTR;
 #else
 #define KLOGGER_START()
 #define KLOGGER_SHARE_INSTANCE(INSTANCE)

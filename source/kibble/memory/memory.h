@@ -184,7 +184,7 @@ public:
 
         if (begin == nullptr)
         {
-            klog2(log_channel_).uid("Arena").fatal("\"{}\": Out of memory.", debug_name_);
+            klog(log_channel_).uid("Arena").fatal("\"{}\": Out of memory.", debug_name_);
         }
 
         uint8_t *current = begin;
@@ -202,7 +202,7 @@ public:
         bounds_checker_.put_sentinel_back(current + size);
         memory_tracker_.on_allocation(begin, decorated_size, alignment);
 
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("Arena")
             .verbose(R"({} -- Allocation:
 Decorated size: {}
@@ -241,7 +241,7 @@ User ptr:       {:#x})",
 
         allocator_.deallocate(begin);
 
-        klog2(log_channel_)
+        klog(log_channel_)
             .uid("Arena")
             .verbose(R"({} -- Deallocation:
 Decorated size: {}
@@ -346,7 +346,7 @@ public:
     {
         if (head_ + size >= end_)
         {
-            klog2(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overwrite!", debug_name_);
+            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overwrite!", debug_name_);
         }
         memcpy(head_, source, size);
         head_ += size;
@@ -364,7 +364,7 @@ public:
     {
         if (head_ + size >= end_)
         {
-            klog2(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overread!", debug_name_);
+            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overread!", debug_name_);
         }
         memcpy(destination, head_, size);
         head_ += size;

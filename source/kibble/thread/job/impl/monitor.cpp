@@ -41,7 +41,7 @@ void Monitor::log_statistics(tid_t tid, const kb::log::Channel *channel) const
     double mean_activity = 100.0 * mean_active_ms / (mean_idle_ms + mean_active_ms);
     float jobs_per_cycle = float(stats.total_executed) / float(stats.cycles);
 
-    klog2(channel).uid("Monitor").debug(R"(Thread #{}
+    klog(channel).uid("Monitor").debug(R"(Thread #{}
 Sleep cycles:         {}
 Mean active time:     {}ms
 Mean idle time:       {}ms

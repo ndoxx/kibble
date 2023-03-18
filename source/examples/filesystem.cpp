@@ -30,13 +30,12 @@ int main(int argc, char **argv)
     filesystem.setup_app_data_directory("ndoxx", "nuclear");
     const auto &cfg_dir = filesystem.get_settings_directory();
     const auto &appdata_dir = filesystem.get_app_data_directory();
-    klog2(chan).info("Config directory:   {}", cfg_dir);
-    klog2(chan).info("App data directory: {}", appdata_dir);
+    klog(chan).info("Config directory:   {}", cfg_dir);
+    klog(chan).info("App data directory: {}", appdata_dir);
 
     // Grabbing another app data directory
     // Change "vendor" and "appname" for something that exists or this will produce an error
-    // KLOG("nuclear", 1) << "Third party app data directory: " << KS_PATH_ <<
-    // filesystem.get_app_data_directory("vendor", "appname") << std::endl;
+    // klog(chan).info("Third party app data directory:\n{}", filesystem.get_app_data_directory("vendor", "appname"));
 
     const auto &self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
@@ -49,16 +48,16 @@ int main(int argc, char **argv)
 
     {
         auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");
-        klog2(chan).raw().debug(retrieved);
+        klog(chan).raw().debug(retrieved);
     }
 
     {
         auto retrieved = filesystem.get_file_as_string("resources://not_in_pack.txt");
-        klog2(chan).raw().debug(retrieved);
+        klog(chan).raw().debug(retrieved);
     }
 
-    klog2(chan).info("is_older(): {}", filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt"));
-    klog2(chan).info("is_older(): {}", filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt"));
+    klog(chan).info("is_older(): {}", filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt"));
+    klog(chan).info("is_older(): {}", filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt"));
 
     return 0;
 }

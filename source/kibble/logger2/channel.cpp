@@ -9,6 +9,7 @@ namespace kb::log
 
 th::JobSystem *Channel::s_js_ = nullptr;
 uint32_t Channel::s_worker_ = 1;
+bool Channel::s_exit_on_fatal_error_ = true;
 
 inline auto to_rgb(math::argb32_t color)
 {
@@ -43,6 +44,8 @@ void Channel::submit(LogEntry &&entry) const
     if (entry.severity > level_)
         return;
 
+    bool fatal = entry.severity == Severity::Fatal;
+
     // Check compliance with policies
     for (const auto &ppol : policies_)
         if (!ppol->transform_filter(entry))
@@ -67,6 +70,14 @@ void Channel::submit(LogEntry &&entry) const
                 },
                 th::JobMetadata(th::force_worker(s_worker_), "Log"))
             .schedule();
+    }
+
+    if (s_exit_on_fatal_error_ && fatal)
+    {
+        if (s_js_)
+            s_js_->shutdown();
+
+        exit(0);
     }
 }
 

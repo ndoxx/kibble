@@ -4,7 +4,6 @@
 #include "entry.h"
 #include "severity.h"
 #include <fmt/core.h>
-#include <cstdlib>
 
 namespace kb::log
 {
@@ -85,14 +84,12 @@ public:
     inline void fatal(std::string_view sv)
     {
         log(Severity::Fatal, sv);
-        exit(0);
     }
 
     template <typename... ArgsT>
     inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Fatal, fmt::format(fstr, std::forward<ArgsT>(args)...));
-        exit(0);
     }
 
 private:

@@ -122,11 +122,11 @@ std::set<hash_t> parse_kpakignore(const fs::path &filepath, const kb::log::Chann
             hash_t key = H_(line);
             if (result.find(key) != result.end())
             {
-                klog2(log_channel)
+                klog(log_channel)
                     .uid("kpakIgnore")
                     .warn("Duplicate kpakignore entry, or hash collision for:\n{}", line);
             }
-            klog2(log_channel).uid("kpakIgnore").info("ignore: {}", line);
+            klog(log_channel).uid("kpakIgnore").info("ignore: {}", line);
             result.insert(key);
         }
     }
@@ -140,7 +140,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
 {
     if (!fs::exists(dir_path))
     {
-        klog2(log_channel).uid("kpak").error("Directory does not exist:\n{}", dir_path);
+        klog(log_channel).uid("kpak").error("Directory does not exist:\n{}", dir_path);
         return false;
     }
 
@@ -148,7 +148,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     std::set<hash_t> ignored;
     if (fs::exists(dir_path / "kpakignore"))
     {
-        klog2(log_channel).uid("kpak").info("Detected kpakignore file.");
+        klog(log_channel).uid("kpak").info("Detected kpakignore file.");
         ignored = parse_kpakignore(dir_path / "kpakignore", log_channel);
     }
 
@@ -182,8 +182,8 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
 
     h.entry_count = uint32_t(entries.size());
 
-    klog2(log_channel).uid("kpak").info("Packing directory: {}", dir_path);
-    klog2(log_channel).uid("kpak").info("Target archive:    {}", archive_path);
+    klog(log_channel).uid("kpak").info("Packing directory: {}", dir_path);
+    klog(log_channel).uid("kpak").info("Target archive:    {}", archive_path);
 
     // Write header
     std::ofstream ofs(archive_path, std::ios::binary);
@@ -205,7 +205,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     {
         size_t progess_percent = size_t(std::round(100.f * float(++progress) / float(entries.size())));
 
-        klog2(log_channel)
+        klog(log_channel)
             .uid("kpak")
             .verbose("{:3}% pack: {} ({})", progess_percent, entry.path, kb::memory::utils::human_size(entry.size));
 

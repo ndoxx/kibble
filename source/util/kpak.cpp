@@ -18,9 +18,9 @@ using namespace kb::log;
 void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
 {
     for (const auto &msg : parser.get_errors())
-        klog2(chan).warn(msg);
+        klog(chan).warn(msg);
 
-    klog2(chan).raw().info(parser.usage());
+    klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     chan_ios.attach_sink(console_sink);
 
     ap::ArgParse parser("kpak", "0.1");
-    parser.set_log_output([&chan_kpak](const std::string &str) { klog2(chan_kpak).uid("ArgParse").info(str); });
+    parser.set_log_output([&chan_kpak](const std::string &str) { klog(chan_kpak).uid("ArgParse").info(str); });
     const auto &a_dirpath = parser.add_positional<std::string>("DIRPATH", "Path to the directory to pack");
     const auto &a_output =
         parser.add_variable<std::string>('o', "output", "Name of the pack (default: <dirname>.kpak)", "");
@@ -49,11 +49,11 @@ int main(int argc, char **argv)
 
     if (!fs::exists(dirpath))
     {
-        klog2(chan_kpak).fatal("Directory does not exist:\n{}", dirpath);
+        klog(chan_kpak).fatal("Directory does not exist:\n{}", dirpath);
     }
     if (!fs::is_directory(dirpath))
     {
-        klog2(chan_kpak).fatal("Not a directory:\n{}", dirpath);
+        klog(chan_kpak).fatal("Not a directory:\n{}", dirpath);
     }
 
     fs::path output;
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
     if (!fs::exists(output_parent))
     {
-        klog2(chan_kpak).fatal("Output directory does not exist:\n{}", output_parent);
+        klog(chan_kpak).fatal("Output directory does not exist:\n{}", output_parent);
     }
 
     kfs::PackFile::pack_directory(dirpath, output, &chan_kpak);
