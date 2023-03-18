@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();
     console_sink->set_formatter(console_formatter);
-    Channel chan(Severity::Verbose, "example", "exa", kb::col::aliceblue);
+    Channel chan(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
     chan.attach_sink(console_sink);
     Channel chan_settings(Severity::Verbose, "settings", "set", kb::col::crimson);
     chan_settings.attach_sink(console_sink);

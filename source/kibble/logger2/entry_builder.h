@@ -4,6 +4,7 @@
 #include "entry.h"
 #include "severity.h"
 #include <fmt/core.h>
+#include <cstdlib>
 
 namespace kb::log
 {
@@ -14,13 +15,13 @@ public:
     EntryBuilder(const Channel &channel, int source_line, const char *source_file, const char *source_function);
     EntryBuilder(const Channel *channel, int source_line, const char *source_file, const char *source_function);
 
-    inline EntryBuilder& raw()
+    inline EntryBuilder &raw()
     {
         raw_text = true;
         return *this;
     }
 
-    inline EntryBuilder& uid(std::string&& uid_str)
+    inline EntryBuilder &uid(std::string &&uid_str)
     {
         uid_text = std::move(uid_str);
         return *this;
@@ -84,12 +85,14 @@ public:
     inline void fatal(std::string_view sv)
     {
         log(Severity::Fatal, sv);
+        exit(0);
     }
 
     template <typename... ArgsT>
     inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Fatal, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        exit(0);
     }
 
 private:

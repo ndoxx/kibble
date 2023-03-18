@@ -15,9 +15,13 @@
 #include "../hash/hash.h"
 
 namespace fs = std::filesystem;
-namespace kb
+
+namespace kb::log
 {
-namespace kfs
+class Channel;
+}
+
+namespace kb::kfs
 {
 
 class PackFile;
@@ -45,7 +49,7 @@ using IStreamPtr = std::shared_ptr<std::istream>;
 class FileSystem
 {
 public:
-    FileSystem();
+    FileSystem(const kb::log::Channel *log_channel = nullptr);
     ~FileSystem();
 
     /**
@@ -155,7 +159,7 @@ public:
      * `~/.local/share/<vendor>/<appname>`\n
      * If this is not applicable, it will fall back to this form:\n
      * `~/.<vendor>/<appname>/appdata`
-     * 
+     *
      * @param vendor The vendor name will be used as a parent directory for the data directory of this
      * application. Thus multiple applications can be grouped under the same vendor name
      * @param appname The unique application name used as a data directory for this application
@@ -176,17 +180,17 @@ public:
     /**
      * @brief Get the application data directory.
      * If no data directory exists for this application, an empty path will be returned.
-     * 
-     * @return const fs::path& 
+     *
+     * @return const fs::path&
      */
-    const fs::path& get_app_data_directory() const;
+    const fs::path &get_app_data_directory() const;
 
     /**
      * @brief Get the app data directory of another project.
-     * 
-     * @param vendor 
-     * @param appname 
-     * @return fs::path 
+     *
+     * @param vendor
+     * @param appname
+     * @return fs::path
      */
     fs::path get_app_data_directory(std::string vendor, std::string appname) const;
 
@@ -295,6 +299,7 @@ private:
     fs::path app_settings_directory_;
     fs::path app_data_directory_;
     std::map<hash_t, DirectoryAlias> aliases_;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 inline const fs::path &FileSystem::get_aliased_directory(hash_t alias_hash) const
@@ -332,5 +337,4 @@ inline const FileSystem::DirectoryAlias &FileSystem::get_alias_entry(hash_t alia
     return findit->second;
 }
 
-} // namespace kfs
-} // namespace kb
+} // namespace kb::kfs
