@@ -35,18 +35,21 @@
 #include <numeric>
 #include <ostream>
 #include <queue>
+#include <sstream>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
 #include "../ctti/ctti.h"
-#include "../logger/logger.h"
 #include "../time/clock.h"
 #include "../util/delegate.h"
 
-namespace kb
+namespace kb::log
 {
-namespace event
+class Channel;
+}
+
+namespace kb::event
 {
 
 namespace detail
@@ -348,6 +351,16 @@ class EventBus
 {
 public:
     /**
+     * @brief Set a logging channel
+     *
+     * @param log_channel
+     */
+    inline void set_log_channel(const kb::log::Channel *log_channel)
+    {
+        log_channel_ = log_channel;
+    }
+
+    /**
      * @brief Register a free function as an event handler.
      *
      * @tparam Function Function pointer as a handler. This is the only required template parameter,
@@ -387,7 +400,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class&, MemberFunction>(&instance, priority);
+        q_ptr->template subscribe<Class &, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -410,7 +423,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<const Class&, MemberFunction>(&instance, priority);
+        q_ptr->template subscribe<const Class &, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -444,7 +457,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<Class&, MemberFunction>(&instance);
+        return q_ptr->template unsubscribe<Class &, MemberFunction>(&instance);
     }
 
     /**
@@ -462,7 +475,7 @@ public:
     {
         auto *q_base_ptr = get_or_create<EventT>().get();
         auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<const Class&, MemberFunction>(&instance);
+        return q_ptr->template unsubscribe<const Class &, MemberFunction>(&instance);
     }
 
     /**
@@ -600,20 +613,17 @@ private:
     {
         if (should_track_(kb::ctti::type_id<EventT>()))
         {
-            constexpr std::string_view style_queued = "\033[1;38;2;0;0;0m\033[1;48;2;0;185;153m[q][";
-            constexpr std::string_view style_fired = "\033[1;38;2;0;0;0m\033[1;48;2;185;153;0m[f][";
             // Using a concept we can know at compile-time if the event supports the stream operator
             if constexpr (detail::Streamable<EventT>)
             {
-                kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m " << event
-                    << std::endl;
+                std::stringstream ss;
+                ss << event;
+                klog2(log_channel_)
+                    .debug("[{}] {}: {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>(), ss.str());
             }
             else
             {
-                kb::klog::get_log("event"_h, kb::klog::MsgType::EVENT, 0)
-                    << (is_queued ? style_queued : style_fired) << kb::ctti::type_name<EventT>() << "]\033[0m"
-                    << std::endl;
+                klog2(log_channel_).debug("[{}] {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>());
             }
         }
     }
@@ -662,7 +672,7 @@ private:
 #ifdef K_DEBUG
     std::function<bool(EventID)> should_track_ = [](EventID) { return false; };
 #endif
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
-} // namespace event
-} // namespace kb
+} // namespace kb::event

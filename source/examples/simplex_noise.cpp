@@ -1,6 +1,3 @@
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
 #include "random/simplex_noise.h"
 #include "random/noise_blender.h"
 #include "random/xor_shift.h"
@@ -15,23 +12,12 @@
 #include <sstream>
 #include <vector>
 
-namespace fs = std::filesystem;
 using namespace kb;
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("nuclear", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
 
     rng::XorShiftEngine rng;
     rng.seed(23456);
@@ -53,10 +39,10 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_2d.txt");
-        for(size_t ii = 0; ii < max_grd_2d; ++ii)
+        for (size_t ii = 0; ii < max_grd_2d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_2d - 1);
-            for(size_t jj = 0; jj < max_grd_2d; ++jj)
+            for (size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
                 ofs << xx << ' ' << yy << ' ' << simplex(xx, yy) << std::endl;
@@ -66,13 +52,13 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_3d.txt");
-        for(size_t ii = 0; ii < max_grd_3d; ++ii)
+        for (size_t ii = 0; ii < max_grd_3d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_3d - 1);
-            for(size_t jj = 0; jj < max_grd_3d; ++jj)
+            for (size_t jj = 0; jj < max_grd_3d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_3d - 1);
-                for(size_t kk = 0; kk < max_grd_3d; ++kk)
+                for (size_t kk = 0; kk < max_grd_3d; ++kk)
                 {
                     float zz = zmin + (zmax - zmin) * float(kk) / float(max_grd_3d - 1);
                     ofs << xx << ' ' << yy << ' ' << zz << ' ' << simplex(xx, yy, zz) << std::endl;
@@ -83,19 +69,19 @@ int main(int argc, char** argv)
     }
 
     {
-        for(size_t ll = 0; ll < max_cuts; ++ll)
+        for (size_t ll = 0; ll < max_cuts; ++ll)
         {
             float ww = wmin + (wmax - wmin) * float(ll) / float(max_cuts - 1);
             std::stringstream filename;
             filename << "snoise_4d_" << ll << ".txt";
             std::ofstream ofs(filename.str());
-            for(size_t ii = 0; ii < max_grd_4d; ++ii)
+            for (size_t ii = 0; ii < max_grd_4d; ++ii)
             {
                 float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_4d - 1);
-                for(size_t jj = 0; jj < max_grd_4d; ++jj)
+                for (size_t jj = 0; jj < max_grd_4d; ++jj)
                 {
                     float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_4d - 1);
-                    for(size_t kk = 0; kk < max_grd_4d; ++kk)
+                    for (size_t kk = 0; kk < max_grd_4d; ++kk)
                     {
                         float zz = zmin + (zmax - zmin) * float(kk) / float(max_grd_4d - 1);
                         ofs << xx << ' ' << yy << ' ' << zz << ' ' << simplex(xx, yy, zz, ww) << std::endl;
@@ -108,10 +94,10 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_smooth_2d.txt");
-        for(size_t ii = 0; ii < max_grd_2d; ++ii)
+        for (size_t ii = 0; ii < max_grd_2d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_2d - 1);
-            for(size_t jj = 0; jj < max_grd_2d; ++jj)
+            for (size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
                 ofs << xx << ' ' << yy << ' ' << blender.smooth_sample_2d(xx, yy, 0.1f) << std::endl;
@@ -121,10 +107,10 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_oct_2d.txt");
-        for(size_t ii = 0; ii < max_grd_2d; ++ii)
+        for (size_t ii = 0; ii < max_grd_2d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_2d - 1);
-            for(size_t jj = 0; jj < max_grd_2d; ++jj)
+            for (size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
                 ofs << xx << ' ' << yy << ' ' << blender.octave(xx, yy, 5, 0.3f, 0.4f) << std::endl;
@@ -134,10 +120,10 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_marx_2d.txt");
-        for(size_t ii = 0; ii < max_grd_2d; ++ii)
+        for (size_t ii = 0; ii < max_grd_2d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_2d - 1);
-            for(size_t jj = 0; jj < max_grd_2d; ++jj)
+            for (size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
                 ofs << xx << ' ' << yy << ' ' << blender.marble_x_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;
@@ -147,10 +133,10 @@ int main(int argc, char** argv)
 
     {
         std::ofstream ofs("snoise_mary_2d.txt");
-        for(size_t ii = 0; ii < max_grd_2d; ++ii)
+        for (size_t ii = 0; ii < max_grd_2d; ++ii)
         {
             float xx = xmin + (xmax - xmin) * float(ii) / float(max_grd_2d - 1);
-            for(size_t jj = 0; jj < max_grd_2d; ++jj)
+            for (size_t jj = 0; jj < max_grd_2d; ++jj)
             {
                 float yy = ymin + (ymax - ymin) * float(jj) / float(max_grd_2d - 1);
                 ofs << xx << ' ' << yy << ' ' << blender.marble_y_2d(xx, yy, 5, 10.f, 0.4f) << std::endl;

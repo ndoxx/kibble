@@ -1,8 +1,6 @@
 #include "event_bus.h"
 
-namespace kb
-{
-namespace event
+namespace kb::event
 {
 
 static constexpr auto k_timepoint_max = std::chrono::time_point<std::chrono::high_resolution_clock>::max();
@@ -43,5 +41,4 @@ size_t EventBus::get_unprocessed_count()
     });
 }
 
-} // namespace event
-} // namespace kb
+} // namespace kb::event

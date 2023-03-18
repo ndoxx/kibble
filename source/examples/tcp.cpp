@@ -1,6 +1,7 @@
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "logger2/formatters/vscode_terminal_formatter.h"
+#include "logger2/logger.h"
+#include "logger2/sinks/console_sink.h"
+#include "math/color_table.h"
 #include "net/tcp_acceptor.h"
 #include "net/tcp_connector.h"
 #include "net/tcp_stream.h"
@@ -8,30 +9,24 @@
 #include <thread>
 
 using namespace kb;
-
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("client", 3));
-    KLOGGER(create_channel("server", 3));
-
-    KLOGGER(set_channel_tag("client", "cli", kb::col::darkblue));
-    KLOGGER(set_channel_tag("server", "srv", kb::col::darkred));
-
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
+using namespace kb::log;
 
 int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
+
+    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    auto console_sink = std::make_shared<ConsoleSink>();
+    console_sink->set_formatter(console_formatter);
+    Channel chan_client(Severity::Verbose, "client", "cli", kb::col::darkblue);
+    chan_client.attach_sink(console_sink);
+    Channel chan_server(Severity::Verbose, "server", "srv", kb::col::darkred);
+    chan_server.attach_sink(console_sink);
 
     // Start a TCP server on a new thread. This could as well be in another application on the same machine, or in a
     // remote machine in Zimbabwe, it does not matter.
-    std::thread server([]() {
+    std::thread server([&chan_server]() {
         // Configure this socket to listen on port 9876
         // The address is left empty (by default), so the socket will be bound to all available interfaces, and
         // connections from any address will be accepted. We could as well use the loopback address or "localhost" to
@@ -43,22 +38,22 @@ int main(int argc, char **argv)
         // Start listening
         if (!acceptor.start())
         {
-            KLOGE("server") << "Cannot start TCPAcceptor" << std::endl;
+            klog2(chan_server).error("Cannot start TCPAcceptor");
             return;
         }
-        KLOG("server", 1) << "Starting server" << std::endl;
+        klog2(chan_server).info("Starting server");
 
         // Accept the first connection
         // This is a blocking call
         auto *a_stream = acceptor.accept();
-        KLOG("server", 1) << "Connection accepted" << std::endl;
+        klog2(chan_server).info("Connection accepted");
 
         // The stream can work with generic char* buffers, but for the sake of the example, we are going to use the
         // function that is specialized for strings.
         // This is a blocking call
         a_stream->receive(buf);
 
-        KLOG("server", 1) << "Received: \"" << buf << "\"" << std::endl;
+        klog2(chan_server).verbose("Received: \"{}\"", buf);
 
         // Cleanup
         delete a_stream;
@@ -71,19 +66,19 @@ int main(int argc, char **argv)
     // If the connection is not successful, no stream is returned
     if (c_stream == nullptr)
     {
-        KLOGE("client") << "Cannot connect to server" << std::endl;
+        klog2(chan_client).error("Cannot connect to server");
         server.join();
         return 0;
     }
 
     // We made it here, so everything went fine
-    KLOG("client", 1) << "Successfully connected to server, sending message" << std::endl;
+    klog2(chan_client).info("Successfully connected to server, sending message");
     // Let's send some data to the server
     auto sz = c_stream->send("hello there!");
 
     if (sz == -1)
     {
-        KLOGE("client") << "write error" << std::endl;
+        klog2(chan_client).error("write error");
     }
 
     // At this point, we're past the blocking call to receive() server-side, so the thread is joinable

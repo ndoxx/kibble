@@ -1,15 +1,18 @@
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "logger2/formatters/vscode_terminal_formatter.h"
+#include "logger2/logger.h"
+#include "logger2/sinks/console_sink.h"
+#include "math/color_table.h"
 
 #define K_DEBUG
 #include "event/event_bus.h"
 
+#include <iostream>
 #include <thread>
 #include <vector>
 
 using namespace kb;
 using namespace kb::event;
+using namespace kb::log;
 
 // This event cannot be serialized into a stream
 struct ExampleEvent
@@ -36,33 +39,40 @@ std::ostream &operator<<(std::ostream &stream, const StreamableExampleEvent &e)
 // Free function to handle ExampleEvent events
 bool handle_event(const ExampleEvent &e)
 {
-    KLOG("event", 1) << "handle_event(): " << e.first << ' ' << e.second << std::endl;
+    std::cout << "handle_event(): " << e.first << ' ' << e.second << std::endl;
     return false;
 }
 
 // Free function to handle StreamableExampleEvent events
 bool handle_streamable_event(const StreamableExampleEvent &e)
 {
-    KLOG("event", 1) << "handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
+    std::cout << "handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
     return false;
 }
 
 class ExampleHandler
 {
 public:
+    ExampleHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    {
+    }
+
     // Member function to handle StreamableExampleEvent events
     bool handle_streamable_event(const StreamableExampleEvent &e) const
     {
-        KLOG("event", 1) << "ExampleHandler::handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
+        klog2(log_channel_).uid("ExampleHandler::handle_streamable_event()").info("{} {}", e.first, e.second);
         return false;
     }
 
     // Member function to handle ExampleEvent events
     bool handle_event(const ExampleEvent &e)
     {
-        KLOG("event", 1) << "ExampleHandler::handle_event(): " << e.first << ' ' << e.second << std::endl;
+        klog2(log_channel_).uid("ExampleHandler::handle_event()").info("{} {}", e.first, e.second);
         return false;
     }
+
+private:
+    const kb::log::Channel &log_channel_;
 };
 
 struct PokeEvent
@@ -79,21 +89,35 @@ public:
 class DogHandler : public BasePokeHandler
 {
 public:
+    DogHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    {
+    }
+
     bool handle_poke(const PokeEvent &) override
     {
-        KLOG("event", 1) << "Woof!" << std::endl;
+        klog2(log_channel_).uid("DogHandler").info("Woof!");
         return false;
     }
+
+private:
+    const kb::log::Channel &log_channel_;
 };
 
 class CatHandler : public BasePokeHandler
 {
 public:
+    CatHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    {
+    }
+
     bool handle_poke(const PokeEvent &) override
     {
-        KLOG("event", 1) << "Meow." << std::endl;
+        klog2(log_channel_).uid("CatHandler").info("Meow.");
         return false;
     }
+
+private:
+    const kb::log::Channel &log_channel_;
 };
 
 auto square(int x) -> int
@@ -106,45 +130,44 @@ auto cube(int x) -> int
     return x * x * x;
 }
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("delegate", 3));
-    KLOGGER(create_channel("event", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
 int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
 
-    KLOGN("delegate") << "Using the Delegate class" << std::endl;
+    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    auto console_sink = std::make_shared<ConsoleSink>();
+    console_sink->set_formatter(console_formatter);
+    Channel chan_kibble(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
+    chan_kibble.attach_sink(console_sink);
+    Channel chan_handler(Severity::Verbose, "handler", "hnd", kb::col::darkorange);
+    chan_handler.attach_sink(console_sink);
+    Channel chan_event(Severity::Verbose, "event", "evt", kb::col::turquoise);
+    chan_event.attach_sink(console_sink);
 
+    klog2(chan_kibble).info("Using the Delegate class");
     auto d1 = Delegate<int(int)>::create<&square>();
-    KLOG("delegate", 1) << d1(2) << std::endl;
+    klog2(chan_kibble).verbose("{}", d1(2));
 
     auto str = std::string{"Hello"};
     auto d2 = Delegate<size_t()>::create<&std::string::size>(&str);
-    KLOG("delegate", 1) << d2() << std::endl;
+    klog2(chan_kibble).verbose("{}", d2());
 
     auto d3 = Delegate<void(int)>::create<&std::string::push_back>(&str);
     d3('!');
-    KLOG("delegate", 1) << str << std::endl;
+    klog2(chan_kibble).verbose(str);
 
-    KLOG("delegate", 1) << KF_(kb::col::sienna) << "Checking delegate equality" << std::endl;
+    klog2(chan_kibble).info("Checking delegate equality");
     auto d1_2 = Delegate<int(int)>::create<&square>();
     auto d4 = Delegate<int(int)>::create<&cube>();
-    KLOG("delegate", 1) << std::boolalpha << (d1 == d1_2) << std::endl;
-    KLOG("delegate", 1) << std::boolalpha << (d1 == d4) << std::endl;
+    klog2(chan_kibble).verbose("d1 == d1_2: {}", (d1 == d1_2));
+    klog2(chan_kibble).verbose("d1 == d4: {}", (d1 == d4));
 
-    KLOGN("event") << "Using the EventBus class" << std::endl;
+    klog2(chan_kibble).info("Using the EventBus class");
 
-    ExampleHandler example_handler;
+    ExampleHandler example_handler(chan_handler);
     EventBus event_bus;
+    event_bus.set_log_channel(&chan_event);
 
     // Track all events
     event_bus.set_event_tracking_predicate([](auto id) {
@@ -166,7 +189,7 @@ int main(int argc, char **argv)
     event_bus.subscribe<&handle_streamable_event>();
 
     // Enqueue events
-    KLOG("event", 1) << KF_(kb::col::sienna) << "Queued events are logged instantly..." << std::endl;
+    klog2(chan_kibble).info("Queued events are logged instantly...");
     // When an event is enqueued, the logging information will show a [q] flag before the event
     // name, and the label color will be turquoise.
     // This event does not define a stream operator, the logging information will only
@@ -181,13 +204,13 @@ int main(int argc, char **argv)
     std::this_thread::sleep_for(500ms);
 
     // Dispatch all events
-    KLOG("event", 1) << KF_(kb::col::sienna) << "... and handled in a deferred fashion" << std::endl;
+    klog2(chan_kibble).info("... and handled in a deferred fashion");
     event_bus.dispatch();
 
     // Supports polymorphism
-    KLOG("event", 1) << KF_(kb::col::sienna) << "Polymorphism works out of the box" << std::endl;
-    std::unique_ptr<BasePokeHandler> a = std::make_unique<DogHandler>();
-    std::unique_ptr<BasePokeHandler> b = std::make_unique<CatHandler>();
+    klog2(chan_kibble).info("Polymorphism works out of the box");
+    std::unique_ptr<BasePokeHandler> a = std::make_unique<DogHandler>(chan_handler);
+    std::unique_ptr<BasePokeHandler> b = std::make_unique<CatHandler>(chan_handler);
 
     // Two specialized handlers register the base class function
     event_bus.subscribe<&BasePokeHandler::handle_poke>(*a);
