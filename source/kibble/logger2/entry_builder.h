@@ -20,6 +20,12 @@ public:
         return *this;
     }
 
+    inline EntryBuilder& uid(std::string&& uid_str)
+    {
+        uid_text = std::move(uid_str);
+        return *this;
+    }
+
     template <typename... ArgsT>
     inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {

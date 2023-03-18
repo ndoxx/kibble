@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "../assert/assert.h"
+#include "../logger2/logger.h"
 #include "../logger/logger.h"
 #include "policy.h"
 

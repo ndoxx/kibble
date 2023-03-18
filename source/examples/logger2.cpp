@@ -65,14 +65,12 @@ int main()
     // This sink will dump the data it receives to a text file
     auto file_sink = std::make_shared<FileSink>("test.log");
 
-
     // * Create a few logging channels for the Kibble systems we're going to use
     // This is optional
     Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::aliceblue);
     chan_memory.attach_sink(console_sink);
     Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::aquamarine);
     chan_thread.attach_sink(console_sink);
-
 
     // * Job system configuration, so we can use the logger in async mode
     // Here, we pass the "memory" logging channel to the HeapArea object, so it can log allocations
@@ -84,7 +82,6 @@ int main()
     // Job system profiling: this will output a json file that can be viewed in the chrome tracing utility
     auto *session = new kb::InstrumentationSession();
     js->set_instrumentation_session(session);
-
 
     // Set logger in async mode by providing a JobSystem instance
     // By default, thread #1 is used for logging, this is an optional argument of set_async()
@@ -104,7 +101,8 @@ int main()
     chan_sound.attach_sink(console_sink);
     chan_sound.attach_sink(file_sink);
 
-    // This channel will only record messages with severity of at least Debug level (so Debug, Info, Warn, Error and Fatal)
+    // This channel will only record messages with severity of at least Debug level (so Debug, Info, Warn, Error and
+    // Fatal)
     Channel chan_filesystem(Severity::Debug, "filesystem", "fs ", kb::col::deeppink);
     chan_filesystem.attach_sink(console_sink);
     // All messages with severity above Error level (included) will trigger a stack trace

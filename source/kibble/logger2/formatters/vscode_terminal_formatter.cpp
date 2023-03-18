@@ -9,12 +9,12 @@ namespace kb::log
 {
 
 constexpr std::array<std::string_view, 6> k_icons = {
-    "\033[1;48;2;50;10;10m \u2021 \033[1;49m", // fatal
-    "\033[1;48;2;50;10;10m \u2020 \033[1;49m", // error
-    "\033[1;48;2;50;40;10m \u203C \033[1;49m", // warn
-    "\033[1;48;2;20;10;50m \u2055 \033[1;49m", // info
-    " \u25B6 ",                                // debug
-    " \u25B7 ",                                // verbose
+    "\u2021", // fatal
+    "\u2020", // error
+    "\u203C", // warn
+    "\u2055", // info
+    "\u25B6", // debug
+    "\u25B7", // verbose
 };
 
 constexpr std::array<fmt::color, 6> k_text_color = {
@@ -26,6 +26,14 @@ constexpr std::array<fmt::color, 6> k_text_color = {
     fmt::color::white       // verbose
 };
 
+inline std::string format_uid(const std::string &input)
+{
+    if (input.size() == 0)
+        return "";
+    else
+        return fmt::format("[{}] ", fmt::styled(input, fmt::emphasis::italic));
+}
+
 void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation &chan)
 {
     if (e.raw_text)
@@ -33,11 +41,12 @@ void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation
 
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
     // clang-format off
-    fmt::print("T{}:{:6.f} {} {} {}\n",
+    fmt::print("T{}:{:6.f} {} {} {}{}\n",
         e.thread_id,
         fmt::styled(ts, fmt::fg(fmt::color::dark_green)),
         chan.tag,
-        k_icons[size_t(e.severity)],
+        fmt::styled(k_icons[size_t(e.severity)], fmt::fg(k_text_color[size_t(e.severity)]) | fmt::emphasis::bold),
+        format_uid(e.uid_text),
         fmt::styled(e.message, fmt::fg(k_text_color[size_t(e.severity)]))
     );
     // clang-format on
