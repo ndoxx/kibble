@@ -1,13 +1,10 @@
 #pragma once
 
+#include "../logger2/logger.h"
 #include <algorithm>
 #include <cstdint>
 
-namespace kb
-{
-namespace memory
-{
-namespace policy
+namespace kb::memory::policy
 {
 
 /**
@@ -175,7 +172,7 @@ public:
     {
         return 0;
     }
-    inline void report() const
+    inline void report(const kb::log::Channel *) const
     {
     }
 };
@@ -222,11 +219,11 @@ public:
      * @brief Print a tracking report on the logger
      *
      */
-    inline void report() const
+    inline void report(const kb::log::Channel *log_channel) const
     {
         if (num_allocs_)
         {
-            KLOGE("memory") << "[MemoryTracker] Alloc-dealloc mismatch: " << num_allocs_ << std::endl;
+            klog2(log_channel).uid("MemoryTracker").error("Alloc-dealloc mismatch: {}", num_allocs_);
         }
     }
 
@@ -234,6 +231,4 @@ private:
     int32_t num_allocs_ = 0;
 };
 
-} // namespace policy
-} // namespace memory
-} // namespace kb
+} // namespace kb::memory::policy

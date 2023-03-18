@@ -4,6 +4,7 @@
 #include "thread/sanitizer.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
+#include <iostream>
 
 namespace kb
 {
@@ -121,6 +122,7 @@ void WorkerThread::process(Job *job)
     auto start = std::chrono::high_resolution_clock::now();
 #endif
 
+    // TMP: Make void tasks use futures as well so exceptions can be captured
 #ifdef K_ENABLE_JOB_EXCEPTIONS
     try
     {
@@ -128,8 +130,7 @@ void WorkerThread::process(Job *job)
     }
     catch (std::exception &e)
     {
-        KLOGE("thread") << "An exception occurred during job execution:" << std::endl;
-        KLOGI << e.what() << std::endl;
+        std::cerr << "An exception occurred during job execution:\n" << e.what() << std::endl;
     }
 #else
     job->kernel();
