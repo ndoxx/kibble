@@ -26,10 +26,20 @@ public:
         return *this;
     }
 
+    inline void verbose(std::string_view sv)
+    {
+        log(Severity::Verbose, sv);
+    }
+
     template <typename... ArgsT>
     inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Verbose, fmt::format(fstr, std::forward<ArgsT>(args)...));
+    }
+
+    inline void debug(std::string_view sv)
+    {
+        log(Severity::Debug, sv);
     }
 
     template <typename... ArgsT>
@@ -38,10 +48,20 @@ public:
         log(Severity::Debug, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
+    inline void info(std::string_view sv)
+    {
+        log(Severity::Info, sv);
+    }
+
     template <typename... ArgsT>
     inline void info(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Info, fmt::format(fstr, std::forward<ArgsT>(args)...));
+    }
+
+    inline void warn(std::string_view sv)
+    {
+        log(Severity::Warn, sv);
     }
 
     template <typename... ArgsT>
@@ -50,10 +70,20 @@ public:
         log(Severity::Warn, fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
+    inline void error(std::string_view sv)
+    {
+        log(Severity::Error, sv);
+    }
+
     template <typename... ArgsT>
     inline void error(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
         log(Severity::Error, fmt::format(fstr, std::forward<ArgsT>(args)...));
+    }
+
+    inline void fatal(std::string_view sv)
+    {
+        log(Severity::Fatal, sv);
     }
 
     template <typename... ArgsT>

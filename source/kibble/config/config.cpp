@@ -1,23 +1,20 @@
 #include "config/config.h"
-#include "logger/logger.h"
+#include "logger2/logger.h"
 #include "string/string.h"
 #include "toml++/toml.h"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <fmt/std.h>
 
-namespace kb
-{
-namespace cfg
+namespace kb::cfg
 {
 
 template <typename NodeT>
 void flatten(const NodeT &node, const std::string &name_chain, Settings::SettingsStorage &storage)
 {
     hash_t name_hash = H_(name_chain.c_str());
-#ifdef K_DEBUG
     storage.key_names.insert({name_hash, name_chain});
-#endif
 
     if constexpr (toml::is_string<decltype(node)>)
     {
@@ -106,12 +103,15 @@ void serialize(NodeT &node, const std::string &name_chain, Settings::SettingsSto
     }
 }
 
+Settings::Settings(const kb::log::Channel *log_channel) : log_channel_(log_channel)
+{
+}
+
 void Settings::load_toml(const fs::path &filepath, const std::string &_root_name)
 {
     if (!fs::exists(filepath))
     {
-        KLOGE("core") << "File does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << filepath << std::endl;
+        klog2(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
         return;
     }
 
@@ -128,8 +128,7 @@ void Settings::save_toml(const fs::path &filepath, const std::string &_root_name
 {
     if (!fs::exists(filepath))
     {
-        KLOGE("core") << "File does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << filepath << std::endl;
+        klog2(log_channel_).uid("Settings").error("File does not exist:\n{}", filepath);
         return;
     }
 
@@ -165,32 +164,28 @@ hash_t Settings::get_hash_upper(hash_t hash, const std::string &def)
     return H_(str);
 }
 
-#ifdef K_DEBUG
 void Settings::debug_dump() const
 {
+    klog2(log_channel_).uid("Settings").verbose("-- DUMP --");
     for (auto &&[key, val] : storage_.scalars)
     {
-        KLOG("config", 1) << storage_.key_names.at(key) << ": " << KS_VALU_;
         if (std::holds_alternative<int64_t>(val))
         {
-            KLOG("config", 1) << std::get<int64_t>(val);
+            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<int64_t>(val));
         }
         else if (std::holds_alternative<double>(val))
         {
-            KLOG("config", 1) << std::get<double>(val);
+            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<double>(val));
         }
         else if (std::holds_alternative<bool>(val))
         {
-            KLOG("config", 1) << std::boolalpha << std::get<bool>(val) << std::noboolalpha;
+            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<bool>(val));
         }
         else if (std::holds_alternative<std::string>(val))
         {
-            KLOG("config", 1) << std::get<std::string>(val);
+            klog2(log_channel_).raw().verbose("{}: {}", storage_.key_names.at(key), std::get<std::string>(val));
         }
-        KLOG("config", 1) << std::endl;
     }
 }
-#endif
 
-} // namespace cfg
-} // namespace kb
+} // namespace kb::cfg
