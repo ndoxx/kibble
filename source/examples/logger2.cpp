@@ -1,3 +1,5 @@
+#include "argparse/argparse.h"
+#include "logger2/formatters/powerline_terminal_formatter.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
 #include "logger2/policies/stack_trace_policy.h"
@@ -13,8 +15,18 @@
 #include <fmt/color.h>
 #include <fmt/core.h>
 #include <fmt/os.h>
+#include <iostream>
 
 using namespace kb::log;
+
+void show_error_and_die(kb::ap::ArgParse &parser)
+{
+    for (const auto &msg : parser.get_errors())
+        std::cerr << msg << std::endl;
+
+    std::cout << parser.usage() << std::endl;
+    exit(0);
+}
 
 void some_func(Channel &chan)
 {
@@ -52,12 +64,31 @@ void foo(Channel &chan)
     bar(chan);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+    kb::ap::ArgParse parser("logger2_example", "0.1");
+    const auto &use_powerline = parser.add_variable<bool>(
+        'p', "powerline", "Use a powerline-styled terminal formatter (needs a powerline-patched font)", false);
+
+    bool success = parser.parse(argc, argv);
+    if (!success)
+        show_error_and_die(parser);
+
     // * Create shared objects for the logger
-    // This console formatter is optimized for the VSCode integrated terminal:
+    std::shared_ptr<Formatter> console_formatter;
+
+    // These console formatters are optimized for the VSCode integrated terminal:
     // you can ctrl+click on file paths to jump to the relevant code section in the editor
-    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    // VSCodeTerminalFormatter is a simple portable formatter.
+    // PowerlineTerminalFormatter is a powerline-styled terminal formatter, much more readable,
+    // but you'll need to install a powerline-patched font (https://github.com/powerline/fonts)
+    // for it to work correctly.
+
+    if (use_powerline())
+        console_formatter = std::make_shared<PowerlineTerminalFormatter>();
+    else
+        console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+
     // This sink is responsible for printing stuff to the terminal
     auto console_sink = std::make_shared<ConsoleSink>();
     // It uses the aforementioned formatter

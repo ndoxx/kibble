@@ -18,6 +18,7 @@ struct ChannelPresentation
 {
     std::string full_name;
     std::string tag;
+    math::argb32_t color;
 };
 
 class Channel

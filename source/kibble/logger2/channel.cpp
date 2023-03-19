@@ -11,19 +11,8 @@ th::JobSystem *Channel::s_js_ = nullptr;
 uint32_t Channel::s_worker_ = 1;
 bool Channel::s_exit_on_fatal_error_ = true;
 
-inline auto to_rgb(math::argb32_t color)
-{
-    return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
-}
-
-inline std::string create_channel_tag(const std::string &short_name, math::argb32_t color)
-{
-    return fmt::format(
-        "{}", fmt::styled(short_name, fmt::bg(to_rgb(color)) | fmt::fg(fmt::color::white) | fmt::emphasis::bold));
-}
-
 Channel::Channel(Severity level, const std::string &full_name, const std::string &short_name, math::argb32_t tag_color)
-    : presentation_{full_name, create_channel_tag(short_name, tag_color)}, level_(level)
+    : presentation_{full_name, short_name, tag_color}, level_(level)
 {
 }
 
