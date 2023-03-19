@@ -206,8 +206,6 @@ void JobSystem::wait_until(std::function<bool()> condition)
 
 void JobSystem::abort()
 {
-    K_ASSERT(this_thread_id() == 0, "abort() can only be called in the main thread.");
-
     // Join all workers as fast as possible
     try
     {
@@ -223,9 +221,9 @@ void JobSystem::abort()
     // We just killed all threads, including the logger thread
     // So we must go back to sync mode
     kb::log::Channel::set_async(nullptr);
-    klog(log_channel_).uid("JobSystem").warn("PANIC: Essential work transfered to main thread.");
+    klog(log_channel_).uid("JobSystem").warn("PANIC: Essential work transfered to caller thread.");
 
-    // Execute essential work on the main thread
+    // Execute essential work on the caller thread
     for (auto &worker : workers_)
         worker->panic();
 

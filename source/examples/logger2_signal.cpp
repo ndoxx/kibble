@@ -106,7 +106,11 @@ int main(int argc, char **argv)
     }
 
     // Raise a segmentation violation signal
-    std::raise(SIGSEGV);
+    // Signal handler invocation is guaranteed to happen in the same thread
+    // that called std::raise(). If the signal was not due to a call to std::raise(),
+    // the signal handler can be called from any thread.
+    // In an attempt to simulate this, I call std::raise() from another thread.
+    js->create_task([]() { std::raise(SIGSEGV); }, {kb::th::force_worker(3), "BadTask"}).schedule();
 
     // We shouldn't reach this line
     js->wait();
