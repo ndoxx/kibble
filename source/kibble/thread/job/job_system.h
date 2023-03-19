@@ -82,6 +82,16 @@ struct JobMetadata
     /// Descriptive name for the job (only used when profiling)
     std::string name;
 #endif
+
+private:
+    friend class kb::log::Channel;
+    bool essential__ = false;
+
+public:
+    inline bool is_essential() const
+    {
+        return essential__;
+    }
 };
 
 /**
@@ -573,6 +583,14 @@ public:
     {
         return instrumentor_;
     }
+
+    /**
+     * @brief Force workers to join, and execute essential work before shutdown
+     *
+     * @warning This is highly experimental
+     *
+     */
+    void abort();
 
 private:
     /**

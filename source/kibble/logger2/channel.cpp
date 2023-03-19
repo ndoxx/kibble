@@ -1,6 +1,7 @@
 #include "channel.h"
 #include "entry.h"
 #include "thread/job/job_system.h"
+#include <csignal>
 #include <fmt/color.h>
 #include <fmt/core.h>
 
@@ -10,6 +11,17 @@ namespace kb::log
 th::JobSystem *Channel::s_js_ = nullptr;
 uint32_t Channel::s_worker_ = 1;
 bool Channel::s_exit_on_fatal_error_ = true;
+bool Channel::s_intercept_signals_ = false;
+
+namespace
+{
+std::function<void(int)> g_panic_handler;
+// Wrapper for the functional signal handler
+void panic_handler(int signal)
+{
+    g_panic_handler(signal);
+}
+} // namespace
 
 Channel::Channel(Severity level, const std::string &full_name, const std::string &short_name, math::argb32_t tag_color)
     : presentation_{full_name, short_name, tag_color}, level_(level)
@@ -50,6 +62,8 @@ void Channel::submit(LogEntry &&entry) const
     {
         // Set thread id
         entry.thread_id = s_js_->this_thread_id();
+        th::JobMetadata meta(th::force_worker(s_worker_), "Log");
+        meta.essential__ = true;
         // Schedule logging task. Log entry is moved.
         s_js_
             ->create_task(
@@ -57,7 +71,7 @@ void Channel::submit(LogEntry &&entry) const
                     for (auto &psink : sinks_)
                         psink->submit(entry, presentation_);
                 },
-                th::JobMetadata(th::force_worker(s_worker_), "Log"))
+                meta)
             .schedule();
     }
 
@@ -67,6 +81,32 @@ void Channel::submit(LogEntry &&entry) const
             s_js_->shutdown();
 
         exit(0);
+    }
+}
+
+void Channel::set_async(th::JobSystem *js, uint32_t worker)
+{
+    s_js_ = js;
+    s_worker_ = worker;
+
+    if (s_intercept_signals_)
+    {
+        // Intercept all termination signals
+        // Force the job system into panic mode when a signal is intercepted
+
+        static bool s_signal_handler_configured = false;
+        if (s_js_ && !s_signal_handler_configured)
+        {
+            std::signal(SIGABRT, panic_handler);
+            std::signal(SIGFPE, panic_handler);
+            std::signal(SIGILL, panic_handler);
+            std::signal(SIGINT, panic_handler);
+            std::signal(SIGSEGV, panic_handler);
+            std::signal(SIGTERM, panic_handler);
+
+            g_panic_handler = [](int) { s_js_->abort(); };
+            s_signal_handler_configured = true;
+        }
     }
 }
 

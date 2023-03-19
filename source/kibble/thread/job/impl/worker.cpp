@@ -6,9 +6,7 @@
 #include "time/instrumentation.h"
 #include <iostream>
 
-namespace kb
-{
-namespace th
+namespace kb::th
 {
 
 WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
@@ -199,5 +197,16 @@ bool WorkerThread::foreground_work()
     return false;
 }
 
-} // namespace th
-} // namespace kb
+void WorkerThread::panic()
+{
+    Job *job = nullptr;
+    while (queues_[Q_PRIVATE].try_pop(job))
+    {
+        if (job->meta.is_essential())
+        {
+            job->kernel();
+        }
+    }
+}
+
+} // namespace kb::th
