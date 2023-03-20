@@ -89,13 +89,11 @@ int main(int argc, char **argv)
     // Only a few of these should show up
     for (size_t ii = 0; ii < 100; ++ii)
     {
-        js->create_task(
-              [ii, &chan_secondary]() {
-                  klog(chan_secondary).info("Unimportant task #{}", ii);
-                  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-              },
-              {kb::th::force_worker(2), "Task"})
-            .schedule();
+        auto &&[task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [ii, &chan_secondary]() {
+            klog(chan_secondary).info("Unimportant task #{}", ii);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        });
+        task.schedule();
     }
 
     // Log a few messages
@@ -110,7 +108,8 @@ int main(int argc, char **argv)
     // that called std::raise(). If the signal was not due to a call to std::raise(),
     // the signal handler can be called from any thread.
     // In an attempt to simulate this, I call std::raise() from another thread.
-    js->create_task([]() { std::raise(SIGSEGV); }, {kb::th::force_worker(3), "BadTask"}).schedule();
+    auto &&[task, future] = js->create_task({kb::th::force_worker(3), "BadTask"}, []() { std::raise(SIGSEGV); });
+    task.schedule();
 
     // We shouldn't reach this line
     js->wait();

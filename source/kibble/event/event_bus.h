@@ -43,6 +43,7 @@
 #include "../ctti/ctti.h"
 #include "../time/clock.h"
 #include "../util/delegate.h"
+#include "../logger2/logger.h"
 
 namespace kb::log
 {

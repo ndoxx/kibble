@@ -120,19 +120,7 @@ void WorkerThread::process(Job *job)
     auto start = std::chrono::high_resolution_clock::now();
 #endif
 
-    // TMP: Make void tasks use futures as well so exceptions can be captured
-#ifdef K_ENABLE_JOB_EXCEPTIONS
-    try
-    {
-        job->kernel();
-    }
-    catch (std::exception &e)
-    {
-        std::cerr << "An exception occurred during job execution:\n" << e.what() << std::endl;
-    }
-#else
     job->kernel();
-#endif
 
 #ifdef K_PROFILE_JOB_SYSTEM
     auto stop = std::chrono::high_resolution_clock::now();

@@ -116,8 +116,8 @@ int main(int argc, char **argv)
         // Create a few independent tasks each frame
         for (size_t jj = 0; jj < size_t(nj()); ++jj)
         {
-            auto tsk = js->create_task([]() { std::this_thread::sleep_for(std::chrono::microseconds(500)); },
-                                       th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"));
+            auto &&[tsk, fut] = js->create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
+                                                []() { std::this_thread::sleep_for(std::chrono::microseconds(500)); });
             tsk.schedule();
         }
 

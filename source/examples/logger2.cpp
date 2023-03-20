@@ -164,16 +164,14 @@ int main(int argc, char **argv)
     // We create a task on thread 2 that will spam messages every millisecond or so
     // In asynchronous mode, the logger is able to tell which thread issued the log entry
     // These messages will mention "T2" at the beginning
-    js->create_task(
-          [&chan_sound]() {
-              for (size_t ii = 0; ii < 8; ++ii)
-              {
-                  klog(chan_sound).warn("Hello from sound thread #{}", ii);
-                  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-              }
-          },
-          {kb::th::force_worker(2), "Task"})
-        .schedule();
+    auto &&[task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [&chan_sound]() {
+        for (size_t ii = 0; ii < 8; ++ii)
+        {
+            klog(chan_sound).warn("Hello from sound thread #{}", ii);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+    task.schedule();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 

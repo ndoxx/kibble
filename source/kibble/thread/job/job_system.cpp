@@ -232,10 +232,5 @@ void JobSystem::abort()
     exit(0);
 }
 
-Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
-{
-    job_ = js->create_job(std::forward<JobKernel>(kernel), meta);
-}
-
 } // namespace th
 } // namespace kb
