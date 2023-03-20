@@ -67,10 +67,12 @@ This library is under heavy development, and the API is subject to change. Use a
 * Logger
     - Channel-based system with runtime verbosity levels
     - Extendable sink system (out-of-the-box sinks: console, file and TCP)
+    - Extendable formatters
+    - Extendable policy system for filtering / transforming log data
     - Output is formatted, color coded and easy to follow
-    - Portions of text can be colored easily (foreground / background)
-    - Brain-dead stream-like syntax
-    - Thread-safe (using mutexes, but speed wasn't the priority)
+    - fmtlib-style syntax
+    - Synchronous and asynchronous operation (both thread-safe)
+    - Optional stack trace on error
 * Program argument parser
     - Automatically generate usage string and version
     - Modern interface
@@ -150,6 +152,9 @@ This library is under heavy development, and the API is subject to change. Use a
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
+## Deprecated components
+
+The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
 
 
 <!-- GETTING STARTED -->
@@ -161,6 +166,7 @@ To get a local copy up and running follow these steps.
 
 * A compiler with support for C++20 (tested with clang 12.0.0)
 * CMake, minimum version 3.19
+* [fmtlib](https://github.com/fmtlib/fmt) installed on your system
 
 ## Installation
 
