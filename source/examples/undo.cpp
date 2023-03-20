@@ -1,7 +1,6 @@
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
 #include "undo/undo.h"
+
+#include <iostream>
 
 using namespace kb;
 using namespace kb::undo;
@@ -12,7 +11,7 @@ struct TextBuffer
 
     void dump()
     {
-        KLOG("text", 1) << text << std::endl;
+        std::cout << text << std::endl;
     }
 };
 
@@ -55,22 +54,12 @@ private:
     std::string text_;
 };
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("text", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
 int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
 
-    KLOGN("text") << "Undo/Redo example" << std::endl;
+    std::cout << "Undo/Redo example" << std::endl;
 
     TextBuffer buf;
     UndoStack undo_stack;

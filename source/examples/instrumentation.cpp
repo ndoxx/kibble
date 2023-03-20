@@ -1,23 +1,11 @@
 #include "time/instrumentation.h"
 #include "argparse/argparse.h"
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
 
 #include <fstream>
 #include <memory>
+#include <thread>
 
 using namespace kb;
-
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("example", 3));
-    KLOGGER(create_channel("kibble", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
 
 // The instrumentation session is made global for ease of use, but it's not mandatory.
 InstrumentationSession *session = nullptr;
@@ -82,8 +70,6 @@ void test_func_02()
  */
 int main(int, char **)
 {
-    init_logger();
-
     // Create an instrumentation session
     session = new InstrumentationSession();
 

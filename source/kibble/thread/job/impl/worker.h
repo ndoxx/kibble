@@ -7,9 +7,7 @@
 #include <random>
 #include <thread>
 
-namespace kb
-{
-namespace th
+namespace kb::th
 {
 
 /**
@@ -25,6 +23,7 @@ struct WorkerProperties
 };
 
 struct Job;
+struct JobMetadata;
 
 /**
  * @brief Data common to all worker threads.
@@ -196,6 +195,8 @@ public:
     }
 #endif
 
+    void panic();
+
 private:
     /**
      * @internal
@@ -276,5 +277,4 @@ private:
     PAGE_ALIGN std::array<JobQueue<Job *>, 2> queues_;
 };
 
-} // namespace th
-} // namespace kb
+} // namespace kb::th

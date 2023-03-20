@@ -11,10 +11,11 @@
 
 namespace fs = std::filesystem;
 
-namespace kb
+namespace kb::log
 {
-
-namespace th
+class Channel;
+}
+namespace kb::th
 {
 
 /**
@@ -72,7 +73,7 @@ public:
      *
      * @param tid worker id
      */
-    void log_statistics(tid_t tid) const;
+    void log_statistics(tid_t tid, const kb::log::Channel* channel) const;
 
     /**
      * @brief Get a particular worker's statistics.
@@ -117,5 +118,4 @@ private:
     ActivityQueue<WorkerActivity> activity_queue_;
 };
 
-} // namespace th
-} // namespace kb
+} // namespace kb::th

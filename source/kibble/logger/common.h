@@ -87,7 +87,7 @@ struct ConsoleColor
 /// @def KS_NEG_ Console color for: bad thing
 #define KS_NEG_ KF_(kb::col::red)          
 
-namespace klog
+namespace log_deprec
 {
 
 /**
@@ -172,5 +172,5 @@ public:
     static const std::array<std::string, size_t(MsgType::COUNT)> s_icons;
 };
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb

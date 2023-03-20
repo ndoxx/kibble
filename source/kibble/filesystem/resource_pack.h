@@ -7,9 +7,13 @@
 #include "../hash/hash.h"
 
 namespace fs = std::filesystem;
-namespace kb
+
+namespace kb::log
 {
-namespace kfs
+class Channel;
+}
+
+namespace kb::kfs
 {
 
 /**
@@ -18,11 +22,11 @@ namespace kfs
 struct PackLocalEntry
 {
     /// Byte offset in the pack
-    uint32_t offset;  
+    uint32_t offset;
     /// Size in bytes the file takes up
-    uint32_t size;    
+    uint32_t size;
     /// Relative path of this file
-    std::string path; 
+    std::string path;
 
     static constexpr size_t k_serialized_size = 3 * sizeof(uint32_t);
 
@@ -148,7 +152,8 @@ public:
      * @return true if the directory was found and packed successfully
      * @return false otherwise
      */
-    static bool pack_directory(const fs::path &dir_path, const fs::path &archive_path);
+    static bool pack_directory(const fs::path &dir_path, const fs::path &archive_path,
+                               const kb::log::Channel *log_channel = nullptr);
 
 private:
     fs::path filepath_;
@@ -172,5 +177,4 @@ inline const PackLocalEntry &PackFile::get_entry(hash_t key) const
     return findit->second;
 }
 
-} // namespace kfs
-} // namespace kb
+} // namespace kb::kfs

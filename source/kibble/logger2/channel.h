@@ -18,6 +18,7 @@ struct ChannelPresentation
 {
     std::string full_name;
     std::string tag;
+    math::argb32_t color;
 };
 
 class Channel
@@ -33,13 +34,19 @@ public:
         level_ = level;
     }
 
-    static inline void set_async(th::JobSystem *js, uint32_t worker = 1)
+    static void set_async(th::JobSystem *js, uint32_t worker = 1);
+
+    static inline void exit_on_fatal_error(bool value = true)
     {
-        s_js_ = js;
-        s_worker_ = worker;
+        s_exit_on_fatal_error_ = value;
     }
 
-    void submit(struct LogEntry &&entry);
+    static inline void intercept_signals(bool value = true)
+    {
+        s_intercept_signals_ = value;
+    }
+
+    void submit(struct LogEntry &&entry) const;
 
 private:
     ChannelPresentation presentation_;
@@ -49,6 +56,8 @@ private:
 
     static th::JobSystem *s_js_;
     static uint32_t s_worker_;
+    static bool s_exit_on_fatal_error_;
+    static bool s_intercept_signals_;
 };
 
 } // namespace kb::log

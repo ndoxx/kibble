@@ -1,3 +1,5 @@
+#include "argparse/argparse.h"
+#include "logger2/formatters/powerline_terminal_formatter.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
 #include "logger2/policies/stack_trace_policy.h"
@@ -13,48 +15,43 @@
 #include <fmt/color.h>
 #include <fmt/core.h>
 #include <fmt/os.h>
-
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include <iostream>
 
 using namespace kb::log;
 
-// TMP
-void init_logger()
+void show_error_and_die(kb::ap::ArgParse &parser)
 {
-    KLOGGER_START();
+    for (const auto &msg : parser.get_errors())
+        std::cerr << msg << std::endl;
 
-    KLOGGER(create_channel("memory", 3));
-    KLOGGER(create_channel("thread", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<kb::klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
+    std::cout << parser.usage() << std::endl;
+    exit(0);
 }
 
 void some_func(Channel &chan)
 {
-    klog2(chan).verbose("Verbose");
-    klog2(chan).debug("Debug");
-    klog2(chan).info("Info");
-    klog2(chan).warn("Warn");
-    klog2(chan).error("Error");
-    klog2(chan).fatal("Fatal");
+    klog(chan).verbose("Verbose");
+    klog(chan).debug("Debug");
+    klog(chan).info("Info");
+    klog(chan).warn("Warn");
+    klog(chan).error("Error");
+    klog(chan).fatal("Fatal");
 }
 
 void some_other_func(Channel &chan)
 {
-    klog2(chan).verbose("Verbose");
-    klog2(chan).debug("Debug");
-    klog2(chan).info("Info");
-    klog2(chan).warn("Warn");
-    klog2(chan).error("Error");
-    klog2(chan).fatal("Fatal");
+    klog(chan).verbose("Verbose");
+    klog(chan).debug("Debug");
+    klog(chan).info("Info");
+    klog(chan).warn("Warn");
+    klog(chan).error("Error");
+    klog(chan).fatal("Fatal");
 }
 
 void baz(Channel &chan)
 {
-    klog2(chan).warn("Warning message does not trigger a stack trace.");
-    klog2(chan).error("Error message triggers a stack trace.");
+    klog(chan).warn("Warning message does not trigger a stack trace.");
+    klog(chan).error("Error message triggers a stack trace.");
 }
 
 void bar(Channel &chan)
@@ -67,31 +64,31 @@ void foo(Channel &chan)
     bar(chan);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-    // TMP
-    init_logger();
+    kb::ap::ArgParse parser("logger2_example", "0.1");
+    const auto &use_powerline = parser.add_variable<bool>(
+        'p', "powerline", "Use a powerline-styled terminal formatter (needs a powerline-patched font)", false);
 
-    // * Job system configuration, so we can use the logger in async mode
-    // First, we create a scheme to configure the job system
-    kb::th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.max_stealing_attempts = 16;
-
-    // The job system needs some pre-allocated memory for the job pool.
-    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements());
-
-    auto *js = new kb::th::JobSystem(area, scheme);
-
-    // Job system profiling
-    auto *session = new kb::InstrumentationSession();
-    js->set_instrumentation_session(session);
+    bool success = parser.parse(argc, argv);
+    if (!success)
+        show_error_and_die(parser);
 
     // * Create shared objects for the logger
-    // This console formatter is optimized for the VSCode integrated terminal:
+    std::shared_ptr<Formatter> console_formatter;
+
+    // These console formatters are optimized for the VSCode integrated terminal:
     // you can ctrl+click on file paths to jump to the relevant code section in the editor
-    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    // VSCodeTerminalFormatter is a simple portable formatter.
+    // PowerlineTerminalFormatter is a powerline-styled terminal formatter, much more readable,
+    // but you'll need to install a powerline-patched font (https://github.com/powerline/fonts)
+    // for it to work correctly.
+
+    if (use_powerline())
+        console_formatter = std::make_shared<PowerlineTerminalFormatter>();
+    else
+        console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+
     // This sink is responsible for printing stuff to the terminal
     auto console_sink = std::make_shared<ConsoleSink>();
     // It uses the aforementioned formatter
@@ -99,11 +96,34 @@ int main()
     // This sink will dump the data it receives to a text file
     auto file_sink = std::make_shared<FileSink>("test.log");
 
+    // * Create a few logging channels for the Kibble systems we're going to use
+    // This is optional
+    Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::aliceblue);
+    chan_memory.attach_sink(console_sink);
+    Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::aquamarine);
+    chan_thread.attach_sink(console_sink);
+
+    // * Job system configuration, so we can use the logger in async mode
+    // Here, we pass the "memory" logging channel to the HeapArea object, so it can log allocations
+    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements(), &chan_memory);
+
+    // Here, we pass the "thread" logging channel to the JobSystem object, so it can log its status
+    auto *js = new kb::th::JobSystem(area, {}, &chan_thread);
+
+    // Job system profiling: this will output a json file that can be viewed in the chrome tracing utility
+    auto *session = new kb::InstrumentationSession();
+    js->set_instrumentation_session(session);
+
     // Set logger in async mode by providing a JobSystem instance
     // By default, thread #1 is used for logging, this is an optional argument of set_async()
+    // When the job system is killed, it will automatically switch the logger back to synchronous mode
     Channel::set_async(js);
 
-    // * Create and configure channels
+    // By default, a fatal error will terminate thread execution and shutdown the program
+    // We don't need this behavior here so we disable it
+    Channel::exit_on_fatal_error(false);
+
+    // * Create and configure test channels
     // Here, we choose to log messages with severity of at least Verbose level (all messages)
     // The channel short name is "gfx" and the channel tag is displayed in crimson color in sinks that can display color
     Channel chan_graphics(Severity::Verbose, "graphics", "gfx", kb::col::crimson);
@@ -116,26 +136,42 @@ int main()
     chan_sound.attach_sink(console_sink);
     chan_sound.attach_sink(file_sink);
 
-    // This channel will only record messages with severity of at least Debug level (so Debug, Info, Warn, Error and Fatal)
+    // This channel will only record messages with severity of at least Debug level (so Debug, Info, Warn, Error and
+    // Fatal)
     Channel chan_filesystem(Severity::Debug, "filesystem", "fs ", kb::col::deeppink);
     chan_filesystem.attach_sink(console_sink);
     // All messages with severity above Error level (included) will trigger a stack trace
     chan_filesystem.attach_policy(std::make_shared<StackTracePolicy>(Severity::Error));
 
     // * Let's log stuff
+    // Formatted text is handled by FMTlib
+    klog(chan_graphics).verbose("Hello {} {} {}", "world", 2, -5.6f);
+    klog(chan_graphics).verbose("I'm {} da ba dee da ba daa", fmt::styled("blue", fmt::fg(fmt::color::blue)));
+
+    // To skip the log entry header and display raw text, chain the call after raw():
+    klog(chan_graphics).raw().info("Raw text");
+
+    // Channels can be shared by multiple subsystems, using UIDs can help better distinguish between these
+    // Also, it is possible to devise a policy to filter through such UIDs
+    klog(chan_graphics).uid("Texture").info("Texture related stuff");
+    klog(chan_graphics).uid("Backend").info("Renderer backend related stuff");
+    klog(chan_graphics).uid("Mesh").info("Mesh related stuff");
+
+    // printf-debugging, here we come
+    kbang(chan_graphics);
+
+    // A logging channel can be used on another thread
     // We create a task on thread 2 that will spam messages every millisecond or so
     // In asynchronous mode, the logger is able to tell which thread issued the log entry
     // These messages will mention "T2" at the beginning
-    js->create_task(
-          [&chan_sound]() {
-              for (size_t ii = 0; ii < 8; ++ii)
-              {
-                  klog2(chan_sound).warn("Hello from sound thread #{}", ii);
-                  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-              }
-          },
-          {kb::th::force_worker(2), "Task"})
-        .schedule();
+    auto &&[task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [&chan_sound]() {
+        for (size_t ii = 0; ii < 8; ++ii)
+        {
+            klog(chan_sound).warn("Hello from sound thread #{}", ii);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+    task.schedule();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
@@ -151,10 +187,6 @@ int main()
 
     // Test the stack trace
     foo(chan_filesystem);
-
-    // Formatted text is handled by FMTlib
-    klog2(chan_graphics).verbose("Hello {} {} {}", "world", 2, -5.6f);
-
 
     // * Wait for tasks to finish, and end program
     js->wait();

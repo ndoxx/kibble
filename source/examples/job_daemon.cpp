@@ -1,7 +1,8 @@
 #include "argparse/argparse.h"
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "logger2/formatters/vscode_terminal_formatter.h"
+#include "logger2/logger.h"
+#include "logger2/sinks/console_sink.h"
+#include "math/color_table.h"
 #include "memory/heap_area.h"
 #include "thread/job/config.h"
 #include "thread/job/daemon.h"
@@ -19,39 +20,35 @@
 
 using namespace kb;
 using namespace kb::th;
+using namespace kb::log;
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("nuclear", 3));
-    KLOGGER(create_channel("memory", 3));
-    KLOGGER(create_channel("thread", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
-void show_error_and_die(ap::ArgParse &parser)
+void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
 {
     for (const auto &msg : parser.get_errors())
-        KLOGW("kibble") << msg << std::endl;
+        klog(chan).warn(msg);
 
-    KLOG("kibble", 1) << parser.usage() << std::endl;
+    klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
 int main(int argc, char **argv)
 {
-    init_logger();
+    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    auto console_sink = std::make_shared<ConsoleSink>();
+    console_sink->set_formatter(console_formatter);
+    Channel chan_kibble(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
+    chan_kibble.attach_sink(console_sink);
+    Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::crimson);
+    chan_thread.attach_sink(console_sink);
 
     ap::ArgParse parser("daemon_example", "0.1");
-    parser.set_log_output([](const std::string &str) { KLOG("kibble", 1) << str << std::endl; });
+    parser.set_log_output([&chan_kibble](const std::string &str) { klog(chan_kibble).uid("ArgParse").info(str); });
     const auto &nf = parser.add_variable<int>('f', "frames", "Number of frames", 200);
     const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 50);
 
     bool success = parser.parse(argc, argv);
     if (!success)
-        show_error_and_die(parser);
+        show_error_and_die(parser, chan_kibble);
 
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
@@ -61,8 +58,10 @@ int main(int argc, char **argv)
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
     memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
-    auto *js = new th::JobSystem(area, scheme);
+    auto *js = new th::JobSystem(area, scheme, &chan_thread);
     auto *ds = new th::DaemonScheduler(*js);
+
+    Channel::set_async(js);
 
     // Job system profiling
     auto *session = new InstrumentationSession();
@@ -96,8 +95,8 @@ int main(int argc, char **argv)
 
         // Daemons will just log a message and wait a bit
         auto hnd = ds->create(
-            [msg]() {
-                KLOG("nuclear", 1) << msg.message << std::endl;
+            [msg, &chan_kibble]() {
+                klog(chan_kibble).uid("Daemon").info(msg.message);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             },
             sd, meta);
@@ -117,8 +116,8 @@ int main(int argc, char **argv)
         // Create a few independent tasks each frame
         for (size_t jj = 0; jj < size_t(nj()); ++jj)
         {
-            auto tsk = js->create_task([]() { std::this_thread::sleep_for(std::chrono::microseconds(500)); },
-                                       th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"));
+            auto &&[tsk, fut] = js->create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
+                                                []() { std::this_thread::sleep_for(std::chrono::microseconds(500)); });
             tsk.schedule();
         }
 

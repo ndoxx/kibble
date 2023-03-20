@@ -5,9 +5,12 @@
 #include <string>
 #include <vector>
 
-namespace kb
+namespace kb::log
 {
-namespace memory
+class Channel;
+}
+
+namespace kb::memory
 {
 
 namespace debug
@@ -21,13 +24,13 @@ namespace debug
 struct AreaItem
 {
     /// debug name of the block
-    std::string name;      
+    std::string name;
     /// pointer to the beginning of the block
-    void *begin = nullptr; 
+    void *begin = nullptr;
     /// pointer past the end of the block
-    void *end = nullptr;   
+    void *end = nullptr;
     /// size of the block
-    std::size_t size = 0;  
+    std::size_t size = 0;
 };
 
 } // namespace debug
@@ -52,7 +55,7 @@ public:
      *
      * @param size size of the area
      */
-    explicit HeapArea(size_t size);
+    explicit HeapArea(size_t size, const kb::log::Channel *channel = nullptr);
 
     /**
      * @brief Free the whole area.
@@ -135,8 +138,8 @@ public:
     /**
      * @brief Show a hex dump of a portion of the memory content of this area, starting at the beginning and of
      * specified size.
-     * @warning This was done in a hurry to debug something during the tests, the interface is bad and this should evolve
-     * into a better designed feature later on.
+     * @warning This was done in a hurry to debug something during the tests, the interface is bad and this should
+     * evolve into a better designed feature later on.
      *
      * @param stream stream to output the hex dump to
      * @param size size of the dump
@@ -169,7 +172,7 @@ private:
     uint8_t *head_;
 
     std::vector<debug::AreaItem> items_; // for debug
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
-} // namespace memory
-} // namespace kb
+} // namespace kb::memory

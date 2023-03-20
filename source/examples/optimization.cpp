@@ -1,8 +1,5 @@
-#include "../tests/common/vec.h"
 #include "algorithm/optimization.h"
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
+#include "../tests/common/vec.h"
 
 #include <array>
 
@@ -34,20 +31,10 @@ struct OptimizationProblem
     vec2 expected_control;
 };
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("opt", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
 int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
 
     /*
      * In this example, we will use the stochastic descent optimizer to solve a series of minimization problems.
@@ -109,16 +96,16 @@ int main(int argc, char **argv)
     optimizer.set_iteration_callback([](size_t iter, const vec2 &control, float filtered_loss) {
         if (iter % 10 == 0)
         {
-            KLOG("opt", 1) << "Iteration #" << iter << ": control=" << control << " mean loss=" << filtered_loss
-                           << std::endl;
+            std::cout << "Iteration #" << iter << ": control=" << control << " mean loss=" << filtered_loss
+                      << std::endl;
         }
     });
 
     // Solve each problem
     for (const auto &problem : problems)
     {
-        KLOGN("opt") << "Minimizing the " << problem.name << " starting at " << problem.params.initial_control << '.'
-                     << std::endl;
+        std::cout << "Minimizing the " << problem.name << " starting at " << problem.params.initial_control << '.'
+                  << std::endl;
 
         // Set the loss function
         optimizer.set_loss(problem.loss);
@@ -129,9 +116,9 @@ int main(int argc, char **argv)
         // Compute the difference with the expected optimal control
         auto dist = problem.expected_control - optimal;
 
-        KLOGG("opt") << "Optimal control point is: " << optimal << std::endl;
-        KLOG("opt", 1) << "This should be close to " << problem.expected_control << " (deviation= " << dist.norm()
-                       << ')' << std::endl;
+        std::cout << "Optimal control point is: " << optimal << std::endl;
+        std::cout << "This should be close to " << problem.expected_control << " (deviation= " << dist.norm() << ')'
+                  << std::endl;
     }
 
     return 0;

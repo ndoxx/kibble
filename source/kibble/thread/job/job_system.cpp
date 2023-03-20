@@ -1,10 +1,11 @@
 #include "thread/job/job_system.h"
-#include "logger/logger.h"
+#include "logger2/logger.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
 #include "time/instrumentation.h"
 
+#include <fmt/std.h>
 #include <thread>
 
 namespace kb
@@ -32,15 +33,11 @@ size_t JobSystem::get_memory_requirements()
     return sizeof(JobPoolArena) + k_max_threads * k_max_jobs * (k_job_node_size + JobPoolArena::DECORATION_SIZE);
 }
 
-JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
+JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme, const kb::log::Channel *log_channel)
     : scheme_(scheme), scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)),
-      ss_(std::make_shared<SharedState>())
+      ss_(std::make_shared<SharedState>()), log_channel_(log_channel)
 {
-    KLOGN("thread") << "[JobSystem] Initializing." << std::endl;
-
-    // Log scheme
-    KLOG("thread", 0) << "Detail:" << std::endl;
-    // KLOGI << "Work stealing: " << (scheme_.enable_work_stealing ? "enabled" : "disabled") << std::endl;
+    klog(log_channel_).uid("JobSystem").info("Initializing.");
 
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
@@ -49,16 +46,18 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
     threads_count_ = std::min(max_threads, CPU_cores_count_);
 
     // Init job pool
-    KLOG("thread", 0) << "[JobSystem] Allocating job pool." << std::endl;
+    klog(log_channel_).uid("JobSystem").debug("Allocating job pool.");
     ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
 
     // Spawn threads_count_-1 workers
-    KLOG("thread", 0) << "Detected " << KS_VALU_ << CPU_cores_count_ << KC_ << " CPU cores." << std::endl;
-    KLOG("thread", 0) << "Spawning " << KS_VALU_ << threads_count_ - 1 << KC_ << " worker threads." << std::endl;
+    klog(log_channel_).uid("JobSystem").debug("Detected {} CPU cores.", CPU_cores_count_);
+    klog(log_channel_).uid("JobSystem").debug("Spawning {} worker threads.", threads_count_ - 1);
 
     if (threads_count_ == 1)
     {
-        KLOGW("thread") << "Tasks marked with WORKER_AFFINITY_ASYNC will be scheduled to the main thread." << std::endl;
+        klog(log_channel_)
+            .uid("JobSystem")
+            .warn("Tasks marked with WORKER_AFFINITY_ASYNC will be scheduled to the main thread.");
     }
 
     workers_.reserve(threads_count_);
@@ -76,12 +75,12 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme)
         worker->spawn();
         auto native_id = worker->is_background() ? worker->get_native_thread_id() : std::this_thread::get_id();
         thread_ids_.insert({native_id, worker->get_tid()});
-        KLOG("thread", 0) << "Spawned worker " << KS_VALU_ << '#' << worker->get_tid() << KC_
-                          << ", native thread id: " << KS_VALU_ << "0x" << std::hex << native_id << std::dec << KC_
-                          << std::endl;
+        klog(log_channel_)
+            .uid("JobSystem")
+            .verbose("Spawned worker #{}, native thread id: {}", worker->get_tid(), native_id);
     }
 
-    KLOGG("thread") << "[JobSystem] Ready." << std::endl;
+    klog(log_channel_).uid("JobSystem").debug("Ready.");
 }
 
 JobSystem::~JobSystem()
@@ -91,10 +90,9 @@ JobSystem::~JobSystem()
 
 void JobSystem::shutdown()
 {
-    KLOGN("thread") << "[JobSystem] Shutting down." << std::endl;
-    KLOGI << "Waiting for jobs to finish." << std::endl;
+    klog(log_channel_).uid("JobSystem").info("Shutting down.");
+    klog(log_channel_).uid("JobSystem").debug("Waiting for jobs to finish.");
     wait();
-    KLOGI << "All threads are joinable." << std::endl;
 
     // Notify all threads they are going to die
     ss_->running.store(false, std::memory_order_release);
@@ -102,15 +100,20 @@ void JobSystem::shutdown()
     for (auto &worker : workers_)
         worker->join();
 
+    // We just killed all threads, including the logger thread
+    // So we must go back to sync mode
+    kb::log::Channel::set_async(nullptr);
+    klog(log_channel_).uid("JobSystem").debug("All threads have joined.");
+
 #ifdef K_PROFILE_JOB_SYSTEM
     // Log worker statistics
     monitor_->update_statistics();
-    KLOGN("thread") << "[JobSystem] Thread statistics:" << std::endl;
+    klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
     for (auto &worker : workers_)
-        monitor_->log_statistics(worker->get_tid());
+        monitor_->log_statistics(worker->get_tid(), log_channel_);
 #endif
 
-    KLOGG("thread") << "[JobSystem] Shutdown complete." << std::endl;
+    klog(log_channel_).uid("JobSystem").info("Shutdown complete.");
 }
 
 Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
@@ -201,9 +204,32 @@ void JobSystem::wait_until(std::function<bool()> condition)
 #endif
 }
 
-Task<void>::Task(JobSystem *js, JobKernel &&kernel, const JobMetadata &meta) : js_(js)
+void JobSystem::abort()
 {
-    job_ = js->create_job(std::forward<JobKernel>(kernel), meta);
+    // Join all workers as fast as possible
+    try
+    {
+        ss_->running.store(false, std::memory_order_release);
+        ss_->cv_wake.notify_all();
+        for (auto &worker : workers_)
+            worker->join();
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    // We just killed all threads, including the logger thread
+    // So we must go back to sync mode
+    kb::log::Channel::set_async(nullptr);
+    klog(log_channel_).uid("JobSystem").warn("PANIC: Essential work transfered to caller thread.");
+
+    // Execute essential work on the caller thread
+    for (auto &worker : workers_)
+        worker->panic();
+
+    klog(log_channel_).uid("JobSystem").info("Shutting down.");
+
+    exit(0);
 }
 
 } // namespace th

@@ -25,7 +25,7 @@ void init_logger()
     KLOGGER(create_channel("custom", 3));
     KLOGGER(set_channel_tag("custom", "csm", kb::col::darkorchid));
 
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
+    KLOGGER(attach_all("console_sink", std::make_unique<log_deprec::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
 

@@ -4,10 +4,9 @@
 #include "thread/sanitizer.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
+#include <iostream>
 
-namespace kb
-{
-namespace th
+namespace kb::th
 {
 
 WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
@@ -121,19 +120,7 @@ void WorkerThread::process(Job *job)
     auto start = std::chrono::high_resolution_clock::now();
 #endif
 
-#ifdef K_ENABLE_JOB_EXCEPTIONS
-    try
-    {
-        job->kernel();
-    }
-    catch (std::exception &e)
-    {
-        KLOGE("thread") << "An exception occurred during job execution:" << std::endl;
-        KLOGI << e.what() << std::endl;
-    }
-#else
     job->kernel();
-#endif
 
 #ifdef K_PROFILE_JOB_SYSTEM
     auto stop = std::chrono::high_resolution_clock::now();
@@ -198,5 +185,16 @@ bool WorkerThread::foreground_work()
     return false;
 }
 
-} // namespace th
-} // namespace kb
+void WorkerThread::panic()
+{
+    Job *job = nullptr;
+    while (queues_[Q_PRIVATE].try_pop(job))
+    {
+        if (job->meta.is_essential())
+        {
+            job->kernel();
+        }
+    }
+}
+
+} // namespace kb::th
