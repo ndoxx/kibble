@@ -9,7 +9,7 @@
 
 namespace kb
 {
-namespace klog
+namespace log_deprec
 {
 
 static constexpr float k_light = 0.75f;
@@ -29,6 +29,7 @@ std::string create_channel_tag(const std::string &short_name, math::argb32_t col
 LogDispatcher::LogDispatcher() : backtrace_on_error_(false)
 {
     create_channel("core", 3);
+    std::cerr << KF_(255, 175, 0) << "/!\\ This logger is deprecated. You should use logger2 instead!" << std::endl;
 }
 
 LogDispatcher::~LogDispatcher()
@@ -153,5 +154,5 @@ void LogDispatcher::dispatch(const LogStatement &stmt)
 
 std::shared_ptr<LogDispatcher> Logger::DISPATCHER = nullptr;
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb

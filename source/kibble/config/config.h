@@ -7,9 +7,13 @@
 #include <variant>
 
 namespace fs = std::filesystem;
-namespace kb
+
+namespace kb::log
 {
-namespace cfg
+class Channel;
+}
+
+namespace kb::cfg
 {
 
 /**
@@ -30,6 +34,8 @@ namespace cfg
 class Settings
 {
 public:
+    Settings(const kb::log::Channel *log_channel = nullptr);
+
     /**
      * @brief Parse a TOML file and add the new properties to this object
      *
@@ -144,9 +150,7 @@ public:
         return 0;
     }
 
-#ifdef K_DEBUG
     void debug_dump() const;
-#endif
 
     using SettingsScalar = std::variant<int64_t, double, bool, std::string>;
 
@@ -160,17 +164,13 @@ private:
     {
         std::map<hash_t, SettingsScalar> scalars;
         std::map<hash_t, ArrayDescriptor> arrays;
-#ifdef K_DEBUG
         std::map<hash_t, std::string> key_names;
-#endif
 
         void clear()
         {
             scalars.clear();
             arrays.clear();
-#ifdef K_DEBUG
             key_names.clear();
-#endif
         }
     };
 
@@ -182,6 +182,7 @@ public:
 
 private:
     SettingsStorage storage_;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 template <typename T>
@@ -261,5 +262,4 @@ inline bool Settings::set<float>(hash_t hash, const float &value)
     return set<double>(hash, double(value));
 }
 
-} // namespace cfg
-} // namespace kb
+} // namespace kb::cfg

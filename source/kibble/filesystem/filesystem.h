@@ -15,9 +15,13 @@
 #include "../hash/hash.h"
 
 namespace fs = std::filesystem;
-namespace kb
+
+namespace kb::log
 {
-namespace kfs
+class Channel;
+}
+
+namespace kb::kfs
 {
 
 class PackFile;
@@ -45,7 +49,7 @@ using IStreamPtr = std::shared_ptr<std::istream>;
 class FileSystem
 {
 public:
-    FileSystem();
+    FileSystem(const kb::log::Channel *log_channel = nullptr);
     ~FileSystem();
 
     /**
@@ -147,12 +151,48 @@ public:
     bool setup_settings_directory(std::string vendor, std::string appname, std::string alias = "");
 
     /**
+     * @brief Create a directory for application data and resources.
+     * This directory will be aliased "appdata", unless the third parameter is set.
+     * Whitespace characters will be stripped from the two first arguments.
+     * If the directory already exists, only the aliasing is performed.
+     * Under linux systems, this function will try to create the data directory like so:\n
+     * `~/.local/share/<vendor>/<appname>`\n
+     * If this is not applicable, it will fall back to this form:\n
+     * `~/.<vendor>/<appname>/appdata`
+     *
+     * @param vendor The vendor name will be used as a parent directory for the data directory of this
+     * application. Thus multiple applications can be grouped under the same vendor name
+     * @param appname The unique application name used as a data directory for this application
+     * @param alias Optional alias name to refer to this data directory
+     * @return true If the directory was created successfully or already exists
+     * @return false if there was an error during the creation of the directory
+     */
+    bool setup_app_data_directory(std::string vendor, std::string appname, std::string alias = "");
+
+    /**
      * @brief Get the application config directory.
      * If no config directory exists for this application, an empty path will be returned.
      *
      * @return const fs::path&
      */
-    const fs::path &get_settings_directory();
+    const fs::path &get_settings_directory() const;
+
+    /**
+     * @brief Get the application data directory.
+     * If no data directory exists for this application, an empty path will be returned.
+     *
+     * @return const fs::path&
+     */
+    const fs::path &get_app_data_directory() const;
+
+    /**
+     * @brief Get the app data directory of another project.
+     *
+     * @param vendor
+     * @param appname
+     * @return fs::path
+     */
+    fs::path get_app_data_directory(std::string vendor, std::string appname) const;
 
     /**
      * @brief Compare the creation / modification dates of two files.
@@ -164,7 +204,7 @@ public:
      * @return true if the first file is older
      * @return false otherwise
      */
-    bool is_older(const std::string &unipath_1, const std::string &unipath_2);
+    bool is_older(const std::string &unipath_1, const std::string &unipath_2) const;
 
     /**
      * @brief Check if a file exists at a given universal path
@@ -173,7 +213,7 @@ public:
      * @return true if the file exists
      * @return false otherwise
      */
-    inline bool exists(const std::string &unipath)
+    inline bool exists(const std::string &unipath) const
     {
         return fs::exists(regular_path(unipath));
     }
@@ -187,7 +227,7 @@ public:
      * @return true if the extension matches
      * @return false otherwise
      */
-    inline bool check_extension(const std::string &unipath, const std::string &ext)
+    inline bool check_extension(const std::string &unipath, const std::string &ext) const
     {
         return !regular_path(unipath).extension().compare(ext);
     }
@@ -198,7 +238,7 @@ public:
      * @param unipath Universal path to the file
      * @return std::string The extension string, dot included
      */
-    inline std::string extension(const std::string &unipath)
+    inline std::string extension(const std::string &unipath) const
     {
         return regular_path(unipath).extension();
     }
@@ -257,7 +297,9 @@ private:
 private:
     fs::path self_directory_;
     fs::path app_settings_directory_;
+    fs::path app_data_directory_;
     std::map<hash_t, DirectoryAlias> aliases_;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 inline const fs::path &FileSystem::get_aliased_directory(hash_t alias_hash) const
@@ -295,5 +337,4 @@ inline const FileSystem::DirectoryAlias &FileSystem::get_alias_entry(hash_t alia
     return findit->second;
 }
 
-} // namespace kfs
-} // namespace kb
+} // namespace kb::kfs

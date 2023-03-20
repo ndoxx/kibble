@@ -1,16 +1,21 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <map>
+#include <memory>
 
 #include "thread/job/impl/common.h"
+#include "thread/sanitizer.h"
 
 namespace fs = std::filesystem;
 
-namespace kb
+namespace kb::log
 {
-namespace th
+class Channel;
+}
+namespace kb::th
 {
 
 /**
@@ -27,8 +32,8 @@ struct WorkerStats
     unsigned long long total_executed = 0;
     /// Total number of tasks stolen by the worker
     unsigned long long total_stolen = 0;
-    /// Total number of tasks resubmitted by the worker
-    unsigned long long total_resubmit = 0;
+    /// Total number of children tasks scheduled by the worker
+    unsigned long long total_scheduled = 0;
     /// Number of sleep cycles
     size_t cycles = 0;
 };
@@ -57,27 +62,6 @@ public:
     Monitor(JobSystem &js);
 
     /**
-     * @brief Export a file containing monitoring information for labeled jobs.
-     *
-     * @param filepath output file path
-     */
-    void export_job_profiles(const fs::path &filepath);
-
-    /**
-     * @brief Load a job profile information file.
-     *
-     * @param filepath input file path
-     */
-    void load_job_profiles(const fs::path &filepath);
-
-    /**
-     * @brief Call after a job has been executed to report its execution profile.
-     *
-     * @param meta job metadata
-     */
-    void report_job_execution(const JobMetadata &meta);
-
-    /**
      * @brief Process all worker activity reports in the queue.
      *
      */
@@ -89,34 +73,7 @@ public:
      *
      * @param tid worker id
      */
-    void log_statistics(tid_t tid) const;
-
-    /**
-     * @brief Reset workers load info.
-     *
-     */
-    void wrap();
-
-    /**
-     * @brief Get the map of all the job sizes.
-     *
-     * @return the job size map, with job sizes associated to job labels
-     */
-    inline const auto &get_job_size() const
-    {
-        return job_size_;
-    }
-
-    /**
-     * @brief Get the load of all worker threads.
-     * The load is the total job size a given worker has at some point.
-     *
-     * @return an array of loads, the size of the maximum amount of threads
-     */
-    inline const auto &get_load() const
-    {
-        return load_;
-    }
+    void log_statistics(tid_t tid, const kb::log::Channel* channel) const;
 
     /**
      * @brief Get a particular worker's statistics.
@@ -127,17 +84,6 @@ public:
     inline const auto &get_statistics(tid_t tid) const
     {
         return stats_[tid];
-    }
-
-    /**
-     * @brief Add load to a particular worker.
-     *
-     * @param idx worker index
-     * @param job_size job size to add to the current load
-     */
-    inline void add_load(size_t idx, int64_t job_size)
-    {
-        load_[idx] += job_size;
     }
 
     /**
@@ -167,12 +113,9 @@ private:
     }
 
 private:
-    std::map<uint64_t, int64_t> job_size_;
-    std::array<int64_t, k_max_threads> load_;
     std::array<WorkerStats, k_max_threads> stats_;
     JobSystem &js_;
     ActivityQueue<WorkerActivity> activity_queue_;
 };
 
-} // namespace th
-} // namespace kb
+} // namespace kb::th

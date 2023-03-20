@@ -1,10 +1,11 @@
-#include "assert/assert.h"
 #include "filesystem/filesystem.h"
+#include "assert/assert.h"
 #include "filesystem/resource_pack.h"
-#include "logger/logger.h"
+#include "logger2/logger.h"
 #include "string/string.h"
 
 #include <chrono>
+#include <fmt/std.h>
 #include <regex>
 
 #ifdef __linux__
@@ -16,9 +17,7 @@
 
 #endif
 
-namespace kb
-{
-namespace kfs
+namespace kb::kfs
 {
 
 static const std::regex r_alias("^(.+?)://(.+)");
@@ -37,7 +36,7 @@ struct FileSystem::UpathParsingResult
     std::string path_component;
 };
 
-FileSystem::FileSystem()
+FileSystem::FileSystem(const kb::log::Channel *log_channel) : log_channel_(log_channel)
 {
     // Locate binary
     init_self_path();
@@ -81,17 +80,17 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     {
         if (!fs::create_directories(app_settings_directory_))
         {
-            KLOGE("ios") << "Failed to create config directory at:" << std::endl;
-            KLOGI << KS_PATH_ << app_settings_directory_ << std::endl;
+            klog(log_channel_)
+                .uid("FileSystem")
+                .error("Failed to create config directory at:\n{}", app_settings_directory_);
             return false;
         }
-        KLOGN("ios") << "Created application directory at:" << std::endl;
+        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_settings_directory_);
     }
     else
     {
-        KLOGN("ios") << "Detected application directory at:" << std::endl;
+        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_settings_directory_);
     }
-    KLOGI << KS_PATH_ << app_settings_directory_ << std::endl;
 
     // Alias the config directory
     if (alias.empty())
@@ -101,24 +100,133 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     return true;
 }
 
-const fs::path &FileSystem::get_settings_directory()
+bool FileSystem::setup_app_data_directory(std::string vendor, std::string appname, std::string alias)
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#ifdef __linux__
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char *homebuf;
+    if ((homebuf = getenv("HOME")) == NULL)
+        homebuf = getpwuid(getuid())->pw_dir;
+
+    fs::path home_directory = fs::canonical(homebuf);
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+
+    // Check if ~/.local/share/<vendor>/<appname> is applicable, if not, fallback to
+    // ~/.<vendor>/<appname>/appdata
+    if (fs::exists(home_directory / ".local/share"))
+        app_data_directory_ = home_directory / ".local/share" / vendor / appname;
+    else
+        app_data_directory_ = home_directory / su::concat('.', vendor) / appname / "appdata";
+#else
+#error setup_app_data_directory() not yet implemented for this platform.
+#endif
+
+    // If directories do not exist, create them
+    if (!fs::exists(app_data_directory_))
+    {
+        if (!fs::create_directories(app_data_directory_))
+        {
+            klog(log_channel_)
+                .uid("FileSystem")
+                .error("Failed to create application data directory at:\n{}", app_data_directory_);
+            return false;
+        }
+        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_);
+    }
+    else
+    {
+        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_data_directory_);
+    }
+
+    // Alias the data directory
+    if (alias.empty())
+        alias = "appdata";
+    alias_directory(app_data_directory_, alias);
+
+    return true;
+}
+
+fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appname) const
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#ifdef __linux__
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char *homebuf;
+    if ((homebuf = getenv("HOME")) == NULL)
+        homebuf = getpwuid(getuid())->pw_dir;
+
+    fs::path home_directory = fs::canonical(homebuf);
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+
+    // Check if ~/.local/share/<vendor>/<appname> exists, if not, fallback to
+    // ~/.<vendor>/<appname>/appdata
+    auto candidate1 = home_directory / ".local/share" / vendor / appname;
+    auto candidate2 = home_directory / su::concat('.', vendor) / appname / "appdata";
+
+    if (fs::exists(candidate1))
+        return candidate1;
+    else if (fs::exists(candidate2))
+        return candidate2;
+    else
+    {
+        klog(log_channel_)
+            .uid("FileSystem")
+            .error(R"(Application data directory does not exist for:
+Vendor:   {}
+App name: {}
+Searched the following paths:
+    - {}
+    - {}
+=> Returning empty path.)",
+                   vendor, appname, candidate1, candidate2);
+        return "";
+    }
+
+#else
+#error get_app_data_directory(2) not yet implemented for this platform.
+#endif
+}
+
+const fs::path &FileSystem::get_settings_directory() const
 {
     if (app_settings_directory_.empty())
     {
-        KLOGW("ios") << "Application config directory has not been setup." << std::endl;
-        KLOGI << "Call setup_config_directory() after FileSystem construction." << std::endl;
-        KLOGI << "An empty path will be returned." << std::endl;
+        klog(log_channel_)
+            .uid("FileSystem")
+            .warn("Application config directory has not been setup.\nCall setup_config_directory() after FileSystem "
+                  "construction.\nAn empty path will be returned.");
     }
     return app_settings_directory_;
 }
 
-bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2)
+const fs::path &FileSystem::get_app_data_directory() const
+{
+    if (app_data_directory_.empty())
+    {
+        klog(log_channel_)
+            .uid("FileSystem")
+            .warn("Application data directory has not been setup.\nCall setup_app_data_directory() after FileSystem "
+                  "construction.\nAn empty path will be returned.");
+    }
+    return app_data_directory_;
+}
+
+bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2) const
 {
     auto path_1 = regular_path(unipath_1);
     auto path_2 = regular_path(unipath_2);
 
-    K_ASSERT(fs::exists(path_1), "First path does not exist.");
-    K_ASSERT(fs::exists(path_2), "Second path does not exist.");
+    K_ASSERT_FMT(fs::exists(path_1), "First path does not exist: %s", unipath_1.c_str());
+    K_ASSERT_FMT(fs::exists(path_2), "Second path does not exist: %s", unipath_2.c_str());
 
     std::time_t cftime_1 = to_time_t(fs::last_write_time(path_1));
     std::time_t cftime_2 = to_time_t(fs::last_write_time(path_2));
@@ -133,8 +241,9 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
 
     if (!fs::exists(dir_path))
     {
-        KLOGE("ios") << "Cannot add directory alias. Directory does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << dir_path << std::endl;
+        klog(log_channel_)
+            .uid("FileSystem")
+            .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path);
         return false;
     }
     K_ASSERT(fs::is_directory(dir_path), "Not a directory.");
@@ -146,15 +255,14 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
         auto &entry = findit->second;
         entry.alias = alias;
         entry.base = dir_path;
-        KLOG("ios", 0) << "Overloaded directory alias:" << std::endl;
+        klog(log_channel_).uid("FileSystem").debug("Overloaded directory alias:\n{}:// <=> {}", alias, dir_path);
     }
     else
     {
-        KLOG("ios", 0) << "Added directory alias:" << std::endl;
+        klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path);
         aliases_.insert({alias_hash, {alias, dir_path, {}}});
     }
 
-    KLOGI << alias << "://  <=>  " << KS_PATH_ << dir_path << std::endl;
     return true;
 }
 
@@ -162,8 +270,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
 {
     if (!fs::exists(pack_path))
     {
-        KLOGE("ios") << "Cannot add pack alias. File does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << pack_path << std::endl;
+        klog(log_channel_).uid("FileSystem").error("Cannot add pack alias. File does not exist:\n{}", pack_path);
         return false;
     }
     K_ASSERT(fs::is_regular_file(pack_path), "Not a file.");
@@ -183,8 +290,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
         aliases_.insert({alias_hash, {alias, pack_path.parent_path() / pack_path.stem(), {new PackFile(pack_path)}}});
     }
 
-    KLOG("ios", 0) << "Added pack alias:" << std::endl;
-    KLOGI << alias << "://  <=> " << KS_PATH_ << '@' << pack_path << std::endl;
+    klog(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}:// <=> {}", alias, pack_path);
     return true;
 }
 
@@ -236,8 +342,7 @@ fs::path FileSystem::to_regular_path(const UpathParsingResult &result) const
 
 IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary) const
 {
-    KLOG("ios", 0) << "Opening stream:" << std::endl;
-    KLOGI << "universal: " << KS_PATH_ << unipath << std::endl;
+    klog(log_channel_).uid("FileSystem").debug("Opening stream. Universal path: {}", unipath);
 
     auto result = parse_universal_path(unipath);
     // If a pack file is aliased at this name, try to find entry in pack
@@ -248,7 +353,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
             auto findit = ppack->find(result.path_component);
             if (findit != ppack->end())
             {
-                KLOGI << "source: " << KS_INST_ << "pack" << std::endl;
+                klog(log_channel_).uid("FileSystem").verbose("source: pack");
                 return ppack->get_input_stream(findit->second);
             }
         }
@@ -257,11 +362,11 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
     // If we got here, either the file does not exist at all, or it is in a regular directory
     auto filepath = to_regular_path(result);
 
-    KLOGI << "source:    " << KS_INST_ << "regular file" << std::endl;
-    KLOGI << "path:      " << KS_PATH_ << filepath << std::endl;
+    klog(log_channel_).uid("FileSystem").verbose("source: regular file");
+    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath);
 
-    K_ASSERT(fs::exists(filepath), "File does not exist.");
-    K_ASSERT(fs::is_regular_file(filepath), "Not a file.");
+    K_ASSERT_FMT(fs::exists(filepath), "File does not exist: %s", unipath.c_str());
+    K_ASSERT_FMT(fs::is_regular_file(filepath), "Not a file: %s", unipath.c_str());
 
     auto mode = std::ios::in;
     if (binary)
@@ -291,5 +396,4 @@ void FileSystem::init_self_path()
     K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
 }
 
-} // namespace kfs
-} // namespace kb
+} // namespace kb::kfs

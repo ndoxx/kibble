@@ -14,6 +14,7 @@ target_include_directories(kibble
 
 target_include_directories(kibble
     SYSTEM PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
     )
@@ -24,10 +25,54 @@ set_target_properties(kibble
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
         POSITION_INDEPENDENT_CODE ON
+    )
+
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
+    PROPERTIES COMPILE_FLAGS -mavx2
+    )
+
+# Configuration
+option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
+option(ENABLE_LOGGING "Enable logging within Kibble" ON)
+option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
+option(ENABLE_JOB_SYSTEM_EXCEPTIONS "Make job system handle exceptions properly" ON)
+option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
+option(ENABLE_SHARED_STATE_PAGE_ALIGN "Page align job system shared state members" ON)
+
+target_compile_definitions(kibble 
+    PUBLIC 
+        CFG_JS_MAX_THREADS=8
+        CFG_JS_MAX_JOBS_PER_WORKER=1024
+        CFG_JS_STATS_QUEUE_CAPACITY=128
+        CFG_JS_MAX_CHILD_JOBS=8
+        CFG_JS_MAX_PARENT_JOBS=4
 )
 
-target_compile_definitions(kibble PRIVATE -DLOGGING_ENABLED=1)
-target_compile_definitions(kibble PRIVATE -DK_ENABLE_ASSERT)
+if(ENABLE_LOGGING)
+    target_compile_definitions(kibble PRIVATE LOGGING_ENABLED=1)
+else()
+    target_compile_definitions(kibble PRIVATE LOGGING_ENABLED=0)
+endif()
+
+if(ENABLE_ASSERTIONS)
+    target_compile_definitions(kibble PRIVATE K_ENABLE_ASSERT)
+endif()
+
+if(ENABLE_JOB_SYSTEM_PROFILING)
+    target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)
+endif()
+
+if(ENABLE_JOB_SYSTEM_EXCEPTIONS)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_JOB_EXCEPTIONS)
+endif()
+
+if(ENABLE_WORK_STEALING)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_WORK_STEALING)
+endif()
+
+if(ENABLE_SHARED_STATE_PAGE_ALIGN)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_SHARED_STATE_PAGE_ALIGN)
+endif()
 
 target_link_libraries(kibble
     PRIVATE
@@ -36,6 +81,7 @@ target_link_libraries(kibble
         pthread
         atomic
         stdc++fs
+        fmt
 )
 
 # Install rules
@@ -71,6 +117,9 @@ install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 
+file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/logger2)
+
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/math)
 
@@ -82,7 +131,7 @@ install(FILES ${H_LIB} DESTINATION include/kibble/memory)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/net/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/net)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/random/*.h")
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/random/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/random)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/string/*.h")

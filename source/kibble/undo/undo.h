@@ -530,6 +530,16 @@ public:
     bool set_active(hash_t stack_name);
 
     /**
+     * @brief Change the name of a stack.
+     * 
+     * @param old_name 
+     * @param new_name 
+     * @return true if the stack was successfully renamed
+     * @return false otherwise
+     */
+    bool relabel_stack(hash_t old_name, hash_t new_name);
+
+    /**
      * @brief Get the redo text of the active stack.
      *
      * @return std::string_view The redo text, or an empty string if no stack is active

@@ -1,7 +1,3 @@
-#include "logger/dispatcher.h"
-#include "logger/logger.h"
-#include "logger/sink.h"
-
 #include "math/catenary.h"
 
 #include <array>
@@ -9,26 +5,16 @@
 #include <fstream>
 #include <functional>
 #include <glm/glm.hpp>
+#include <iostream>
 #include <limits>
 #include <vector>
 
-namespace fs = std::filesystem;
 using namespace kb;
 
-void init_logger()
-{
-    KLOGGER_START();
-
-    KLOGGER(create_channel("nuclear", 3));
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
-    KLOGGER(set_backtrace_on_error(false));
-}
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
-    init_logger();
 
     float scale = 1.f;
 
@@ -56,11 +42,11 @@ int main(int argc, char** argv)
     float max_len = 3.f * min_len;
 
     std::vector<math::Catenary> cats;
-    for(size_t ii = 0; ii < ncats; ++ii)
+    for (size_t ii = 0; ii < ncats; ++ii)
     {
         float tt = float(ii) / float(ncats - 1);
         float s = scale * std::lerp(min_len, max_len, tt);
-        KLOG("nuclear", 1) << "s=" << s << " v=" << y2 - y1 << " h=" << x2 - x1 << std::endl;
+        std::cout << "s=" << s << " v=" << y2 - y1 << " h=" << x2 - x1 << std::endl;
         cats.emplace_back(x1, y1, x2, y2, s);
     }
 
@@ -68,12 +54,12 @@ int main(int argc, char** argv)
     {
         size_t nsamples = 100;
         std::ofstream ofs("catenary.txt");
-        for(size_t ii = 0; ii < nsamples; ++ii)
+        for (size_t ii = 0; ii < nsamples; ++ii)
         {
             float tt = float(ii) / float(nsamples - 1);
             float xx = (1.f - tt) * x1 + tt * x2;
             ofs << xx << ' ';
-            for(size_t jj = 0; jj < ncats; ++jj)
+            for (size_t jj = 0; jj < ncats; ++jj)
                 ofs << cats[jj].value(xx) << ' ';
             ofs << std::endl;
         }
@@ -82,7 +68,7 @@ int main(int argc, char** argv)
     {
         size_t nsamples = 30;
         std::ofstream ofs("catenary_alp.txt");
-        for(size_t ii = 0; ii < nsamples; ++ii)
+        for (size_t ii = 0; ii < nsamples; ++ii)
         {
             float tt = float(ii) / float(nsamples - 1);
             float xx = (1.f - tt) * x1 + tt * x2;
@@ -94,7 +80,7 @@ int main(int argc, char** argv)
     {
         size_t nsamples = 50;
         std::ofstream ofs("catenary_der.txt");
-        for(size_t ii = 0; ii < nsamples; ++ii)
+        for (size_t ii = 0; ii < nsamples; ++ii)
         {
             float tt = float(ii) / float(nsamples - 1);
             float rt = cats[ncats - 1].arclen_remap(tt);

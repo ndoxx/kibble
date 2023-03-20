@@ -67,10 +67,12 @@ This library is under heavy development, and the API is subject to change. Use a
 * Logger
     - Channel-based system with runtime verbosity levels
     - Extendable sink system (out-of-the-box sinks: console, file and TCP)
+    - Extendable formatters
+    - Extendable policy system for filtering / transforming log data
     - Output is formatted, color coded and easy to follow
-    - Portions of text can be colored easily (foreground / background)
-    - Brain-dead stream-like syntax
-    - Thread-safe (using mutexes, but speed wasn't the priority)
+    - fmtlib-style syntax
+    - Synchronous and asynchronous operation (both thread-safe)
+    - Optional stack trace on error
 * Program argument parser
     - Automatically generate usage string and version
     - Modern interface
@@ -82,6 +84,9 @@ This library is under heavy development, and the API is subject to change. Use a
 * Custom assertion
     - More helpful assert macro, user can debug break / continue / print stack trace / exit
     - printf-style formatted assertions
+* Profiling utility
+    - Easily profile execution time
+    - Produce a Chrome Tracing json output
 * Config system
     - Read and save settings from / to multiple TOML files with a single structure
     - Each property is referenced by an intuitive hash string reflecting the property's hierarchy
@@ -97,9 +102,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * Job system
     - Launch multiple worker threads and execute tasks asynchronously
     - Lock-free
-    - Work stealing scheme
-    - Task execution time monitoring / "smart" load prediction for better scheduling
+    - Work stealing scheme for load balancing
+    - Dependency graph
     - Worker affinity
+    - Recurring tasks
+    - Task monitoring and profiling (using the profiling utility)
 * Undo engine
     - Qt-like API
     - Push custom commands in a stack-like object that handles the undo / redo logic
@@ -110,6 +117,8 @@ This library is under heavy development, and the API is subject to change. Use a
 * Random number generation
     - Fast XOR shift engine
     - Coherent noise generation (simplex, octave)
+* UUIDv4 generation
+    - adapted from: [https://github.com/crashoz/uuid_v4](https://github.com/crashoz/uuid_v4)
 * Multiple math utilities
     - Bezier and cubic Hermite spline interpolation (arc-length parameterized)
     - Catenary curve (arc-length parameterized)
@@ -129,8 +138,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * Multiple string utilities to avoid boilerplate
     - trimming, stripping, case transform, text centering, tokenization, regex replace
     - Base64 encoding / decoding
+* Compile-time type information
+    - Drop-in replacement for some features of the CTTI lib
+    - Compile-time type name and type ID (as a name hash)
 * Memory arena system
-    - Fast custom allocators (linear and pool)
+    - Fast custom allocators (linear, pool, atomic pool)
     - May be deprecated at some point due to std::pmr
 * Basic TCP socket abstraction
     - Simple Berkeley socket wrapper using the Stream / Acceptor / Connector model
@@ -140,6 +152,9 @@ This library is under heavy development, and the API is subject to change. Use a
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
+## Deprecated components
+
+The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
 
 
 <!-- GETTING STARTED -->
@@ -150,6 +165,8 @@ To get a local copy up and running follow these steps.
 ## Prerequisites
 
 * A compiler with support for C++20 (tested with clang 12.0.0)
+* CMake, minimum version 3.19
+* [fmtlib](https://github.com/fmtlib/fmt) installed on your system
 
 ## Installation
 

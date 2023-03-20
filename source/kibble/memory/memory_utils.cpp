@@ -1,20 +1,31 @@
-#include "logger/common.h"
 #include "memory/memory_utils.h"
+#include "logger/common.h"
 #include "string/string.h"
 
 #include <cstdint>
+#include <fmt/core.h>
 #include <iomanip>
 #include <map>
 
-namespace kb
-{
-namespace memory
+namespace kb::memory
 {
 namespace utils
 {
 
 static const std::string suffix[] = {"B", "kB", "MB", "GB", "TB"};
 static constexpr int length = 5;
+
+std::size_t round_up(std::size_t base, std::size_t multiple)
+{
+    if (multiple == 0)
+        return base;
+
+    std::size_t remainder = base % multiple;
+    if (remainder == 0)
+        return base;
+
+    return base + multiple - remainder;
+}
 
 std::string human_size(std::size_t bytes)
 {
@@ -27,9 +38,7 @@ std::string human_size(std::size_t bytes)
             dblBytes = double(bytes) / 1024.0;
     }
 
-    static char output[200];
-    snprintf(output, 200, "%.02lf %s", dblBytes, suffix[i].c_str());
-    return output;
+    return fmt::format("{:.2f}{}", dblBytes, suffix[i].c_str());
 }
 
 } // namespace utils
@@ -101,5 +110,4 @@ void hex_dump(std::ostream &stream, const void *ptr, std::size_t size, const std
     stream << kb::KC_ << std::dec;
 }
 
-} // namespace memory
-} // namespace kb
+} // namespace kb::memory

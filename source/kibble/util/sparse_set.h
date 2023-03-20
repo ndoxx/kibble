@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "../assert/assert.h"
+
 namespace kb
 {
 

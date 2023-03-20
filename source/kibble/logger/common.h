@@ -82,12 +82,12 @@ struct ConsoleColor
 #define KS_NODE_ KF_(kb::col::turquoise)   
 /// @def KS_HIGH_ Console color for: highlight
 #define KS_HIGH_ KF_(kb::col::pink)        
-/// @def KS_GOOD_ Console color for: good thing
-#define KS_GOOD_ KF_(kb::col::green)       
-/// @def KS_BAD_ Console color for: bad thing
-#define KS_BAD_ KF_(kb::col::red)          
+/// @def KS_POS_ Console color for: good thing
+#define KS_POS_ KF_(kb::col::green)       
+/// @def KS_NEG_ Console color for: bad thing
+#define KS_NEG_ KF_(kb::col::red)          
 
-namespace klog
+namespace log_deprec
 {
 
 /**
@@ -172,5 +172,5 @@ public:
     static const std::array<std::string, size_t(MsgType::COUNT)> s_icons;
 };
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb

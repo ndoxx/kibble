@@ -25,7 +25,7 @@ void init_logger()
     KLOGGER(create_channel("custom", 3));
     KLOGGER(set_channel_tag("custom", "csm", kb::col::darkorchid));
 
-    KLOGGER(attach_all("console_sink", std::make_unique<klog::ConsoleSink>()));
+    KLOGGER(attach_all("console_sink", std::make_unique<log_deprec::ConsoleSink>()));
     KLOGGER(set_backtrace_on_error(false));
 }
 
@@ -82,8 +82,8 @@ int main()
     KLOG("core", 1) << KS_ATTR_ << "attribute" << std::endl;
     KLOG("core", 1) << KS_NODE_ << "node" << std::endl;
     KLOG("core", 1) << KS_HIGH_ << "emphasis" << std::endl;
-    KLOG("core", 1) << KS_GOOD_ << "this is good" << std::endl;
-    KLOG("core", 1) << KS_BAD_ << "this is bad" << std::endl;
+    KLOG("core", 1) << KS_POS_ << "this is good" << std::endl;
+    KLOG("core", 1) << KS_NEG_ << "this is bad" << std::endl;
 
     KLOGN("core") << "-------- [SEVERITY & ERROR REPORT] --------" << std::endl;
     KBANG();

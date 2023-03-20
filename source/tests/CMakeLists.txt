@@ -11,6 +11,7 @@ set(SRC_KIBBLE_TEST
     test_event.cpp
     test_optimization.cpp
     test_settings.cpp
+    test_uuid.cpp
    )
 
 add_executable(test_kibble ${SRC_KIBBLE_TEST})
@@ -101,6 +102,11 @@ target_include_directories(nuclear
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
+
+target_include_directories(nuclear
+SYSTEM PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+)
 
 target_compile_definitions(nuclear PRIVATE -DLOGGING_ANSI_3=0)
 target_compile_definitions(nuclear PRIVATE -DLOGGING_ENABLED=1)

@@ -9,7 +9,8 @@
 #include <type_traits>
 
 #include "../assert/assert.h"
-#include "../logger/logger.h"
+#include "../logger2/logger.h"
+#include "memory_utils.h"
 #include "policy.h"
 
 // Useful to avoid uninitialized reads with Valgrind during hexdumps
@@ -77,7 +78,7 @@ public:
      */
     ~MemoryArena()
     {
-        memory_tracker_.report();
+        memory_tracker_.report(log_channel_);
     }
 
     /**
@@ -91,6 +92,16 @@ public:
     {
         allocator_.init(std::forward<ArgsT>(args)...);
         is_initialized_ = true;
+    }
+
+    /**
+     * @brief Set a logger channel instance for this arena
+     *
+     * @param log_channel
+     */
+    inline void set_logger_channel(const kb::log::Channel *log_channel)
+    {
+        log_channel_ = log_channel;
     }
 
     /**
@@ -171,13 +182,10 @@ public:
 
         uint8_t *begin = static_cast<uint8_t *>(allocator_.allocate(decorated_size, alignment, user_offset));
 
-#ifdef K_DEBUG
         if (begin == nullptr)
         {
-            KLOGF("memory") << "[Arena] \"" << debug_name_ << "\": Out of memory." << std::endl;
-            K_ASSERT(false, "Allocation failed.");
+            klog(log_channel_).uid("Arena").fatal("\"{}\": Out of memory.", debug_name_);
         }
-#endif
 
         uint8_t *current = begin;
 
@@ -194,10 +202,14 @@ public:
         bounds_checker_.put_sentinel_back(current + size);
         memory_tracker_.on_allocation(begin, decorated_size, alignment);
 
-        // KLOGW("memory") << "Allocation" << std::endl;
-        // KLOGI << "Decorated size: " << decorated_size << std::endl;
-        // KLOGI << "Begin ptr:      " << std::hex << uint64_t((void*)begin) << std::endl;
-        // KLOGI << "User ptr:       " << std::hex << uint64_t((void*)current) << std::endl;
+        klog(log_channel_)
+            .uid("Arena")
+            .verbose(R"({} -- Allocation:
+Decorated size: {}
+Begin ptr:      {:#x}
+User ptr:       {:#x})",
+                     debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
+                     reinterpret_cast<uint64_t>(current));
 
         // Unlock resource and return user pointer
         thread_guard_.leave();
@@ -229,10 +241,14 @@ public:
 
         allocator_.deallocate(begin);
 
-        // KLOGW("memory") << "Deallocation" << std::endl;
-        // KLOGI << "Decorated size: " << decorated_size << std::endl;
-        // KLOGI << "Begin ptr:      " << std::hex << uint64_t((void*)begin) << std::endl;
-        // KLOGI << "User ptr:       " << std::hex << uint64_t((void*)ptr) << std::endl;
+        klog(log_channel_)
+            .uid("Arena")
+            .verbose(R"({} -- Deallocation:
+Decorated size: {}
+Begin ptr:      {:#x}
+User ptr:       {:#x})",
+                     debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
+                     reinterpret_cast<uint64_t>(ptr));
 
         thread_guard_.leave();
     }
@@ -259,6 +275,7 @@ private:
 
     std::string debug_name_;
     bool is_initialized_;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 /**
@@ -275,7 +292,9 @@ template <typename ThreadPolicyT = policy::SingleThread>
 class LinearBuffer
 {
 public:
-    LinearBuffer() = default;
+    LinearBuffer(const kb::log::Channel *log_channel = nullptr) : log_channel_(log_channel)
+    {
+    }
 
     /**
      * @brief Construct a new Linear Buffer of specified size.
@@ -302,12 +321,9 @@ public:
         begin_ = static_cast<uint8_t *>(range.first);
         end_ = static_cast<uint8_t *>(range.second);
         head_ = begin_;
-#ifdef K_DEBUG
         debug_name_ = debug_name;
-#endif
     }
 
-#ifdef K_DEBUG
     /**
      * @brief Set the debug name
      *
@@ -317,7 +333,6 @@ public:
     {
         debug_name_ = name;
     }
-#endif
 
     /**
      * @brief Copy data to this buffer.
@@ -329,13 +344,10 @@ public:
      */
     inline void write(void const *source, std::size_t size)
     {
-#ifdef K_DEBUG
         if (head_ + size >= end_)
         {
-            KLOGF("memory") << "[LinearBuffer] \"" << debug_name_ << "\": Data buffer overwrite!" << std::endl;
+            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overwrite!", debug_name_);
         }
-#endif
-        K_ASSERT(head_ + size < end_, "[LinearBuffer] Data buffer overwrite!");
         memcpy(head_, source, size);
         head_ += size;
     }
@@ -350,13 +362,10 @@ public:
      */
     inline void read(void *destination, std::size_t size)
     {
-#ifdef K_DEBUG
         if (head_ + size >= end_)
         {
-            KLOGF("memory") << "[LinearBuffer] \"" << debug_name_ << "\": Data buffer overread!" << std::endl;
+            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overread!", debug_name_);
         }
-#endif
-        K_ASSERT(head_ + size < end_, "[LinearBuffer] Data buffer overread!");
         memcpy(destination, head_, size);
         head_ += size;
     }
@@ -467,10 +476,8 @@ private:
     uint8_t *begin_;
     uint8_t *end_;
     uint8_t *head_;
-
-#ifdef K_DEBUG
     std::string debug_name_;
-#endif
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 /**

@@ -1,17 +1,17 @@
-#include "assert/assert.h"
 #include "filesystem/resource_pack.h"
-#include "logger/logger.h"
+#include "assert/assert.h"
+#include "logger2/logger.h"
+#include "memory/memory_utils.h"
 #include "string/string.h"
 
 #include <array>
 #include <cmath>
+#include <fmt/std.h>
 #include <fstream>
 #include <set>
 #include <vector>
 
-namespace kb
-{
-namespace kfs
+namespace kb::kfs
 {
 
 /* Custom input stream and stream buffer implementations.
@@ -104,7 +104,7 @@ void PackLocalEntry::read(std::istream &stream)
 #define KPAK_VERSION_MAJOR 0
 #define KPAK_VERSION_MINOR 1
 
-std::set<hash_t> parse_kpakignore(const fs::path &filepath)
+std::set<hash_t> parse_kpakignore(const fs::path &filepath, const kb::log::Channel *log_channel)
 {
     K_ASSERT(fs::is_regular_file(filepath), "kpakignore is not a file.");
     fs::path base_path = filepath.parent_path();
@@ -120,14 +120,13 @@ std::set<hash_t> parse_kpakignore(const fs::path &filepath)
         if (fs::exists(base_path / line))
         {
             hash_t key = H_(line);
-#ifdef K_DEBUG
             if (result.find(key) != result.end())
             {
-                KLOGW("ios") << "[kpak] Duplicate kpakignore entry, or hash collision for:" << std::endl;
-                KLOGI << line << std::endl;
+                klog(log_channel)
+                    .uid("kpakIgnore")
+                    .warn("Duplicate kpakignore entry, or hash collision for:\n{}", line);
             }
-#endif
-            KLOG("ios", 1) << "[kpak] " << KS_INST_ << "ignore" << KC_ << ": " << KS_PATH_ << line << std::endl;
+            klog(log_channel).uid("kpakIgnore").info("ignore: {}", line);
             result.insert(key);
         }
     }
@@ -136,12 +135,12 @@ std::set<hash_t> parse_kpakignore(const fs::path &filepath)
     return result;
 }
 
-bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_path)
+bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_path,
+                              const kb::log::Channel *log_channel)
 {
     if (!fs::exists(dir_path))
     {
-        KLOGE("ios") << "[kpak] Directory does not exist:" << std::endl;
-        KLOGI << KS_PATH_ << dir_path << std::endl;
+        klog(log_channel).uid("kpak").error("Directory does not exist:\n{}", dir_path);
         return false;
     }
 
@@ -149,8 +148,8 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     std::set<hash_t> ignored;
     if (fs::exists(dir_path / "kpakignore"))
     {
-        KLOGN("ios") << "[kpak] Detected kpakignore file." << std::endl;
-        ignored = parse_kpakignore(dir_path / "kpakignore");
+        klog(log_channel).uid("kpak").info("Detected kpakignore file.");
+        ignored = parse_kpakignore(dir_path / "kpakignore", log_channel);
     }
 
     PAKHeader h;
@@ -183,10 +182,8 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
 
     h.entry_count = uint32_t(entries.size());
 
-    KLOG("ios", 0) << "[kpak] Packing directory:" << std::endl;
-    KLOGI << KS_PATH_ << dir_path << std::endl;
-    KLOG("ios", 0) << "[kpak] Target archive:" << std::endl;
-    KLOGI << KS_PATH_ << archive_path << std::endl;
+    klog(log_channel).uid("kpak").info("Packing directory: {}", dir_path);
+    klog(log_channel).uid("kpak").info("Target archive:    {}", archive_path);
 
     // Write header
     std::ofstream ofs(archive_path, std::ios::binary);
@@ -207,8 +204,11 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     for (const auto &entry : entries)
     {
         size_t progess_percent = size_t(std::round(100.f * float(++progress) / float(entries.size())));
-        KLOG("ios", 0) << "[kpak] " << std::setw(3) << progess_percent << "% " << KS_INST_ << "pack" << KC_ << ": "
-                       << KS_PATH_ << entry.path << KC_ << " (" << su::size_to_string(entry.size) << ')' << std::endl;
+
+        klog(log_channel)
+            .uid("kpak")
+            .verbose("{:3}% pack: {} ({})", progess_percent, entry.path, kb::memory::utils::human_size(entry.size));
+
         std::ifstream ifs(dir_path / entry.path, std::ios::binary);
         databuf.insert(databuf.begin(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
         ofs.write(databuf.data(), long(databuf.size()));
@@ -244,5 +244,4 @@ std::shared_ptr<std::istream> PackFile::get_input_stream(const PackLocalEntry &e
     return std::make_shared<PackInputStream>(filepath_, entry);
 }
 
-} // namespace kfs
-} // namespace kb
+} // namespace kb::kfs

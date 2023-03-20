@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <functional>
 #include <utility>
@@ -53,6 +54,21 @@ float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, f
  * @return float
  */
 float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint32_t subdivisions);
+
+/**
+ * @brief Performs exponential moving average thanks to an IIR
+ *
+ * @tparam FloatT
+ * @param accumulator filtered value
+ * @param new_value new value to push
+ * @param alpha damping coeff < 1.f (the higher, the less damped)
+ */
+template <typename FloatT = float>
+requires std::floating_point<FloatT>
+inline void exponential_moving_average(FloatT &accumulator, FloatT new_value, FloatT alpha)
+{
+    accumulator = (alpha * new_value) + (FloatT(1) - alpha) * accumulator;
+}
 
 } // namespace math
 } // namespace kb

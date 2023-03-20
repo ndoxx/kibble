@@ -6,7 +6,7 @@
 
 namespace kb
 {
-namespace klog
+namespace log_deprec
 {
 
 LoggerStream::StringBuffer::StringBuffer(LoggerStream& parent) : parent_(parent) {}
@@ -59,5 +59,5 @@ void LoggerStream::submit(const std::string& message)
     Logger::DISPATCHER->dispatch(stmt_);
 }
 
-} // namespace klog
+} // namespace log_deprec
 } // namespace kb
