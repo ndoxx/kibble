@@ -1,7 +1,7 @@
 #pragma once
 #include "../time/clock.h"
+#include "../util/stack_trace.h"
 #include "severity.h"
-#include "util/stack_trace.h"
 #include <optional>
 #include <string>
 

@@ -8,18 +8,38 @@
 namespace kb::log
 {
 
+/**
+ * @brief Helper class to generate a log entry
+ * 
+ */
 struct EntryBuilder : private LogEntry
 {
 public:
     EntryBuilder(const Channel &channel, int source_line, const char *source_file, const char *source_function);
     EntryBuilder(const Channel *channel, int source_line, const char *source_file, const char *source_function);
 
+    /**
+     * @brief Set this log entry as raw text.
+     * 
+     * Formatters shall skip formatting contextual information and only output the raw message
+     * 
+     * @return EntryBuilder& 
+     */
     inline EntryBuilder &raw()
     {
         raw_text = true;
         return *this;
     }
 
+    /**
+     * @brief Attach a UID to this log entry.
+     * 
+     * UIDs help better understand what subsystem issued this particular logging call.
+     * They can also be whitelisted / blacklisted by policies.
+     * 
+     * @param uid_str 
+     * @return EntryBuilder& 
+     */
     inline EntryBuilder &uid(std::string &&uid_str)
     {
         uid_text = std::move(uid_str);

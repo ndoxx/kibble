@@ -3,6 +3,7 @@
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
 #include "logger2/policies/stack_trace_policy.h"
+#include "logger2/policies/uid_filter.h"
 #include "logger2/sinks/console_sink.h"
 #include "logger2/sinks/file_sink.h"
 #include "memory/heap_area.h"
@@ -152,10 +153,20 @@ int main(int argc, char **argv)
     klog(chan_graphics).raw().info("Raw text");
 
     // Channels can be shared by multiple subsystems, using UIDs can help better distinguish between these
-    // Also, it is possible to devise a policy to filter through such UIDs
     klog(chan_graphics).uid("Texture").info("Texture related stuff");
     klog(chan_graphics).uid("Backend").info("Renderer backend related stuff");
     klog(chan_graphics).uid("Mesh").info("Mesh related stuff");
+
+    // Also, it is possible to devise a policy to filter through such UIDs:
+    // Only messages with a UID set to "ResourcePack" or "CatFile" or no UID at all will be logged
+    // There's also a blacklist policy available
+    auto whitelist = std::make_shared<UIDWhitelist>(std::set{"ResourcePack"_h});
+    whitelist->add("CatFile"_h);
+    chan_filesystem.attach_policy(whitelist);
+    klog(chan_filesystem).info("General filesystem info are logged");
+    klog(chan_filesystem).uid("ResourcePack").info("ResourcePack info are logged");
+    klog(chan_filesystem).uid("CatFile").info("CatFile info are logged");
+    klog(chan_filesystem).uid("DofFile").info("DofFile info are NOT logged");
 
     // printf-debugging, here we come
     kbang(chan_graphics);
