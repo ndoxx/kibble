@@ -19,9 +19,9 @@ void NetSink::submit(const LogEntry &e, const struct ChannelPresentation &p)
     stream_->send(formatter_->format_string(e, p));
 }
 
-void NetSink::on_attach()
+void NetSink::on_attach(const Channel& chan)
 {
-    on_attach_(*stream_);
+    on_attach_(*stream_, chan);
 }
 
 bool NetSink::connect(const std::string &server, uint16_t port)

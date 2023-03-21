@@ -13,7 +13,7 @@ struct FileSink::Internal
     {
     }
 
-    fmt::v9::ostream out;
+    fmt::ostream out;
 };
 } // namespace kb::log
 

@@ -236,7 +236,6 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
                 [&stage_time, ii](std::shared_future<int> fut) {
                     // Simulate staging time
                     std::this_thread::sleep_for(std::chrono::milliseconds(stage_time[ii]));
-                    // Don't forget to set the promise.
                     // For this example, we just multiply by some arbitrary float...
                     return float(fut.get()) * 1.23f;
                 },

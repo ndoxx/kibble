@@ -31,7 +31,7 @@ Channel::Channel(Severity level, const std::string &full_name, const std::string
 void Channel::attach_sink(std::shared_ptr<Sink> psink)
 {
     sinks_.push_back(psink);
-    sinks_.back()->on_attach();
+    sinks_.back()->on_attach(*this);
 }
 
 void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
