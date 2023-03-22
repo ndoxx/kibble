@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thread/alignment.h"
+#include "../alignment.h"
 #include <array>
 #include <atomic>
 #include <cstdint>

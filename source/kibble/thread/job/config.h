@@ -8,15 +8,15 @@ namespace th
 {
 
 /// Maximum allowable number of worker threads
-[[maybe_unused]] static constexpr std::size_t k_max_threads = CFG_JS_MAX_THREADS;
+[[maybe_unused]] static constexpr std::size_t k_max_threads = 8;
 /// Maximum number of jobs per worker thread queue
-[[maybe_unused]] static constexpr std::size_t k_max_jobs = CFG_JS_MAX_JOBS_PER_WORKER;
+[[maybe_unused]] static constexpr std::size_t k_max_jobs = 1024;
 /// Maximum number of stats packets in the monitor queue
-[[maybe_unused]] static constexpr std::size_t k_stats_queue_capacity = CFG_JS_STATS_QUEUE_CAPACITY;
+[[maybe_unused]] static constexpr std::size_t k_stats_queue_capacity = 128;
 // Maximum number of dependent jobs for each job
-[[maybe_unused]] static constexpr std::size_t k_max_child_jobs = CFG_JS_MAX_CHILD_JOBS;
+[[maybe_unused]] static constexpr std::size_t k_max_child_jobs = 8;
 // Maximum number of job dependencies
-[[maybe_unused]] static constexpr std::size_t k_max_parent_jobs = CFG_JS_MAX_PARENT_JOBS;
+[[maybe_unused]] static constexpr std::size_t k_max_parent_jobs = 4;
 
 } // namespace th
 } // namespace kb

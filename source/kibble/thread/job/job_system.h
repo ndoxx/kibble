@@ -1,8 +1,9 @@
 #pragma once
 
-#include "assert/assert.h"
-#include "thread/job/config.h"
-#include "thread/job/job_graph.h"
+#include "../../assert/assert.h"
+#include "config.h"
+#include "job_graph.h"
+
 #include <future>
 #include <map>
 #include <vector>

@@ -39,15 +39,6 @@ option(ENABLE_JOB_SYSTEM_EXCEPTIONS "Make job system handle exceptions properly"
 option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
 option(ENABLE_SHARED_STATE_PAGE_ALIGN "Page align job system shared state members" ON)
 
-target_compile_definitions(kibble 
-    PUBLIC 
-        CFG_JS_MAX_THREADS=8
-        CFG_JS_MAX_JOBS_PER_WORKER=1024
-        CFG_JS_STATS_QUEUE_CAPACITY=128
-        CFG_JS_MAX_CHILD_JOBS=8
-        CFG_JS_MAX_PARENT_JOBS=4
-)
-
 if(ENABLE_LOGGING)
     target_compile_definitions(kibble PRIVATE LOGGING_ENABLED=1)
 else()
@@ -117,8 +108,14 @@ install(FILES ${H_LIB} DESTINATION include/kibble/hash)
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger)
 
-file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/*.h")
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/logger2)
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/formatters/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/logger2/formatters)
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/policies/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/logger2/policies)
+file(GLOB H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/logger2/sinks/*.h")
+install(FILES ${H_LIB} DESTINATION include/kibble/logger2/sinks)
 
 file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/math/*.h")
 install(FILES ${H_LIB} DESTINATION include/kibble/math)

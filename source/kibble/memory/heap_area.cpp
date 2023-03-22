@@ -71,9 +71,10 @@ void HeapArea::debug_hex_dump(std::ostream &stream, size_t size)
     memory::hex_dump(stream, begin_, size, "HEX DUMP");
 }
 
-bool HeapArea::init(size_t size)
+bool HeapArea::init(size_t size, const kb::log::Channel *channel)
 {
     size_ = size;
+    log_channel_ = channel;
     try
     {
         begin_ = new uint8_t[size_];

@@ -356,7 +356,7 @@ public:
      *
      * @param log_channel
      */
-    inline void set_log_channel(const kb::log::Channel *log_channel)
+    inline void set_logger_channel(const kb::log::Channel *log_channel)
     {
         log_channel_ = log_channel;
     }
