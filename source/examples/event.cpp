@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 
     ExampleHandler example_handler(chan_handler);
     EventBus event_bus;
-    event_bus.set_log_channel(&chan_event);
+    event_bus.set_logger_channel(&chan_event);
 
     // Track all events
     event_bus.set_event_tracking_predicate([](auto id) {
