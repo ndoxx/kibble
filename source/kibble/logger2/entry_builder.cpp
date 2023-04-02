@@ -17,11 +17,10 @@ EntryBuilder::EntryBuilder(const Channel *channel, int source_line, const char *
 {
 }
 
-void EntryBuilder::log(Severity s, std::string_view m)
+void EntryBuilder::log(std::string_view m)
 {
     if (channel_)
     {
-        severity = s;
         message = m;
         channel_->submit(std::move(*this));
     }

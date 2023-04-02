@@ -10,7 +10,7 @@ namespace kb::log
 
 /**
  * @brief Helper class to generate a log entry
- * 
+ *
  */
 struct EntryBuilder : private LogEntry
 {
@@ -20,10 +20,10 @@ public:
 
     /**
      * @brief Set this log entry as raw text.
-     * 
+     *
      * Formatters shall skip formatting contextual information and only output the raw message
-     * 
-     * @return EntryBuilder& 
+     *
+     * @return EntryBuilder&
      */
     inline EntryBuilder &raw()
     {
@@ -31,14 +31,20 @@ public:
         return *this;
     }
 
+    inline EntryBuilder &level(Severity s)
+    {
+        severity = s;
+        return *this;
+    }
+
     /**
      * @brief Attach a UID to this log entry.
-     * 
+     *
      * UIDs help better understand what subsystem issued this particular logging call.
      * They can also be whitelisted / blacklisted by policies.
-     * 
-     * @param uid_str 
-     * @return EntryBuilder& 
+     *
+     * @param uid_str
+     * @return EntryBuilder&
      */
     inline EntryBuilder &uid(std::string &&uid_str)
     {
@@ -46,74 +52,79 @@ public:
         return *this;
     }
 
+    void log(std::string_view m);
+
+    template <typename... ArgsT>
+    inline void log(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    {
+        log(fmt::format(fstr, std::forward<ArgsT>(args)...));
+    }
+
     inline void verbose(std::string_view sv)
     {
-        log(Severity::Verbose, sv);
+        level(Severity::Verbose).log(sv);
     }
 
     template <typename... ArgsT>
     inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Verbose, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Verbose).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     inline void debug(std::string_view sv)
     {
-        log(Severity::Debug, sv);
+        level(Severity::Debug).log(sv);
     }
 
     template <typename... ArgsT>
     inline void debug(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Debug, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Debug).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     inline void info(std::string_view sv)
     {
-        log(Severity::Info, sv);
+        level(Severity::Info).log(sv);
     }
 
     template <typename... ArgsT>
     inline void info(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Info, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Info).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     inline void warn(std::string_view sv)
     {
-        log(Severity::Warn, sv);
+        level(Severity::Warn).log(sv);
     }
 
     template <typename... ArgsT>
     inline void warn(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Warn, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Warn).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     inline void error(std::string_view sv)
     {
-        log(Severity::Error, sv);
+        level(Severity::Error).log(sv);
     }
 
     template <typename... ArgsT>
     inline void error(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Error, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Error).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
     inline void fatal(std::string_view sv)
     {
-        log(Severity::Fatal, sv);
+        level(Severity::Fatal).log(sv);
     }
 
     template <typename... ArgsT>
     inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
     {
-        log(Severity::Fatal, fmt::format(fstr, std::forward<ArgsT>(args)...));
+        level(Severity::Fatal).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
-
-private:
-    void log(Severity s, std::string_view m);
 
 private:
     const Channel *channel_ = nullptr;

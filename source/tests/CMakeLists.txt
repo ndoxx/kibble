@@ -6,6 +6,7 @@ set(SRC_KIBBLE_TEST
     test_ap.cpp
     test_memory.cpp
     test_job.cpp
+    test_logger2.cpp
     test_fs.cpp
     test_undo.cpp
     test_event.cpp
