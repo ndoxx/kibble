@@ -3,9 +3,7 @@
 #include <cstdint>
 #include <new>
 
-namespace kb
-{
-namespace th
+namespace kb::th
 {
 
 // Size of a cache line -> controlling alignment prevents false sharing
@@ -16,11 +14,6 @@ namespace th
 [[maybe_unused]] static constexpr size_t k_cache_line_size = 64;
 #endif
 
-#ifdef K_ENABLE_SHARED_STATE_PAGE_ALIGN
 #define PAGE_ALIGN alignas(k_cache_line_size)
-#else
-#define PAGE_ALIGN
-#endif
 
-} // namespace th
-} // namespace kb
+} // namespace kb::th

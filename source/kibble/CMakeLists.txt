@@ -35,7 +35,6 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
 option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
 option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
-option(ENABLE_SHARED_STATE_PAGE_ALIGN "Page align job system shared state members" ON)
 
 if(ENABLE_ASSERTIONS)
     target_compile_definitions(kibble PRIVATE K_ENABLE_ASSERT)
@@ -47,10 +46,6 @@ endif()
 
 if(ENABLE_WORK_STEALING)
     target_compile_definitions(kibble PUBLIC K_ENABLE_WORK_STEALING)
-endif()
-
-if(ENABLE_SHARED_STATE_PAGE_ALIGN)
-    target_compile_definitions(kibble PUBLIC K_ENABLE_SHARED_STATE_PAGE_ALIGN)
 endif()
 
 target_link_libraries(kibble
