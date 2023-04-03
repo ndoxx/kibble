@@ -8,7 +8,6 @@ target_include_directories(kpak
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
-target_compile_definitions(kpak PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(kpak
     PROPERTIES
@@ -36,7 +35,6 @@ target_include_directories(internstring
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
-target_compile_definitions(internstring PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(internstring
     PROPERTIES

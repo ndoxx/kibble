@@ -7,7 +7,7 @@ function(make_example_app project_name)
             "${CMAKE_CURRENT_SOURCE_DIR}"
             "${CMAKE_SOURCE_DIR}/source/kibble"
         )
-    target_compile_definitions(${NAME} PRIVATE -DLOGGING_ENABLED=1 -DK_ENABLE_ASSERT)
+    target_compile_definitions(${NAME} PRIVATE -DK_ENABLE_ASSERT)
 
     set_target_properties(${NAME}
         PROPERTIES

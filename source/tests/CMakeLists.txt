@@ -23,8 +23,6 @@ target_include_directories(test_kibble
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
-target_compile_definitions(test_kibble PRIVATE -DLOGGING_ANSI_3=0)
-target_compile_definitions(test_kibble PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(test_kibble
     PROPERTIES
@@ -78,8 +76,6 @@ target_compile_options(fuzz_tester
         -fsanitize=fuzzer,undefined,address
     )
 
-target_compile_definitions(fuzz_tester PRIVATE -DLOGGING_ENABLED=0)
-
 # 10 seconds fuzz testing
 # set(FUZZ_RUNTIME
 #     10
@@ -109,8 +105,6 @@ SYSTEM PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
 )
 
-target_compile_definitions(nuclear PRIVATE -DLOGGING_ANSI_3=0)
-target_compile_definitions(nuclear PRIVATE -DLOGGING_ENABLED=1)
 
 set_target_properties(nuclear
     PROPERTIES
@@ -142,9 +136,8 @@ target_include_directories(bench
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
-target_compile_definitions(bench PRIVATE -DLOGGING_ENABLED=0)
 
-set_target_properties(bench
+    set_target_properties(bench
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
         EXCLUDE_FROM_ALL 1
