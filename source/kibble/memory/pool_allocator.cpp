@@ -1,7 +1,7 @@
+#include "memory/pool_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "memory/pool_allocator.h"
 
 #include <iostream>
 
@@ -36,7 +36,9 @@ void *PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
     if (alignment && std::size_t(next + offset) % alignment)
         padding = utils::alignment_padding(next + offset, alignment);
 
-    K_ASSERT(padding + size <= node_size_, "[PoolAllocator] Allocation size does not fit initial requirement.");
+    K_ASSERT(padding + size <= node_size_, "[PoolAllocator] Allocation size does not fit initial requirement.", nullptr)
+        .watch(padding + size)
+        .watch(node_size_);
 
     // Mark padding area
 #ifdef ALLOCATOR_PADDING_MAGIC

@@ -71,7 +71,7 @@ public:
      *
      * @param filepath Path to the pack file
      */
-    PackFile(const fs::path &filepath);
+    PackFile(const fs::path &filepath, const kb::log::Channel *log_channel = nullptr);
 
     /**
      * @brief Get an input stream pointer to a file.
@@ -158,6 +158,7 @@ public:
 private:
     fs::path filepath_;
     std::map<hash_t, PackLocalEntry> index_;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 inline std::shared_ptr<std::istream> PackFile::get_input_stream(const std::string &path) const
@@ -173,7 +174,7 @@ inline const PackLocalEntry &PackFile::get_entry(const std::string &path) const
 inline const PackLocalEntry &PackFile::get_entry(hash_t key) const
 {
     auto findit = index_.find(key);
-    K_ASSERT(findit != index_.end(), "Unknown entry.");
+    K_ASSERT(findit != index_.end(), "Unknown entry.", log_channel_).watch(key);
     return findit->second;
 }
 

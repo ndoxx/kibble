@@ -134,6 +134,12 @@ public:
      */
     void submit(struct LogEntry &&entry) const;
 
+    /**
+     * @brief Force sinks to flush
+     * 
+     */
+    void flush() const;
+
 private:
     ChannelPresentation presentation_;
     std::vector<std::shared_ptr<Sink>> sinks_;

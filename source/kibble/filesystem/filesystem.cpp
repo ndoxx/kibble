@@ -63,7 +63,8 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
         homebuf = getpwuid(getuid())->pw_dir;
 
     fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!", log_channel_)
+        .watch(home_directory);
 
     // Check if ~/.config/<vendor>/<appname> is applicable, if not, fallback to
     // ~/.<vendor>/<appname>/config
@@ -114,7 +115,8 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
         homebuf = getpwuid(getuid())->pw_dir;
 
     fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!", log_channel_)
+        .watch(home_directory);
 
     // Check if ~/.local/share/<vendor>/<appname> is applicable, if not, fallback to
     // ~/.<vendor>/<appname>/appdata
@@ -165,7 +167,8 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
         homebuf = getpwuid(getuid())->pw_dir;
 
     fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!");
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!", log_channel_)
+        .watch(home_directory);
 
     // Check if ~/.local/share/<vendor>/<appname> exists, if not, fallback to
     // ~/.<vendor>/<appname>/appdata
@@ -225,8 +228,8 @@ bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipa
     auto path_1 = regular_path(unipath_1);
     auto path_2 = regular_path(unipath_2);
 
-    K_ASSERT_FMT(fs::exists(path_1), "First path does not exist: %s", unipath_1.c_str());
-    K_ASSERT_FMT(fs::exists(path_2), "Second path does not exist: %s", unipath_2.c_str());
+    K_ASSERT(fs::exists(path_1), "First path does not exist", log_channel_).watch(unipath_1);
+    K_ASSERT(fs::exists(path_2), "Second path does not exist", log_channel_).watch(unipath_2);
 
     std::time_t cftime_1 = to_time_t(fs::last_write_time(path_1));
     std::time_t cftime_2 = to_time_t(fs::last_write_time(path_2));
@@ -246,7 +249,7 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
             .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path);
         return false;
     }
-    K_ASSERT(fs::is_directory(dir_path), "Not a directory.");
+    K_ASSERT(fs::is_directory(dir_path), "Not a directory.", log_channel_).watch(dir_path);
 
     hash_t alias_hash = H_(alias);
     auto findit = aliases_.find(alias_hash);
@@ -273,7 +276,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
         klog(log_channel_).uid("FileSystem").error("Cannot add pack alias. File does not exist:\n{}", pack_path);
         return false;
     }
-    K_ASSERT(fs::is_regular_file(pack_path), "Not a file.");
+    K_ASSERT(fs::is_regular_file(pack_path), "Not a file.", log_channel_).watch(pack_path);
 
     hash_t alias_hash = H_(alias);
     auto findit = aliases_.find(alias_hash);
@@ -365,15 +368,15 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
     klog(log_channel_).uid("FileSystem").verbose("source: regular file");
     klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath);
 
-    K_ASSERT_FMT(fs::exists(filepath), "File does not exist: %s", unipath.c_str());
-    K_ASSERT_FMT(fs::is_regular_file(filepath), "Not a file: %s", unipath.c_str());
+    K_ASSERT(fs::exists(filepath), "File does not exist", log_channel_).watch(unipath);
+    K_ASSERT(fs::is_regular_file(filepath), "Not a file", log_channel_).watch(unipath);
 
     auto mode = std::ios::in;
     if (binary)
         mode |= std::ios::binary;
 
     std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
-    K_ASSERT(pifs->is_open(), "Unable to open input file.");
+    K_ASSERT(pifs->is_open(), "Unable to open input file.", log_channel_).watch(filepath);
     return pifs;
 }
 
@@ -383,7 +386,7 @@ void FileSystem::init_self_path()
 #ifdef __linux__
     char buff[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
-    K_ASSERT(len != -1, "Cannot read self path using readlink.");
+    K_ASSERT(len != -1, "Cannot read self path using readlink.", log_channel_).watch(len);
 
     if (len != -1)
         buff[len] = '\0';
@@ -393,7 +396,8 @@ void FileSystem::init_self_path()
 #endif
 
     self_directory_ = fs::canonical(self_path.parent_path());
-    K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!");
+    K_ASSERT(fs::exists(self_directory_), "Self directory does not exist, that should not be possible!", log_channel_)
+        .watch(self_directory_);
 }
 
 } // namespace kb::kfs

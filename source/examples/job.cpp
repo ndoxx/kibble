@@ -267,7 +267,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
                 // Check that the value is what we expect
                 [[maybe_unused]] float expect = float(ii) * 2.f * 1.23f;
                 [[maybe_unused]] constexpr float eps = 1e-10f;
-                K_ASSERT(std::fabs(val - expect) < eps, "Value is not what we expect.");
+                K_ASSERT(std::fabs(val - expect) < eps, "Value is not what we expect.", &chan);
             }
             catch (std::exception &e)
             {
@@ -355,7 +355,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &c
             [[maybe_unused]] bool val = fut.get();
             // Check that the value is what we expect
             [[maybe_unused]] bool expect = 2 * ii < 3 * ii - 10;
-            K_ASSERT(val == expect, "Value is not what we expect.");
+            K_ASSERT(val == expect, "Value is not what we expect.", &chan);
 
             ++ii;
         }

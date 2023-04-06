@@ -29,6 +29,8 @@ public:
 
     void submit(const struct LogEntry &, const struct ChannelPresentation &) override;
 
+    void flush() const override;
+
 private:
     fs::path filepath_;
 

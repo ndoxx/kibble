@@ -58,7 +58,7 @@ public:
      *
      * @param js Reference to an existing JobSystem instance.
      */
-    DaemonScheduler(JobSystem &js);
+    DaemonScheduler(JobSystem &js, const kb::log::Channel *log_channel = nullptr);
 
     /**
      * @brief Kill all daemons and destroy the DaemonScheduler.
@@ -108,6 +108,7 @@ private:
     microClock clock_;
     DaemonHandle current_handle_ = 0;
     float delta_t_ms_ = 0.f;
+    const kb::log::Channel *log_channel_ = nullptr;
 };
 
 } // namespace th

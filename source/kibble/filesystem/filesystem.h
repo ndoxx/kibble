@@ -333,7 +333,7 @@ inline std::string FileSystem::get_file_as_string(const std::string &unipath) co
 inline const FileSystem::DirectoryAlias &FileSystem::get_alias_entry(hash_t alias_hash) const
 {
     auto findit = aliases_.find(alias_hash);
-    K_ASSERT(findit != aliases_.end(), "Unknown alias.");
+    K_ASSERT(findit != aliases_.end(), "Unknown alias.", log_channel_).watch(alias_hash);
     return findit->second;
 }
 

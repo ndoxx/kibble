@@ -57,4 +57,10 @@ void FileSink::submit(const LogEntry &e, const struct ChannelPresentation &p)
         internal_->out.print("{}", e.stack_trace->format());
     }
 }
+
+void FileSink::flush() const
+{
+    internal_->out.flush();
+}
+
 } // namespace kb::log

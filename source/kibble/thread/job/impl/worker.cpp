@@ -45,7 +45,7 @@ void WorkerThread::submit(Job *job, bool stealable)
 
 void WorkerThread::run()
 {
-    K_ASSERT(is_background(), "run() should not be called in the main thread.");
+    K_ASSERT(is_background(), "run() should not be called in the main thread.", nullptr);
 
     while (ss_.running.load(std::memory_order_acquire))
     {
@@ -174,7 +174,7 @@ void WorkerThread::schedule_children(Job *job)
 
 bool WorkerThread::foreground_work()
 {
-    K_ASSERT(!is_background(), "foreground_work() should not be called in a background thread.");
+    K_ASSERT(!is_background(), "foreground_work() should not be called in a background thread.", nullptr);
     Job *job = nullptr;
     if (get_job(job))
     {

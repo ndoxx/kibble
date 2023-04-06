@@ -1,31 +1,39 @@
-#include "assert/assert.h"
-#include "logger/stack_trace.h"
-#include <cstdio>
+#include "assert.h"
+#include "../logger2/entry_builder.h"
 
-namespace detail
+#include <iostream>
+#include <stdexcept>
+
+namespace kb::util
 {
 
-void assert_redirect()
+Assertion::Assertion(std::string expression, const kb::log::Channel *channel, const char *file, const char *function,
+                     int line, Trigger trigger)
+    : channel_{channel}, file_{file}, function_{function}, line_{line}, trigger_{trigger}
 {
-    bool loop = true;
-    while (loop)
+    stream_ << "Assertion failed: " << expression << '\n';
+}
+
+Assertion::~Assertion()
+{
+    if (channel_)
     {
-        printf("What should we do about that?\n  * 0: BREAK\n  * 1: PRINT BACKTRACE\n  * 2: CONTINUE ANYWAY\n  * 3: "
-               "EXIT =>[]\n> ");
-        switch (getchar())
-        {
-        case '0':
-            K_DEBUG_BREAK();
-        case '1':
-            kb::printf_backtrace();
-            break;
-        case '2':
-            loop = false;
-            break;
-        case '3':
-            exit(-1);
-        }
+        kb::log::EntryBuilder{channel_, line_, file_, function_}
+            .level(trigger_ == Trigger::Terminate ? log::Severity::Fatal : log::Severity::Error)
+            .log(stream_.str());
+    }
+    else
+    {
+        std::cerr << stream_.str() << std::endl;
+        if (trigger_ == Trigger::Terminate)
+            std::terminate();
     }
 }
 
-} // namespace detail
+void Assertion::ex()
+{
+    trigger_ = Trigger::Exception;
+    throw std::runtime_error(stream_.str());
+}
+
+} // namespace kb::util

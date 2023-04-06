@@ -131,7 +131,7 @@ void JobSystem::release_job(Job *job)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Make sure that the job was processed
-    K_ASSERT(job->is_processed(), "Tried to release unprocessed job.");
+    K_ASSERT(job->is_processed(), "Tried to release unprocessed job.", log_channel_);
 
     // Return job to the pool
     K_DELETE(job, ss_->job_pool);
@@ -142,7 +142,7 @@ void JobSystem::schedule(Job *job)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Sanity check
-    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
+    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1);

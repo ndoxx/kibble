@@ -8,7 +8,8 @@ namespace kb
 namespace th
 {
 
-DaemonScheduler::DaemonScheduler(JobSystem &js) : js_(js)
+DaemonScheduler::DaemonScheduler(JobSystem &js, const kb::log::Channel *log_channel)
+    : js_(js), log_channel_(log_channel)
 {
 }
 
@@ -26,7 +27,7 @@ DaemonHandle DaemonScheduler::create(JobKernel &&kernel, const SchedulingData &s
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     auto &&[it, inserted] = daemons_.insert({current_handle_++, Daemon{}});
-    K_ASSERT(inserted, "Could not insert new daemon.");
+    K_ASSERT(inserted, "Could not insert new daemon.", log_channel_);
 
     auto &daemon = it->second;
     daemon.job = js_.create_job(std::forward<JobKernel>(kernel), meta);
@@ -41,7 +42,7 @@ void DaemonScheduler::kill(DaemonHandle hnd)
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     auto findit = daemons_.find(hnd);
-    K_ASSERT(findit != daemons_.end(), "Could not find daemon.");
+    K_ASSERT(findit != daemons_.end(), "Could not find daemon.", log_channel_).watch(hnd);
     findit->second.marked_for_deletion = true;
 }
 

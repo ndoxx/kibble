@@ -1,6 +1,6 @@
+#include "memory/linear_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
-#include "memory/linear_allocator.h"
 #include "memory/memory_utils.h"
 
 #include <iostream>
@@ -39,9 +39,7 @@ void *LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     // Out of memory
     if (current + padding + size > end_)
     {
-#ifndef K_DEBUG
-        K_ASSERT(false, "[LinearAllocator] Out of memory!");
-#endif
+        K_FAIL(nullptr).msg("[LinearAllocator] Out of memory!");
         return nullptr;
     }
 

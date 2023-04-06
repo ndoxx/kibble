@@ -96,7 +96,7 @@ std::pair<void *, void *> HeapArea::require_block(size_t size, const char *debug
 {
     // Page align returned block to avoid false sharing if multiple threads access this area
     size_t padding = utils::alignment_padding(head_, 64);
-    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!");
+    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!", log_channel_);
 
     // Mark padding area
 #ifdef HEAP_AREA_PADDING_MAGIC

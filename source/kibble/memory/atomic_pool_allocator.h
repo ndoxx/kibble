@@ -17,7 +17,7 @@ namespace memory
  * @brief Pool allocator with atomic access.
  * It works similarly to PoolAllocator, however, instead of a FreeList, it uses
  * an atomic queue to store addresses to all free nodes.
- * 
+ *
  * @note The reason why the PoolAllocator's FreeList was not turned into a policy
  * is because the atomic queue used here forces the following class to have
  * a compile-time MAX_NODES parameters, which is incompatible with PoolAllocator's
@@ -129,7 +129,7 @@ public:
         ANNOTATE_HAPPENS_AFTER(&free_queue_); // Avoid false positives with TSan
         [[maybe_unused]] bool success = free_queue_.try_pop(next);
 
-        K_ASSERT(success, "[AtomicPoolAllocator] Could not fetch next block.");
+        K_ASSERT(success, "[AtomicPoolAllocator] Could not fetch next block.", nullptr);
 
         // We want the user pointer (at next+offset) to be aligned.
         // Check if alignment is required. If so, find the next aligned memory address.
@@ -139,7 +139,9 @@ public:
 
         (void)size;
         K_ASSERT(padding + size <= node_size_,
-                 "[AtomicPoolAllocator] Allocation size does not fit initial requirement.");
+                 "[AtomicPoolAllocator] Allocation size does not fit initial requirement.", nullptr)
+            .watch(padding + size)
+            .watch(node_size_);
 
         // Mark padding area
 #ifdef ALLOCATOR_PADDING_MAGIC

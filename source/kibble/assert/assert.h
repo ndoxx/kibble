@@ -2,35 +2,29 @@
  * @file assert.h
  * @brief Better assertions.
  *
+ * Adapted from https://github.com/planetchili/Chil/blob/master/Core/src/utl/Assert.h
+ *
  * The macros in this file make assertions more useful. A source file and code line will be printed when an assertion
- * fails, and the user will be prompted with a choice to either debug-break, print the backtrace, continue anyway, or
- * exit.\n
- * All the macros are optimized out in the retail build.
+ * fails, and variable values can be tracked.
  *
  * @author ndx
- * @version 0.1
- * @date 2021-11-08
- *
- * @copyright Copyright (c) 2021
+ * @version 0.2
+ * @date 2023-04-06
  *
  */
 
 #pragma once
 
+#include <sstream>
+#include <string>
+
 /**
  * @def K_DEBUG_BREAK()
  * Break into debugger.
  *
- * @def K_ASSERT(CND, STR)
- * Assert that a condition CND is true. If it is not, print an error message STR with some contextual information and
- * prompt the user with a choice to either debug-break, print the backtrace, continue anyway, or exit.
- *
- * @def K_ASSERT_FMT(CND, FORMAT_STR, ...)
- * Like K_ASSERT(CND, STR) but with a printf-like API. FORMAT_STR is a formatted string, and all the following arguments
- * are evaluated and will replace the placeholders in FORMAT_STR.
- *
- * @def K_STATIC_ERROR(FSTR, ...)
- * Only calls printf, forwarding it the formatted string FSTR and the rest of the arguments.
+ * @def K_ASSERT(EXPR, MSG, CHAN)
+ * Assert that an expression EXPR evaluates to true. If it not, log an error message MSG on channel CHAN with some
+ * contextual information.
  *
  */
 
@@ -47,36 +41,86 @@
 #define K_DEBUG_BREAK()
 #endif
 
-#ifdef K_ENABLE_ASSERT
-#include <cstdio>
-namespace detail
+namespace kb::log
 {
-extern void assert_redirect();
+class Channel;
 }
-#define ASSERT_FMT_BUFFER_SIZE__ 128
-static char ASSERT_FMT_BUFFER__[ASSERT_FMT_BUFFER_SIZE__];
-#define K_STATIC_ERROR(FSTR, ...) printf(FSTR, __VA_ARGS__)
-#define K_ASSERT_FMT(CND, FORMAT_STR, ...)                                                                             \
-    {                                                                                                                  \
-        if (!(CND))                                                                                                    \
-        {                                                                                                              \
-            snprintf(ASSERT_FMT_BUFFER__, ASSERT_FMT_BUFFER_SIZE__, FORMAT_STR, __VA_ARGS__);                          \
-            printf("\033[1;38;2;255;0;0mAssertion failed:\033[0m '%s' -- %s\n%s:%s:%d\n", #CND, ASSERT_FMT_BUFFER__,   \
-                   __FILE__, __func__, __LINE__);                                                                      \
-            ::detail::assert_redirect();                                                                               \
-        }                                                                                                              \
+
+namespace kb::util
+{
+
+class Assertion
+{
+public:
+    enum class Trigger
+    {
+        Log,
+        Terminate,
+        Exception,
+    };
+
+    Assertion(std::string expression, const kb::log::Channel *channel, const char *file, const char *function, int line,
+              Trigger trig = Trigger::Terminate);
+
+    ~Assertion();
+
+    inline Assertion &msg(const std::string &message)
+    {
+        stream_ << "    Msg: " << message << '\n';
+        return *this;
     }
-#define K_ASSERT(CND, STR)                                                                                             \
-    {                                                                                                                  \
-        if (!(CND))                                                                                                    \
-        {                                                                                                              \
-            printf("\033[1;38;2;255;0;0mAssertion failed:\033[0m '%s' -- %s\n%s:%s:%d\n", #CND, STR, __FILE__,         \
-                   __func__, __LINE__);                                                                                \
-            ::detail::assert_redirect();                                                                               \
-        }                                                                                                              \
+
+    template <typename T>
+    inline Assertion &watch_var__(T &&val, const char *name)
+    {
+        stream_ << "    " << name << " <- " << std::forward<T>(val) << '\n';
+        return *this;
     }
+
+    [[noreturn]] void ex();
+
+private:
+    const kb::log::Channel *channel_ = nullptr;
+    const char *file_;
+    const char *function_;
+    int line_ = -1;
+    Trigger trigger_;
+    std::ostringstream stream_;
+};
+
+} // namespace kb::util
+
+#ifndef K_ENABLE_ASSERT
+#ifdef K_DEBUG
+#define K_ENABLE_ASSERT true
 #else
-#define K_STATIC_ERROR(FSTR, ...)
-#define K_ASSERT_FMT(CND, FORMAT_STR, ...)
-#define K_ASSERT(CND, STR)
+#define K_ENABLE_ASSERT false
 #endif
+#endif
+
+#define ZZ_STR(x) #x
+#define K_ASSERT(EXPR, MSG, CHAN)                                                                                      \
+    (!K_ENABLE_ASSERT || bool(EXPR))                                                                                   \
+        ? void(0)                                                                                                      \
+        : (void)kb::util::Assertion{ZZ_STR(EXPR), CHAN, __FILE__, __PRETTY_FUNCTION__, __LINE__}.msg(MSG)
+
+#define K_CHECK(EXPR, MSG, CHAN)                                                                                       \
+    bool(EXPR)                                                                                                         \
+        ? void(0)                                                                                                      \
+        : (void)kb::util::                                                                                             \
+              Assertion{ZZ_STR(EXPR),                                                                                  \
+                        CHAN,                                                                                          \
+                        __FILE__,                                                                                      \
+                        __PRETTY_FUNCTION__,                                                                           \
+                        __LINE__,                                                                                      \
+                        K_ENABLE_ASSERT ? kb::util::Assertion::Trigger::Terminate : kb::util::Assertion::Trigger::Log} \
+                  .msg(MSG)
+
+#define K_FAIL(CHAN)                                                                                                   \
+    (void)kb::util::Assertion                                                                                          \
+    {                                                                                                                  \
+        "[Always Fail]", CHAN, __FILE__, __PRETTY_FUNCTION__, __LINE__,                                                \
+            K_ENABLE_ASSERT ? kb::util::Assertion::Trigger::Terminate : kb::util::Assertion::Trigger::Log              \
+    }
+
+#define watch(EXPR) watch_var__((EXPR), ZZ_STR(EXPR))

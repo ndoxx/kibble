@@ -119,9 +119,9 @@ public:
      */
     inline void check_sentinel_front([[maybe_unused]] uint8_t *ptr) const
     {
-        K_ASSERT_FMT(*reinterpret_cast<uint32_t *>(ptr) == 0xf0f0f0f0,
-                     "Memory overwrite detected (front) at %p, got %#08x.", static_cast<void *>(ptr),
-                     *reinterpret_cast<uint32_t *>(ptr));
+        K_ASSERT(*reinterpret_cast<uint32_t *>(ptr) == 0xf0f0f0f0, "Memory overwrite detected (front)", nullptr)
+            .watch(static_cast<void *>(ptr))
+            .watch(*reinterpret_cast<uint32_t *>(ptr));
     }
 
     /**
@@ -131,9 +131,9 @@ public:
      */
     inline void check_sentinel_back([[maybe_unused]] uint8_t *ptr) const
     {
-        K_ASSERT_FMT(*reinterpret_cast<uint32_t *>(ptr) == 0x0f0f0f0f,
-                     "Memory overwrite detected (back) at %p, got %#08x.", static_cast<void *>(ptr),
-                     *reinterpret_cast<uint32_t *>(ptr));
+        K_ASSERT(*reinterpret_cast<uint32_t *>(ptr) == 0x0f0f0f0f, "Memory overwrite detected (back)", nullptr)
+            .watch(static_cast<void *>(ptr))
+            .watch(*reinterpret_cast<uint32_t *>(ptr));
     }
 
     static constexpr std::size_t SIZE_FRONT = 4;

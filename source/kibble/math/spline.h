@@ -341,7 +341,7 @@ public:
      */
     inline const T &get_control_point(size_t idx) const
     {
-        K_ASSERT(idx < control_.size(), "Index out of bounds.");
+        K_ASSERT(idx < control_.size(), "Index out of bounds.", nullptr).watch(idx);
         return control_.at(idx);
     }
 
@@ -516,7 +516,8 @@ public:
                   const T &end_tangent = T(0))
         : control_(control_points)
     {
-        K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points.");
+        K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points.", nullptr)
+            .watch(control_.size());
 
         // Compute tangents (formula for a generic cardinal spline)
         std::vector<T> tangents(control_.size(), T(0));

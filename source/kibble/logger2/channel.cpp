@@ -77,8 +77,17 @@ void Channel::submit(LogEntry &&entry) const
         if (s_js_)
             s_js_->shutdown();
 
+        for (auto &psink : sinks_)
+            psink->flush();
+
         exit(0);
     }
+}
+
+void Channel::flush() const
+{
+    for (const auto &psink : sinks_)
+        psink->flush();
 }
 
 void Channel::set_async(th::JobSystem *js, uint32_t worker)

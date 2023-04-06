@@ -33,7 +33,9 @@ void Monitor::update_statistics()
 
 void Monitor::log_statistics(tid_t tid, const kb::log::Channel *channel) const
 {
-    K_ASSERT(tid < js_.get_threads_count(), "Worker TID out of range.");
+    K_ASSERT(tid < js_.get_threads_count(), "Worker TID out of range.", channel)
+        .watch(tid)
+        .watch(js_.get_threads_count());
 
     const auto &stats = get_statistics(tid);
     double mean_active_ms = stats.active_time_ms / double(stats.cycles);
@@ -50,9 +52,8 @@ Total executed:       {} jobs
 Total stolen:         {} jobs
 Total scheduled:      {} jobs
 Average jobs / cycle: {})",
-                                        tid, stats.cycles, mean_active_ms, mean_idle_ms, mean_activity,
-                                        stats.total_executed, stats.total_stolen, stats.total_scheduled,
-                                        jobs_per_cycle);
+                                       tid, stats.cycles, mean_active_ms, mean_idle_ms, mean_activity,
+                                       stats.total_executed, stats.total_stolen, stats.total_scheduled, jobs_per_cycle);
 }
 
 } // namespace th

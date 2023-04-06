@@ -32,13 +32,8 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
 )
 
 # Configuration
-option(ENABLE_ASSERTIONS "Enable Kibble assertions" ON)
 option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
-
-if(ENABLE_ASSERTIONS)
-    target_compile_definitions(kibble PRIVATE K_ENABLE_ASSERT)
-endif()
 
 if(ENABLE_JOB_SYSTEM_PROFILING)
     target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)

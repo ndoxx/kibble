@@ -1,5 +1,5 @@
-#include "assert/assert.h"
 #include "random/xor_shift.h"
+#include "assert/assert.h"
 #include "string/string.h"
 
 #include <chrono>
@@ -23,7 +23,7 @@ uint64_t splitmix64(uint64_t &state)
 XorShiftEngine::Seed::Seed(const char *str)
 {
     auto tokens = kb::su::tokenize(str, ':');
-    K_ASSERT(tokens.size() == 2, "[XorShiftEngine] Bad seed string.");
+    K_ASSERT(tokens.size() == 2, "[XorShiftEngine] Bad seed string.", nullptr).watch(tokens.size());
     state_[0] = std::strtoull(tokens[0].c_str(), nullptr, 10);
     state_[1] = std::strtoull(tokens[1].c_str(), nullptr, 10);
 }

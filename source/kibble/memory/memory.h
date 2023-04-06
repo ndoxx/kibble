@@ -467,8 +467,8 @@ public:
      */
     inline void seek(void *ptr)
     {
-        K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block");
-        K_ASSERT(ptr < end_, "Cannot seak after end of the block");
+        K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block", log_channel_).watch(ptr).watch(begin_);
+        K_ASSERT(ptr < end_, "Cannot seak after end of the block", log_channel_).watch(ptr).watch(end_);
         head_ = static_cast<uint8_t *>(ptr);
     }
 
