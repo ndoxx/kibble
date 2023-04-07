@@ -15,6 +15,7 @@ include(standard_settings)
 include(compiler_warnings) # Hardcore warnings
 include(sanitizers)
 include(documentation)
+include(clang-cxx-dev-tools)
 
 # -- Uninstall target --
 if(NOT TARGET uninstall)
