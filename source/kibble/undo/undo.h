@@ -34,7 +34,7 @@ public:
      * @param action_text Text associated to this action, for history display
      * @param merge_id Unique ID to identify commands that can be merged, set to -1 if command is not mergeable
      */
-    explicit UndoCommand(const std::string &action_text, ssize_t merge_id = -1) noexcept;
+    explicit UndoCommand(const std::string& action_text, ssize_t merge_id = -1) noexcept;
 
     /**
      * @brief Destroy the Undo Command object
@@ -47,7 +47,7 @@ public:
      *
      * @return const std::string &
      */
-    inline const std::string &text() const
+    inline const std::string& text() const
     {
         return action_text_;
     }
@@ -64,7 +64,7 @@ public:
 
     /**
      * @brief Make this command obsolete.
-     * 
+     *
      * An obsolete command will be destroyed when pushed to a stack.
      * This is useful when merging two commands, and the resulting command happens to have no action at all.
      *
@@ -102,14 +102,14 @@ public:
      * @param index The index of the child
      * @return const UndoCommand&
      */
-    inline const UndoCommand &child(size_t index)
+    inline const UndoCommand& child(size_t index)
     {
         return *children_.at(index);
     }
 
     /**
      * @brief Push a sub-command as a child of this command.
-     * 
+     *
      * This command effectively becomes a macro-command,
      * and undoing() / redoing() it runs all its children undo() / redo() functions by default. This command
      * takes ownership of the child command which will never be mutable anymore from the outside.
@@ -130,7 +130,7 @@ public:
      * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
-    inline void push(Args &&...args)
+    inline void push(Args&&... args)
     {
         push(std::make_unique<C>(std::forward<Args>(args)...));
     }
@@ -145,7 +145,7 @@ public:
     /**
      * @brief (Re-)executes this command.
      * @note Default implementation will call children's redo() in order.
-     * 
+     *
      */
     virtual void redo();
 
@@ -165,7 +165,7 @@ public:
      * @return false otherwise
      * @note Default implementation simply returns false.
      */
-    virtual bool merge_with(const UndoCommand &cmd);
+    virtual bool merge_with(const UndoCommand& cmd);
 
 protected:
     ssize_t merge_id_;
@@ -178,7 +178,7 @@ private:
 
 /**
  * @brief Implements the undo mechanism.
- * 
+ *
  * UndoCommands can be pushed to this stack, and be rolled-back / re-executed
  * any time by calling the appropriate functions. Such a stack can also be used in conjunction with others in
  * a coordinated manner with UndoGroups.
@@ -189,7 +189,7 @@ class UndoStack
 public:
     /**
      * @brief Push a command to this stack.
-     * 
+     *
      * This stack takes ownership of the command which will never be mutable again
      * from the outside. Pushing a command immediately executes its redo() function. Any command that can be redone
      * before cmd is pushed will be destroyed, so the head will always match the command count. If the clean state was
@@ -213,7 +213,7 @@ public:
      * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
-    inline void push(Args &&...args)
+    inline void push(Args&&... args)
     {
         push(std::make_unique<C>(std::forward<Args>(args)...));
     }
@@ -253,7 +253,7 @@ public:
 
     /**
      * @brief Mark this state as the "clean state".
-     * 
+     *
      * This is typically called when the underlying document / model
      * is saved. The clean state can be reached back through the use of the undo() / redo() functions. Anytime
      * the clean state changes, the on_clean_change functor will be called.
@@ -269,7 +269,7 @@ public:
 
     /**
      * @brief Set the maximum number of commands that can be pushed to this stack.
-     * 
+     *
      * By default the undo limit is
      * set to zero, meaning that the stack can grow unbounded. Pushing a command when the stack's count reaches
      * the undo limit will cause the furthest command to be destroyed in order to maintain a constant count.
@@ -311,7 +311,7 @@ public:
      * @param index The target index
      * @return const UndoCommand&
      */
-    inline const UndoCommand &at(size_t index) const
+    inline const UndoCommand& at(size_t index) const
     {
         return *history_.at(index);
     }
@@ -349,7 +349,7 @@ public:
 
     /**
      * @brief Get the index of the command marked as clean.
-     * 
+     *
      * If there is no clean state (because it was reset
      * or because it was never set in the first place), this function will return -1.
      *
@@ -497,7 +497,7 @@ class UndoGroup
 public:
     /**
      * @brief Add a stack to this group.
-     * 
+     *
      * The group takes complete ownership of it, and the stack will never be
      * accessible in a mutable fashion from the outside anymore.
      *
@@ -509,7 +509,7 @@ public:
 
     /**
      * @brief Remove a stack at that name.
-     * 
+     *
      * If this stack was active, the active stack id will be reset. Nothing happens
      * if the stack name does not exist within this group.
      *
@@ -531,9 +531,9 @@ public:
 
     /**
      * @brief Change the name of a stack.
-     * 
-     * @param old_name 
-     * @param new_name 
+     *
+     * @param old_name
+     * @param new_name
      * @return true if the stack was successfully renamed
      * @return false otherwise
      */
@@ -576,7 +576,7 @@ public:
      * @see push()
      */
     template <typename C, typename... Args, typename = std::enable_if_t<is_undo_command_v<C>>>
-    inline void push(Args &&...args)
+    inline void push(Args&&... args)
     {
         push(std::make_unique<C>(std::forward<Args>(args)...));
     }
@@ -669,7 +669,7 @@ public:
      * @param stack_name The target stack's name
      * @return const UndoStack&
      */
-    inline const UndoStack &stack(hash_t stack_name) const
+    inline const UndoStack& stack(hash_t stack_name) const
     {
         return stacks_.at(stack_name);
     }
@@ -679,7 +679,7 @@ public:
      *
      * @return const UndoStack&
      */
-    inline const UndoStack &active_stack() const
+    inline const UndoStack& active_stack() const
     {
         return stacks_.at(active_stack_);
     }

@@ -59,7 +59,7 @@ public:
      *
      * @param js job system instance
      */
-    Monitor(JobSystem &js);
+    Monitor(JobSystem& js);
 
     /**
      * @brief Process all worker activity reports in the queue.
@@ -81,7 +81,7 @@ public:
      * @param tid worker id
      * @return WorkerStats struct at this worker id
      */
-    inline const auto &get_statistics(tid_t tid) const
+    inline const auto& get_statistics(tid_t tid) const
     {
         return stats_[tid];
     }
@@ -106,7 +106,7 @@ private:
      * @return true if the activity queue is non-empty
      * @return false otherwise
      */
-    inline bool pop_thread_activity(WorkerActivity &activity)
+    inline bool pop_thread_activity(WorkerActivity& activity)
     {
         ANNOTATE_HAPPENS_AFTER(&activity_queue_); // Avoid false positives with TSan
         return activity_queue_.try_pop(activity);
@@ -114,7 +114,7 @@ private:
 
 private:
     std::array<WorkerStats, k_max_threads> stats_;
-    JobSystem &js_;
+    JobSystem& js_;
     ActivityQueue<WorkerActivity> activity_queue_;
 };
 

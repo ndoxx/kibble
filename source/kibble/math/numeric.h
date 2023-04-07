@@ -65,7 +65,7 @@ float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint3
  */
 template <typename FloatT = float>
 requires std::floating_point<FloatT>
-inline void exponential_moving_average(FloatT &accumulator, FloatT new_value, FloatT alpha)
+inline void exponential_moving_average(FloatT& accumulator, FloatT new_value, FloatT alpha)
 {
     accumulator = (alpha * new_value) + (FloatT(1) - alpha) * accumulator;
 }

@@ -18,7 +18,7 @@ class VSCodeTerminalFormatter : public Formatter
 public:
     ~VSCodeTerminalFormatter() = default;
 
-    void print(const LogEntry &, const ChannelPresentation &) override;
+    void print(const LogEntry&, const ChannelPresentation&) override;
 };
 
 } // namespace kb::log

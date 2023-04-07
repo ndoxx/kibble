@@ -38,7 +38,7 @@ public:
          * @param str The string must be comprised of two numbers separated by a column. The lower and upper parts of
          * the state will be set to these numbers.
          */
-        explicit Seed(const char *str);
+        explicit Seed(const char* str);
 
         /**
          * @brief Construct a seed from a single number.
@@ -66,7 +66,7 @@ public:
          * @param rhs the other seed to copy
          *
          */
-        constexpr Seed(const Seed &rhs) : state_{rhs.state_[0], rhs.state_[1]}
+        constexpr Seed(const Seed& rhs) : state_{rhs.state_[0], rhs.state_[1]}
         {
         }
 
@@ -77,14 +77,14 @@ public:
          * @param rhs the other seed to copy
          * @return constexpr Seed&
          */
-        constexpr Seed &operator=(const Seed &rhs)
+        constexpr Seed& operator=(const Seed& rhs)
         {
             state_[0] = rhs.state_[0];
             state_[1] = rhs.state_[1];
             return *this;
         }
 
-        friend std::ostream &operator<<(std::ostream &stream, Seed rhs);
+        friend std::ostream& operator<<(std::ostream& stream, Seed rhs);
     };
 
     /**
@@ -95,7 +95,7 @@ public:
 
     /**
      * @brief Construct and seed.
-     * 
+     *
      * @tparam SeedT Seed type
      * @param ss the seed
      */
@@ -137,7 +137,7 @@ public:
      * @param str The string must be comprised of two numbers separated by a column. The lower and upper parts of
      * the state will be set to these numbers.
      */
-    inline void seed_string(const char *str)
+    inline void seed_string(const char* str)
     {
         seed_ = Seed(str);
     }

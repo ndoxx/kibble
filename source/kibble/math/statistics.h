@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <ostream>
-#include <cmath>
 
 namespace kb
 {
@@ -117,7 +117,7 @@ public:
      * @param stats
      * @return std::ostream&
      */
-    friend std::ostream &operator<<(std::ostream &stream, const Statistics &stats)
+    friend std::ostream& operator<<(std::ostream& stream, const Statistics& stats)
     {
         stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u()
                << ')';

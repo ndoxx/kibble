@@ -14,7 +14,7 @@ class TCPStream;
  * connection from a remote TCPConnector. A TCPStream pointer is returned which can be used for bidirectional
  * communication with the TCPConnector.
  * The user of this code takes full ownership of the stream pointer, and is responsible for deleting it.
- * 
+ *
  * @note At the moment, only a linux implementation is available.
  */
 class TCPAcceptor
@@ -27,7 +27,7 @@ public:
      * @param address address to bind the socket to. If left empty, the socket will be bound to all available
      * interfaces, meaning it will accept connections from any address.
      */
-    TCPAcceptor(uint16_t port, const char *address = "");
+    TCPAcceptor(uint16_t port, const char* address = "");
 
     /**
      * @brief Close internal file descriptor and destroy acceptor
@@ -49,7 +49,7 @@ public:
      *
      * @return new stream pointer. Caller is responsible for its destruction.
      */
-    TCPStream *accept();
+    TCPStream* accept();
 
 private:
     int lfd_;

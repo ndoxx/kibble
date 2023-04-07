@@ -50,7 +50,7 @@ struct PointDistance
      * @param p1
      * @return float
      */
-    static inline float distance(const T &p0, const T &p1)
+    static inline float distance(const T& p0, const T& p1)
     {
         (void)p0;
         (void)p1;
@@ -92,7 +92,7 @@ constexpr auto k_fac = gen_factorial<k_max_fac>();
  * @return T
  */
 template <typename T>
-inline T lerp(const T &a, const T &b, float alpha)
+inline T lerp(const T& a, const T& b, float alpha)
 {
     return (1.f - alpha) * a + alpha * b;
 }
@@ -110,7 +110,7 @@ inline T lerp(const T &a, const T &b, float alpha)
  * @return DIFF_ORDER-th derivative value at point tt
  */
 template <size_t DIFF_ORDER, typename T, typename VecT>
-T bezier_evaluate(float tt, const VecT &coeffs)
+T bezier_evaluate(float tt, const VecT& coeffs)
 {
     T sum(0);
     float tpow = 1.f;
@@ -139,7 +139,7 @@ T bezier_evaluate(float tt, const VecT &coeffs)
  * @param coeff output argument where the coefficients will be pushed
  */
 template <typename T, typename VecT>
-void bezier_coefficients(const VecT &control, VecT &coeff)
+void bezier_coefficients(const VecT& control, VecT& coeff)
 {
     const int nn = int(control.size());
     int prod = 1;
@@ -171,7 +171,7 @@ void bezier_coefficients(const VecT &control, VecT &coeff)
  * @return T value of the interpolation at point tt
  */
 template <typename T, typename VecT>
-T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT &points)
+T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT& points)
 {
     if (rr == 0)
         return points[ii];
@@ -196,7 +196,7 @@ T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT &points)
  * @param param parameter value in [0,1]
  */
 template <typename T, size_t SIZE, size_t LEVEL>
-void deCasteljauSplit(const std::array<T, SIZE - LEVEL> &points, std::array<T, SIZE> &left, std::array<T, SIZE> &right,
+void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, SIZE>& left, std::array<T, SIZE>& right,
                       float param = 0.5f)
 {
     // DeCasteljau's algorithm uses a triangular scheme where for each recursion level,
@@ -241,7 +241,7 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL> &points, std::array<T, S
  * @param lower_bound initial lower bound
  * @return size_t index of the target arc-length
  */
-size_t arclen_binary_search(float target, const std::vector<float> &arc_length, size_t lower_bound = 0)
+size_t arclen_binary_search(float target, const std::vector<float>& arc_length, size_t lower_bound = 0)
 {
     // Binary search
     size_t lb = lower_bound;
@@ -269,7 +269,7 @@ size_t arclen_binary_search(float target, const std::vector<float> &arc_length, 
  * @param last_index last index obtained through iterated calls to this function
  * @return a pair containing the arc-length value and table index
  */
-std::pair<float, size_t> arclen_remap(float tt, const std::vector<float> &arc_length, size_t last_index = 0)
+std::pair<float, size_t> arclen_remap(float tt, const std::vector<float>& arc_length, size_t last_index = 0)
 {
     float target = std::clamp(tt, 0.f, 1.f) * arc_length.back();
     size_t idx = arclen_binary_search(target, arc_length, last_index);
@@ -296,7 +296,7 @@ std::pair<float, size_t> arclen_remap(float tt, const std::vector<float> &arc_le
  * @return point on the curve at tt
  */
 template <typename T>
-inline T deCasteljau(float tt, const std::vector<T> &points)
+inline T deCasteljau(float tt, const std::vector<T>& points)
 {
     return detail::deCasteljau(points.size() - 1, 0, tt, points);
 }
@@ -317,7 +317,7 @@ public:
      *
      * @param control_points the list of control points
      */
-    FixedBezierSpline(std::array<T, SIZE> &&control_points) : control_(std::move(control_points))
+    FixedBezierSpline(std::array<T, SIZE>&& control_points) : control_(std::move(control_points))
     {
         detail::bezier_coefficients<T>(control_, coeff_);
     }
@@ -339,7 +339,7 @@ public:
      * @param idx index in the control point list
      * @return const T&
      */
-    inline const T &get_control_point(size_t idx) const
+    inline const T& get_control_point(size_t idx) const
     {
         K_ASSERT(idx < control_.size(), "Index out of bounds.", nullptr).watch(idx);
         return control_.at(idx);
@@ -350,7 +350,7 @@ public:
      *
      * @return const T&
      */
-    inline const T &front() const
+    inline const T& front() const
     {
         return control_.front();
     }
@@ -360,7 +360,7 @@ public:
      *
      * @return const T&
      */
-    inline const T &back() const
+    inline const T& back() const
     {
         return control_.back();
     }
@@ -370,7 +370,7 @@ public:
      *
      * @return const auto&
      */
-    inline const auto &get_control_points() const
+    inline const auto& get_control_points() const
     {
         return control_;
     }
@@ -467,14 +467,14 @@ private:
      * @param max_error Maximum allowable error for the length computation
      * @return float
      */
-    static float length(const FixedBezierSpline &spline, float max_error)
+    static float length(const FixedBezierSpline& spline, float max_error)
     {
         // While the length estimation error is too big, split the curve and add
         // the length of the two subdivisions
-        auto &&[len, error] = spline.length_estimate();
+        auto&& [len, error] = spline.length_estimate();
         if (error > max_error)
         {
-            auto &&[s0, s1] = spline.split(0.5f);
+            auto&& [s0, s1] = spline.split(0.5f);
             return length(s0, max_error) + length(s1, max_error);
         }
         return len;
@@ -512,8 +512,8 @@ public:
      * @param start_tangent tangent at the first control point
      * @param end_tangent tangent at the last control point
      */
-    HermiteSpline(const std::vector<T> &control_points, float tension = 0.f, const T &start_tangent = T(0),
-                  const T &end_tangent = T(0))
+    HermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
+                  const T& end_tangent = T(0))
         : control_(control_points)
     {
         K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points.", nullptr)
@@ -552,7 +552,7 @@ public:
     float length(float max_error) const
     {
         float sum = 0.f;
-        for (const auto &seg : segment_)
+        for (const auto& seg : segment_)
             sum += seg.length(max_error);
         return sum;
     }
@@ -658,8 +658,8 @@ public:
      * @param end_tangent tangent at the last control point
      *
      */
-    UniformHermiteSpline(const std::vector<T> &control_points, size_t max_lookup = 64, float tension = 0.f,
-                         const T &start_tangent = T(0), const T &end_tangent = T(0))
+    UniformHermiteSpline(const std::vector<T>& control_points, size_t max_lookup = 64, float tension = 0.f,
+                         const T& start_tangent = T(0), const T& end_tangent = T(0))
         : HermiteSpline<T>(control_points, tension, start_tangent, end_tangent)
     {
         calculate_lookup_iterative(max_lookup);
@@ -739,7 +739,7 @@ private:
             float uu = float(ii) / float(max_iter - 1);
             // Because the length array is monotonically increasing, we know we won't find our target
             // before the last_index, then we can cut down costs by providing last_index to the remap func.
-            auto &&[param, idx] = detail::arclen_remap(uu, arc_length, last_index);
+            auto&& [param, idx] = detail::arclen_remap(uu, arc_length, last_index);
             arc_length_inverse_[ii] = param;
             last_index = idx;
         }

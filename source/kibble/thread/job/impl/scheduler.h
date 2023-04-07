@@ -29,7 +29,7 @@ public:
      *
      * @param js job system instance
      */
-    Scheduler(JobSystem &js);
+    Scheduler(JobSystem& js);
 
     /**
      * @brief Hand this job to the next worker.
@@ -38,10 +38,10 @@ public:
      *
      * @param job job instance
      */
-    void dispatch(Job *job);
+    void dispatch(Job* job);
 
 private:
-    PAGE_ALIGN JobSystem &js_;
+    PAGE_ALIGN JobSystem& js_;
     // Each thread has its own round robin state (64b to avoid false sharing)
     PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };

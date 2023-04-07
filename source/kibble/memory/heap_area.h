@@ -26,9 +26,9 @@ struct AreaItem
     /// debug name of the block
     std::string name;
     /// pointer to the beginning of the block
-    void *begin = nullptr;
+    void* begin = nullptr;
     /// pointer past the end of the block
-    void *end = nullptr;
+    void* end = nullptr;
     /// size of the block
     std::size_t size = 0;
 };
@@ -55,7 +55,7 @@ public:
      *
      * @param size size of the area
      */
-    explicit HeapArea(size_t size, const kb::log::Channel *channel = nullptr);
+    explicit HeapArea(size_t size, const kb::log::Channel* channel = nullptr);
 
     /**
      * @brief Free the whole area.
@@ -70,14 +70,14 @@ public:
      * @return true if everything went fine
      * @return false otherwise
      */
-    bool init(size_t size, const kb::log::Channel *channel = nullptr);
+    bool init(size_t size, const kb::log::Channel* channel = nullptr);
 
     /**
      * @brief Get a pointer to the beginning of the area.
      *
      * @return void*
      */
-    inline void *begin()
+    inline void* begin()
     {
         return begin_;
     }
@@ -87,7 +87,7 @@ public:
      *
      * @return void*
      */
-    inline void *end()
+    inline void* end()
     {
         return begin_ + size_ + 1;
     }
@@ -97,7 +97,7 @@ public:
      *
      * @return std::pair<void *, void *>
      */
-    inline std::pair<void *, void *> range()
+    inline std::pair<void*, void*> range()
     {
         return {begin(), end()};
     }
@@ -114,7 +114,7 @@ public:
      * @param debug_name name of the block used for debugging purposes
      * @return range of pointers marking the bounds of the reserved block
      */
-    std::pair<void *, void *> require_block(size_t size, const char *debug_name = nullptr);
+    std::pair<void*, void*> require_block(size_t size, const char* debug_name = nullptr);
 
     /**
      * @brief Convenience function to reserve a block for the specific purpose of pool allocation.
@@ -126,7 +126,7 @@ public:
      * @param debug_name name of the block used for debugging purposes
      * @return void* pointer to the beginning of the block
      */
-    void *require_pool_block(size_t element_size, size_t max_count, const char *debug_name = nullptr);
+    void* require_pool_block(size_t element_size, size_t max_count, const char* debug_name = nullptr);
 
     /**
      * @brief Show the content of the area using the logger.
@@ -144,14 +144,14 @@ public:
      * @param stream stream to output the hex dump to
      * @param size size of the dump
      */
-    void debug_hex_dump(std::ostream &stream, size_t size = 0);
+    void debug_hex_dump(std::ostream& stream, size_t size = 0);
 
     /**
      * @brief Get the block allocation journal.
      *
      * @return a vector containing small debug::AreaItem structs describing each block
      */
-    inline const std::vector<debug::AreaItem> &get_block_descriptions() const
+    inline const std::vector<debug::AreaItem>& get_block_descriptions() const
     {
         return items_;
     }
@@ -168,11 +168,11 @@ public:
 
 private:
     size_t size_;
-    uint8_t *begin_;
-    uint8_t *head_;
+    uint8_t* begin_;
+    uint8_t* head_;
 
     std::vector<debug::AreaItem> items_; // for debug
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 } // namespace kb::memory

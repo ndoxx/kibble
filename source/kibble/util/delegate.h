@@ -12,7 +12,7 @@ namespace kb
  */
 struct BadDelegateCallException : public std::exception
 {
-    const char *what() const throw()
+    const char* what() const throw()
     {
         return "Cannot invoke a member function without a class instance";
     }
@@ -49,8 +49,8 @@ class Delegate<R(Args...)>
 public:
     // Make delegates copyable
     Delegate() = default;
-    Delegate(const Delegate &other) = default;
-    auto operator=(const Delegate &other) -> Delegate & = default;
+    Delegate(const Delegate& other) = default;
+    auto operator=(const Delegate& other) -> Delegate& = default;
 
     /**
      * @brief Call the registered function
@@ -60,7 +60,7 @@ public:
      * @return R
      */
     template <typename... UArgs, typename = std::enable_if_t<std::is_invocable_v<R(Args...), UArgs...>>>
-    auto operator()(UArgs &&...args) const -> R
+    auto operator()(UArgs&&... args) const -> R
     {
         // Call the stub function, passing the instance pointer and forwarding each argument
         return (*stub_)(instance_, std::forward<UArgs>(args)...);
@@ -77,7 +77,7 @@ public:
         Delegate d;
         // A free function does not use any instance pointer, we leave it null
         // A lambda without capture is implicitly convertible to a function pointer
-        d.stub_ = [](const void *, Args... args) -> R { return std::invoke(Function, std::forward<Args>(args)...); };
+        d.stub_ = [](const void*, Args... args) -> R { return std::invoke(Function, std::forward<Args>(args)...); };
         return d;
     }
 
@@ -89,14 +89,14 @@ public:
      * @param instance Instance pointer
      */
     template <auto MemberFunction, typename Class,
-              typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), const Class *, Args...>>>
-    static auto create(const Class *instance)
+              typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), const Class*, Args...>>>
+    static auto create(const Class* instance)
     {
         Delegate d;
         // This time we need to provide an instance pointer
         d.instance_ = instance;
-        d.stub_ = [](const void *p, Args... args) -> R {
-            const auto *c = static_cast<const Class *>(p);
+        d.stub_ = [](const void* p, Args... args) -> R {
+            const auto* c = static_cast<const Class*>(p);
             return std::invoke(MemberFunction, c, std::forward<Args>(args)...);
         };
         return d;
@@ -110,16 +110,16 @@ public:
      * @param instance Instance pointer
      */
     template <auto MemberFunction, typename Class,
-              typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), Class *, Args...>>>
-    static auto create(Class *instance)
+              typename = std::enable_if_t<std::is_invocable_r_v<R, decltype(MemberFunction), Class*, Args...>>>
+    static auto create(Class* instance)
     {
         Delegate d;
         d.instance_ = instance;
-        d.stub_ = [](const void *p, Args... args) -> R {
+        d.stub_ = [](const void* p, Args... args) -> R {
             // I don't like const_cast but can't find an easy alternative.
             // However it's safe, because we know the instance pointer was
             // bound to a non-const instance.
-            auto *c = const_cast<Class *>(static_cast<const Class *>(p));
+            auto* c = const_cast<Class*>(static_cast<const Class*>(p));
             return std::invoke(MemberFunction, c, std::forward<Args>(args)...);
         };
         return d;
@@ -133,7 +133,7 @@ public:
      * case of member delegates
      * @return false otherwise
      */
-    bool operator==(const Delegate &rhs) const
+    bool operator==(const Delegate& rhs) const
     {
         // If two stubs are different, it will always mean that the underlying function
         // pointers are different and vice versa.
@@ -148,20 +148,20 @@ public:
      * instance in the case of member delegates
      * @return false otherwise
      */
-    bool operator!=(const Delegate &rhs) const
+    bool operator!=(const Delegate& rhs) const
     {
         return (instance_ != rhs.instance_ || stub_ != rhs.stub_);
     }
 
 private:
-    using stub_function = R (*)(const void *, Args...);
+    using stub_function = R (*)(const void*, Args...);
 
-    [[noreturn]] static auto stub_null(const void *, Args...) -> R
+    [[noreturn]] static auto stub_null(const void*, Args...) -> R
     {
         throw BadDelegateCallException{};
     }
 
-    const void *instance_ = nullptr;
+    const void* instance_ = nullptr;
     stub_function stub_ = &stub_null;
 };
 } // namespace kb

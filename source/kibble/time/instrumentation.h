@@ -56,14 +56,14 @@ public:
      *
      * @param result Profiling data.
      */
-    void push(const ProfileResult &result);
+    void push(const ProfileResult& result);
 
     /**
      * @brief Write profiling information to file.
      *
      * @param filepath
      */
-    void write(const fs::path &filepath);
+    void write(const fs::path& filepath);
 
     /**
      * @brief Turn on / off profiling for this session.
@@ -100,7 +100,7 @@ public:
      * @param name Name of the current work unit (displayed in chrome:tracing)
      * @param category Event type, to allow for filtering in chrome:tracing
      */
-    InstrumentationTimer(InstrumentationSession *session, const std::string &name, const std::string &category,
+    InstrumentationTimer(InstrumentationSession* session, const std::string& name, const std::string& category,
                          size_t thread_id = 0);
 
     /**
@@ -112,7 +112,7 @@ public:
 private:
     using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-    InstrumentationSession *session_;
+    InstrumentationSession* session_;
     std::string name_;
     std::string category_;
     size_t thread_id_;

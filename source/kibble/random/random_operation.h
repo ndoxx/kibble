@@ -19,7 +19,7 @@ namespace rng
  * @return an iterator to the randomly selected element
  */
 template <typename Iter, typename RandomGenerator>
-Iter random_select(Iter start, Iter end, RandomGenerator &g)
+Iter random_select(Iter start, Iter end, RandomGenerator& g)
 {
     std::uniform_int_distribution<long> dis(0, std::distance(start, end) - 1);
     std::advance(start, dis(g));

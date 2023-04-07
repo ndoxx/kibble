@@ -23,11 +23,11 @@ public:
      *
      * @param filepath
      */
-    FileSink(const fs::path &filepath);
+    FileSink(const fs::path& filepath);
 
     ~FileSink() = default;
 
-    void submit(const struct LogEntry &, const struct ChannelPresentation &) override;
+    void submit(const struct LogEntry&, const struct ChannelPresentation&) override;
 
     void flush() const override;
 

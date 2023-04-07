@@ -14,7 +14,7 @@ namespace kb
 {
 
 template <typename T>
-std::string to_string(const T &x)
+std::string to_string(const T& x)
 {
     return std::to_string(x);
 }
@@ -26,7 +26,7 @@ namespace su
  *
  * @param s
  */
-inline void ltrim(std::string &s)
+inline void ltrim(std::string& s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) { return !std::isspace(ch); }));
 }
@@ -36,7 +36,7 @@ inline void ltrim(std::string &s)
  *
  * @param s
  */
-inline void rtrim(std::string &s)
+inline void rtrim(std::string& s)
 {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
 }
@@ -46,7 +46,7 @@ inline void rtrim(std::string &s)
  *
  * @param s
  */
-inline void trim(std::string &s)
+inline void trim(std::string& s)
 {
     ltrim(s);
     rtrim(s);
@@ -93,7 +93,7 @@ inline std::string trim_copy(std::string s)
  *
  * @param s
  */
-inline void strip_spaces(std::string &s)
+inline void strip_spaces(std::string& s)
 {
     s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)); }),
             s.end());
@@ -104,7 +104,7 @@ inline void strip_spaces(std::string &s)
  *
  * @param str
  */
-inline void to_lower(std::string &str)
+inline void to_lower(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
 }
@@ -114,7 +114,7 @@ inline void to_lower(std::string &str)
  *
  * @param str
  */
-inline void to_upper(std::string &str)
+inline void to_upper(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::toupper(c); });
 }
@@ -126,7 +126,7 @@ inline void to_upper(std::string &str)
  * @param delimiter
  * @return std::vector<std::string>
  */
-std::vector<std::string> tokenize(const std::string &str, char delimiter = ',');
+std::vector<std::string> tokenize(const std::string& str, char delimiter = ',');
 
 /**
  * @brief Tokenize an input string and call a visitor for each token.
@@ -135,7 +135,7 @@ std::vector<std::string> tokenize(const std::string &str, char delimiter = ',');
  * @param delimiter
  * @param visit
  */
-void tokenize(const std::string &str, char delimiter, std::function<void(const std::string &)> visit);
+void tokenize(const std::string& str, char delimiter, std::function<void(const std::string&)> visit);
 
 /**
  * @brief Convert a size string to a number.
@@ -144,7 +144,7 @@ void tokenize(const std::string &str, char delimiter, std::function<void(const s
  * @param delimiter
  * @return size_t
  */
-size_t parse_size(const std::string &input, char delimiter = '_');
+size_t parse_size(const std::string& input, char delimiter = '_');
 
 /**
  * @brief Convert a size number to a string.
@@ -163,7 +163,7 @@ std::string size_to_string(size_t size);
  * @param input
  * @param size
  */
-void center(std::string &input, int size);
+void center(std::string& input, int size);
 
 /**
  * @brief Another string tokenizer that pushes tokens into an output argument container.
@@ -177,7 +177,7 @@ void center(std::string &input, int size);
  * @param delim delimiter character
  */
 template <class Container>
-inline void split_string(const std::string &str, Container &cont, char delim = ' ')
+inline void split_string(const std::string& str, Container& cont, char delim = ' ')
 {
     std::stringstream ss(str);
     std::string token;
@@ -211,7 +211,7 @@ std::string base64_decode(const std::string data);
  * @return the concatenation of all string representations of the arguments
  */
 template <typename... Args>
-std::string concat(Args &&...args)
+std::string concat(Args&&... args)
 {
     std::stringstream ss;
     (ss << ... << args);
@@ -226,7 +226,7 @@ std::string concat(Args &&...args)
  * @return hash of the concatenated string
  */
 template <typename... Args>
-inline hash_t h_concat(Args &&...args)
+inline hash_t h_concat(Args&&... args)
 {
     return H_(concat(std::forward<Args>(args)...));
 }
@@ -247,7 +247,7 @@ namespace rx
  * @return a string where each regex match has been processed by the replace functor
  */
 template <class BidirIt, class Traits, class CharT, class UnaryFunction>
-std::basic_string<CharT> regex_replace(BidirIt first, BidirIt last, const std::basic_regex<CharT, Traits> &re,
+std::basic_string<CharT> regex_replace(BidirIt first, BidirIt last, const std::basic_regex<CharT, Traits>& re,
                                        UnaryFunction replace)
 {
     std::basic_string<CharT> ret;
@@ -255,7 +255,7 @@ std::basic_string<CharT> regex_replace(BidirIt first, BidirIt last, const std::b
     typename std::match_results<BidirIt>::difference_type last_match_pos = 0;
     auto last_match_end = first;
 
-    auto callback = [&](const std::match_results<BidirIt> &match) {
+    auto callback = [&](const std::match_results<BidirIt>& match) {
         auto current_match_pos = match.position(0);
         auto diff = current_match_pos - last_match_pos;
 
@@ -294,7 +294,7 @@ std::basic_string<CharT> regex_replace(BidirIt first, BidirIt last, const std::b
  * @return a string where each regex match has been processed by the replace functor
  */
 template <class Traits, class CharT, class UnaryFunction>
-std::string regex_replace(const std::string &str, const std::basic_regex<CharT, Traits> &re, UnaryFunction replace)
+std::string regex_replace(const std::string& str, const std::basic_regex<CharT, Traits>& re, UnaryFunction replace)
 {
     return regex_replace(str.cbegin(), str.cend(), re, replace);
 }

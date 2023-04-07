@@ -26,7 +26,7 @@ public:
      * @param port the same port the server is listening to
      * @return new stream pointer. Caller is responsible for its destruction.
      */
-    static TCPStream *connect(const std::string &server, uint16_t port);
+    static TCPStream* connect(const std::string& server, uint16_t port);
 };
 
 } // namespace net

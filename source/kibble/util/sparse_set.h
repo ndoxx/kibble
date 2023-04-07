@@ -125,7 +125,7 @@ public:
      * @return true if val is in the set
      * @return false otherwise
      */
-    inline bool has(const T &val) const
+    inline bool has(const T& val) const
     {
         return val < SIZE && sparse[val] < size_ && dense[sparse[val]] == val;
     }
@@ -137,7 +137,7 @@ public:
      *
      * @param val value to insert
      */
-    void insert(const T &val)
+    void insert(const T& val)
     {
         if (!has(val))
         {
@@ -156,7 +156,7 @@ public:
      *
      * @param val
      */
-    void erase(const T &val)
+    void erase(const T& val)
     {
         if (has(val))
         {
@@ -287,7 +287,7 @@ public:
      * @return true if val is in the set
      * @return false otherwise
      */
-    inline bool has(const T &val) const
+    inline bool has(const T& val) const
     {
         return val < capacity_ && sparse[val] < size_ && dense[sparse[val]] == val;
     }
@@ -316,7 +316,7 @@ public:
      *
      * @param val value to insert
      */
-    void insert(const T &val)
+    void insert(const T& val)
     {
         if (!has(val))
         {
@@ -336,7 +336,7 @@ public:
      *
      * @param val
      */
-    void erase(const T &val)
+    void erase(const T& val)
     {
         if (has(val))
         {
@@ -455,7 +455,7 @@ public:
      * @return true if val was produced by this pool
      * @return false otherwise
      */
-    inline bool is_valid(const T &val) const
+    inline bool is_valid(const T& val) const
     {
         return val < SIZE && sparse[val] < size_ && dense[sparse[val]] == val;
     }
@@ -676,7 +676,7 @@ public:
      * @return true if val is a valid handle
      * @return false otherwise
      */
-    inline bool is_valid(const T &val) const
+    inline bool is_valid(const T& val) const
     {
         T unguarded = unguard(val);
         T guard_val = guard_value(val);

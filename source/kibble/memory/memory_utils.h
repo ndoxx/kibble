@@ -21,7 +21,7 @@ namespace utils
  * @param alignment alignment size
  * @return padding size required to align `base_address  + padding`
  */
-[[maybe_unused]] static inline std::size_t alignment_padding(uint8_t *base_address, std::size_t alignment)
+[[maybe_unused]] static inline std::size_t alignment_padding(uint8_t* base_address, std::size_t alignment)
 {
     size_t base_address_sz = reinterpret_cast<std::size_t>(base_address);
 
@@ -62,7 +62,7 @@ std::string human_size(std::size_t bytes);
  * @param word 32b word to highlight
  * @param wcb background color
  */
-void hex_dump_highlight(uint32_t word, const kb::KB_ &wcb);
+void hex_dump_highlight(uint32_t word, const kb::KB_& wcb);
 
 /**
  * @brief Remove all previously configured hex dump highlights
@@ -78,7 +78,7 @@ void hex_dump_clear_highlights();
  * @param size size of the block to dump in bytes
  * @param title title of the hex dump
  */
-void hex_dump(std::ostream &stream, const void *ptr, std::size_t size, const std::string &title = "");
+void hex_dump(std::ostream& stream, const void* ptr, std::size_t size, const std::string& title = "");
 
 } // namespace memory
 

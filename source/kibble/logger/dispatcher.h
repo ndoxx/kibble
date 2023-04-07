@@ -60,7 +60,7 @@ public:
      * @param hname Hashed name of the putative channel
      * @param result
      */
-    void has_channel(hash_t hname, bool &result);
+    void has_channel(hash_t hname, bool& result);
 
     /**
      * @brief Create a logging channel to group information of the same kind.
@@ -71,7 +71,7 @@ public:
      * @param name Name of the channel
      * @param verbosity Initial verbosity level of this channel
      */
-    void create_channel(const std::string &name, uint8_t verbosity = 3);
+    void create_channel(const std::string& name, uint8_t verbosity = 3);
 
     /**
      * @brief Override a channel's tag style
@@ -81,7 +81,7 @@ public:
      * account.
      * @param color Custom color to use in the tag
      */
-    void set_channel_tag(const std::string &name, const std::string &custom_short_name, math::argb32_t color);
+    void set_channel_tag(const std::string& name, const std::string& custom_short_name, math::argb32_t color);
 
     /**
      * @brief Attach a sink to a list of channels.
@@ -93,7 +93,7 @@ public:
      * @param channels List of hashed channel names
      * @see attach_all()
      */
-    void attach(const std::string &sink_name, std::unique_ptr<Sink> sink, const std::vector<hash_t> &channels);
+    void attach(const std::string& sink_name, std::unique_ptr<Sink> sink, const std::vector<hash_t>& channels);
 
     /**
      * @brief Attach a sink to all currently existing channels.
@@ -102,7 +102,7 @@ public:
      * @param sink
      * @see attach()
      */
-    void attach_all(const std::string &sink_name, std::unique_ptr<Sink> sink);
+    void attach_all(const std::string& sink_name, std::unique_ptr<Sink> sink);
 
     /**
      * @brief Get channel verbosity by name
@@ -165,7 +165,7 @@ public:
      *
      * @param stmt The statement to dispatch
      */
-    void dispatch(const LogStatement &stmt);
+    void dispatch(const LogStatement& stmt);
 
 protected:
     enum State : int

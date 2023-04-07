@@ -28,7 +28,7 @@ public:
      * @param alignment alignment requirement (unused)
      * @param offset offset requirement (unused)
      */
-    Freelist(void *begin, std::size_t element_size, std::size_t max_elements, std::size_t alignment,
+    Freelist(void* begin, std::size_t element_size, std::size_t max_elements, std::size_t alignment,
              std::size_t offset);
 
     /**
@@ -40,7 +40,7 @@ public:
      * @param alignment alignment requirement (unused)
      * @param offset offset requirement (unused)
      */
-    void init(void *begin, std::size_t element_size, std::size_t max_elements, std::size_t alignment,
+    void init(void* begin, std::size_t element_size, std::size_t max_elements, std::size_t alignment,
               std::size_t offset);
 
     /**
@@ -48,40 +48,40 @@ public:
      *
      * @return pointer to the next available block or nullptr if there is no more room
      */
-    inline void *acquire()
+    inline void* acquire()
     {
         // Return null if no more entry left
         if (next_ == nullptr)
             return nullptr;
 
         // Obtain one element from the head of the free list
-        Freelist *head = next_;
+        Freelist* head = next_;
         next_ = head->next_;
         return head;
     }
 
-	/**
-	 * @brief Return a block to the free list.
-	 * 
-	 * @param ptr 
-	 */
-    inline void release(void *ptr)
+    /**
+     * @brief Return a block to the free list.
+     *
+     * @param ptr
+     */
+    inline void release(void* ptr)
     {
         // Put the returned element at the head of the free list
-        Freelist *head = static_cast<Freelist *>(ptr);
+        Freelist* head = static_cast<Freelist*>(ptr);
         head->next_ = next_;
         next_ = head;
     }
 
 #ifdef K_DEBUG
-    inline void *next(void *ptr)
+    inline void* next(void* ptr)
     {
-        return static_cast<Freelist *>(ptr)->next_;
+        return static_cast<Freelist*>(ptr)->next_;
     }
 #endif
 
 private:
-    Freelist *next_;
+    Freelist* next_;
 };
 #pragma pack(pop)
 

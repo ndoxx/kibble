@@ -85,19 +85,19 @@ public:
 
 private:
     /// Scale parameter
-    float a_;              
+    float a_;
     /// x-offset
-    float p_;              
+    float p_;
     /// y-offset
-    float q_;              
+    float q_;
     /// Anchors midpoint
-    float m_;              
+    float m_;
     /// Integration constant for arc-length parameterization
-    float C_;              
+    float C_;
     /// Full length between anchor points
-    float s_;              
+    float s_;
     /// Reflect curve w.r.t midpoint?
-    bool reflect_ = false; 
+    bool reflect_ = false;
 };
 
 } // namespace math

@@ -15,8 +15,8 @@ namespace kb::log
 struct EntryBuilder : private LogEntry
 {
 public:
-    EntryBuilder(const Channel &channel, int source_line, const char *source_file, const char *source_function);
-    EntryBuilder(const Channel *channel, int source_line, const char *source_file, const char *source_function);
+    EntryBuilder(const Channel& channel, int source_line, const char* source_file, const char* source_function);
+    EntryBuilder(const Channel* channel, int source_line, const char* source_file, const char* source_function);
 
     /**
      * @brief Set this log entry as raw text.
@@ -25,13 +25,13 @@ public:
      *
      * @return EntryBuilder&
      */
-    inline EntryBuilder &raw()
+    inline EntryBuilder& raw()
     {
         raw_text = true;
         return *this;
     }
 
-    inline EntryBuilder &level(Severity s)
+    inline EntryBuilder& level(Severity s)
     {
         severity = s;
         return *this;
@@ -46,7 +46,7 @@ public:
      * @param uid_str
      * @return EntryBuilder&
      */
-    inline EntryBuilder &uid(std::string &&uid_str)
+    inline EntryBuilder& uid(std::string&& uid_str)
     {
         uid_text = std::move(uid_str);
         return *this;
@@ -55,7 +55,7 @@ public:
     void log(std::string_view m);
 
     template <typename... ArgsT>
-    inline void log(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void log(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -66,7 +66,7 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Verbose).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -77,7 +77,7 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void debug(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void debug(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Debug).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -88,7 +88,7 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void info(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void info(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Info).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -99,7 +99,7 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void warn(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void warn(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Warn).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -110,7 +110,7 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void error(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void error(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Error).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -121,13 +121,13 @@ public:
     }
 
     template <typename... ArgsT>
-    inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT &&...args)
+    inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Fatal).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
 private:
-    const Channel *channel_ = nullptr;
+    const Channel* channel_ = nullptr;
 };
 
 } // namespace kb::log

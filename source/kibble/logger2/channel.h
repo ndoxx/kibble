@@ -40,7 +40,7 @@ public:
      * @param short_name Short name of this channel, used by terminal formatters
      * @param tag_color The color used by relevant formatters to display this channel
      */
-    Channel(Severity level, const std::string &full_name, const std::string &short_name, math::argb32_t tag_color);
+    Channel(Severity level, const std::string& full_name, const std::string& short_name, math::argb32_t tag_color);
 
     /**
      * @brief Add a sink to this channel
@@ -70,7 +70,7 @@ public:
         level_ = level;
     }
 
-    inline const ChannelPresentation &get_presentation() const
+    inline const ChannelPresentation& get_presentation() const
     {
         return presentation_;
     }
@@ -90,7 +90,7 @@ public:
      * @param js JobSystem instance. If set to nullptr, the logger will go back to synchronous mode.
      * @param worker thread ID of the worker that will get the logging tasks
      */
-    static void set_async(th::JobSystem *js, uint32_t worker = 1);
+    static void set_async(th::JobSystem* js, uint32_t worker = 1);
 
     /**
      * @brief Configure logging system to exit after a log entry with Fatal severity is dispatched
@@ -132,11 +132,11 @@ public:
      *
      * @param entry
      */
-    void submit(struct LogEntry &&entry) const;
+    void submit(struct LogEntry&& entry) const;
 
     /**
      * @brief Force sinks to flush
-     * 
+     *
      */
     void flush() const;
 
@@ -146,7 +146,7 @@ private:
     std::vector<std::shared_ptr<Policy>> policies_;
     Severity level_;
 
-    static th::JobSystem *s_js_;
+    static th::JobSystem* s_js_;
     static uint32_t s_worker_;
     static bool s_exit_on_fatal_error_;
     static bool s_intercept_signals_;

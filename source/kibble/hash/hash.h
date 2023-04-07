@@ -94,7 +94,7 @@ namespace detail
 // These magic numbers are the binary expansions of an irrational number (the golden ratio)
 static constexpr uint64_t PHI_EXP_32 = 0x9E3779B9;         // 2^32/phi
 static constexpr uint64_t PHI_EXP_64 = 0x9E3779B97F4A7C15; // 2^64/phi
-inline void update_hash_seed_internal(size_t &seed, size_t next_value)
+inline void update_hash_seed_internal(size_t& seed, size_t next_value)
 {
     seed ^= next_value + PHI_EXP_64 + (seed << 6) + (seed >> 2);
 }
@@ -115,7 +115,7 @@ struct pair_hash
      * @return std::size_t
      */
     template <typename T1, typename T2>
-    std::size_t operator()(const std::pair<T1, T2> &pair) const
+    std::size_t operator()(const std::pair<T1, T2>& pair) const
     {
         std::size_t seed = 0;
         detail::update_hash_seed_internal(seed, std::hash<T1>()(pair.first));
@@ -140,7 +140,7 @@ struct vec3_hash
      * @param vec The input vector
      * @return std::size_t
      */
-    std::size_t operator()(const Vec3T &vec) const
+    std::size_t operator()(const Vec3T& vec) const
     {
         std::size_t seed = 0;
 
@@ -163,7 +163,7 @@ static constexpr unsigned long long basis = 14695981039346656037ULL;
 static constexpr unsigned long long prime = 1099511628211ULL;
 
 // compile-time hash helper functions
-static constexpr unsigned long long hash_one(char c, const char *remain, unsigned long long value)
+static constexpr unsigned long long hash_one(char c, const char* remain, unsigned long long value)
 {
     return c == 0 ? value : hash_one(remain[0], remain + 1, (value ^ static_cast<unsigned long long>(c)) * prime);
 }
@@ -172,12 +172,12 @@ static constexpr unsigned long long hash_one(std::string_view sv, size_t idx, un
     return idx == sv.size() ? value : hash_one(sv, idx + 1, (value ^ static_cast<unsigned long long>(sv[idx])) * prime);
 }
 
-inline void hash_combine([[maybe_unused]] std::size_t &seed)
+inline void hash_combine([[maybe_unused]] std::size_t& seed)
 {
 }
 
 template <typename T, typename... Rest>
-inline void hash_combine(std::size_t &seed, const T &v, Rest... rest)
+inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)
 {
     std::hash<T> hasher;
     update_hash_seed_internal(seed, hasher(v));
@@ -191,7 +191,7 @@ inline void hash_combine(std::size_t &seed, const T &v, Rest... rest)
     template <>                                                                                                        \
     struct hash<type>                                                                                                  \
     {                                                                                                                  \
-        std::size_t operator()(const type &t) const                                                                    \
+        std::size_t operator()(const type& t) const                                                                    \
         {                                                                                                              \
             std::size_t ret = 0;                                                                                       \
             kb::detail::hash_combine(ret, __VA_ARGS__);                                                                \
@@ -210,7 +210,7 @@ using hash_t = unsigned long long;
  * @param str Input c-string
  * @return constexpr kb::hash_t
  */
-constexpr kb::hash_t H_(const char *str)
+constexpr kb::hash_t H_(const char* str)
 {
     return kb::detail::hash_one(str[0], str + 1, kb::detail::basis);
 }
@@ -232,7 +232,7 @@ constexpr kb::hash_t H_(std::string_view sv)
  * @param str Input string
  * @return constexpr kb::hash_t
  */
-constexpr kb::hash_t H_(const std::string &str)
+constexpr kb::hash_t H_(const std::string& str)
 {
     return H_(str.c_str());
 }
@@ -242,7 +242,7 @@ constexpr kb::hash_t H_(const std::string &str)
  * The syntax "hello"_h is equivalent to calling H_("hello")
  *
  */
-constexpr kb::hash_t operator"" _h(const char *internstr, size_t)
+constexpr kb::hash_t operator"" _h(const char* internstr, size_t)
 {
     return H_(internstr);
 }
@@ -265,7 +265,7 @@ inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second)
  * @param hashes Vector containing string hashes
  * @return kb::hash_t
  */
-inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t> &hashes)
+inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
 {
     kb::hash_t ret = hashes[0];
     for (size_t ii = 1; ii < hashes.size(); ++ii)

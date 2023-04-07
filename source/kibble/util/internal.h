@@ -26,22 +26,25 @@ namespace kb
  * {
  * template <> void Deleter<API::Internal>::operator()(API::Internal* p) { delete p; }
  * }
- * 
+ *
  * // possible call inside API::method()
  * internal_ = make_internal<Internal>(create_info);
  */
 
 namespace internal_deleter
 {
-template <typename T> struct Deleter
+template <typename T>
+struct Deleter
 {
     void operator()(T* p);
 };
 } // namespace internal_deleter
 
-template <typename T> using internal_ptr = std::unique_ptr<T, internal_deleter::Deleter<T>>;
+template <typename T>
+using internal_ptr = std::unique_ptr<T, internal_deleter::Deleter<T>>;
 
-template <typename T, typename... ArgsT> inline internal_ptr<T> make_internal(ArgsT&&... args)
+template <typename T, typename... ArgsT>
+inline internal_ptr<T> make_internal(ArgsT&&... args)
 {
     return internal_ptr<T>(new T(std::forward<ArgsT>(args)...));
 }

@@ -63,7 +63,7 @@ namespace detail
 {
 // Tempate function to cast a string to any handled type
 template <typename T>
-T StringCast(const std::string &) noexcept(false);
+T StringCast(const std::string&) noexcept(false);
 
 // Template variable to associate types to type tags
 template <typename T>
@@ -77,24 +77,24 @@ static constexpr ArgType k_underlying_type = ArgType::NONE;
 struct AbstractOption
 {
     /// Single letter form of this option
-    char short_name = 0;             
+    char short_name = 0;
     /// Short name of another option that is required for this one to make sense
-    char dependency = 0;             
+    char dependency = 0;
     /// True if this option was set
-    bool is_set = false;             
+    bool is_set = false;
     /// Double-dash full form of this option
-    std::string full_name;           
+    std::string full_name;
     /// Small text describing what the option does
-    std::string description;         
+    std::string description;
     /// Compatibility requirements for this option
-    std::set<size_t> exclusive_sets; 
+    std::set<size_t> exclusive_sets;
 
     virtual ~AbstractOption() = default;
 
     /**
      * @brief Initialize value from string
      */
-    virtual void cast(const std::string &) noexcept(false) = 0;
+    virtual void cast(const std::string&) noexcept(false) = 0;
 
     /**
      * @brief Get underlying type as a tag
@@ -107,7 +107,7 @@ struct AbstractOption
      * Used by the usage string generator.
      * @param max_pad Maximum padding length between the option name and its description
      */
-    void format_description(std::ostream &, long max_pad) const;
+    void format_description(std::ostream&, long max_pad) const;
 };
 
 /**
@@ -125,7 +125,7 @@ struct Option : public AbstractOption
      *
      * @param operand String next to the option to be cast to a value
      */
-    void cast(const std::string &operand) noexcept(false) override
+    void cast(const std::string& operand) noexcept(false) override
     {
         value = detail::StringCast<T>(operand);
     }
@@ -145,7 +145,7 @@ struct Option : public AbstractOption
      *
      * @return const T&
      */
-    inline const T &operator()() const
+    inline const T& operator()() const
     {
         return value;
     }
@@ -176,7 +176,7 @@ public:
      * @param program_name Name of the program to display in the usage string
      * @param ver_string Version string to display when the program is called with the -v or --version flag
      */
-    ArgParse(const std::string &program_name, const std::string &ver_string);
+    ArgParse(const std::string& program_name, const std::string& ver_string);
     ~ArgParse();
 
     /**
@@ -184,7 +184,7 @@ public:
      *
      * @return const std::string&
      */
-    inline const std::string &version()
+    inline const std::string& version()
     {
         if (full_ver_string_.size() == 0)
             make_version_string();
@@ -202,7 +202,7 @@ public:
      *
      * @return const std::string&
      */
-    inline const std::string &usage()
+    inline const std::string& usage()
     {
         if (usage_string_.size() == 0)
             make_usage_string();
@@ -214,7 +214,7 @@ public:
      *
      * @return const std::vector<std::string>&
      */
-    inline const std::vector<std::string> &get_errors() const
+    inline const std::vector<std::string>& get_errors() const
     {
         return error_log_;
     }
@@ -240,7 +240,7 @@ public:
      *
      * @param output
      */
-    inline void set_log_output(std::function<void(const std::string &)> output)
+    inline void set_log_output(std::function<void(const std::string&)> output)
     {
         output_ = output;
     }
@@ -270,10 +270,10 @@ public:
      * @return const Option<T>& An option object that can be evaluated after parsing
      */
     template <typename T>
-    const Option<T> &add_variable(char short_name, const std::string &full_name, const std::string &description,
+    const Option<T>& add_variable(char short_name, const std::string& full_name, const std::string& description,
                                   T default_value)
     {
-        Option<T> *opt = new Option<T>();
+        Option<T>* opt = new Option<T>();
         opt->short_name = short_name;
         opt->full_name = full_name;
         opt->description = description;
@@ -293,7 +293,7 @@ public:
      * @param description Short text that describes what this flag does
      * @return const Flag& A flag object that can be evaluated after parsing
      */
-    inline const Flag &add_flag(char short_name, const std::string &full_name, const std::string &description)
+    inline const Flag& add_flag(char short_name, const std::string& full_name, const std::string& description)
     {
         return add_variable<bool>(short_name, full_name, description, false);
     }
@@ -308,8 +308,8 @@ public:
      * @return const Option<std::vector<T>>&
      */
     template <typename T>
-    inline const Option<std::vector<T>> &add_list(char short_name, const std::string &full_name,
-                                                  const std::string &description)
+    inline const Option<std::vector<T>>& add_list(char short_name, const std::string& full_name,
+                                                  const std::string& description)
     {
         return add_variable<std::vector<T>>(short_name, full_name, description, {});
     }
@@ -329,9 +329,9 @@ public:
      * @return const Option<T>&
      */
     template <typename T>
-    const Option<T> &add_positional(const std::string &full_name, const std::string &description)
+    const Option<T>& add_positional(const std::string& full_name, const std::string& description)
     {
-        Option<T> *opt = new Option<T>();
+        Option<T>* opt = new Option<T>();
         opt->full_name = full_name;
         opt->description = description;
         positionals_.push_back(opt);
@@ -346,7 +346,7 @@ public:
      *
      * @param exclusive_set Set of short-form options to set as mutually exclusive
      */
-    void set_flags_exclusive(const std::set<char> &exclusive_set);
+    void set_flags_exclusive(const std::set<char>& exclusive_set);
 
     /**
      * @brief Set all the variables in the input set to be mutually exclusive.
@@ -355,7 +355,7 @@ public:
      *
      * @param exclusive_set Set of short-form options to set as mutually exclusive
      */
-    void set_variables_exclusive(const std::set<char> &exclusive_set);
+    void set_variables_exclusive(const std::set<char>& exclusive_set);
 
     /**
      * @brief Specify that the first command requires the second one to be present during parsing.
@@ -378,7 +378,7 @@ public:
      * @return true if the parser ended in a valid state
      * @return false if some error happened
      */
-    bool parse(int argc, char **argv) noexcept;
+    bool parse(int argc, char** argv) noexcept;
 
 private:
     // Set a special argument with immediate action
@@ -388,10 +388,10 @@ private:
     }
 
     // Set all flags in a concatenated flag group, return the first unknown flag if any
-    char try_set_flag_group(const std::string &group) noexcept;
+    char try_set_flag_group(const std::string& group) noexcept;
 
     // Try to parse an argument as the current positional argument
-    bool try_set_positional(size_t &current_positional, const std::string &arg) noexcept(false);
+    bool try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false);
 
     // Check that all requirements related to the positional arguments are respected
     bool check_positional_requirements() noexcept;
@@ -403,10 +403,10 @@ private:
     bool check_dependencies() noexcept;
 
     // Compute the intersection of the active set with all exclusive sets, in order to check for exclusivity constraints
-    bool check_intersection(const std::set<char> active, const std::vector<std::set<char>> &exclusives) noexcept;
+    bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept;
 
     // Get the set of all set options that pass the input filter
-    std::set<char> get_active(std::function<bool(AbstractOption *)>) const noexcept;
+    std::set<char> get_active(std::function<bool(AbstractOption*)>) const noexcept;
 
     // Check if two options are compatible, meaning they don't share an exclusive set
     bool compatible(char, char) const;
@@ -418,7 +418,7 @@ private:
     void make_version_string();
 
     // Push an error string to the error log
-    inline void log_error(const std::string &err)
+    inline void log_error(const std::string& err)
     {
         error_log_.push_back(err);
     }
@@ -428,14 +428,14 @@ private:
     std::string program_name_;
     std::string usage_string_;
     std::string full_ver_string_;
-    std::map<char, AbstractOption *> arguments_;
+    std::map<char, AbstractOption*> arguments_;
     std::map<char, std::function<void()>> triggers_;
-    std::vector<AbstractOption *> positionals_;
+    std::vector<AbstractOption*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
     std::vector<std::set<char>> exclusive_variables_;
     std::unordered_map<std::string, char> full_to_short_;
     std::vector<std::string> error_log_;
-    std::function<void(const std::string &)> output_ = [](const std::string &) {};
+    std::function<void(const std::string&)> output_ = [](const std::string&) {};
 
     bool valid_state_ = false;
     bool was_run_ = false;
@@ -469,34 +469,34 @@ template <>
 [[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<std::string>> = ArgType::VEC_STRING;
 
 template <>
-bool StringCast<bool>(const std::string &) noexcept(false);
+bool StringCast<bool>(const std::string&) noexcept(false);
 template <>
-int StringCast<int>(const std::string &) noexcept(false);
+int StringCast<int>(const std::string&) noexcept(false);
 template <>
-long StringCast<long>(const std::string &) noexcept(false);
+long StringCast<long>(const std::string&) noexcept(false);
 template <>
-float StringCast<float>(const std::string &) noexcept(false);
+float StringCast<float>(const std::string&) noexcept(false);
 template <>
-double StringCast<double>(const std::string &) noexcept(false);
+double StringCast<double>(const std::string&) noexcept(false);
 template <>
-std::string StringCast<std::string>(const std::string &) noexcept(false);
+std::string StringCast<std::string>(const std::string&) noexcept(false);
 template <>
-std::vector<int> StringCast<std::vector<int>>(const std::string &) noexcept(false);
+std::vector<int> StringCast<std::vector<int>>(const std::string&) noexcept(false);
 template <>
-std::vector<long> StringCast<std::vector<long>>(const std::string &) noexcept(false);
+std::vector<long> StringCast<std::vector<long>>(const std::string&) noexcept(false);
 template <>
-std::vector<float> StringCast<std::vector<float>>(const std::string &) noexcept(false);
+std::vector<float> StringCast<std::vector<float>>(const std::string&) noexcept(false);
 template <>
-std::vector<double> StringCast<std::vector<double>>(const std::string &) noexcept(false);
+std::vector<double> StringCast<std::vector<double>>(const std::string&) noexcept(false);
 template <>
-std::vector<std::string> StringCast<std::vector<std::string>>(const std::string &) noexcept(false);
+std::vector<std::string> StringCast<std::vector<std::string>>(const std::string&) noexcept(false);
 } // namespace detail
 
 template <>
 struct Option<bool> : public AbstractOption
 {
     virtual ~Option() = default;
-    virtual void cast(const std::string &) noexcept(false) override
+    virtual void cast(const std::string&) noexcept(false) override
     {
         is_set = true;
     }

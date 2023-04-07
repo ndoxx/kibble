@@ -30,7 +30,7 @@ private:
     class StringBuffer : public std::stringbuf
     {
     public:
-        explicit StringBuffer(LoggerStream &parent);
+        explicit StringBuffer(LoggerStream& parent);
         ~StringBuffer();
 
         // This override allows to monitor std::endl
@@ -43,7 +43,7 @@ private:
         }
 
     private:
-        LoggerStream &parent_;
+        LoggerStream& parent_;
     };
 
 public:
@@ -72,7 +72,7 @@ public:
      * @param code_line Source code line number that emitted this statement
      * @param code_file Source file that emitted this statement
      */
-    void prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char *code_file);
+    void prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char* code_file);
 
 private:
     /**
@@ -81,7 +81,7 @@ private:
      *
      * @param message Content of the logging statement
      */
-    void submit(const std::string &message);
+    void submit(const std::string& message);
 
     StringBuffer buffer_; // The buffer this stream writes to
     LogStatement stmt_;   // Current state
@@ -98,8 +98,8 @@ private:
  * @param code_file Source file that emitted this statement
  * @return LoggerStream& The thread_local instance of the logger stream
  */
-[[maybe_unused]] static inline LoggerStream &get_log(hash_t channel, MsgType msg_type, uint8_t severity,
-                                                     int code_line = 0, const char *code_file = "")
+[[maybe_unused]] static inline LoggerStream& get_log(hash_t channel, MsgType msg_type, uint8_t severity,
+                                                     int code_line = 0, const char* code_file = "")
 {
     thread_local LoggerStream ls;
     ls.prepare(channel, msg_type, severity, code_line, code_file);

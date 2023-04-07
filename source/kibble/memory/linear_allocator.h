@@ -31,7 +31,7 @@ public:
      * @param size size of the block to reserve
      * @param debug_name name of this allocator, for debug purposes
      */
-    LinearAllocator(HeapArea &area, std::size_t size, const char *debug_name);
+    LinearAllocator(HeapArea& area, std::size_t size, const char* debug_name);
 
     /**
      * @brief Lazy-initialize a linear allocator.
@@ -41,14 +41,14 @@ public:
      * @param size size of the block to reserve
      * @param debug_name name of this allocator, for debug purposes
      */
-    void init(HeapArea &area, std::size_t size, const char *debug_name);
+    void init(HeapArea& area, std::size_t size, const char* debug_name);
 
     /**
      * @brief Return a pointer to the beginning of the block.
      *
      * @return uint8_t*
      */
-    inline uint8_t *begin()
+    inline uint8_t* begin()
     {
         return begin_;
     }
@@ -58,7 +58,7 @@ public:
      *
      * @return const uint8_t*
      */
-    inline const uint8_t *begin() const
+    inline const uint8_t* begin() const
     {
         return begin_;
     }
@@ -68,7 +68,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *end()
+    inline uint8_t* end()
     {
         return end_;
     }
@@ -78,7 +78,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline const uint8_t *end() const
+    inline const uint8_t* end() const
     {
         return end_;
     }
@@ -99,7 +99,7 @@ public:
      * @return the returned pointer, at the beginning of the chunk, or nullptr if the allocator reached the end of the
      * block
      */
-    void *allocate(std::size_t size, std::size_t alignment, std::size_t offset);
+    void* allocate(std::size_t size, std::size_t alignment, std::size_t offset);
 
     /**
      * @brief This function is left empty because there is no good way to deallocate stuff with a linear allocator. Only
@@ -107,7 +107,7 @@ public:
      * memory arena, this function needs to exist.
      *
      */
-    inline void deallocate(void *)
+    inline void deallocate(void*)
     {
     }
 
@@ -121,8 +121,8 @@ public:
     }
 
 private:
-    uint8_t *begin_;
-    uint8_t *end_;
+    uint8_t* begin_;
+    uint8_t* end_;
     uint32_t current_offset_;
 };
 

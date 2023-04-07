@@ -27,13 +27,13 @@ public:
      * @brief Executed when the sink is attached to a channel
      *
      */
-    virtual void on_attach(const Channel &){};
+    virtual void on_attach(const Channel&){};
 
     /**
      * @brief Treat the log entry
      *
      */
-    virtual void submit(const LogEntry &, const ChannelPresentation &) = 0;
+    virtual void submit(const LogEntry&, const ChannelPresentation&) = 0;
 
     virtual void flush() const
     {
@@ -45,7 +45,7 @@ public:
      * @param e
      * @param p
      */
-    inline void submit_lock(const LogEntry &e, const ChannelPresentation &p)
+    inline void submit_lock(const LogEntry& e, const ChannelPresentation& p)
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         submit(e, p);

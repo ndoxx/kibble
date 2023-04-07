@@ -36,7 +36,7 @@ struct Daemon
     /// When set to true, this daemon will be returned to the pool by DaemonScheduler::update()
     bool marked_for_deletion = false;
     /// The job is kept alive by the JobSystem, the DaemonScheduler needs to store this pointer
-    Job *job = nullptr;
+    Job* job = nullptr;
 };
 
 /// Refers to a particular daemon
@@ -58,7 +58,7 @@ public:
      *
      * @param js Reference to an existing JobSystem instance.
      */
-    DaemonScheduler(JobSystem &js, const kb::log::Channel *log_channel = nullptr);
+    DaemonScheduler(JobSystem& js, const kb::log::Channel* log_channel = nullptr);
 
     /**
      * @brief Kill all daemons and destroy the DaemonScheduler.
@@ -79,8 +79,8 @@ public:
      * @param meta Job metadata.
      * @return DaemonHandle A handle to the newly created daemon.
      */
-    DaemonHandle create(JobKernel &&kernel, const SchedulingData &scheduling_data,
-                        const JobMetadata &meta = JobMetadata{});
+    DaemonHandle create(JobKernel&& kernel, const SchedulingData& scheduling_data,
+                        const JobMetadata& meta = JobMetadata{});
 
     /**
      * @brief Manually stop and release a daemon.
@@ -102,13 +102,13 @@ public:
     void update();
 
 private:
-    JobSystem &js_;
+    JobSystem& js_;
     std::map<DaemonHandle, Daemon> daemons_;
     std::vector<DaemonHandle> kill_list_;
     microClock clock_;
     DaemonHandle current_handle_ = 0;
     float delta_t_ms_ = 0.f;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 } // namespace th

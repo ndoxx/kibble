@@ -9,7 +9,7 @@ namespace kb
  * @brief Get the backtrace as a string.
  * The stack trace is a representation of the call stack at this instant. It helps to visualize the succession of calls
  * that led to a particular call that produced an error, so the problem can be traced back to its source.
- * 
+ *
  * @note Only implemented for linux systems at the moment.
  * @return std::string The stack trace
  */

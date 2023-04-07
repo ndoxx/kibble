@@ -42,7 +42,7 @@ public:
      *
      * @param other
      */
-    UUID(const UUID &other);
+    UUID(const UUID& other);
 
     /**
      * @brief Builds a 128-bits UUID
@@ -57,21 +57,21 @@ public:
      *
      * @param bytes
      */
-    explicit UUID(const uint8_t *bytes);
+    explicit UUID(const uint8_t* bytes);
 
     /**
      * @brief Builds an UUID from a byte string (16 bytes long)
      *
      * @param bytes
      */
-    explicit UUID(const std::string &bytes);
+    explicit UUID(const std::string& bytes);
 
     /**
      * @brief Builds an UUID from raw data
      *
      * @param raw
      */
-    explicit UUID(const char *raw);
+    explicit UUID(const char* raw);
 
     /**
      * @brief Static factory to parse an UUID from its string representation
@@ -79,7 +79,7 @@ public:
      * @param s
      * @return UUID
      */
-    static UUID from_str_factory(const std::string &s);
+    static UUID from_str_factory(const std::string& s);
 
     /**
      * @brief Static factory to parse an UUID from its string representation
@@ -89,7 +89,7 @@ public:
      * @param s
      * @return UUID
      */
-    static UUID from_str_factory(const char *raw);
+    static UUID from_str_factory(const char* raw);
 
     /**
      * @brief Static factory to build a UUID from random upper and lower bits
@@ -108,14 +108,14 @@ public:
      * @param other
      * @return UUID&
      */
-    UUID &operator=(const UUID &other);
+    UUID& operator=(const UUID& other);
 
-    friend bool operator==(const UUID &lhs, const UUID &rhs);
-    friend bool operator<(const UUID &lhs, const UUID &rhs);
-    friend bool operator!=(const UUID &lhs, const UUID &rhs);
-    friend bool operator>(const UUID &lhs, const UUID &rhs);
-    friend bool operator<=(const UUID &lhs, const UUID &rhs);
-    friend bool operator>=(const UUID &lhs, const UUID &rhs);
+    friend bool operator==(const UUID& lhs, const UUID& rhs);
+    friend bool operator<(const UUID& lhs, const UUID& rhs);
+    friend bool operator!=(const UUID& lhs, const UUID& rhs);
+    friend bool operator>(const UUID& lhs, const UUID& rhs);
+    friend bool operator<=(const UUID& lhs, const UUID& rhs);
+    friend bool operator>=(const UUID& lhs, const UUID& rhs);
 
     /**
      * @brief Serializes the uuid to a byte string (16 bytes)
@@ -131,21 +131,21 @@ public:
      */
     std::string str() const;
 
-    friend std::ostream &operator<<(std::ostream &stream, const UUID &uuid);
+    friend std::ostream& operator<<(std::ostream& stream, const UUID& uuid);
 
-    friend std::istream &operator>>(std::istream &stream, UUID &uuid);
+    friend std::istream& operator>>(std::istream& stream, UUID& uuid);
 
     inline std::size_t hash() const
     {
-        return *(reinterpret_cast<const uint64_t *>(data_)) ^ *(reinterpret_cast<const uint64_t *>(data_ + 8));
+        return *(reinterpret_cast<const uint64_t*>(data_)) ^ *(reinterpret_cast<const uint64_t*>(data_ + 8));
     }
 
-    inline uint8_t *data()
+    inline uint8_t* data()
     {
         return data_;
     }
 
-    inline const uint8_t *data() const
+    inline const uint8_t* data() const
     {
         return data_;
     }
@@ -184,7 +184,7 @@ public:
      *
      * @param gen
      */
-    UUIDGenerator(RNG &gen)
+    UUIDGenerator(RNG& gen)
         : generator_(gen), distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
     {
     }
@@ -222,7 +222,7 @@ namespace std
 template <>
 struct hash<kb::UUIDv4::UUID>
 {
-    size_t operator()(const kb::UUIDv4::UUID &uuid) const
+    size_t operator()(const kb::UUIDv4::UUID& uuid) const
     {
         return uuid.hash();
     }

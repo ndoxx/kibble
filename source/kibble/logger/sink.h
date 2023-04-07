@@ -45,14 +45,14 @@ public:
      * @param stmt The log statement
      * @param chan The channel object that corresponds to stmt.channel
      */
-    virtual void send(const LogStatement &stmt, const LogChannel &chan) = 0;
+    virtual void send(const LogStatement& stmt, const LogChannel& chan) = 0;
 
     /**
      * @brief Submit a raw string to this sink
      *
      * @param message
      */
-    virtual void send_raw(const std::string &message) = 0;
+    virtual void send_raw(const std::string& message) = 0;
 
     /**
      * @brief Override this if some operations need to be performed before logger destruction.
@@ -97,7 +97,7 @@ public:
      *
      * @param desc Descriptor containing all the relevant info
      */
-    inline void add_channel_subscription(const ChannelDescription &desc)
+    inline void add_channel_subscription(const ChannelDescription& desc)
     {
         subscriptions_.push_back(desc);
     }
@@ -107,7 +107,7 @@ public:
      *
      * @return const std::vector<ChannelDescription>&
      */
-    inline const std::vector<ChannelDescription> &get_channel_subscriptions() const
+    inline const std::vector<ChannelDescription>& get_channel_subscriptions() const
     {
         return subscriptions_;
     }
@@ -132,14 +132,14 @@ public:
      * @param stmt The logging statement to display
      * @param chan The channel this statement was sent to
      */
-    void send(const LogStatement &stmt, const LogChannel &chan) override;
+    void send(const LogStatement& stmt, const LogChannel& chan) override;
 
     /**
      * @brief Print a raw string
      *
      * @param message
      */
-    void send_raw(const std::string &message) override;
+    void send_raw(const std::string& message) override;
 };
 
 /**
@@ -154,7 +154,7 @@ public:
      *
      * @param filename Path to the output log file
      */
-    explicit LogFileSink(const std::string &filename);
+    explicit LogFileSink(const std::string& filename);
 
     /**
      * @brief Write a statement to the file.
@@ -163,14 +163,14 @@ public:
      * @param stmt The statement to write
      * @param chan The channel this statement was sent to
      */
-    void send(const LogStatement &stmt, const LogChannel &chan) override;
+    void send(const LogStatement& stmt, const LogChannel& chan) override;
 
     /**
      * @brief Write a raw string to the file
      *
      * @param message
      */
-    void send_raw(const std::string &message) override;
+    void send_raw(const std::string& message) override;
 
     /**
      * @brief Tidily close the output file and notify the user that the file was saved.
@@ -212,14 +212,14 @@ public:
      * @param stmt The statement to send
      * @param chan The channel this statement was sent to
      */
-    void send(const LogStatement &stmt, const LogChannel &chan) override;
+    void send(const LogStatement& stmt, const LogChannel& chan) override;
 
     /**
      * @brief Send a string through the socket as-is.
      *
      * @param message The raw string to send
      */
-    void send_raw(const std::string &message) override;
+    void send_raw(const std::string& message) override;
 
     /**
      * @brief Updates the server with this sink's state.
@@ -244,11 +244,11 @@ public:
      * @return true if the connection was successful
      * @return false otherwise
      */
-    bool connect(const std::string &server, uint16_t port);
+    bool connect(const std::string& server, uint16_t port);
 
 private:
     std::string server_;
-    kb::net::TCPStream *stream_ = nullptr;
+    kb::net::TCPStream* stream_ = nullptr;
 };
 
 } // namespace log_deprec

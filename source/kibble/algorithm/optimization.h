@@ -71,7 +71,7 @@ struct ControlTraits
     /**
      * @brief Normalize a ControlT vector
      */
-    static void normalize(ControlT &)
+    static void normalize(ControlT&)
     {
     }
 };
@@ -123,9 +123,9 @@ template <typename ControlT, typename RandomEngineT = std::default_random_engine
 class StochasticDescentOptimizer
 {
 public:
-    using LossFunc = std::function<float(const ControlT &)>;
-    using ConstraintFunc = std::function<void(ControlT &)>;
-    using IterCallback = std::function<void(size_t iter, const ControlT &, float)>;
+    using LossFunc = std::function<float(const ControlT&)>;
+    using ConstraintFunc = std::function<void(ControlT&)>;
+    using IterCallback = std::function<void(size_t iter, const ControlT&, float)>;
 
     /**
      * @brief Construct a new Stochastic Descent Optimizer and initialize its random number generator with a seed.
@@ -185,7 +185,7 @@ public:
      * @param params Structure containing all the parameters guiding the algorithm
      * @return ControlT
      */
-    ControlT SPSA(const DescentParameters<ControlT> &params)
+    ControlT SPSA(const DescentParameters<ControlT>& params)
     {
         std::bernoulli_distribution dis(0.5);
 
@@ -232,7 +232,7 @@ public:
      * @param params Structure containing all the parameters guiding the algorithm
      * @return ControlT
      */
-    ControlT FDSA(const DescentParameters<ControlT> &params)
+    ControlT FDSA(const DescentParameters<ControlT>& params)
     {
         size_t iter = 0;
         float filtered_loss = 1.f;
@@ -286,9 +286,9 @@ private:
 
 private:
     RandomEngineT gen_;
-    LossFunc loss_ = [](const ControlT &) { return 0.f; };
-    ConstraintFunc constraint_ = [](ControlT &) {};
-    IterCallback iter_callback_ = [](size_t, const ControlT &, float) {};
+    LossFunc loss_ = [](const ControlT&) { return 0.f; };
+    ConstraintFunc constraint_ = [](ControlT&) {};
+    IterCallback iter_callback_ = [](size_t, const ControlT&, float) {};
 };
 
 } // namespace opt

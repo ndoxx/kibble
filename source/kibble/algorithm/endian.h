@@ -9,7 +9,8 @@ namespace kb
 
 namespace detail
 {
-template <typename T, std::size_t... N> constexpr T bswap_impl(T i, std::index_sequence<N...>)
+template <typename T, std::size_t... N>
+constexpr T bswap_impl(T i, std::index_sequence<N...>)
 {
     return static_cast<T>((((i >> N * CHAR_BIT & std::uint8_t(-1)) << (sizeof(T) - 1 - N) * CHAR_BIT) | ...));
 }
@@ -29,7 +30,8 @@ template <typename T, std::size_t... N> constexpr T bswap_impl(T i, std::index_s
  * @param i Variable to endian-swap
  * @return constexpr U
  */
-template <typename T, typename U = std::make_unsigned_t<T>> constexpr U bswap(T i)
+template <typename T, typename U = std::make_unsigned_t<T>>
+constexpr U bswap(T i)
 {
     return detail::bswap_impl<U>(i, std::make_index_sequence<sizeof(T)>{});
 }

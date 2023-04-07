@@ -63,19 +63,19 @@ private:
 class NoBoundsChecking
 {
 public:
-    inline void put_sentinel_front(uint8_t *) const
+    inline void put_sentinel_front(uint8_t*) const
     {
     }
 
-    inline void put_sentinel_back(uint8_t *) const
+    inline void put_sentinel_back(uint8_t*) const
     {
     }
 
-    inline void check_sentinel_front(uint8_t *) const
+    inline void check_sentinel_front(uint8_t*) const
     {
     }
 
-    inline void check_sentinel_back(uint8_t *) const
+    inline void check_sentinel_back(uint8_t*) const
     {
     }
 
@@ -97,7 +97,7 @@ public:
      *
      * @param ptr start address to write to
      */
-    inline void put_sentinel_front(uint8_t *ptr) const
+    inline void put_sentinel_front(uint8_t* ptr) const
     {
         std::fill(ptr, ptr + SIZE_FRONT, 0xf0);
     }
@@ -107,7 +107,7 @@ public:
      *
      * @param ptr start address to write to
      */
-    inline void put_sentinel_back(uint8_t *ptr) const
+    inline void put_sentinel_back(uint8_t* ptr) const
     {
         std::fill(ptr, ptr + SIZE_BACK, 0x0f);
     }
@@ -117,11 +117,11 @@ public:
      *
      * @param ptr sentinel location
      */
-    inline void check_sentinel_front([[maybe_unused]] uint8_t *ptr) const
+    inline void check_sentinel_front([[maybe_unused]] uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<uint32_t *>(ptr) == 0xf0f0f0f0, "Memory overwrite detected (front)", nullptr)
-            .watch(static_cast<void *>(ptr))
-            .watch(*reinterpret_cast<uint32_t *>(ptr));
+        K_ASSERT(*reinterpret_cast<uint32_t*>(ptr) == 0xf0f0f0f0, "Memory overwrite detected (front)", nullptr)
+            .watch(static_cast<void*>(ptr))
+            .watch(*reinterpret_cast<uint32_t*>(ptr));
     }
 
     /**
@@ -129,11 +129,11 @@ public:
      *
      * @param ptr sentinel location
      */
-    inline void check_sentinel_back([[maybe_unused]] uint8_t *ptr) const
+    inline void check_sentinel_back([[maybe_unused]] uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<uint32_t *>(ptr) == 0x0f0f0f0f, "Memory overwrite detected (back)", nullptr)
-            .watch(static_cast<void *>(ptr))
-            .watch(*reinterpret_cast<uint32_t *>(ptr));
+        K_ASSERT(*reinterpret_cast<uint32_t*>(ptr) == 0x0f0f0f0f, "Memory overwrite detected (back)", nullptr)
+            .watch(static_cast<void*>(ptr))
+            .watch(*reinterpret_cast<uint32_t*>(ptr));
     }
 
     static constexpr std::size_t SIZE_FRONT = 4;
@@ -147,10 +147,10 @@ public:
 class NoMemoryTagging
 {
 public:
-    inline void tag_allocation(uint8_t *, std::size_t) const
+    inline void tag_allocation(uint8_t*, std::size_t) const
     {
     }
-    inline void tag_deallocation(uint8_t *, std::size_t) const
+    inline void tag_deallocation(uint8_t*, std::size_t) const
     {
     }
 };
@@ -162,17 +162,17 @@ public:
 class NoMemoryTracking
 {
 public:
-    inline void on_allocation(uint8_t *, std::size_t, std::size_t) const
+    inline void on_allocation(uint8_t*, std::size_t, std::size_t) const
     {
     }
-    inline void on_deallocation(uint8_t *) const
+    inline void on_deallocation(uint8_t*) const
     {
     }
     inline int32_t get_allocation_count() const
     {
         return 0;
     }
-    inline void report(const kb::log::Channel *) const
+    inline void report(const kb::log::Channel*) const
     {
     }
 };
@@ -191,7 +191,7 @@ public:
      * @brief On allocating a chunk, increase internal counter
      *
      */
-    inline void on_allocation(uint8_t *, std::size_t, std::size_t)
+    inline void on_allocation(uint8_t*, std::size_t, std::size_t)
     {
         ++num_allocs_;
     }
@@ -200,7 +200,7 @@ public:
      * @brief On deallocating a chunk, decrease internal counter
      *
      */
-    inline void on_deallocation(uint8_t *)
+    inline void on_deallocation(uint8_t*)
     {
         --num_allocs_;
     }
@@ -219,7 +219,7 @@ public:
      * @brief Print a tracking report on the logger
      *
      */
-    inline void report(const kb::log::Channel *log_channel) const
+    inline void report(const kb::log::Channel* log_channel) const
     {
         if (num_allocs_)
         {

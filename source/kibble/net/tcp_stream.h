@@ -41,7 +41,7 @@ public:
      *
      * @return the IP address as a string
      */
-    inline const std::string &get_peer_ip() const
+    inline const std::string& get_peer_ip() const
     {
         return peer_ip_;
     }
@@ -53,7 +53,7 @@ public:
      * @param len size of the data to transmit in bytes
      * @return size of data that was written, or -1 on error
      */
-    ssize_t send(const char *buffer, size_t len);
+    ssize_t send(const char* buffer, size_t len);
 
     /**
      * @brief Receive data from the peer and copy it to a buffer.
@@ -62,7 +62,7 @@ public:
      * @param len maximum amount of data to read
      * @return the number of bytes read, 0 if EOF reached, -1 on error
      */
-    ssize_t receive(char *buffer, size_t len);
+    ssize_t receive(char* buffer, size_t len);
 
     /**
      * @brief Convenience function to send a string.
@@ -70,7 +70,7 @@ public:
      * @param msg string to send
      * @return size of data that was written, or -1 on error
      */
-    inline ssize_t send(const std::string &msg)
+    inline ssize_t send(const std::string& msg)
     {
         return send(msg.c_str(), msg.size());
     }
@@ -80,12 +80,12 @@ public:
      *
      * @param msg target string
      */
-    void receive(std::string &msg);
+    void receive(std::string& msg);
 
 private:
     TCPStream() = default;
-    TCPStream(const TCPStream &stream) = delete;
-    TCPStream(int fd, void *address_in);
+    TCPStream(const TCPStream& stream) = delete;
+    TCPStream(int fd, void* address_in);
 
 private:
     int fd_;              // Socket file descriptor

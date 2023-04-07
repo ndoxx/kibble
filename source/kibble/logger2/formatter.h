@@ -9,7 +9,7 @@ struct ChannelPresentation;
 
 /**
  * @brief Interface for a text formatter
- * 
+ *
  */
 class Formatter
 {
@@ -18,16 +18,21 @@ public:
 
     /**
      * @brief Override this with code that produces a formatted string
-     * 
-     * @return std::string 
+     *
+     * @return std::string
      */
-    virtual std::string format_string(const LogEntry &, const ChannelPresentation &) { return ""; }
+    virtual std::string format_string(const LogEntry&, const ChannelPresentation&)
+    {
+        return "";
+    }
 
     /**
      * @brief Override this with code that produces a formatted console print
-     * 
+     *
      */
-    virtual void print(const LogEntry &, const ChannelPresentation &) {}
+    virtual void print(const LogEntry&, const ChannelPresentation&)
+    {
+    }
 };
 
 } // namespace kb::log

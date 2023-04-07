@@ -11,8 +11,8 @@ namespace kb::log
 struct SourceLocation
 {
     int line = -1;
-    const char *file_name = nullptr;
-    const char *function_name = nullptr;
+    const char* file_name = nullptr;
+    const char* function_name = nullptr;
 };
 
 struct LogEntry

@@ -68,7 +68,7 @@ public:
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    explicit MemoryArena(ArgsT &&...args) : allocator_(std::forward<ArgsT>(args)...), is_initialized_(true)
+    explicit MemoryArena(ArgsT&&... args) : allocator_(std::forward<ArgsT>(args)...), is_initialized_(true)
     {
     }
 
@@ -88,7 +88,7 @@ public:
      * @param args the allocator's init function arguments
      */
     template <typename... ArgsT>
-    inline void init(ArgsT &&...args)
+    inline void init(ArgsT&&... args)
     {
         allocator_.init(std::forward<ArgsT>(args)...);
         is_initialized_ = true;
@@ -99,7 +99,7 @@ public:
      *
      * @param log_channel
      */
-    inline void set_logger_channel(const kb::log::Channel *log_channel)
+    inline void set_logger_channel(const kb::log::Channel* log_channel)
     {
         log_channel_ = log_channel;
     }
@@ -118,7 +118,7 @@ public:
      *
      * @return AllocatorT&
      */
-    inline AllocatorT &get_allocator()
+    inline AllocatorT& get_allocator()
     {
         return allocator_;
     }
@@ -128,7 +128,7 @@ public:
      *
      * @return const AllocatorT&
      */
-    inline const AllocatorT &get_allocator() const
+    inline const AllocatorT& get_allocator() const
     {
         return allocator_;
     }
@@ -138,7 +138,7 @@ public:
      *
      * @param name
      */
-    inline void set_debug_name(const std::string &name)
+    inline void set_debug_name(const std::string& name)
     {
         debug_name_ = name;
     }
@@ -170,7 +170,7 @@ public:
      * @param line source line where that allocation was performed
      * @return base pointer to the allocated chunk
      */
-    void *allocate(size_t size, size_t alignment, size_t offset, [[maybe_unused]] const char *file,
+    void* allocate(size_t size, size_t alignment, size_t offset, [[maybe_unused]] const char* file,
                    [[maybe_unused]] int line)
     {
         // Lock resource
@@ -180,21 +180,21 @@ public:
         const size_t decorated_size = DECORATION_SIZE + size;
         const size_t user_offset = BK_FRONT_SIZE + offset;
 
-        uint8_t *begin = static_cast<uint8_t *>(allocator_.allocate(decorated_size, alignment, user_offset));
+        uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, user_offset));
 
         if (begin == nullptr)
         {
             klog(log_channel_).uid("Arena").fatal("\"{}\": Out of memory.", debug_name_);
         }
 
-        uint8_t *current = begin;
+        uint8_t* current = begin;
 
         // Put front sentinel for overwrite detection
         bounds_checker_.put_sentinel_front(current);
         current += BoundsCheckerT::SIZE_FRONT;
 
         // Save allocation size
-        *(reinterpret_cast<SIZE_TYPE *>(current)) = static_cast<SIZE_TYPE>(decorated_size);
+        *(reinterpret_cast<SIZE_TYPE*>(current)) = static_cast<SIZE_TYPE>(decorated_size);
         current += sizeof(SIZE_TYPE);
 
         // More bookkeeping
@@ -223,16 +223,16 @@ User ptr:       {:#x})",
      *
      * @param ptr
      */
-    void deallocate(void *ptr)
+    void deallocate(void* ptr)
     {
         thread_guard_.enter();
         // Take care to jump further back if non-POD array deallocation, because we also stored the number of instances
-        uint8_t *begin = static_cast<uint8_t *>(ptr) - BK_FRONT_SIZE;
+        uint8_t* begin = static_cast<uint8_t*>(ptr) - BK_FRONT_SIZE;
 
         // Check the front sentinel before we retrieve the allocation size, just in case
         // the size was corrupted by an overwrite.
         bounds_checker_.check_sentinel_front(begin);
-        const SIZE_TYPE decorated_size = *(reinterpret_cast<SIZE_TYPE *>(begin + BoundsCheckerT::SIZE_FRONT));
+        const SIZE_TYPE decorated_size = *(reinterpret_cast<SIZE_TYPE*>(begin + BoundsCheckerT::SIZE_FRONT));
 
         // Check that everything went ok
         bounds_checker_.check_sentinel_back(begin + decorated_size - BoundsCheckerT::SIZE_BACK);
@@ -275,7 +275,7 @@ private:
 
     std::string debug_name_;
     bool is_initialized_;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 /**
@@ -292,7 +292,7 @@ template <typename ThreadPolicyT = policy::SingleThread>
 class LinearBuffer
 {
 public:
-    LinearBuffer(const kb::log::Channel *log_channel = nullptr) : log_channel_(log_channel)
+    LinearBuffer(const kb::log::Channel* log_channel = nullptr) : log_channel_(log_channel)
     {
     }
 
@@ -303,7 +303,7 @@ public:
      * @param size buffer size
      * @param debug_name name to use in debug mode
      */
-    LinearBuffer(kb::memory::HeapArea &area, std::size_t size, const char *debug_name)
+    LinearBuffer(kb::memory::HeapArea& area, std::size_t size, const char* debug_name)
     {
         init(area, size, debug_name);
     }
@@ -315,11 +315,11 @@ public:
      * @param size buffer size
      * @param debug_name name to use in debug mode
      */
-    inline void init(kb::memory::HeapArea &area, std::size_t size, const char *debug_name)
+    inline void init(kb::memory::HeapArea& area, std::size_t size, const char* debug_name)
     {
-        std::pair<void *, void *> range = area.require_block(size, debug_name);
-        begin_ = static_cast<uint8_t *>(range.first);
-        end_ = static_cast<uint8_t *>(range.second);
+        std::pair<void*, void*> range = area.require_block(size, debug_name);
+        begin_ = static_cast<uint8_t*>(range.first);
+        end_ = static_cast<uint8_t*>(range.second);
         head_ = begin_;
         debug_name_ = debug_name;
     }
@@ -329,7 +329,7 @@ public:
      *
      * @param name
      */
-    inline void set_debug_name(const std::string &name)
+    inline void set_debug_name(const std::string& name)
     {
         debug_name_ = name;
     }
@@ -342,7 +342,7 @@ public:
      * @param source pointer to the beginning of the data
      * @param size size to copy
      */
-    inline void write(void const *source, std::size_t size)
+    inline void write(void const* source, std::size_t size)
     {
         if (head_ + size >= end_)
         {
@@ -360,7 +360,7 @@ public:
      * @param destination pointer to where the data should be copied to
      * @param size size to copy
      */
-    inline void read(void *destination, std::size_t size)
+    inline void read(void* destination, std::size_t size)
     {
         if (head_ + size >= end_)
         {
@@ -378,7 +378,7 @@ public:
      * @param source pointer to the object to write
      */
     template <typename T>
-    inline void write(T *source)
+    inline void write(T* source)
     {
         write(source, sizeof(T));
     }
@@ -391,7 +391,7 @@ public:
      * @param destination pointer to the memory location where the object should be copied
      */
     template <typename T>
-    inline void read(T *destination)
+    inline void read(T* destination)
     {
         read(destination, sizeof(T));
     }
@@ -401,7 +401,7 @@ public:
      *
      * @param str the string to write
      */
-    inline void write_str(const std::string &str)
+    inline void write_str(const std::string& str)
     {
         uint32_t str_size = uint32_t(str.size());
         write(&str_size, sizeof(uint32_t));
@@ -413,7 +413,7 @@ public:
      *
      * @param str the string to set
      */
-    inline void read_str(std::string &str)
+    inline void read_str(std::string& str)
     {
         uint32_t str_size;
         read(&str_size, sizeof(uint32_t));
@@ -435,7 +435,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *head()
+    inline uint8_t* head()
     {
         return head_;
     }
@@ -445,7 +445,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *begin()
+    inline uint8_t* begin()
     {
         return begin_;
     }
@@ -455,7 +455,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline const uint8_t *begin() const
+    inline const uint8_t* begin() const
     {
         return begin_;
     }
@@ -465,19 +465,19 @@ public:
      *
      * @param ptr target position
      */
-    inline void seek(void *ptr)
+    inline void seek(void* ptr)
     {
         K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block", log_channel_).watch(ptr).watch(begin_);
         K_ASSERT(ptr < end_, "Cannot seak after end of the block", log_channel_).watch(ptr).watch(end_);
-        head_ = static_cast<uint8_t *>(ptr);
+        head_ = static_cast<uint8_t*>(ptr);
     }
 
 private:
-    uint8_t *begin_;
-    uint8_t *end_;
-    uint8_t *head_;
+    uint8_t* begin_;
+    uint8_t* end_;
+    uint8_t* head_;
     std::string debug_name_;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 /**
@@ -493,23 +493,23 @@ private:
  * @return T*
  */
 template <typename T, class ArenaT>
-T *NewArray(ArenaT &arena, size_t N, size_t alignment, const char *file, int line)
+T* NewArray(ArenaT& arena, size_t N, size_t alignment, const char* file, int line)
 {
     if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
     {
-        return static_cast<T *>(arena.allocate(sizeof(T) * N, alignment, 0, file, line));
+        return static_cast<T*>(arena.allocate(sizeof(T) * N, alignment, 0, file, line));
     }
     else
     {
         // new[] operator stores the number of instances in the first 4 bytes and
         // returns a pointer to the address right after, we emulate this behavior here.
-        uint32_t *as_uint = static_cast<uint32_t *>(
+        uint32_t* as_uint = static_cast<uint32_t*>(
             arena.allocate(sizeof(uint32_t) + sizeof(T) * N, alignment, sizeof(uint32_t), file, line));
         *(as_uint++) = static_cast<uint32_t>(N);
 
         // Construct instances using placement new
-        T *as_T = reinterpret_cast<T *>(as_uint);
-        const T *const end = as_T + N;
+        T* as_T = reinterpret_cast<T*>(as_uint);
+        const T* const end = as_T + N;
         while (as_T < end)
             new (as_T++) T;
 
@@ -538,13 +538,13 @@ T *NewArray(ArenaT &arena, size_t N, size_t alignment, const char *file, int lin
  * @param arena target arena reference
  */
 template <typename T, class ArenaT>
-void Delete(T *object, ArenaT &arena)
+void Delete(T* object, ArenaT& arena)
 {
     if constexpr (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
         object->~T();
 
     if constexpr (std::is_polymorphic_v<T>)
-        arena.deallocate(dynamic_cast<void *>(object));
+        arena.deallocate(dynamic_cast<void*>(object));
     else
         arena.deallocate(object);
 }
@@ -559,7 +559,7 @@ void Delete(T *object, ArenaT &arena)
  * @param arena target arena reference
  */
 template <typename T, class ArenaT>
-void DeleteArray(T *object, ArenaT &arena)
+void DeleteArray(T* object, ArenaT& arena)
 {
     if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
     {
@@ -568,8 +568,8 @@ void DeleteArray(T *object, ArenaT &arena)
     else
     {
         union {
-            uint32_t *as_uint;
-            T *as_T;
+            uint32_t* as_uint;
+            T* as_T;
         };
         // User pointer points to first instance
         as_T = object;

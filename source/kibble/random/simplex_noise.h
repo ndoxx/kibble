@@ -55,7 +55,7 @@ public:
      * @param rng random engine instance
      */
     template <typename RandomEngineT>
-    void init(RandomEngineT &rng);
+    void init(RandomEngineT& rng);
 
     /**
      * @brief Construct a new Simplex Noise Generator and initialize it with a given RNG instance.
@@ -64,17 +64,17 @@ public:
      * @param rng random engine instance
      */
     template <typename RandomEngineT>
-    SimplexNoiseGenerator(RandomEngineT &rng)
+    SimplexNoiseGenerator(RandomEngineT& rng)
     {
         init(rng);
     }
 
     /**
      * @brief Produce 2D simplex noise at the input sample point.
-     * 
+     *
      * @param xin the x coordinate
      * @param yin the y coordinate
-     * @return float 
+     * @return float
      */
     float operator()(float xin, float yin);
 
@@ -104,7 +104,7 @@ private:
 };
 
 template <typename RandomEngineT>
-void SimplexNoiseGenerator::init(RandomEngineT &rng)
+void SimplexNoiseGenerator::init(RandomEngineT& rng)
 {
     // Initialize permutation table
     std::array<uint8_t, 256> rand_perm;

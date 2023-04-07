@@ -86,7 +86,7 @@ public:
      * @param props properties this worker should observe
      * @param js job system instance
      */
-    WorkerThread(const WorkerProperties &props, JobSystem &js);
+    WorkerThread(const WorkerProperties& props, JobSystem& js);
 
     /**
      * @brief Spawn a thread for this worker.
@@ -110,7 +110,7 @@ public:
      * @param job the job to push
      * @param stealable if the job is stealable it will be put in the public queue, otherwise, in the private queue.
      */
-    void submit(Job *job, bool stealable);
+    void submit(Job* job, bool stealable);
 
     /**
      * @brief Only the main thread calls this function to pop and execute a single job.
@@ -178,7 +178,7 @@ public:
      *
      * @return const auto&
      */
-    inline const auto &get_activity() const
+    inline const auto& get_activity() const
     {
         return activity_;
     }
@@ -189,7 +189,7 @@ public:
      *
      * @return auto&
      */
-    inline auto &get_activity()
+    inline auto& get_activity()
     {
         return activity_;
     }
@@ -217,7 +217,7 @@ private:
      * @return true if a job was obtained
      * @return false otherwise
      */
-    bool get_job(Job *&job);
+    bool get_job(Job*& job);
 
 #ifdef K_ENABLE_WORK_STEALING
     /**
@@ -229,7 +229,7 @@ private:
      * @return true if a job was obtained
      * @return false otherwise
      */
-    bool steal_job(Job *&job);
+    bool steal_job(Job*& job);
 #endif
 
     /**
@@ -238,7 +238,7 @@ private:
      *
      * @param job the job to execute
      */
-    void process(Job *job);
+    void process(Job* job);
 
     /**
      * @internal
@@ -248,7 +248,7 @@ private:
      *
      * @param job
      */
-    void schedule_children(Job *job);
+    void schedule_children(Job* job);
 
     /**
      * @internal
@@ -263,8 +263,8 @@ private:
 
 private:
     WorkerProperties props_;
-    JobSystem &js_;
-    SharedState &ss_;
+    JobSystem& js_;
+    SharedState& ss_;
     std::atomic<State> state_;
     std::thread thread_;
 
@@ -274,7 +274,7 @@ private:
     std::vector<tid_t> stealable_workers_;
     size_t stealing_round_robin_ = 0;
 
-    PAGE_ALIGN std::array<JobQueue<Job *>, 2> queues_;
+    PAGE_ALIGN std::array<JobQueue<Job*>, 2> queues_;
 };
 
 } // namespace kb::th

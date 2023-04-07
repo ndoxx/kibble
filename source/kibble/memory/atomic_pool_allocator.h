@@ -38,7 +38,7 @@ public:
      * @param node_size size of a node
      * @param debug_name name of this allocator, for debug purposes
      */
-    AtomicPoolAllocator(HeapArea &area, std::size_t node_size, const char *debug_name)
+    AtomicPoolAllocator(HeapArea& area, std::size_t node_size, const char* debug_name)
     {
         init(area, node_size, debug_name);
     }
@@ -51,15 +51,15 @@ public:
      * @param node_size size of a node
      * @param debug_name name of this allocator, for debug purposes
      */
-    void init(HeapArea &area, std::size_t node_size, const char *debug_name)
+    void init(HeapArea& area, std::size_t node_size, const char* debug_name)
     {
         node_size_ = node_size;
-        void *begin = area.require_pool_block(node_size_, MAX_NODES, debug_name);
-        begin_ = static_cast<uint8_t *>(begin);
+        void* begin = area.require_pool_block(node_size_, MAX_NODES, debug_name);
+        begin_ = static_cast<uint8_t*>(begin);
         end_ = begin_ + MAX_NODES * node_size_;
 
         // Fill the free queue with all possible addresses
-        for (uint8_t *runner = begin_; runner < end_; runner += node_size_)
+        for (uint8_t* runner = begin_; runner < end_; runner += node_size_)
             free_queue_.push(runner);
     }
 
@@ -68,7 +68,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *begin()
+    inline uint8_t* begin()
     {
         return begin_;
     }
@@ -78,7 +78,7 @@ public:
      *
      * @return const uint8_t*
      */
-    inline const uint8_t *begin() const
+    inline const uint8_t* begin() const
     {
         return begin_;
     }
@@ -88,7 +88,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *end()
+    inline uint8_t* end()
     {
         return end_;
     }
@@ -98,7 +98,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline const uint8_t *end() const
+    inline const uint8_t* end() const
     {
         return end_;
     }
@@ -123,9 +123,9 @@ public:
      * @return the returned pointer, at the beginning of the chunk, or nullptr if the allocator reached the end of the
      * block
      */
-    void *allocate(std::size_t size, std::size_t alignment = 0, std::size_t offset = 0)
+    void* allocate(std::size_t size, std::size_t alignment = 0, std::size_t offset = 0)
     {
-        uint8_t *next;
+        uint8_t* next;
         ANNOTATE_HAPPENS_AFTER(&free_queue_); // Avoid false positives with TSan
         [[maybe_unused]] bool success = free_queue_.try_pop(next);
 
@@ -157,14 +157,14 @@ public:
      *
      * @param ptr
      */
-    void deallocate(void *ptr)
+    void deallocate(void* ptr)
     {
         // Get unaligned address
-        size_t offset = size_t(static_cast<uint8_t *>(ptr) - begin_); // Distance in bytes to beginning of the block
+        size_t offset = size_t(static_cast<uint8_t*>(ptr) - begin_); // Distance in bytes to beginning of the block
         size_t padding = offset % node_size_; // Distance in bytes to beginning of the node = padding
 
         ANNOTATE_HAPPENS_BEFORE(&free_queue_); // Avoid false positives with TSan
-        free_queue_.push(static_cast<uint8_t *>(ptr) - padding);
+        free_queue_.push(static_cast<uint8_t*>(ptr) - padding);
     }
 
     /**
@@ -177,9 +177,9 @@ public:
 
 private:
     std::size_t node_size_;
-    uint8_t *begin_;
-    uint8_t *end_;
-    atomic_queue::AtomicQueue<uint8_t *, MAX_NODES, nullptr, true, true, false, false> free_queue_;
+    uint8_t* begin_;
+    uint8_t* end_;
+    atomic_queue::AtomicQueue<uint8_t*, MAX_NODES, nullptr, true, true, false, false> free_queue_;
 };
 
 } // namespace memory

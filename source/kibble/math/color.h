@@ -116,7 +116,7 @@ struct ColorHSLA
      * @brief Convert an RGBA color in place and create an HSLA color.
      *
      */
-    ColorHSLA(const ColorRGBA &);
+    ColorHSLA(const ColorRGBA&);
 
     /**
      * @brief Create an HSLA color of random hue.
@@ -168,7 +168,7 @@ struct ColorRGBA
      * @brief Convert an HSLA color in place and create an RGBA color.
      *
      */
-    ColorRGBA(const ColorHSLA &);
+    ColorRGBA(const ColorHSLA&);
 
     /**
      * @brief Construct an RGBA color from a generic vector type.
@@ -176,7 +176,7 @@ struct ColorRGBA
      * @tparam Vec4T The vector type. Must define a bracket operator.
      */
     template <typename Vec4T>
-    constexpr ColorRGBA(const Vec4T &color) : r(color[0]), g(color[1]), b(color[2]), a(color[3])
+    constexpr ColorRGBA(const Vec4T& color) : r(color[0]), g(color[1]), b(color[2]), a(color[3])
     {
     }
 };
@@ -212,7 +212,7 @@ struct ColorCIELab
      *
      * @param srgba
      */
-    ColorCIELab(const ColorRGBA &srgba);
+    ColorCIELab(const ColorRGBA& srgba);
 
     /**
      * @brief Convert an argb32_t color in place and construct a CIELab color.
@@ -228,14 +228,14 @@ struct ColorCIELab
  *
  * @return ColorRGBA
  */
-ColorRGBA to_RGBA(const ColorHSLA &);
+ColorRGBA to_RGBA(const ColorHSLA&);
 
 /**
  * @brief Convert a color from RGBA space to HSLA.
  *
  * @return ColorHSLA
  */
-ColorHSLA to_HSLA(const ColorRGBA &);
+ColorHSLA to_HSLA(const ColorRGBA&);
 
 /**
  * @brief Convert a color from sRGBA space to CIELab.
@@ -243,7 +243,7 @@ ColorHSLA to_HSLA(const ColorRGBA &);
  * @param srgba
  * @return ColorCIELab
  */
-ColorCIELab to_CIELab(const ColorRGBA &srgba);
+ColorCIELab to_CIELab(const ColorRGBA& srgba);
 
 /**
  * @brief Build an argb32_t from RGBA channel values.
@@ -266,7 +266,7 @@ constexpr argb32_t pack_ARGB(uint8_t R, uint8_t G, uint8_t B, uint32_t A = 255)
  * @param rgba
  * @return constexpr argb32_t
  */
-constexpr argb32_t pack_ARGB(const ColorRGBA &rgba)
+constexpr argb32_t pack_ARGB(const ColorRGBA& rgba)
 {
     return {uint32_t(255 * rgba.a) << argb32_t::k_ashift | uint32_t(255 * rgba.r) << argb32_t::k_rshift |
             uint32_t(255 * rgba.g) << argb32_t::k_gshift | uint32_t(255 * rgba.b) << argb32_t::k_bshift};

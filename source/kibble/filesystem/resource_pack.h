@@ -35,14 +35,14 @@ struct PackLocalEntry
      *
      * @param stream The output stream
      */
-    void write(std::ostream &stream);
+    void write(std::ostream& stream);
 
     /**
      * @brief Read a pack local entry from the allocation table at current stream position
      *
      * @param stream The input stream
      */
-    void read(std::istream &stream);
+    void read(std::istream& stream);
 };
 
 /**
@@ -71,7 +71,7 @@ public:
      *
      * @param filepath Path to the pack file
      */
-    PackFile(const fs::path &filepath, const kb::log::Channel *log_channel = nullptr);
+    PackFile(const fs::path& filepath, const kb::log::Channel* log_channel = nullptr);
 
     /**
      * @brief Get an input stream pointer to a file.
@@ -79,7 +79,7 @@ public:
      * @param path Relative path of the file inside the pack
      * @return std::shared_ptr<std::istream> Input stream pointer
      */
-    inline std::shared_ptr<std::istream> get_input_stream(const std::string &path) const;
+    inline std::shared_ptr<std::istream> get_input_stream(const std::string& path) const;
 
     /**
      * @brief Get an input stream pointer to a file.
@@ -87,7 +87,7 @@ public:
      * @param entry Pack local entry referencing the file
      * @return std::shared_ptr<std::istream> Input stream pointer
      */
-    std::shared_ptr<std::istream> get_input_stream(const PackLocalEntry &entry) const;
+    std::shared_ptr<std::istream> get_input_stream(const PackLocalEntry& entry) const;
 
     /**
      * @brief Get an iterator to the index entry corresponding to a file.
@@ -96,7 +96,7 @@ public:
      * @return A map iterator. The first element is a hash, the second is a PackLocalEntry referencing the file. If no
      * file was found, the map's std::map<hash_t, PackLocalEntry>::end() iterator will be returned.
      */
-    inline auto find(const std::string &path) const
+    inline auto find(const std::string& path) const
     {
         return index_.find(H_(path));
     }
@@ -131,7 +131,7 @@ public:
      * @param path Relative path to the target file
      * @return const PackLocalEntry&
      */
-    inline const PackLocalEntry &get_entry(const std::string &path) const;
+    inline const PackLocalEntry& get_entry(const std::string& path) const;
 
     /**
      * @brief Get a PackLocalEntry for a given hashed path
@@ -139,7 +139,7 @@ public:
      * @param key Hash of the relative path used as a key by the index
      * @return const PackLocalEntry&
      */
-    inline const PackLocalEntry &get_entry(hash_t key) const;
+    inline const PackLocalEntry& get_entry(hash_t key) const;
 
     /**
      * @brief Recursively pack a directory's content.
@@ -152,26 +152,26 @@ public:
      * @return true if the directory was found and packed successfully
      * @return false otherwise
      */
-    static bool pack_directory(const fs::path &dir_path, const fs::path &archive_path,
-                               const kb::log::Channel *log_channel = nullptr);
+    static bool pack_directory(const fs::path& dir_path, const fs::path& archive_path,
+                               const kb::log::Channel* log_channel = nullptr);
 
 private:
     fs::path filepath_;
     std::map<hash_t, PackLocalEntry> index_;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
-inline std::shared_ptr<std::istream> PackFile::get_input_stream(const std::string &path) const
+inline std::shared_ptr<std::istream> PackFile::get_input_stream(const std::string& path) const
 {
     return get_input_stream(get_entry(path));
 }
 
-inline const PackLocalEntry &PackFile::get_entry(const std::string &path) const
+inline const PackLocalEntry& PackFile::get_entry(const std::string& path) const
 {
     return get_entry(H_(path));
 }
 
-inline const PackLocalEntry &PackFile::get_entry(hash_t key) const
+inline const PackLocalEntry& PackFile::get_entry(hash_t key) const
 {
     auto findit = index_.find(key);
     K_ASSERT(findit != index_.end(), "Unknown entry.", log_channel_).watch(key);

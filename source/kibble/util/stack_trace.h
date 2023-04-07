@@ -15,8 +15,8 @@ class StackTrace
 {
 public:
     StackTrace(size_t skip);
-    StackTrace(const StackTrace &);
-    StackTrace &operator=(const StackTrace &);
+    StackTrace(const StackTrace&);
+    StackTrace& operator=(const StackTrace&);
 
     std::string format() const;
 

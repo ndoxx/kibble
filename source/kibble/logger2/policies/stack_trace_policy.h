@@ -25,7 +25,7 @@ public:
      * @param entry
      * @return true
      */
-    bool transform_filter(struct LogEntry &entry) const override;
+    bool transform_filter(struct LogEntry& entry) const override;
 
 private:
     Severity level_;

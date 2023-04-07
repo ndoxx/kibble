@@ -41,9 +41,9 @@
 #include <vector>
 
 #include "../ctti/ctti.h"
+#include "../logger2/logger.h"
 #include "../time/clock.h"
 #include "../util/delegate.h"
-#include "../logger2/logger.h"
 
 namespace kb::log
 {
@@ -63,13 +63,13 @@ namespace detail
  * @tparam T Event type
  */
 template <typename T>
-concept Streamable = requires(std::ostream &stream, T a)
+concept Streamable = requires(std::ostream& stream, T a)
 {
     stream << a;
 };
 
 template <typename EventT>
-using EventDelegate = kb::Delegate<bool(const EventT &)>;
+using EventDelegate = kb::Delegate<bool(const EventT&)>;
 
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::nanoseconds>;
 
@@ -109,7 +109,7 @@ public:
      * @tparam Function
      * @param priority
      */
-    template <std::invocable<const EventT &> auto Function>
+    template <std::invocable<const EventT&> auto Function>
     inline void subscribe(uint32_t priority)
     {
         delegates_.emplace_back(priority, EventDelegate<EventT>::template create<Function>());
@@ -127,8 +127,7 @@ public:
      * @param instance class instance
      * @param priority
      */
-    template <typename ClassRef,
-              std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
+    template <typename ClassRef, std::invocable<typename to_pointer<ClassRef>::type, const EventT&> auto MemberFunction>
     inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority = 0u)
     {
         delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
@@ -143,12 +142,12 @@ public:
      * @return true if the delegate was found and erased
      * @return false otherwise
      */
-    template <std::invocable<const EventT &> auto Function>
+    template <std::invocable<const EventT&> auto Function>
     bool unsubscribe()
     {
         auto target = EventDelegate<EventT>::template create<Function>();
         auto findit =
-            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto &p) { return p.second == target; });
+            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
         if (findit != delegates_.end())
         {
             delegates_.erase(findit);
@@ -169,13 +168,12 @@ public:
      * @return true if the delegate was found and erased
      * @return false otherwise
      */
-    template <typename ClassRef,
-              std::invocable<typename to_pointer<ClassRef>::type, const EventT &> auto MemberFunction>
+    template <typename ClassRef, std::invocable<typename to_pointer<ClassRef>::type, const EventT&> auto MemberFunction>
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
     {
         auto target = EventDelegate<EventT>::template create<MemberFunction>(instance);
         auto findit =
-            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto &p) { return p.second == target; });
+            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
         if (findit != delegates_.end())
         {
             delegates_.erase(findit);
@@ -190,7 +188,7 @@ public:
      *
      * @param event
      */
-    inline void submit(const EventT &event)
+    inline void submit(const EventT& event)
     {
         queue_.push(event);
     }
@@ -201,7 +199,7 @@ public:
      *
      * @param event
      */
-    inline void submit(EventT &&event)
+    inline void submit(EventT&& event)
     {
         queue_.push(event);
     }
@@ -214,7 +212,7 @@ public:
      *
      * @param event
      */
-    void fire(const EventT &event) const
+    void fire(const EventT& event) const
     {
         // Iterate in reverse order, so the last subscribers execute first
         for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
@@ -293,7 +291,7 @@ private:
     inline void sort()
     {
         std::sort(delegates_.begin(), delegates_.end(),
-                  [](const PriorityDelegate &pd1, const PriorityDelegate &pd2) { return pd1.first < pd2.first; });
+                  [](const PriorityDelegate& pd1, const PriorityDelegate& pd2) { return pd1.first < pd2.first; });
     }
 
 private:
@@ -356,7 +354,7 @@ public:
      *
      * @param log_channel
      */
-    inline void set_logger_channel(const kb::log::Channel *log_channel)
+    inline void set_logger_channel(const kb::log::Channel* log_channel)
     {
         log_channel_ = log_channel;
     }
@@ -373,11 +371,11 @@ public:
      * priority, the last one to register will execute first.
      */
     template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
-              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT&>>>
     void subscribe(uint32_t priority = 0u)
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
         q_ptr->template subscribe<Function>(priority);
     }
 
@@ -393,15 +391,14 @@ public:
      * @param priority Handlers with higher priority will execute first. In case two handlers have the same
      * priority, the last one to register will execute first.
      */
-    template <
-        auto MemberFunction, typename Class,
-        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
-        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
-    void subscribe(Class &instance, uint32_t priority = 0u)
+    template <auto MemberFunction, typename Class,
+              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class*, const EventT&>>>
+    void subscribe(Class& instance, uint32_t priority = 0u)
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<Class &, MemberFunction>(&instance, priority);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
+        q_ptr->template subscribe<Class&, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -416,15 +413,15 @@ public:
      * @param priority Handlers with higher priority will execute first. In case two handlers have the same
      * priority, the last one to register will execute first.
      */
-    template <auto MemberFunction, typename Class,
-              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
-              typename = std::enable_if_t<
-                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
-    void subscribe(const Class &instance, uint32_t priority = 0u)
+    template <
+        auto MemberFunction, typename Class,
+        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), const Class*, const EventT&>>>
+    void subscribe(const Class& instance, uint32_t priority = 0u)
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        q_ptr->template subscribe<const Class &, MemberFunction>(&instance, priority);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
+        q_ptr->template subscribe<const Class&, MemberFunction>(&instance, priority);
     }
 
     /**
@@ -435,11 +432,11 @@ public:
      * @return false otherwise
      */
     template <auto Function, typename EventT = typename detail::Signature<decltype(Function)>::argument_type_decay,
-              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT &>>>
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(Function), const EventT&>>>
     bool unsubscribe()
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
         return q_ptr->template unsubscribe<Function>();
     }
 
@@ -450,15 +447,14 @@ public:
      * @return true  if the removal succeeded
      * @return false otherwise
      */
-    template <
-        auto MemberFunction, typename Class,
-        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
-        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class *, const EventT &>>>
-    bool unsubscribe(Class &instance)
+    template <auto MemberFunction, typename Class,
+              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+              typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), Class*, const EventT&>>>
+    bool unsubscribe(Class& instance)
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<Class &, MemberFunction>(&instance);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
+        return q_ptr->template unsubscribe<Class&, MemberFunction>(&instance);
     }
 
     /**
@@ -468,15 +464,15 @@ public:
      * @return true  if the removal succeeded
      * @return false otherwise
      */
-    template <auto MemberFunction, typename Class,
-              typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
-              typename = std::enable_if_t<
-                  std::is_invocable_r_v<bool, decltype(MemberFunction), const Class *, const EventT &>>>
-    bool unsubscribe(const Class &instance)
+    template <
+        auto MemberFunction, typename Class,
+        typename EventT = typename detail::Signature<decltype(MemberFunction)>::argument_type_decay,
+        typename = std::enable_if_t<std::is_invocable_r_v<bool, decltype(MemberFunction), const Class*, const EventT&>>>
+    bool unsubscribe(const Class& instance)
     {
-        auto *q_base_ptr = get_or_create<EventT>().get();
-        auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
-        return q_ptr->template unsubscribe<const Class &, MemberFunction>(&instance);
+        auto* q_base_ptr = get_or_create<EventT>().get();
+        auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
+        return q_ptr->template unsubscribe<const Class&, MemberFunction>(&instance);
     }
 
     /**
@@ -487,9 +483,9 @@ public:
      * @param event
      */
     template <typename EventT>
-    void fire(const EventT &event)
+    void fire(const EventT& event)
     {
-        try_get<EventT>([&event, this](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto* q_ptr) {
             (void)this;
 #ifdef K_DEBUG
             track_event(event, false);
@@ -506,9 +502,9 @@ public:
      * @param event
      */
     template <typename EventT>
-    void enqueue(const EventT &event)
+    void enqueue(const EventT& event)
     {
-        try_get<EventT>([&event, this](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto* q_ptr) {
             (void)this;
 #ifdef K_DEBUG
             track_event(event, true);
@@ -525,9 +521,9 @@ public:
      * @param event An event rvalue to forward
      */
     template <typename EventT>
-    void enqueue(EventT &&event)
+    void enqueue(EventT&& event)
     {
-        try_get<EventT>([&event, this](auto *q_ptr) {
+        try_get<EventT>([&event, this](auto* q_ptr) {
             (void)this;
 #ifdef K_DEBUG
             track_event(event, true);
@@ -610,7 +606,7 @@ private:
      * @param is_queued set to true if the event was enqueued
      */
     template <typename EventT>
-    inline void track_event(const EventT &event, bool is_queued)
+    inline void track_event(const EventT& event, bool is_queued)
     {
         if (should_track_(kb::ctti::type_id<EventT>()))
         {
@@ -638,9 +634,9 @@ private:
      * @return the event queue for this event type
      */
     template <typename EventT>
-    auto &get_or_create()
+    auto& get_or_create()
     {
-        auto &queue = event_queues_[kb::ctti::type_id<EventT>()];
+        auto& queue = event_queues_[kb::ctti::type_id<EventT>()];
         if (queue == nullptr)
             queue = std::make_unique<detail::EventQueue<EventT>>();
 
@@ -655,13 +651,13 @@ private:
      * @param visit visitor called on the event queue if it exists
      */
     template <typename EventT>
-    void try_get(std::function<void(detail::EventQueue<EventT> *)> visit)
+    void try_get(std::function<void(detail::EventQueue<EventT>*)> visit)
     {
         auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())
         {
-            auto *q_base_ptr = findit->second.get();
-            auto *q_ptr = static_cast<detail::EventQueue<EventT> *>(q_base_ptr);
+            auto* q_base_ptr = findit->second.get();
+            auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
             visit(q_ptr);
         }
     }
@@ -673,7 +669,7 @@ private:
 #ifdef K_DEBUG
     std::function<bool(EventID)> should_track_ = [](EventID) { return false; };
 #endif
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 } // namespace kb::event

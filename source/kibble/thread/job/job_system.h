@@ -74,7 +74,7 @@ inline constexpr worker_affinity_t force_worker(tid_t worker_id)
 struct JobMetadata
 {
     JobMetadata() = default;
-    JobMetadata(worker_affinity_t affinity, const std::string &profile_name);
+    JobMetadata(worker_affinity_t affinity, const std::string& profile_name);
 
     /// Workers this job can be pushed to
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
@@ -101,7 +101,7 @@ public:
  */
 struct Job
 {
-    using JobNode = ProcessNode<Job *, k_max_parent_jobs, k_max_child_jobs>;
+    using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
 
     /// Job metadata
     JobMetadata meta;
@@ -128,7 +128,7 @@ struct Job
      *
      * @param job the child to add.
      */
-    inline void add_child(Job *job)
+    inline void add_child(Job* job)
     {
         node.connect(job->node, job);
     }
@@ -139,7 +139,7 @@ struct Job
      *
      * @param job the parent to add.
      */
-    inline void add_parent(Job *job)
+    inline void add_parent(Job* job)
     {
         job->node.connect(node, this);
     }
@@ -252,7 +252,7 @@ public:
      * @param area heap area for the job pool
      * @param scheme configuration structure
      */
-    JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme, const kb::log::Channel *log_channel = nullptr);
+    JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel = nullptr);
 
     /**
      * @brief Calls shutdown() before destruction.
@@ -271,7 +271,7 @@ public:
      *
      * @param session
      */
-    inline void set_instrumentation_session(InstrumentationSession *session)
+    inline void set_instrumentation_session(InstrumentationSession* session)
     {
         instrumentor_ = session;
     }
@@ -287,7 +287,7 @@ public:
      * @return a pair containing the created task and its future result (std::shared_future)
      */
     template <typename FuncT, typename... ArgsT>
-    inline auto create_task(const JobMetadata &meta, FuncT &&function, ArgsT &&...args)
+    inline auto create_task(const JobMetadata& meta, FuncT&& function, ArgsT&&... args)
     {
         auto promise = std::make_shared<std::promise<std::invoke_result_t<FuncT, ArgsT...>>>();
         std::shared_future<std::invoke_result_t<FuncT, ArgsT...>> future = promise->get_future();
@@ -327,13 +327,13 @@ public:
     }
 
     /// Get the list of workers (non-const).
-    inline auto &get_workers()
+    inline auto& get_workers()
     {
         return workers_;
     }
 
     /// Get the list of workers (const).
-    inline const auto &get_workers() const
+    inline const auto& get_workers() const
     {
         return workers_;
     }
@@ -351,43 +351,43 @@ public:
     }
 
     /// Get the configuration object passed to this system at construction.
-    inline const auto &get_scheme() const
+    inline const auto& get_scheme() const
     {
         return scheme_;
     }
 
     /// Get the worker at input index (non-const).
-    inline auto &get_worker(size_t idx)
+    inline auto& get_worker(size_t idx)
     {
         return *workers_[idx];
     }
 
     /// Get the worker at input index (const).
-    inline const auto &get_worker(size_t idx) const
+    inline const auto& get_worker(size_t idx) const
     {
         return *workers_[idx];
     }
 
     /// Get the monitor (non-const).
-    inline auto &get_monitor()
+    inline auto& get_monitor()
     {
         return *monitor_;
     }
 
     /// Get the monitor (const).
-    inline const auto &get_monitor() const
+    inline const auto& get_monitor() const
     {
         return *monitor_;
     }
 
     /// Get the shared state (non-const).
-    inline auto &get_shared_state()
+    inline auto& get_shared_state()
     {
         return *ss_;
     }
 
     /// Get the shared state (const).
-    inline const auto &get_shared_state() const
+    inline const auto& get_shared_state() const
     {
         return *ss_;
     }
@@ -399,7 +399,7 @@ public:
     }
 
     /// Get pointer to instrumentation session
-    inline InstrumentationSession *get_instrumentation_session()
+    inline InstrumentationSession* get_instrumentation_session()
     {
         return instrumentor_;
     }
@@ -423,7 +423,7 @@ private:
      * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
      * @return a new job from the pool
      */
-    Job *create_job(JobKernel &&kernel, const JobMetadata &meta = JobMetadata{});
+    Job* create_job(JobKernel&& kernel, const JobMetadata& meta = JobMetadata{});
 
     /**
      * @internal
@@ -435,7 +435,7 @@ private:
      *
      * @param job the job to release
      */
-    void release_job(Job *job);
+    void release_job(Job* job);
 
     /**
      * @internal
@@ -447,7 +447,7 @@ private:
      *
      * @param job the job to submit
      */
-    void schedule(Job *job);
+    void schedule(Job* job);
 
     /**
      * @internal
@@ -459,7 +459,7 @@ private:
      * a timeout functionality.
      */
     inline void wait_for(
-        Job *job, std::function<bool()> condition = []() { return true; })
+        Job* job, std::function<bool()> condition = []() { return true; })
     {
         wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
     }
@@ -471,7 +471,7 @@ private:
      * @param job the job
      * @return true it the job was processed, false otherwise
      */
-    bool is_work_done(Job *job) const;
+    bool is_work_done(Job* job) const;
 
 private:
     size_t CPU_cores_count_ = 0;
@@ -482,8 +482,8 @@ private:
     std::unique_ptr<Monitor> monitor_;
     std::shared_ptr<SharedState> ss_;
     std::map<std::thread::id, tid_t> thread_ids_;
-    InstrumentationSession *instrumentor_ = nullptr;
-    const kb::log::Channel *log_channel_ = nullptr;
+    InstrumentationSession* instrumentor_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 /**
@@ -518,7 +518,7 @@ public:
     }
 
     /// Get job metadata.
-    inline const auto &meta() const
+    inline const auto& meta() const
     {
         return job_->meta;
     }
@@ -551,7 +551,7 @@ public:
      * @param task the child to add.
      * @tparam U future data type of the child job.
      */
-    inline void add_child(const Task &task)
+    inline void add_child(const Task& task)
     {
         job_->add_child(task.job_);
     }
@@ -562,14 +562,14 @@ public:
      * @param task the parent to add.
      * @tparam U future data type of the parent job.
      */
-    inline void add_parent(const Task &task)
+    inline void add_parent(const Task& task)
     {
         job_->add_parent(task.job_);
     }
 
 private:
     template <typename FuncT, typename PromiseT, typename... ArgsT>
-    Task(JobSystem *js, const JobMetadata &meta, FuncT &&func, PromiseT &&promise, ArgsT &&...args) : js_(js)
+    Task(JobSystem* js, const JobMetadata& meta, FuncT&& func, PromiseT&& promise, ArgsT&&... args) : js_(js)
     {
         /*
             Job kernel is a void wrapper around the templated kernel passed in this call. This allows
@@ -607,8 +607,8 @@ private:
     }
 
 private:
-    JobSystem *js_ = nullptr;
-    Job *job_ = nullptr;
+    JobSystem* js_ = nullptr;
+    Job* job_ = nullptr;
 };
 
 } // namespace th

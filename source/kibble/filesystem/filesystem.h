@@ -49,7 +49,7 @@ using IStreamPtr = std::shared_ptr<std::istream>;
 class FileSystem
 {
 public:
-    FileSystem(const kb::log::Channel *log_channel = nullptr);
+    FileSystem(const kb::log::Channel* log_channel = nullptr);
     ~FileSystem();
 
     /**
@@ -64,7 +64,7 @@ public:
      * @return true if the directory exists and was aliased successfully
      * @return false otherwise
      */
-    bool alias_directory(const fs::path &dir_path, const std::string &alias);
+    bool alias_directory(const fs::path& dir_path, const std::string& alias);
 
     /**
      * @brief Alias the root of a resource pack file.
@@ -77,7 +77,7 @@ public:
      * @return true if the pack file exists and was aliased successfully
      * @return false otherwise
      */
-    bool alias_packfile(const fs::path &pack_path, const std::string &alias);
+    bool alias_packfile(const fs::path& pack_path, const std::string& alias);
 
     /**
      * @brief Return an absolute lexically normal path to a file referenced by a universal path string
@@ -85,7 +85,7 @@ public:
      * @param unipath The input universal path
      * @return fs::path A native path object in the lexically normal form
      */
-    fs::path regular_path(const std::string &unipath) const;
+    fs::path regular_path(const std::string& unipath) const;
 
     /**
      * @brief Return a universal path string given a path and a base directory alias
@@ -94,7 +94,7 @@ public:
      * @param base_alias_hash Hash alias name
      * @return std::string A universal path as a string
      */
-    std::string make_universal(const fs::path &path, hash_t base_alias_hash) const;
+    std::string make_universal(const fs::path& path, hash_t base_alias_hash) const;
 
     /**
      * @brief Return a universal path string given a path and a base directory alias
@@ -103,7 +103,7 @@ public:
      * @param base_alias Alias name
      * @return std::string A universal path as a string
      */
-    inline std::string make_universal(const fs::path &path, const std::string &base_alias) const;
+    inline std::string make_universal(const fs::path& path, const std::string& base_alias) const;
 
     /**
      * @brief Return the absolute lexically normal path to the aliased directory
@@ -111,7 +111,7 @@ public:
      * @param alias_hash The hashed alias name
      * @return const fs::path& A native absolute path object pointing to the aliased directory
      */
-    inline const fs::path &get_aliased_directory(hash_t alias_hash) const;
+    inline const fs::path& get_aliased_directory(hash_t alias_hash) const;
 
     /**
      * @brief Return the absolute lexically normal path to the aliased directory
@@ -119,14 +119,14 @@ public:
      * @param alias The alias name
      * @return const fs::path& A native absolute path object pointing to the aliased directory
      */
-    inline const fs::path &get_aliased_directory(const std::string &alias) const;
+    inline const fs::path& get_aliased_directory(const std::string& alias) const;
 
     /**
      * @brief Return the absolute lexically normal path to this binary's parent directory
      *
      * @return const fs::path&
      */
-    inline const fs::path &get_self_directory() const
+    inline const fs::path& get_self_directory() const
     {
         return self_directory_;
     }
@@ -175,7 +175,7 @@ public:
      *
      * @return const fs::path&
      */
-    const fs::path &get_settings_directory() const;
+    const fs::path& get_settings_directory() const;
 
     /**
      * @brief Get the application data directory.
@@ -183,7 +183,7 @@ public:
      *
      * @return const fs::path&
      */
-    const fs::path &get_app_data_directory() const;
+    const fs::path& get_app_data_directory() const;
 
     /**
      * @brief Get the app data directory of another project.
@@ -204,7 +204,7 @@ public:
      * @return true if the first file is older
      * @return false otherwise
      */
-    bool is_older(const std::string &unipath_1, const std::string &unipath_2) const;
+    bool is_older(const std::string& unipath_1, const std::string& unipath_2) const;
 
     /**
      * @brief Check if a file exists at a given universal path
@@ -213,7 +213,7 @@ public:
      * @return true if the file exists
      * @return false otherwise
      */
-    inline bool exists(const std::string &unipath) const
+    inline bool exists(const std::string& unipath) const
     {
         return fs::exists(regular_path(unipath));
     }
@@ -227,7 +227,7 @@ public:
      * @return true if the extension matches
      * @return false otherwise
      */
-    inline bool check_extension(const std::string &unipath, const std::string &ext) const
+    inline bool check_extension(const std::string& unipath, const std::string& ext) const
     {
         return !regular_path(unipath).extension().compare(ext);
     }
@@ -238,7 +238,7 @@ public:
      * @param unipath Universal path to the file
      * @return std::string The extension string, dot included
      */
-    inline std::string extension(const std::string &unipath) const
+    inline std::string extension(const std::string& unipath) const
     {
         return regular_path(unipath).extension();
     }
@@ -253,7 +253,7 @@ public:
      * @param binary if true, the stream will be in binary mode
      * @return IStreamPtr A shared pointer to an input stream
      */
-    IStreamPtr get_input_stream(const std::string &unipath, bool binary = true) const;
+    IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
 
     /**
      * @brief Return the content of a file as a vector of the chosen integral type.
@@ -264,7 +264,7 @@ public:
      * @return std::vector<CharT> A vector of characters
      */
     template <typename CharT, typename Traits = std::char_traits<CharT>>
-    std::vector<CharT> get_file_as_vector(const std::string &unipath) const;
+    std::vector<CharT> get_file_as_vector(const std::string& unipath) const;
 
     /**
      * @brief Return content of a file as a string
@@ -272,7 +272,7 @@ public:
      * @param unipath Universal path to the file
      * @return std::string A string with the file content
      */
-    inline std::string get_file_as_string(const std::string &unipath) const;
+    inline std::string get_file_as_string(const std::string& unipath) const;
 
 private:
     struct UpathParsingResult;
@@ -281,16 +281,16 @@ private:
     {
         std::string alias;
         fs::path base;
-        std::vector<PackFile *> packfiles;
+        std::vector<PackFile*> packfiles;
     };
 
     // Return alias entry at that name
-    inline const DirectoryAlias &get_alias_entry(hash_t alias_hash) const;
+    inline const DirectoryAlias& get_alias_entry(hash_t alias_hash) const;
     // Try to match an alias form in a universal path string, return an opaque type
     // containing the parsing results
-    UpathParsingResult parse_universal_path(const std::string &unipath) const;
+    UpathParsingResult parse_universal_path(const std::string& unipath) const;
     // Convert parsing results into a physical path
-    fs::path to_regular_path(const UpathParsingResult &result) const;
+    fs::path to_regular_path(const UpathParsingResult& result) const;
     // OS-dependent method to locate this binary
     void init_self_path();
 
@@ -299,38 +299,38 @@ private:
     fs::path app_settings_directory_;
     fs::path app_data_directory_;
     std::map<hash_t, DirectoryAlias> aliases_;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
-inline const fs::path &FileSystem::get_aliased_directory(hash_t alias_hash) const
+inline const fs::path& FileSystem::get_aliased_directory(hash_t alias_hash) const
 {
     return get_alias_entry(alias_hash).base;
 }
 
-inline const fs::path &FileSystem::get_aliased_directory(const std::string &alias) const
+inline const fs::path& FileSystem::get_aliased_directory(const std::string& alias) const
 {
     return get_aliased_directory(H_(alias));
 }
 
-inline std::string FileSystem::make_universal(const fs::path &path, const std::string &base_alias) const
+inline std::string FileSystem::make_universal(const fs::path& path, const std::string& base_alias) const
 {
     return make_universal(path, H_(base_alias));
 }
 
 template <typename CharT, typename>
-std::vector<CharT> FileSystem::get_file_as_vector(const std::string &unipath) const
+std::vector<CharT> FileSystem::get_file_as_vector(const std::string& unipath) const
 {
     auto pis = get_input_stream(unipath);
     return std::vector<CharT>(std::istreambuf_iterator<CharT>(*pis), std::istreambuf_iterator<CharT>());
 }
 
-inline std::string FileSystem::get_file_as_string(const std::string &unipath) const
+inline std::string FileSystem::get_file_as_string(const std::string& unipath) const
 {
     auto pis = get_input_stream(unipath);
     return std::string((std::istreambuf_iterator<char>(*pis)), std::istreambuf_iterator<char>());
 }
 
-inline const FileSystem::DirectoryAlias &FileSystem::get_alias_entry(hash_t alias_hash) const
+inline const FileSystem::DirectoryAlias& FileSystem::get_alias_entry(hash_t alias_hash) const
 {
     auto findit = aliases_.find(alias_hash);
     K_ASSERT(findit != aliases_.end(), "Unknown alias.", log_channel_).watch(alias_hash);

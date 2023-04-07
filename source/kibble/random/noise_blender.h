@@ -18,7 +18,7 @@ namespace detail
  * @param frequency octave frequency
  * @return auto
  */
-inline auto gen_octave(const std::array<float, 2> &coords, float frequency)
+inline auto gen_octave(const std::array<float, 2>& coords, float frequency)
 {
     return std::make_tuple(coords[0] * frequency, coords[1] * frequency);
 }
@@ -31,7 +31,7 @@ inline auto gen_octave(const std::array<float, 2> &coords, float frequency)
  * @param frequency octave frequency
  * @return auto
  */
-inline auto gen_octave(const std::array<float, 3> &coords, float frequency)
+inline auto gen_octave(const std::array<float, 3>& coords, float frequency)
 {
     return std::make_tuple(coords[0] * frequency, coords[1] * frequency, coords[2] * frequency);
 }
@@ -44,7 +44,7 @@ inline auto gen_octave(const std::array<float, 3> &coords, float frequency)
  * @param frequency octave frequency
  * @return auto
  */
-inline auto gen_octave(const std::array<float, 4> &coords, float frequency)
+inline auto gen_octave(const std::array<float, 4>& coords, float frequency)
 {
     return std::make_tuple(coords[0] * frequency, coords[1] * frequency, coords[2] * frequency, coords[3] * frequency);
 }
@@ -76,7 +76,7 @@ public:
      * @param rng RNG instance
      */
     template <typename RandomEngineT>
-    NoiseBlender(RandomEngineT &rng) : gen_(rng)
+    NoiseBlender(RandomEngineT& rng) : gen_(rng)
     {
     }
 
@@ -167,7 +167,7 @@ public:
      * @return float
      */
     template <size_t DIM>
-    float octave(const std::array<float, DIM> &coords, size_t octaves, float frequency, float persistence)
+    float octave(const std::array<float, DIM>& coords, size_t octaves, float frequency, float persistence)
     {
         float total = 0.f;
         float amplitude = 1.f;

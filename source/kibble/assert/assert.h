@@ -59,19 +59,19 @@ public:
         Exception,
     };
 
-    Assertion(std::string expression, const kb::log::Channel *channel, const char *file, const char *function, int line,
+    Assertion(std::string expression, const kb::log::Channel* channel, const char* file, const char* function, int line,
               Trigger trig = Trigger::Terminate);
 
     ~Assertion();
 
-    inline Assertion &msg(const std::string &message)
+    inline Assertion& msg(const std::string& message)
     {
         stream_ << "    Msg: " << message << '\n';
         return *this;
     }
 
     template <typename T>
-    inline Assertion &watch_var__(T &&val, const char *name)
+    inline Assertion& watch_var__(T&& val, const char* name)
     {
         stream_ << "    " << name << " <- " << std::forward<T>(val) << '\n';
         return *this;
@@ -80,9 +80,9 @@ public:
     [[noreturn]] void ex();
 
 private:
-    const kb::log::Channel *channel_ = nullptr;
-    const char *file_;
-    const char *function_;
+    const kb::log::Channel* channel_ = nullptr;
+    const char* file_;
+    const char* function_;
     int line_ = -1;
     Trigger trigger_;
     std::ostringstream stream_;

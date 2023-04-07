@@ -34,7 +34,7 @@ namespace kb::cfg
 class Settings
 {
 public:
-    Settings(const kb::log::Channel *log_channel = nullptr);
+    Settings(const kb::log::Channel* log_channel = nullptr);
 
     /**
      * @brief Parse a TOML file and add the new properties to this object
@@ -43,7 +43,7 @@ public:
      * @param root_name Name of the root element. If left empty, the root name will
      * be set to the file name stem.
      */
-    void load_toml(const fs::path &filepath, const std::string &root_name = "");
+    void load_toml(const fs::path& filepath, const std::string& root_name = "");
 
     /**
      * @brief Save all properties inherited from a TOML file back to the file
@@ -52,7 +52,7 @@ public:
      * @param root_name Name of the root element. Must match the root name used
      * when the file was loaded.
      */
-    void save_toml(const fs::path &filepath, const std::string &root_name = "");
+    void save_toml(const fs::path& filepath, const std::string& root_name = "");
 
     /**
      * @brief Clear all properties
@@ -71,7 +71,7 @@ public:
      * @return T The value
      */
     template <typename T>
-    T get(hash_t hash, const T &default_value) const;
+    T get(hash_t hash, const T& default_value) const;
 
     /**
      * @brief Set the value of an existing property
@@ -83,7 +83,7 @@ public:
      * @return false otherwise
      */
     template <typename T>
-    bool set(hash_t hash, const T &value);
+    bool set(hash_t hash, const T& value);
 
     /**
      * @brief Get the hash of a string property
@@ -92,7 +92,7 @@ public:
      * @param def Default string value to use in case the property was not set
      * @return hash_t The hash
      */
-    hash_t get_hash(hash_t hash, const std::string &def);
+    hash_t get_hash(hash_t hash, const std::string& def);
 
     /**
      * @brief Find a string property, convert it to lower case then return its hash
@@ -101,7 +101,7 @@ public:
      * @param def Default string value to use in case the property was not set
      * @return hash_t The hash
      */
-    hash_t get_hash_lower(hash_t hash, const std::string &def);
+    hash_t get_hash_lower(hash_t hash, const std::string& def);
 
     /**
      * @brief Find a string property, convert it to upper case then return its hash
@@ -110,7 +110,7 @@ public:
      * @param def Default string value to use in case the property was not set
      * @return hash_t The hash
      */
-    hash_t get_hash_upper(hash_t hash, const std::string &def);
+    hash_t get_hash_upper(hash_t hash, const std::string& def);
 
     /**
      * @brief Get a boolean property at that name
@@ -176,22 +176,22 @@ private:
 
 public:
     template <typename NodeT>
-    friend void flatten(const NodeT &, const std::string &, SettingsStorage &);
+    friend void flatten(const NodeT&, const std::string&, SettingsStorage&);
     template <typename NodeT>
-    friend void serialize(NodeT &, const std::string &, Settings::SettingsStorage &);
+    friend void serialize(NodeT&, const std::string&, Settings::SettingsStorage&);
 
 private:
     SettingsStorage storage_;
-    const kb::log::Channel *log_channel_ = nullptr;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 template <typename T>
-T Settings::get(hash_t hash, const T &default_value) const
+T Settings::get(hash_t hash, const T& default_value) const
 {
     auto findit = storage_.scalars.find(hash);
     if (findit != storage_.scalars.end())
     {
-        const auto &var = findit->second;
+        const auto& var = findit->second;
         if (std::holds_alternative<T>(var))
             return std::get<T>(var);
     }
@@ -199,12 +199,12 @@ T Settings::get(hash_t hash, const T &default_value) const
 }
 
 template <typename T>
-bool Settings::set(hash_t hash, const T &value)
+bool Settings::set(hash_t hash, const T& value)
 {
     auto findit = storage_.scalars.find(hash);
     if (findit != storage_.scalars.end())
     {
-        auto &var = findit->second;
+        auto& var = findit->second;
         if (std::holds_alternative<T>(var))
         {
             var = value;
@@ -215,49 +215,49 @@ bool Settings::set(hash_t hash, const T &value)
 }
 
 template <>
-inline size_t Settings::get<size_t>(hash_t hash, const size_t &default_value) const
+inline size_t Settings::get<size_t>(hash_t hash, const size_t& default_value) const
 {
     return size_t(get<int64_t>(hash, int64_t(default_value)));
 }
 
 template <>
-inline uint32_t Settings::get<uint32_t>(hash_t hash, const uint32_t &default_value) const
+inline uint32_t Settings::get<uint32_t>(hash_t hash, const uint32_t& default_value) const
 {
     return uint32_t(get<int64_t>(hash, int64_t(default_value)));
 }
 
 template <>
-inline int32_t Settings::get<int32_t>(hash_t hash, const int32_t &default_value) const
+inline int32_t Settings::get<int32_t>(hash_t hash, const int32_t& default_value) const
 {
     return int32_t(get<int64_t>(hash, int64_t(default_value)));
 }
 
 template <>
-inline float Settings::get<float>(hash_t hash, const float &default_value) const
+inline float Settings::get<float>(hash_t hash, const float& default_value) const
 {
     return float(get<double>(hash, double(default_value)));
 }
 
 template <>
-inline bool Settings::set<size_t>(hash_t hash, const size_t &value)
+inline bool Settings::set<size_t>(hash_t hash, const size_t& value)
 {
     return set<int64_t>(hash, int64_t(value));
 }
 
 template <>
-inline bool Settings::set<uint32_t>(hash_t hash, const uint32_t &value)
+inline bool Settings::set<uint32_t>(hash_t hash, const uint32_t& value)
 {
     return set<int64_t>(hash, int64_t(value));
 }
 
 template <>
-inline bool Settings::set<int32_t>(hash_t hash, const int32_t &value)
+inline bool Settings::set<int32_t>(hash_t hash, const int32_t& value)
 {
     return set<int64_t>(hash, int64_t(value));
 }
 
 template <>
-inline bool Settings::set<float>(hash_t hash, const float &value)
+inline bool Settings::set<float>(hash_t hash, const float& value)
 {
     return set<double>(hash, double(value));
 }

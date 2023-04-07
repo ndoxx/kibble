@@ -45,7 +45,7 @@ struct SeparableGaussianKernel
      * @param gk
      * @return std::ostream&
      */
-    friend std::ostream &operator<<(std::ostream &stream, const SeparableGaussianKernel &gk);
+    friend std::ostream& operator<<(std::ostream& stream, const SeparableGaussianKernel& gk);
 
     float weights[k_max_kernel_coefficients]; /// First half of the kernel weights, including central element
     uint32_t half_size;                       /// Half size of the kernel

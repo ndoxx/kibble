@@ -37,7 +37,7 @@ public:
      * @param max_nodes maximum amount of nodes in the memory pool
      * @param debug_name name of this allocator, for debug purposes
      */
-    PoolAllocator(HeapArea &area, std::size_t node_size, std::size_t max_nodes, const char *debug_name);
+    PoolAllocator(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name);
 
     /**
      * @brief Lazy-initialize a pool allocator.
@@ -48,14 +48,14 @@ public:
      * @param max_nodes maximum amount of nodes in the memory pool
      * @param debug_name name of this allocator, for debug purposes
      */
-    void init(HeapArea &area, std::size_t node_size, std::size_t max_nodes, const char *debug_name);
+    void init(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name);
 
     /**
      * @brief Return a pointer to the beginning of the block.
      *
      * @return uint8_t*
      */
-    inline uint8_t *begin()
+    inline uint8_t* begin()
     {
         return begin_;
     }
@@ -65,7 +65,7 @@ public:
      *
      * @return const uint8_t*
      */
-    inline const uint8_t *begin() const
+    inline const uint8_t* begin() const
     {
         return begin_;
     }
@@ -75,7 +75,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline uint8_t *end()
+    inline uint8_t* end()
     {
         return end_;
     }
@@ -85,7 +85,7 @@ public:
      *
      * @return uint8_t*
      */
-    inline const uint8_t *end() const
+    inline const uint8_t* end() const
     {
         return end_;
     }
@@ -110,7 +110,7 @@ public:
      * @return the returned pointer, at the beginning of the chunk, or nullptr if the allocator reached the end of the
      * block
      */
-    void *allocate(std::size_t size, std::size_t alignment = 0, std::size_t offset = 0);
+    void* allocate(std::size_t size, std::size_t alignment = 0, std::size_t offset = 0);
 
     /**
      * @brief Deallocate a node.
@@ -118,7 +118,7 @@ public:
      *
      * @param ptr
      */
-    void deallocate(void *ptr);
+    void deallocate(void* ptr);
 
     /**
      * @brief This function is left empty because mass deallocating everything would be dangerous.
@@ -131,8 +131,8 @@ public:
 private:
     std::size_t node_size_;
     std::size_t max_nodes_;
-    uint8_t *begin_;
-    uint8_t *end_;
+    uint8_t* begin_;
+    uint8_t* end_;
     Freelist free_list_;
 };
 

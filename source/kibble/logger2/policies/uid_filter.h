@@ -63,7 +63,7 @@ public:
      * @return true
      * @return false
      */
-    bool transform_filter(struct LogEntry &entry) const override;
+    bool transform_filter(struct LogEntry& entry) const override;
 
 private:
     std::set<hash_t> enabled_;
@@ -125,7 +125,7 @@ public:
      * @return true
      * @return false
      */
-    bool transform_filter(struct LogEntry &entry) const override;
+    bool transform_filter(struct LogEntry& entry) const override;
 
 private:
     std::set<hash_t> disabled_;

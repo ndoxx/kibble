@@ -33,7 +33,7 @@ public:
      * @param to Reference to the target node
      * @param object Value associated to the output node (typically a job pointer)
      */
-    inline void connect(ProcessNode &to, T object)
+    inline void connect(ProcessNode& to, T object)
     {
         out_objects_[out_nodes_.count()] = object;
         out_nodes_.add(to);
@@ -42,13 +42,13 @@ public:
     }
 
     /// Get the input harness
-    inline const auto &get_in_nodes() const
+    inline const auto& get_in_nodes() const
     {
         return in_nodes_;
     }
 
     /// Get the output harness
-    inline const auto &get_out_nodes() const
+    inline const auto& get_out_nodes() const
     {
         return out_nodes_;
     }
@@ -72,7 +72,7 @@ public:
     }
 
     /// Check if this node has been scheduled
-    inline auto &scheduled()
+    inline auto& scheduled()
     {
         return scheduled_;
     }
@@ -80,7 +80,7 @@ public:
     /// Mark this node processed and signal children that this dependency is processed
     void mark_processed()
     {
-        for (auto *child : out_nodes_)
+        for (auto* child : out_nodes_)
             child->pending_in_.fetch_sub(1);
 
         processed_.store(true);
@@ -98,7 +98,7 @@ public:
         scheduled_.clear();
         processed_.store(false);
 
-        for (auto *child : out_nodes_)
+        for (auto* child : out_nodes_)
         {
             child->pending_in_.fetch_add(1);
             child->reset_state();
@@ -128,7 +128,7 @@ private:
     {
     public:
         /// Add a node to this harness
-        inline void add(ProcessNode &node)
+        inline void add(ProcessNode& node)
         {
             if (count_ + 1 == SIZE)
                 throw std::overflow_error("Maximum node amount reached.");
@@ -137,7 +137,7 @@ private:
         }
 
         /// Access an element by index (const version)
-        inline const auto &operator[](int idx) const
+        inline const auto& operator[](int idx) const
         {
             if (idx >= count_)
                 throw std::out_of_range("Index out of bounds in harness.");
@@ -146,7 +146,7 @@ private:
         }
 
         /// Access an element by index
-        inline auto &operator[](int idx)
+        inline auto& operator[](int idx)
         {
             if (idx >= count_)
                 throw std::out_of_range("Index out of bounds in harness.");
@@ -168,7 +168,7 @@ private:
         // clang-format on
 
     private:
-        std::array<ProcessNode *, SIZE> slots_;
+        std::array<ProcessNode*, SIZE> slots_;
         size_t count_ = 0;
     };
 

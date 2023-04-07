@@ -30,7 +30,7 @@ struct addressable_array : public std::array<T, size>
      * @param e arguments in the list
      */
     template <typename... E>
-    addressable_array(E &&...e) : base_t{{std::forward<E>(e)...}}
+    addressable_array(E&&... e) : base_t{{std::forward<E>(e)...}}
     {
     }
 
