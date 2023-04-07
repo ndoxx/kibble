@@ -3,7 +3,7 @@
 
 namespace kb::log
 {
-void ConsoleSink::submit(const LogEntry &e, const struct ChannelPresentation &p)
+void ConsoleSink::submit(const LogEntry& e, const struct ChannelPresentation& p)
 {
     formatter_->print(e, p);
 }

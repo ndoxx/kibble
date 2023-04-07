@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 using namespace kb;
 using namespace kb::log;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
@@ -28,8 +28,8 @@ int main(int argc, char **argv)
     kfs::FileSystem filesystem(&chan_ios);
     filesystem.setup_settings_directory("ndoxx", "nuclear");
     filesystem.setup_app_data_directory("ndoxx", "nuclear");
-    const auto &cfg_dir = filesystem.get_settings_directory();
-    const auto &appdata_dir = filesystem.get_app_data_directory();
+    const auto& cfg_dir = filesystem.get_settings_directory();
+    const auto& appdata_dir = filesystem.get_app_data_directory();
     klog(chan).info("Config directory:   {}", cfg_dir);
     klog(chan).info("App data directory: {}", appdata_dir);
 
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     // Change "vendor" and "appname" for something that exists or this will produce an error
     // klog(chan).info("Third party app data directory:\n{}", filesystem.get_app_data_directory("vendor", "appname"));
 
-    const auto &self_dir = filesystem.get_self_directory();
+    const auto& self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
 
     kfs::PackFile::pack_directory(filesystem.regular_path("data://iotest/resources"),

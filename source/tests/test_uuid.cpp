@@ -3,18 +3,18 @@
 
 /**
  * @brief Unit tests for UUIDv4
- * 
+ *
  * Adapted from:
  * https://github.com/crashoz/uuid_v4/blob/master/tests/uuid_v4_test.cpp
- * 
+ *
  * Modifications are:
  * - Using Catch2 instead of GTest
- * 
+ *
  */
 
 using namespace kb;
 
-void pb(const std::string &s)
+void pb(const std::string& s)
 {
     for (size_t i = 0; i < 16; i++)
     {
@@ -23,7 +23,7 @@ void pb(const std::string &s)
     printf("\n");
 }
 
-bool isBinaryLE(uint64_t x, uint64_t y, const std::string &bytes)
+bool isBinaryLE(uint64_t x, uint64_t y, const std::string& bytes)
 {
     for (size_t i = 0; i < 8; i++)
     {

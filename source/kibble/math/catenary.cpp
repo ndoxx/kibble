@@ -8,20 +8,26 @@ namespace math
 
 constexpr float k_min_slack = 0.01f;
 
-inline float coth(float x) { return std::cosh(x) / std::sinh(x); }
-inline float argsinh(float x) { return std::log(x + std::sqrt(1.f + x * x)); }
+inline float coth(float x)
+{
+    return std::cosh(x) / std::sinh(x);
+}
+inline float argsinh(float x)
+{
+    return std::log(x + std::sqrt(1.f + x * x));
+}
 
 Catenary::Catenary(float x1, float y1, float x2, float y2, float s, float max_error)
 {
     // * Preparatory steps
     // The equations are solved for the specific case y1<y2 and x1<x2
     // If this is not the case, we may need to swap terms and reflect the catenary curve
-    if(y2 < y1)
+    if (y2 < y1)
     {
         std::swap(y1, y2);
         reflect_ = true;
     }
-    if(x2 < x1)
+    if (x2 < x1)
     {
         std::swap(x1, x2);
         reflect_ = !reflect_;
@@ -35,7 +41,7 @@ Catenary::Catenary(float x1, float y1, float x2, float y2, float s, float max_er
     // Check that specified length is larger than distance between anchor points
     // if not, set length to distance plus some slack
     float dist2 = v * v + h * h;
-    if(s * s < dist2 + k_min_slack)
+    if (s * s < dist2 + k_min_slack)
         s = std::sqrt(dist2) + k_min_slack;
 
     // * Solve for parameter a_, this equates to solving a transcendental equation for a unique root

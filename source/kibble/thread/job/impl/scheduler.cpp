@@ -12,14 +12,14 @@ namespace kb
 namespace th
 {
 
-Scheduler::Scheduler(JobSystem &js) : js_(js)
+Scheduler::Scheduler(JobSystem& js) : js_(js)
 {
     std::fill(round_robin_.begin(), round_robin_.end(), 0);
 }
 
-void Scheduler::dispatch(Job *job)
+void Scheduler::dispatch(Job* job)
 {
-    std::size_t &rr = round_robin_[js_.this_thread_id()];
+    std::size_t& rr = round_robin_[js_.this_thread_id()];
 
     // The following code should be branchless (once optimized by the compiler)
     bool stealable = (job->meta.worker_affinity & (1 << k_stealable_bit)) >> k_stealable_bit;

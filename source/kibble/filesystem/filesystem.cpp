@@ -32,11 +32,11 @@ std::time_t to_time_t(TP tp)
 
 struct FileSystem::UpathParsingResult
 {
-    const DirectoryAlias *alias_entry = nullptr;
+    const DirectoryAlias* alias_entry = nullptr;
     std::string path_component;
 };
 
-FileSystem::FileSystem(const kb::log::Channel *log_channel) : log_channel_(log_channel)
+FileSystem::FileSystem(const kb::log::Channel* log_channel) : log_channel_(log_channel)
 {
     // Locate binary
     init_self_path();
@@ -44,8 +44,8 @@ FileSystem::FileSystem(const kb::log::Channel *log_channel) : log_channel_(log_c
 
 FileSystem::~FileSystem()
 {
-    for (auto &&[key, entry] : aliases_)
-        for (auto *packfile : entry.packfiles)
+    for (auto&& [key, entry] : aliases_)
+        for (auto* packfile : entry.packfiles)
             delete packfile;
 }
 
@@ -58,7 +58,7 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
 #ifdef __linux__
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char *homebuf;
+    const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
         homebuf = getpwuid(getuid())->pw_dir;
 
@@ -110,7 +110,7 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
 #ifdef __linux__
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char *homebuf;
+    const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
         homebuf = getpwuid(getuid())->pw_dir;
 
@@ -162,7 +162,7 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
 #ifdef __linux__
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char *homebuf;
+    const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
         homebuf = getpwuid(getuid())->pw_dir;
 
@@ -199,7 +199,7 @@ Searched the following paths:
 #endif
 }
 
-const fs::path &FileSystem::get_settings_directory() const
+const fs::path& FileSystem::get_settings_directory() const
 {
     if (app_settings_directory_.empty())
     {
@@ -211,7 +211,7 @@ const fs::path &FileSystem::get_settings_directory() const
     return app_settings_directory_;
 }
 
-const fs::path &FileSystem::get_app_data_directory() const
+const fs::path& FileSystem::get_app_data_directory() const
 {
     if (app_data_directory_.empty())
     {
@@ -223,7 +223,7 @@ const fs::path &FileSystem::get_app_data_directory() const
     return app_data_directory_;
 }
 
-bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipath_2) const
+bool FileSystem::is_older(const std::string& unipath_1, const std::string& unipath_2) const
 {
     auto path_1 = regular_path(unipath_1);
     auto path_2 = regular_path(unipath_2);
@@ -237,7 +237,7 @@ bool FileSystem::is_older(const std::string &unipath_1, const std::string &unipa
     return (cftime_2 > cftime_1);
 }
 
-bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &alias)
+bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& alias)
 {
     // Maybe the path was specified with proximate syntax (../) -> make it lexically normal and absolute
     fs::path dir_path(fs::canonical(_dir_path));
@@ -255,7 +255,7 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
     auto findit = aliases_.find(alias_hash);
     if (findit != aliases_.end())
     {
-        auto &entry = findit->second;
+        auto& entry = findit->second;
         entry.alias = alias;
         entry.base = dir_path;
         klog(log_channel_).uid("FileSystem").debug("Overloaded directory alias:\n{}:// <=> {}", alias, dir_path);
@@ -269,7 +269,7 @@ bool FileSystem::alias_directory(const fs::path &_dir_path, const std::string &a
     return true;
 }
 
-bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &alias)
+bool FileSystem::alias_packfile(const fs::path& pack_path, const std::string& alias)
 {
     if (!fs::exists(pack_path))
     {
@@ -282,7 +282,7 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
     auto findit = aliases_.find(alias_hash);
     if (findit != aliases_.end())
     {
-        auto &entry = findit->second;
+        auto& entry = findit->second;
         entry.packfiles.push_back(new PackFile(pack_path));
     }
     else
@@ -297,20 +297,20 @@ bool FileSystem::alias_packfile(const fs::path &pack_path, const std::string &al
     return true;
 }
 
-fs::path FileSystem::regular_path(const std::string &unipath) const
+fs::path FileSystem::regular_path(const std::string& unipath) const
 {
     return to_regular_path(parse_universal_path(unipath));
 }
 
-std::string FileSystem::make_universal(const fs::path &path, hash_t base_alias_hash) const
+std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_hash) const
 {
     // Make path relative to the aliased directory
-    const auto &alias_entry = get_alias_entry(base_alias_hash);
+    const auto& alias_entry = get_alias_entry(base_alias_hash);
     auto rel_path = fs::relative(path, alias_entry.base);
     return su::concat(alias_entry.alias, "://", rel_path.string());
 }
 
-FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::string &unipath) const
+FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::string& unipath) const
 {
     UpathParsingResult result;
 
@@ -334,7 +334,7 @@ FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::strin
     return result;
 }
 
-fs::path FileSystem::to_regular_path(const UpathParsingResult &result) const
+fs::path FileSystem::to_regular_path(const UpathParsingResult& result) const
 {
     // If an alias was found, path_component is relative to the aliased base directory
     if (result.alias_entry)
@@ -343,7 +343,7 @@ fs::path FileSystem::to_regular_path(const UpathParsingResult &result) const
     return fs::absolute(result.path_component).lexically_normal();
 }
 
-IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary) const
+IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary) const
 {
     klog(log_channel_).uid("FileSystem").debug("Opening stream. Universal path: {}", unipath);
 
@@ -351,7 +351,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string &unipath, bool binary)
     // If a pack file is aliased at this name, try to find entry in pack
     if (result.alias_entry)
     {
-        for (const auto *ppack : result.alias_entry->packfiles)
+        for (const auto* ppack : result.alias_entry->packfiles)
         {
             auto findit = ppack->find(result.path_component);
             if (findit != ppack->end())

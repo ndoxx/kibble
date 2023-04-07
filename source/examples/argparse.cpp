@@ -13,16 +13,16 @@
 using namespace kb;
 using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
+void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         klog(chan).warn(msg);
 
     klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-int p0(int argc, char **argv, const Channel &chan)
+int p0(int argc, char** argv, const Channel& chan)
 {
     for (int ii = 0; ii < argc; ++ii)
     {
@@ -32,13 +32,13 @@ int p0(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int p1(int argc, char **argv, const Channel &chan)
+int p1(int argc, char** argv, const Channel& chan)
 {
     ap::ArgParse parser("example", "0.1");
 
-    const auto &orange = parser.add_flag('o', "orange", "Use the best color in the world");
-    const auto &yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
-    const auto &age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
+    const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
+    const auto& yarr = parser.add_flag('y', "yarr", "Say Yarrrrrr!");
+    const auto& age = parser.add_variable<int>('a', "age", "Age of the captain", 42);
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -61,13 +61,13 @@ int p1(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int p2(int argc, char **argv, const Channel &chan)
+int p2(int argc, char** argv, const Channel& chan)
 {
     ap::ArgParse parser("example", "0.1");
 
-    const auto &orange = parser.add_flag('o', "orange", "Use the best color in the world");
-    const auto &A = parser.add_positional<int>("first_number", "the first number to be added");
-    const auto &B = parser.add_positional<int>("second_number", "the second number to be added");
+    const auto& orange = parser.add_flag('o', "orange", "Use the best color in the world");
+    const auto& A = parser.add_positional<int>("first_number", "the first number to be added");
+    const auto& B = parser.add_positional<int>("second_number", "the second number to be added");
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -86,10 +86,10 @@ int p2(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int p3(int argc, char **argv, const Channel &chan)
+int p3(int argc, char** argv, const Channel& chan)
 {
     ap::ArgParse parser("example", "0.1");
-    parser.set_log_output([&chan](const std::string &str) { klog(chan).uid("ArgParse").info(str); });
+    parser.set_log_output([&chan](const std::string& str) { klog(chan).uid("ArgParse").info(str); });
 
     parser.add_flag('A', "param_A", "The parameter A");
     parser.add_flag('B', "param_B", "The parameter B");
@@ -115,16 +115,16 @@ int p3(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int p4(int argc, char **argv, const Channel &chan)
+int p4(int argc, char** argv, const Channel& chan)
 {
     ap::ArgParse parser("example", "0.1");
-    parser.set_log_output([&chan](const std::string &str) { klog(chan).uid("ArgParse").info(str); });
+    parser.set_log_output([&chan](const std::string& str) { klog(chan).uid("ArgParse").info(str); });
 
     parser.add_flag('x', "param_x", "The parameter x");
     parser.add_flag('y', "param_y", "The parameter y");
     parser.add_flag('z', "param_z", "The parameter z");
-    const auto &l = parser.add_list<int>('l', "list_l", "A list of values");
-    const auto &mm = parser.add_variable<int>('m', "var_m", "The variable m", 10);
+    const auto& l = parser.add_list<int>('l', "list_l", "A list of values");
+    const auto& mm = parser.add_variable<int>('m', "var_m", "The variable m", 10);
     parser.add_positional<int>("MAGIC", "The magic number");
     parser.set_dependency('y', 'x');
 
@@ -144,10 +144,10 @@ int p4(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int p5(int argc, char **argv, const Channel &chan)
+int p5(int argc, char** argv, const Channel& chan)
 {
     ap::ArgParse parser("example", "0.1");
-    const auto &target = parser.add_positional<std::string>("ROM_PATH", "Path to the ROM");
+    const auto& target = parser.add_positional<std::string>("ROM_PATH", "Path to the ROM");
     parser.parse(argc, argv);
 
     klog(chan).info("Extracting from:\n{}", target());
@@ -155,7 +155,7 @@ int p5(int argc, char **argv, const Channel &chan)
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();

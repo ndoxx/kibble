@@ -11,7 +11,7 @@
 using namespace kb;
 using namespace kb::log;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
         // Accept the first connection
         // This is a blocking call
-        auto *a_stream = acceptor.accept();
+        auto* a_stream = acceptor.accept();
         klog(chan_server).info("Connection accepted");
 
         // The stream can work with generic char* buffers, but for the sake of the example, we are going to use the
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
     // Now we connect to the server using the same port number
     // There is no need to instantiate TCPConnector, this is a stateless static class
-    auto *c_stream = net::TCPConnector::connect("localhost", 9876);
+    auto* c_stream = net::TCPConnector::connect("localhost", 9876);
 
     // If the connection is not successful, no stream is returned
     if (c_stream == nullptr)

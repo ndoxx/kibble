@@ -18,7 +18,7 @@ static constexpr size_t k_job_max_align = k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
-JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string &profile_name) : worker_affinity(affinity)
+JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_name) : worker_affinity(affinity)
 {
 #ifdef K_PROFILE_JOB_SYSTEM
     name = profile_name;
@@ -33,7 +33,7 @@ size_t JobSystem::get_memory_requirements()
     return sizeof(JobPoolArena) + k_max_threads * k_max_jobs * (k_job_node_size + JobPoolArena::DECORATION_SIZE);
 }
 
-JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme, const kb::log::Channel *log_channel)
+JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel)
     : scheme_(scheme), scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)),
       ss_(std::make_shared<SharedState>()), log_channel_(log_channel)
 {
@@ -70,7 +70,7 @@ JobSystem::JobSystem(memory::HeapArea &area, const JobSystemScheme &scheme, cons
         workers_.push_back(std::make_unique<WorkerThread>(props, *this));
     }
     // Thread spawning is delayed to avoid a race condition of run() with other workers ctors
-    for (auto &worker : workers_)
+    for (auto& worker : workers_)
     {
         worker->spawn();
         auto native_id = worker->is_background() ? worker->get_native_thread_id() : std::this_thread::get_id();
@@ -97,7 +97,7 @@ void JobSystem::shutdown()
     // Notify all threads they are going to die
     ss_->running.store(false, std::memory_order_release);
     ss_->cv_wake.notify_all();
-    for (auto &worker : workers_)
+    for (auto& worker : workers_)
         worker->join();
 
     // We just killed all threads, including the logger thread
@@ -109,24 +109,24 @@ void JobSystem::shutdown()
     // Log worker statistics
     monitor_->update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
-    for (auto &worker : workers_)
+    for (auto& worker : workers_)
         monitor_->log_statistics(worker->get_tid(), log_channel_);
 #endif
 
     klog(log_channel_).uid("JobSystem").info("Shutdown complete.");
 }
 
-Job *JobSystem::create_job(JobKernel &&kernel, const JobMetadata &meta)
+Job* JobSystem::create_job(JobKernel&& kernel, const JobMetadata& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
-    Job *job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
+    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
     job->meta = meta;
     return job;
 }
 
-void JobSystem::release_job(Job *job)
+void JobSystem::release_job(Job* job)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
@@ -137,7 +137,7 @@ void JobSystem::release_job(Job *job)
     K_DELETE(job, ss_->job_pool);
 }
 
-void JobSystem::schedule(Job *job)
+void JobSystem::schedule(Job* job)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
@@ -160,7 +160,7 @@ bool JobSystem::is_busy() const
     return ss_->pending.load(std::memory_order_acquire) > 0;
 }
 
-bool JobSystem::is_work_done(Job *job) const
+bool JobSystem::is_work_done(Job* job) const
 {
     return job->is_processed();
 }
@@ -196,7 +196,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
     }
 
 #ifdef K_PROFILE_JOB_SYSTEM
-    auto &activity = workers_[0]->get_activity();
+    auto& activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
     monitor_->report_thread_activity(activity);
     activity.reset();
@@ -211,10 +211,10 @@ void JobSystem::abort()
     {
         ss_->running.store(false, std::memory_order_release);
         ss_->cv_wake.notify_all();
-        for (auto &worker : workers_)
+        for (auto& worker : workers_)
             worker->join();
     }
-    catch (const std::exception &)
+    catch (const std::exception&)
     {
     }
 
@@ -224,7 +224,7 @@ void JobSystem::abort()
     klog(log_channel_).uid("JobSystem").warn("PANIC: Essential work transfered to caller thread.");
 
     // Execute essential work on the caller thread
-    for (auto &worker : workers_)
+    for (auto& worker : workers_)
         worker->panic();
 
     klog(log_channel_).uid("JobSystem").info("Shutting down.");

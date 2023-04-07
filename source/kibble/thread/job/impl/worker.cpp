@@ -9,7 +9,7 @@
 namespace kb::th
 {
 
-WorkerThread::WorkerThread(const WorkerProperties &props, JobSystem &jobsys)
+WorkerThread::WorkerThread(const WorkerProperties& props, JobSystem& jobsys)
     : props_(props), js_(jobsys), ss_(js_.get_shared_state())
 {
 #ifdef K_PROFILE_JOB_SYSTEM
@@ -36,7 +36,7 @@ void WorkerThread::join()
         thread_.join();
 }
 
-void WorkerThread::submit(Job *job, bool stealable)
+void WorkerThread::submit(Job* job, bool stealable)
 {
     size_t idx = size_t(!stealable);
     ANNOTATE_HAPPENS_BEFORE(&queues_[idx]); // Avoid false positives with TSan
@@ -51,7 +51,7 @@ void WorkerThread::run()
     {
         state_.store(State::Running, std::memory_order_release);
 
-        Job *job = nullptr;
+        Job* job = nullptr;
         if (get_job(job))
         {
             process(job);
@@ -82,7 +82,7 @@ void WorkerThread::run()
     state_.store(State::Stopping, std::memory_order_release);
 }
 
-bool WorkerThread::get_job(Job *&job)
+bool WorkerThread::get_job(Job*& job)
 {
     // First, try to pop a job from the private queue, then the public queue, only then try to steal
     // Logical or is short-circuiting, only one job will be popped
@@ -96,11 +96,11 @@ bool WorkerThread::get_job(Job *&job)
 }
 
 #ifdef K_ENABLE_WORK_STEALING
-bool WorkerThread::steal_job(Job *&job)
+bool WorkerThread::steal_job(Job*& job)
 {
     for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
-        auto &worker = js_.get_worker(rr_next());
+        auto& worker = js_.get_worker(rr_next());
         ANNOTATE_HAPPENS_AFTER(&worker.queues_[Q_PUBLIC]); // Avoid false positives with TSan
         if (worker.queues_[Q_PUBLIC].try_pop(job))
         {
@@ -114,7 +114,7 @@ bool WorkerThread::steal_job(Job *&job)
 }
 #endif
 
-void WorkerThread::process(Job *job)
+void WorkerThread::process(Job* job)
 {
 #ifdef K_PROFILE_JOB_SYSTEM
     auto start = std::chrono::high_resolution_clock::now();
@@ -131,7 +131,7 @@ void WorkerThread::process(Job *job)
     ++activity_.executed;
 
     // If an instrumentation session exists, push profile for this job
-    if (auto *instr = js_.get_instrumentation_session())
+    if (auto* instr = js_.get_instrumentation_session())
     {
         ProfileResult result;
         result.name = job->meta.name;
@@ -152,9 +152,9 @@ void WorkerThread::process(Job *job)
     ss_.pending.fetch_sub(1);
 }
 
-void WorkerThread::schedule_children(Job *job)
+void WorkerThread::schedule_children(Job* job)
 {
-    for (Job *child : job->node)
+    for (Job* child : job->node)
     {
         /*
             If two parents finish at the same time, they could potentially schedule their
@@ -175,7 +175,7 @@ void WorkerThread::schedule_children(Job *job)
 bool WorkerThread::foreground_work()
 {
     K_ASSERT(!is_background(), "foreground_work() should not be called in a background thread.", nullptr);
-    Job *job = nullptr;
+    Job* job = nullptr;
     if (get_job(job))
     {
         process(job);
@@ -187,7 +187,7 @@ bool WorkerThread::foreground_work()
 
 void WorkerThread::panic()
 {
-    Job *job = nullptr;
+    Job* job = nullptr;
     while (queues_[Q_PRIVATE].try_pop(job))
     {
         if (job->meta.is_essential())

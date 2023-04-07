@@ -34,7 +34,7 @@ void HeapArea::debug_show_content()
         .debug("Usage: {} / {} ({}%)", utils::human_size(used_mem), utils::human_size(size_),
                fmt::styled(100 * usage, fmt::fg(fmt::rgb{R, G, B})));
 
-    for (auto &&item : items_)
+    for (auto&& item : items_)
     {
         usage = float(item.size) / float(used_mem);
         R = uint8_t((1.f - usage) * R1 + usage * R2);
@@ -52,7 +52,7 @@ void HeapArea::debug_show_content()
     }
 }
 
-HeapArea::HeapArea(size_t size, const kb::log::Channel *channel) : log_channel_(channel)
+HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : log_channel_(channel)
 {
     (void)log_channel_;
     if (!init(size))
@@ -64,14 +64,14 @@ HeapArea::~HeapArea()
     delete[] begin_;
 }
 
-void HeapArea::debug_hex_dump(std::ostream &stream, size_t size)
+void HeapArea::debug_hex_dump(std::ostream& stream, size_t size)
 {
     if (size == 0)
         size = size_t(head_ - begin_);
     memory::hex_dump(stream, begin_, size, "HEX DUMP");
 }
 
-bool HeapArea::init(size_t size, const kb::log::Channel *channel)
+bool HeapArea::init(size_t size, const kb::log::Channel* channel)
 {
     size_ = size;
     log_channel_ = channel;
@@ -79,7 +79,7 @@ bool HeapArea::init(size_t size, const kb::log::Channel *channel)
     {
         begin_ = new uint8_t[size_];
     }
-    catch (std::bad_alloc const &)
+    catch (std::bad_alloc const&)
     {
         return false;
     }
@@ -92,7 +92,7 @@ bool HeapArea::init(size_t size, const kb::log::Channel *channel)
     return true;
 }
 
-std::pair<void *, void *> HeapArea::require_block(size_t size, const char *debug_name)
+std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_name)
 {
     // Page align returned block to avoid false sharing if multiple threads access this area
     size_t padding = utils::alignment_padding(head_, 64);
@@ -103,7 +103,7 @@ std::pair<void *, void *> HeapArea::require_block(size_t size, const char *debug
     std::fill(head_, head_ + padding, AREA_PADDING_MARK);
 #endif
 
-    std::pair<void *, void *> ptr_range = {head_ + padding, head_ + padding + size + 1};
+    std::pair<void*, void*> ptr_range = {head_ + padding, head_ + padding + size + 1};
 
     head_ += size + padding;
 
@@ -119,13 +119,13 @@ Padding:   {}
 Remaining: {}
 Address:   {:#x})",
             (debug_name ? debug_name : "ANON"), utils::human_size(size), utils::human_size(padding),
-            utils::human_size(static_cast<uint64_t>(static_cast<uint8_t *>(end()) - head_)),
+            utils::human_size(static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_)),
             reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;
 }
 
-void *HeapArea::require_pool_block(size_t element_size, size_t max_count, const char *debug_name)
+void* HeapArea::require_pool_block(size_t element_size, size_t max_count, const char* debug_name)
 {
     size_t pool_size = max_count * element_size;
     auto block = require_block(pool_size, debug_name);

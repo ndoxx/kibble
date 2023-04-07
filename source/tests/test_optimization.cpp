@@ -12,7 +12,7 @@ struct ControlTraits<vec2>
     {
         return 2;
     }
-    static void normalize(vec2 &vec)
+    static void normalize(vec2& vec)
     {
         vec.normalize();
     }
@@ -32,7 +32,7 @@ protected:
 
 TEST_CASE_METHOD(MinimizationFixture, "Convex function minimization", "[opt]")
 {
-    optimizer.set_loss([](const vec2 &u) {
+    optimizer.set_loss([](const vec2& u) {
         // J(x,y) = x^2 + xy + y^2
         return u.x() * u.x() + u.x() * u.y() + u.y() * u.y();
     });
@@ -44,7 +44,7 @@ TEST_CASE_METHOD(MinimizationFixture, "Convex function minimization", "[opt]")
 
 TEST_CASE_METHOD(MinimizationFixture, "Non-convex Himmelblau's function minimization", "[opt]")
 {
-    optimizer.set_loss([](const vec2 &u) {
+    optimizer.set_loss([](const vec2& u) {
         // J(x,y) = (x^2+y-11)^2 + (x+y^2-7)^2
         float A = (u.x() * u.x() + u.y() - 11);
         float B = (u.x() + u.y() * u.y() - 7);

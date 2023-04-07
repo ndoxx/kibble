@@ -9,7 +9,10 @@ using namespace kb;
 class PathFixture
 {
 public:
-    PathFixture() { filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data"); }
+    PathFixture()
+    {
+        filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data");
+    }
 
 protected:
     kfs::FileSystem filesystem;
@@ -74,7 +77,7 @@ public:
         filesystem.alias_directory("/tmp/kibble_test", "test");
 
         std::iota(expected_data_1.begin(), expected_data_1.end(), 0);
-        for(size_t ii = 0; ii < 256; ++ii)
+        for (size_t ii = 0; ii < 256; ++ii)
             expected_data_2[ii] = char(255 - ii);
 
         expected_text_1 =
@@ -127,7 +130,10 @@ public:
         ofs.close();
     }
 
-    ~KpakFixture() { fs::remove_all("/tmp/kibble_test"); }
+    ~KpakFixture()
+    {
+        fs::remove_all("/tmp/kibble_test");
+    }
 
 protected:
     kfs::FileSystem filesystem;

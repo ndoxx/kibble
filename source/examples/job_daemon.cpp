@@ -22,16 +22,16 @@ using namespace kb;
 using namespace kb::th;
 using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
+void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         klog(chan).warn(msg);
 
     klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();
@@ -42,9 +42,9 @@ int main(int argc, char **argv)
     chan_thread.attach_sink(console_sink);
 
     ap::ArgParse parser("daemon_example", "0.1");
-    parser.set_log_output([&chan_kibble](const std::string &str) { klog(chan_kibble).uid("ArgParse").info(str); });
-    const auto &nf = parser.add_variable<int>('f', "frames", "Number of frames", 200);
-    const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 50);
+    parser.set_log_output([&chan_kibble](const std::string& str) { klog(chan_kibble).uid("ArgParse").info(str); });
+    const auto& nf = parser.add_variable<int>('f', "frames", "Number of frames", 200);
+    const auto& nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 50);
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -58,13 +58,13 @@ int main(int argc, char **argv)
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
     memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
-    auto *js = new th::JobSystem(area, scheme, &chan_thread);
-    auto *ds = new th::DaemonScheduler(*js);
+    auto* js = new th::JobSystem(area, scheme, &chan_thread);
+    auto* ds = new th::DaemonScheduler(*js);
 
     Channel::set_async(js);
 
     // Job system profiling
-    auto *session = new InstrumentationSession();
+    auto* session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 
     // Data for the daemons
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     std::vector<DaemonHandle> hnds;
 
     // Launch daemons
-    for (const auto &msg : msgs)
+    for (const auto& msg : msgs)
     {
         th::JobMetadata meta(th::WORKER_AFFINITY_ASYNC, msg.message);
 
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
         // Create a few independent tasks each frame
         for (size_t jj = 0; jj < size_t(nj()); ++jj)
         {
-            auto &&[tsk, fut] = js->create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
+            auto&& [tsk, fut] = js->create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
                                                 []() { std::this_thread::sleep_for(std::chrono::microseconds(500)); });
             tsk.schedule();
         }

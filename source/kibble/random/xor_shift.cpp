@@ -10,7 +10,7 @@ namespace rng
 {
 
 // For default initialization of XorShiftEngine
-uint64_t splitmix64(uint64_t &state)
+uint64_t splitmix64(uint64_t& state)
 {
     uint64_t result = state;
 
@@ -20,7 +20,7 @@ uint64_t splitmix64(uint64_t &state)
     return result ^ (result >> 31);
 }
 
-XorShiftEngine::Seed::Seed(const char *str)
+XorShiftEngine::Seed::Seed(const char* str)
 {
     auto tokens = kb::su::tokenize(str, ':');
     K_ASSERT(tokens.size() == 2, "[XorShiftEngine] Bad seed string.", nullptr).watch(tokens.size());
@@ -48,7 +48,7 @@ XorShiftEngine::Seed::Seed(uint64_t seed)
     state_[1] = uint32_t((tmp >> 32));
 }
 
-std::ostream &operator<<(std::ostream &stream, XorShiftEngine::Seed rhs)
+std::ostream& operator<<(std::ostream& stream, XorShiftEngine::Seed rhs)
 {
     stream << "[" << rhs.state_[0] << "," << rhs.state_[1] << "]";
     return stream;

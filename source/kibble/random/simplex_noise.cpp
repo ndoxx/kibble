@@ -1,8 +1,7 @@
-#include "math/constexpr_math.h"
 #include "random/simplex_noise.h"
+#include "math/constexpr_math.h"
 #include <random>
 #include <tuple>
-
 
 namespace kb
 {
@@ -31,15 +30,15 @@ constexpr float grad4[32][4] = {
     {-1, 1, 0, -1},  {-1, -1, 0, 1},  {-1, -1, 0, -1}, {1, 1, 1, 0},   {1, 1, -1, 0},  {1, -1, 1, 0},  {1, -1, -1, 0},
     {-1, 1, 1, 0},   {-1, 1, -1, 0},  {-1, -1, 1, 0},  {-1, -1, -1, 0}};
 
-inline float dot(const float *g, float x, float y)
+inline float dot(const float* g, float x, float y)
 {
     return g[0] * x + g[1] * y;
 }
-inline float dot(const float *g, float x, float y, float z)
+inline float dot(const float* g, float x, float y, float z)
 {
     return g[0] * x + g[1] * y + g[2] * z;
 }
-inline float dot(const float *g, float x, float y, float z, float w)
+inline float dot(const float* g, float x, float y, float z, float w)
 {
     return g[0] * x + g[1] * y + g[2] * z + g[3] * w;
 }

@@ -14,7 +14,7 @@ using namespace kb;
 
 void clear_line(size_t count)
 {
-    for(size_t ii = 0; ii < count; ++ii)
+    for (size_t ii = 0; ii < count; ++ii)
         std::cout << "\033[1A\033[K";
 }
 
@@ -30,10 +30,10 @@ void print_bar(float weight, const std::string& name)
     clear_line(2);
     std::cout << centered_name << std::endl;
     std::cout << KF_(col::white) << '[' << KF_(col::mediumturquoise);
-    for(size_t ii = 0; ii < cursor; ++ii)
+    for (size_t ii = 0; ii < cursor; ++ii)
         std::cout << '=';
     std::cout << '>' << KF_(col::ndxorange);
-    for(size_t ii = cursor + 1; ii < cols - 2; ++ii)
+    for (size_t ii = cursor + 1; ii < cols - 2; ++ii)
         std::cout << '-';
     std::cout << KF_(col::white) << ']' << std::endl;
 }
@@ -96,9 +96,9 @@ void test_animate()
 
     std::cout << std::endl;
 
-    for(auto&& [pfunc, name] : easings)
+    for (auto&& [pfunc, name] : easings)
     {
-        for(size_t ii = 0; ii < frame_count; ++ii)
+        for (size_t ii = 0; ii < frame_count; ++ii)
         {
             float tt = float(ii) / float(frame_count - 1);
             // print_colored_rect((*pfunc)(tt), name);

@@ -64,7 +64,7 @@ float Q_rsqrt(float y)
 
 static void BM_qrsqrt(benchmark::State& state)
 {
-    for(auto _ : state)
+    for (auto _ : state)
     {
         benchmark::DoNotOptimize(Q_rsqrt(42.f));
         benchmark::ClobberMemory();
@@ -74,13 +74,12 @@ BENCHMARK(BM_qrsqrt);
 
 static void BM_rsqrt(benchmark::State& state)
 {
-    for(auto _ : state)
+    for (auto _ : state)
     {
-        benchmark::DoNotOptimize(1.f/std::sqrt(42.f));
+        benchmark::DoNotOptimize(1.f / std::sqrt(42.f));
         benchmark::ClobberMemory();
     }
 }
 BENCHMARK(BM_rsqrt);
-
 
 BENCHMARK_MAIN();

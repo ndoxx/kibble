@@ -51,7 +51,7 @@ void SeparableGaussianKernel::init(uint32_t size, float _sigma)
         weights[ii] /= sum;
 }
 
-std::ostream &operator<<(std::ostream &stream, const SeparableGaussianKernel &gk)
+std::ostream& operator<<(std::ostream& stream, const SeparableGaussianKernel& gk)
 {
     stream << "[";
     for (uint32_t ii = 0; ii < gk.half_size; ++ii)

@@ -1,5 +1,5 @@
-#include "hash/hash.h"
 #include "string/string.h"
+#include "hash/hash.h"
 
 namespace kb
 {
@@ -23,7 +23,7 @@ static constexpr int s_base64_decode_vals[] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 // Tokenize an input string into a vector of strings, specifying a delimiter
-std::vector<std::string> tokenize(const std::string &str, char delimiter)
+std::vector<std::string> tokenize(const std::string& str, char delimiter)
 {
     std::vector<std::string> dst;
     std::stringstream ss(str);
@@ -38,7 +38,7 @@ std::vector<std::string> tokenize(const std::string &str, char delimiter)
 }
 
 // Tokenize an input string and call a visitor for each token
-void tokenize(const std::string &str, char delimiter, std::function<void(const std::string &)> visit)
+void tokenize(const std::string& str, char delimiter, std::function<void(const std::string&)> visit)
 {
     std::stringstream ss(str);
 
@@ -51,7 +51,7 @@ void tokenize(const std::string &str, char delimiter, std::function<void(const s
 }
 
 // Convert a size string to a number
-size_t parse_size(const std::string &input, char delimiter)
+size_t parse_size(const std::string& input, char delimiter)
 {
     auto delimiter_pos = input.find_first_of(delimiter);
     size_t size = static_cast<size_t>(std::stoi(input.substr(0, delimiter_pos)));
@@ -83,7 +83,7 @@ std::string size_to_string(size_t size)
     return std::to_string(size) + sizes[ii];
 }
 
-void center(std::string &input, int size)
+void center(std::string& input, int size)
 {
     int diff = size - static_cast<int>(input.size());
     if (diff <= 0)

@@ -17,7 +17,8 @@ public:
     FlagFixture()
         : parser("program", "0.1"), orange(parser.add_flag('o', "orange", "Use the best color in the world")),
           cyan(parser.add_flag('c', "cyan", "Use the second best color in the world"))
-    {}
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -98,7 +99,9 @@ TEST_CASE_METHOD(FlagFixture, "Unknown flag", "[flag]")
 class VarFixture
 {
 public:
-    VarFixture() : parser("program", "0.1") {}
+    VarFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -281,7 +284,9 @@ TEST_CASE_METHOD(VarFixture, "Variable <string> argument", "[var]")
 class PosFixture
 {
 public:
-    PosFixture() : parser("program", "0.1") {}
+    PosFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -348,7 +353,9 @@ TEST_CASE_METHOD(PosFixture, "One positional argument needed, supernumerary one"
 class ExFlagFixture
 {
 public:
-    ExFlagFixture() : parser("program", "0.1") {}
+    ExFlagFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -407,7 +414,9 @@ TEST_CASE_METHOD(ExFlagFixture, "exf: Two exclusive sets, constraint violated", 
 class ExVarFixture
 {
 public:
-    ExVarFixture() : parser("program", "0.1") {}
+    ExVarFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -466,7 +475,9 @@ TEST_CASE_METHOD(ExVarFixture, "exv: Two exclusive sets, constraint violated", "
 class DepsFixture
 {
 public:
-    DepsFixture() : parser("program", "0.1") {}
+    DepsFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -499,7 +510,9 @@ TEST_CASE_METHOD(DepsFixture, "Flag dependency not satisfied", "[dep]")
 class ListsFixture
 {
 public:
-    ListsFixture() : parser("program", "0.1") {}
+    ListsFixture() : parser("program", "0.1")
+    {
+    }
 
 protected:
     ap::ArgParse parser;
@@ -511,7 +524,7 @@ TEST_CASE_METHOD(ListsFixture, "Valid list of ints", "[lis]")
 
     bool success = Parse(parser, "program -l 1,2,-3,4");
 
-    std::vector<int> ans = {1,2,-3,4};
+    std::vector<int> ans = {1, 2, -3, 4};
     REQUIRE(success);
     REQUIRE(l() == ans);
 }

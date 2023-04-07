@@ -7,7 +7,7 @@
 namespace kb::util
 {
 
-Assertion::Assertion(std::string expression, const kb::log::Channel *channel, const char *file, const char *function,
+Assertion::Assertion(std::string expression, const kb::log::Channel* channel, const char* file, const char* function,
                      int line, Trigger trigger)
     : channel_{channel}, file_{file}, function_{function}, line_{line}, trigger_{trigger}
 {

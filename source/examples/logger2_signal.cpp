@@ -15,16 +15,16 @@
 
 using namespace kb::log;
 
-void show_error_and_die(kb::ap::ArgParse &parser)
+void show_error_and_die(kb::ap::ArgParse& parser)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         std::cerr << msg << std::endl;
 
     std::cout << parser.usage() << std::endl;
     exit(0);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     /*
         This example showcases an experimental feature of the logger.
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     */
 
     kb::ap::ArgParse parser("logger2_example", "0.1");
-    const auto &use_powerline = parser.add_variable<bool>(
+    const auto& use_powerline = parser.add_variable<bool>(
         'p', "powerline", "Use a powerline-styled terminal formatter (needs a powerline-patched font)", false);
 
     bool success = parser.parse(argc, argv);
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
     Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::aquamarine);
     chan_thread.attach_sink(console_sink);
-    auto *js = new kb::th::JobSystem(area, {}, &chan_thread);
+    auto* js = new kb::th::JobSystem(area, {}, &chan_thread);
 
     // Enable signal interception feature
     Channel::intercept_signals();
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     // Only a few of these should show up
     for (size_t ii = 0; ii < 100; ++ii)
     {
-        auto &&[task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [ii, &chan_secondary]() {
+        auto&& [task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [ii, &chan_secondary]() {
             klog(chan_secondary).info("Unimportant task #{}", ii);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         });
@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     // that called std::raise(). If the signal was not due to a call to std::raise(),
     // the signal handler can be called from any thread.
     // In an attempt to simulate this, I call std::raise() from another thread.
-    auto &&[task, future] = js->create_task({kb::th::force_worker(3), "BadTask"}, []() { std::raise(SIGSEGV); });
+    auto&& [task, future] = js->create_task({kb::th::force_worker(3), "BadTask"}, []() { std::raise(SIGSEGV); });
     task.schedule();
 
     // We shouldn't reach this line

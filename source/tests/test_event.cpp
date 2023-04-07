@@ -119,7 +119,7 @@ struct UnhandledEvent
     int a;
 };
 
-bool handle_dummy(const DummyEvent &)
+bool handle_dummy(const DummyEvent&)
 {
     return false;
 }
@@ -127,7 +127,7 @@ bool handle_dummy(const DummyEvent &)
 class CollisionResponseSystem
 {
 public:
-    bool on_collision(const CollideEvent &event)
+    bool on_collision(const CollideEvent& event)
     {
         handled.push_back(std::pair(event.first, event.second));
         return false;
@@ -156,7 +156,7 @@ TEST_CASE_METHOD(EventFixture, "Events fired instantly should be handled immedia
 
     REQUIRE(event_bus.empty());
     REQUIRE(collision_response.handled.size() == 1);
-    auto &&[a, b] = collision_response.handled[0];
+    auto&& [a, b] = collision_response.handled[0];
     REQUIRE((a == 0 && b == 1));
 }
 
@@ -168,7 +168,7 @@ TEST_CASE_METHOD(EventFixture, "Enqueued events should not be processed before a
     event_bus.dispatch();
 
     REQUIRE(collision_response.handled.size() == 1);
-    auto &&[a, b] = collision_response.handled[0];
+    auto&& [a, b] = collision_response.handled[0];
     REQUIRE((a == 0 && b == 1));
 }
 
@@ -181,9 +181,9 @@ TEST_CASE_METHOD(EventFixture, "Enqueueing multiple events should work", "[evt]"
     event_bus.dispatch();
 
     REQUIRE(collision_response.handled.size() == 2);
-    auto &&[a, b] = collision_response.handled[0];
+    auto&& [a, b] = collision_response.handled[0];
     REQUIRE((a == 0 && b == 1));
-    auto &&[c, d] = collision_response.handled[1];
+    auto&& [c, d] = collision_response.handled[1];
     REQUIRE((c == 2 && d == 3));
 }
 
@@ -231,14 +231,14 @@ struct EventB
     int b;
 };
 
-bool handle_A(const EventA &)
+bool handle_A(const EventA&)
 {
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(1ms);
     return false;
 }
 
-bool handle_B(const EventB &)
+bool handle_B(const EventB&)
 {
     return false;
 }
@@ -277,7 +277,7 @@ class BaseDummyHandler
 {
 public:
     virtual ~BaseDummyHandler() = default;
-    virtual bool handle_dummy(const DummyEvent &) = 0;
+    virtual bool handle_dummy(const DummyEvent&) = 0;
 
     bool handled = false;
 };
@@ -285,7 +285,7 @@ public:
 class DummyHandlerA : public BaseDummyHandler
 {
 public:
-    bool handle_dummy(const DummyEvent &) override
+    bool handle_dummy(const DummyEvent&) override
     {
         handled = true;
         return false;
@@ -295,7 +295,7 @@ public:
 class DummyHandlerB : public BaseDummyHandler
 {
 public:
-    bool handle_dummy(const DummyEvent &) override
+    bool handle_dummy(const DummyEvent&) override
     {
         handled = true;
         return false;
@@ -331,7 +331,7 @@ struct PokeEvent
 };
 struct PokeHandler
 {
-    bool handle_poke(const PokeEvent &)
+    bool handle_poke(const PokeEvent&)
     {
         ++handle_count;
         return false;
@@ -342,19 +342,19 @@ struct PokeHandler
 static size_t s_handle_count_1 = 0;
 static size_t s_handle_count_2 = 0;
 
-bool handle_poke_1(const PokeEvent &)
+bool handle_poke_1(const PokeEvent&)
 {
     ++s_handle_count_1;
     return false;
 }
 
-bool handle_poke_2(const PokeEvent &)
+bool handle_poke_2(const PokeEvent&)
 {
     ++s_handle_count_2;
     return false;
 }
 
-bool fake_handle_poke(const PokeEvent &)
+bool fake_handle_poke(const PokeEvent&)
 {
     return false;
 }
@@ -420,18 +420,18 @@ TEST_CASE_METHOD(UnsubFixture, "Unsubscribing non-existent subscriber should do 
 class IndexedPokeHandler
 {
 public:
-    IndexedPokeHandler(size_t idx, std::vector<size_t> &journal) : idx_(idx), journal_(journal)
+    IndexedPokeHandler(size_t idx, std::vector<size_t>& journal) : idx_(idx), journal_(journal)
     {
     }
 
-    bool handle_poke(const PokeEvent &)
+    bool handle_poke(const PokeEvent&)
     {
         journal_.push_back(idx_);
         return false;
     }
 
     size_t idx_;
-    std::vector<size_t> &journal_;
+    std::vector<size_t>& journal_;
 };
 
 class PriorityFixture

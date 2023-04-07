@@ -9,7 +9,7 @@ struct GameObject
     int position = 0;
     bool alive = true;
 
-    bool operator==(const GameObject &other) const
+    bool operator==(const GameObject& other) const
     {
         return uuid == other.uuid && position == other.position && alive == other.alive;
     }
@@ -18,7 +18,7 @@ struct GameObject
 class GOMoveUndoCommand : public kb::undo::UndoCommand
 {
 public:
-    GOMoveUndoCommand(GameObject *go, int increment)
+    GOMoveUndoCommand(GameObject* go, int increment)
         : kb::undo::UndoCommand("Change game object position"), go_(go), increment_(increment)
 
     {
@@ -35,14 +35,14 @@ public:
     }
 
 private:
-    GameObject *go_ = nullptr;
+    GameObject* go_ = nullptr;
     int increment_ = 0;
 };
 
 class GOKillUndoCommand : public kb::undo::UndoCommand
 {
 public:
-    GOKillUndoCommand(GameObject *go) : kb::undo::UndoCommand("Kill game object"), go_(go)
+    GOKillUndoCommand(GameObject* go) : kb::undo::UndoCommand("Kill game object"), go_(go)
 
     {
     }
@@ -58,7 +58,7 @@ public:
     }
 
 private:
-    GameObject *go_ = nullptr;
+    GameObject* go_ = nullptr;
 };
 
 class UndoRedoFixture
@@ -78,7 +78,7 @@ protected:
         size_t stack_head;
         size_t stack_count;
 
-        bool operator==(const Snapshot &other) const
+        bool operator==(const Snapshot& other) const
         {
             return go_state == other.go_state && stack_head == other.stack_head && stack_count == other.stack_count;
         }
@@ -480,7 +480,7 @@ struct Orientable
 class RotateCommand : public kb::undo::UndoCommand
 {
 public:
-    RotateCommand(Orientable *obj, float increment)
+    RotateCommand(Orientable* obj, float increment)
         : kb::undo::UndoCommand("Change orientable object angle", 0), obj_(obj), increment_(increment)
 
     {
@@ -497,9 +497,9 @@ public:
     }
 
     static constexpr float EPSILON = 1e-5f;
-    bool merge_with(const UndoCommand &cmd) override final
+    bool merge_with(const UndoCommand& cmd) override final
     {
-        increment_ += static_cast<const RotateCommand &>(cmd).increment_;
+        increment_ += static_cast<const RotateCommand&>(cmd).increment_;
         if (std::fabs(increment_) < EPSILON)
             set_obsolete();
         return true;
@@ -511,14 +511,14 @@ public:
     }
 
 private:
-    Orientable *obj_ = nullptr;
+    Orientable* obj_ = nullptr;
     float increment_ = 0.f;
 };
 
 class SetAngleCommand : public kb::undo::UndoCommand
 {
 public:
-    SetAngleCommand(Orientable *obj, float value)
+    SetAngleCommand(Orientable* obj, float value)
         : kb::undo::UndoCommand("Set orientable object angle"), obj_(obj), value_(value), old_value_(obj_->angle)
 
     {
@@ -540,7 +540,7 @@ public:
     }
 
 private:
-    Orientable *obj_ = nullptr;
+    Orientable* obj_ = nullptr;
     float value_ = 0.f;
     float old_value_ = 0.f;
 };
@@ -567,7 +567,7 @@ TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands should merge the
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
     REQUIRE(undo_stack_.count() == 1);
-    REQUIRE(static_cast<const RotateCommand &>(undo_stack_.at(0)).get_increment() == 2.f);
+    REQUIRE(static_cast<const RotateCommand&>(undo_stack_.at(0)).get_increment() == 2.f);
 }
 
 TEST_CASE_METHOD(MergeFixture, "merged commands should behave atomically with respect to undo", "[merge]")
@@ -596,7 +596,7 @@ TEST_CASE_METHOD(MergeFixture, "pushing two compatible commands after an undo sh
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
     REQUIRE(undo_stack_.count() == 1);
-    REQUIRE(static_cast<const RotateCommand &>(undo_stack_.at(0)).get_increment() == 2.f);
+    REQUIRE(static_cast<const RotateCommand&>(undo_stack_.at(0)).get_increment() == 2.f);
 }
 
 TEST_CASE_METHOD(MergeFixture, "incompatible commands should not interfere", "[merge]")
@@ -613,7 +613,7 @@ TEST_CASE_METHOD(MergeFixture, "commands that merge to an obsolete command shoul
     undo_stack_.push<RotateCommand>(&obj_, 1.f);
     undo_stack_.push<RotateCommand>(&obj_, -1.f);
     REQUIRE(undo_stack_.count() == 1);
-    REQUIRE(static_cast<const SetAngleCommand &>(undo_stack_.at(0)).get_value() == 8.f);
+    REQUIRE(static_cast<const SetAngleCommand&>(undo_stack_.at(0)).get_value() == 8.f);
 }
 
 TEST_CASE_METHOD(MergeFixture, "clean state can be reached back after deletion of an obsolete command", "[merge]")
@@ -662,7 +662,7 @@ public:
 class Deposit : public kb::undo::UndoCommand
 {
 public:
-    Deposit(Bank &bnk, size_t idx, uint32_t amt_cents)
+    Deposit(Bank& bnk, size_t idx, uint32_t amt_cents)
         : kb::undo::UndoCommand("Deposit amt_cents into idx's account"), bnk_(bnk), idx_(idx),
           value_(float(amt_cents) / 100.f)
 
@@ -685,7 +685,7 @@ public:
     }
 
 private:
-    Bank &bnk_;
+    Bank& bnk_;
     size_t idx_ = 0;
     float value_ = 0.f;
 };
@@ -693,7 +693,7 @@ private:
 class Withdraw : public kb::undo::UndoCommand
 {
 public:
-    Withdraw(Bank &bnk, size_t idx, uint32_t amt_cents)
+    Withdraw(Bank& bnk, size_t idx, uint32_t amt_cents)
         : kb::undo::UndoCommand("Withdraw amt_cents into idx's account"), bnk_(bnk), idx_(idx),
           value_(float(amt_cents) / 100.f)
 
@@ -716,7 +716,7 @@ public:
     }
 
 private:
-    Bank &bnk_;
+    Bank& bnk_;
     size_t idx_ = 0;
     float value_ = 0.f;
 };
@@ -800,12 +800,12 @@ struct TextBuffer
 class AppendCommand : public kb::undo::UndoCommand
 {
 public:
-    AppendCommand(TextBuffer &buffer, const std::string &text)
+    AppendCommand(TextBuffer& buffer, const std::string& text)
         : kb::undo::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
     {
     }
 
-    AppendCommand(TextBuffer &buffer, char c)
+    AppendCommand(TextBuffer& buffer, char c)
         : kb::undo::UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
     {
     }
@@ -820,9 +820,9 @@ public:
         buffer_.text.erase(buffer_.text.length() - text_.length());
     }
 
-    bool merge_with(const UndoCommand &cmd) override final
+    bool merge_with(const UndoCommand& cmd) override final
     {
-        const auto &other_text = static_cast<const AppendCommand &>(cmd).text_;
+        const auto& other_text = static_cast<const AppendCommand&>(cmd).text_;
         if (text_.compare(" ") != 0 && other_text.compare(" ") != 0)
         {
             text_ += other_text;
@@ -832,7 +832,7 @@ public:
     }
 
 private:
-    TextBuffer &buffer_;
+    TextBuffer& buffer_;
     std::string text_;
 };
 
@@ -870,7 +870,7 @@ public:
         group_.set_active(current_doc_);
     }
 
-    void append(const std::string &text)
+    void append(const std::string& text)
     {
         group_.push<AppendCommand>(bufs_[current_buf_], text);
     }

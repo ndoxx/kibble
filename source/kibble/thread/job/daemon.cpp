@@ -8,28 +8,28 @@ namespace kb
 namespace th
 {
 
-DaemonScheduler::DaemonScheduler(JobSystem &js, const kb::log::Channel *log_channel)
+DaemonScheduler::DaemonScheduler(JobSystem& js, const kb::log::Channel* log_channel)
     : js_(js), log_channel_(log_channel)
 {
 }
 
 DaemonScheduler::~DaemonScheduler()
 {
-    for (auto &&[hnd, daemon] : daemons_)
+    for (auto&& [hnd, daemon] : daemons_)
     {
         daemon.job->mark_processed();
         js_.release_job(daemon.job);
     }
 }
 
-DaemonHandle DaemonScheduler::create(JobKernel &&kernel, const SchedulingData &scheduling_data, const JobMetadata &meta)
+DaemonHandle DaemonScheduler::create(JobKernel&& kernel, const SchedulingData& scheduling_data, const JobMetadata& meta)
 {
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
-    auto &&[it, inserted] = daemons_.insert({current_handle_++, Daemon{}});
+    auto&& [it, inserted] = daemons_.insert({current_handle_++, Daemon{}});
     K_ASSERT(inserted, "Could not insert new daemon.", log_channel_);
 
-    auto &daemon = it->second;
+    auto& daemon = it->second;
     daemon.job = js_.create_job(std::forward<JobKernel>(kernel), meta);
     daemon.scheduling_data = scheduling_data;
     daemon.job->keep_alive = true;
@@ -54,9 +54,9 @@ void DaemonScheduler::update()
     delta_t_ms_ = float(clock_.restart().count()) / 1000.f;
 
     // Iterate daemons, reschedule those whose cooldown reached zero
-    for (auto &&[hnd, daemon] : daemons_)
+    for (auto&& [hnd, daemon] : daemons_)
     {
-        SchedulingData &sd = daemon.scheduling_data;
+        SchedulingData& sd = daemon.scheduling_data;
 
         if (daemon.marked_for_deletion)
         {

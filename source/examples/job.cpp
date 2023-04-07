@@ -23,9 +23,9 @@
 using namespace kb;
 using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
+void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         klog(chan).warn(msg);
 
     klog(chan).raw().info(parser.usage());
@@ -50,7 +50,7 @@ void random_fill(Iter start, Iter end, T min, T max, uint64_t seed = 0)
     std::generate(start, end, [&]() { return dist(eng); });
 }
 
-void show_statistics(milliClock &clk, long serial_dur_ms, const kb::log::Channel &chan)
+void show_statistics(milliClock& clk, long serial_dur_ms, const kb::log::Channel& chan)
 {
     auto parallel_dur_ms = clk.get_elapsed_time().count();
     float gain_percent = 100.f * float(parallel_dur_ms - serial_dur_ms) / float(serial_dur_ms);
@@ -71,7 +71,7 @@ void show_statistics(milliClock &clk, long serial_dur_ms, const kb::log::Channel
  * @param area initialized memory area
  * @return int
  */
-int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &chan)
+int p0(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& chan)
 {
     klog(chan).info("[JobSystem Example 0] mock async loading");
 
@@ -111,7 +111,7 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
             // Let's create a task and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
             // Note that the create_task() function also returns a (shared) future, more on that later.
-            auto &&[tsk, fut] = js.create_task(
+            auto&& [tsk, fut] = js.create_task(
                 meta, [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); });
 
             // Schedule the tsk, the workers will awake
@@ -136,7 +136,7 @@ int p0(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
  * @param disable_work_stealing
  * @return int
  */
-int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
+int p1(size_t ntasks, th::JobSystem& js, const kb::log::Channel& chan)
 {
     klog(chan).info("[JobSystem Example 1] throwing exceptions");
     klog(chan).info("Creating tasks.");
@@ -146,7 +146,7 @@ int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
     std::vector<std::shared_future<void>> futs;
     for (size_t ii = 0; ii < ntasks; ++ii)
     {
-        auto &&[tsk, fut] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "MyTask"), [ii]() {
+        auto&& [tsk, fut] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "MyTask"), [ii]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
             if (ii % 40 == 0)
                 throw std::runtime_error("(Fake) Runtime error!");
@@ -163,13 +163,13 @@ int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
     // If a task throws an exception, it is captured in the future and rethrown on a
     // call to future.get()
     klog(chan).info("The exceptions should be rethrown now:");
-    for (auto &&fut : futs)
+    for (auto&& fut : futs)
     {
         try
         {
             fut.get();
         }
-        catch (std::exception &e)
+        catch (std::exception& e)
         {
             klog(chan).error(e.what());
         }
@@ -189,7 +189,7 @@ int p1(size_t ntasks, th::JobSystem &js, const kb::log::Channel &chan)
  * @param area initialized memory area
  * @return int
  */
-int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &chan)
+int p2(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& chan)
 {
     klog(chan).info("[JobSystem Example 2] mock async loading and staging");
 
@@ -231,7 +231,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
             // Staging jobs are executed on the main thread
             // The future result of the loading task is passed as a function argument
             // We could also use lambda capture for that, see the next example
-            auto &&[stage_task, stage_fut] = js.create_task(
+            auto&& [stage_task, stage_fut] = js.create_task(
                 th::JobMetadata(th::WORKER_AFFINITY_MAIN, "Stage"),
                 [&stage_time, ii](std::shared_future<int> fut) {
                     // Simulate staging time
@@ -259,7 +259,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
         show_statistics(clk, serial_dur_ms, chan);
 
         int ii = 0;
-        for (auto &fut : stage_futs)
+        for (auto& fut : stage_futs)
         {
             try
             {
@@ -269,7 +269,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
                 [[maybe_unused]] constexpr float eps = 1e-10f;
                 K_ASSERT(std::fabs(val - expect) < eps, "Value is not what we expect.", &chan);
             }
-            catch (std::exception &e)
+            catch (std::exception& e)
             {
                 // If a loading job threw an exception, it will be rethrown on a call to fut.get() inside the
                 // corresponding staging job kernel. So exceptions are forwarded down the promise pipe, and
@@ -301,7 +301,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem &js, const kb::log::Channel &ch
  * @param area initialized memory area
  * @return int
  */
-int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &chan)
+int p3(size_t nexp, size_t ngraphs, th::JobSystem& js, const kb::log::Channel& chan)
 {
     klog(chan).info("[JobSystem Example 3] diamond graphs");
 
@@ -312,24 +312,24 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &c
         milliClock clk;
         for (size_t ii = 0; ii < ngraphs; ++ii)
         {
-            auto &&[tsk_a, fut_a] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "A"), [ii]() {
+            auto&& [tsk_a, fut_a] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "A"), [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 return int(ii);
             });
 
             // We could pass futures as function arguments like previously
             // But lambda capture also works
-            auto &&[tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [fut_a = fut_a]() {
+            auto&& [tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [fut_a = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 return fut_a.get() * 2;
             });
 
-            auto &&[tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [fut_a = fut_a]() {
+            auto&& [tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [fut_a = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(15));
                 return fut_a.get() * 3 - 10;
             });
 
-            auto &&[tsk_d, fut_d] =
+            auto&& [tsk_d, fut_d] =
                 js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"), [fut_b = fut_b, fut_c = fut_c]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     return fut_b.get() < fut_c.get();
@@ -350,7 +350,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &c
         show_statistics(clk, estimated_serial_time_ms, chan);
 
         int ii = 0;
-        for (auto &fut : end_futs)
+        for (auto& fut : end_futs)
         {
             [[maybe_unused]] bool val = fut.get();
             // Check that the value is what we expect
@@ -364,7 +364,7 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem &js, const kb::log::Channel &c
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();
@@ -375,10 +375,10 @@ int main(int argc, char **argv)
     chan_thread.attach_sink(console_sink);
 
     ap::ArgParse parser("job_system_example", "0.1");
-    parser.set_log_output([&chan_kibble](const std::string &str) { klog(chan_kibble).uid("ArgParse").info(str); });
-    const auto &ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
-    const auto &ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
-    const auto &nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
+    parser.set_log_output([&chan_kibble](const std::string& str) { klog(chan_kibble).uid("ArgParse").info(str); });
+    const auto& ex = parser.add_positional<int>("EXAMPLE", "Select the example function to run in [0,3]");
+    const auto& ne = parser.add_variable<int>('e', "experiments", "Number of experiments to perform", 4);
+    const auto& nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 100);
 
     bool success = parser.parse(argc, argv);
     if (!success)
@@ -398,11 +398,11 @@ int main(int argc, char **argv)
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
     memory::HeapArea area(th::JobSystem::get_memory_requirements());
 
-    auto *js = new th::JobSystem(area, scheme, &chan_thread);
+    auto* js = new th::JobSystem(area, scheme, &chan_thread);
     Channel::set_async(js);
 
     // Job system profiling
-    auto *session = new InstrumentationSession();
+    auto* session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 
     // clang-format off

@@ -20,15 +20,15 @@ argb32_t lighten(argb32_t color, float factor)
     return pack_ARGB(R, G, B);
 }
 
-ColorRGBA::ColorRGBA(const ColorHSLA &hsla) : ColorRGBA(to_RGBA(hsla))
+ColorRGBA::ColorRGBA(const ColorHSLA& hsla) : ColorRGBA(to_RGBA(hsla))
 {
 }
 
-ColorHSLA::ColorHSLA(const ColorRGBA &rgba) : ColorHSLA(to_HSLA(rgba))
+ColorHSLA::ColorHSLA(const ColorRGBA& rgba) : ColorHSLA(to_HSLA(rgba))
 {
 }
 
-ColorCIELab::ColorCIELab(const ColorRGBA &rgba) : ColorCIELab(to_CIELab(rgba))
+ColorCIELab::ColorCIELab(const ColorRGBA& rgba) : ColorCIELab(to_CIELab(rgba))
 {
 }
 ColorCIELab::ColorCIELab(argb32_t color) : ColorCIELab(to_CIELab(color))
@@ -59,7 +59,7 @@ float hue_to_rgb(float v1, float v2, float vH)
     return (v1);
 }
 
-ColorRGBA to_RGBA(const ColorHSLA &hsla)
+ColorRGBA to_RGBA(const ColorHSLA& hsla)
 {
     if (hsla.s == 0)
         return math::ColorRGBA(hsla.l, hsla.l, hsla.l);
@@ -81,7 +81,7 @@ ColorRGBA to_RGBA(const ColorHSLA &hsla)
     }
 }
 
-ColorHSLA to_HSLA(const ColorRGBA &rgba)
+ColorHSLA to_HSLA(const ColorRGBA& rgba)
 {
     float cmin = std::min(rgba.r, std::min(rgba.g, rgba.b));
     float cmax = std::max(rgba.r, std::max(rgba.g, rgba.b));
@@ -110,7 +110,7 @@ ColorHSLA to_HSLA(const ColorRGBA &rgba)
     return math::ColorHSLA(H, S, L, rgba.a);
 }
 
-ColorCIELab to_CIELab(const ColorRGBA &srgba)
+ColorCIELab to_CIELab(const ColorRGBA& srgba)
 {
     // Gamma expand
     float lin_r = (srgba.r < 0.04045f) ? srgba.r / 12.92f : std::pow((srgba.r + 0.055f) / 1.055f, 2.4f);

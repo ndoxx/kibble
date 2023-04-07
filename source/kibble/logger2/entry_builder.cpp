@@ -3,15 +3,15 @@
 namespace kb::log
 {
 
-EntryBuilder::EntryBuilder(const Channel &channel, int source_line, const char *source_file,
-                           const char *source_function)
+EntryBuilder::EntryBuilder(const Channel& channel, int source_line, const char* source_file,
+                           const char* source_function)
     : LogEntry{.source_location = {source_line, source_file, source_function}, .timestamp = kb::TimeBase::timestamp()},
       channel_(&channel)
 {
 }
 
-EntryBuilder::EntryBuilder(const Channel *channel, int source_line, const char *source_file,
-                           const char *source_function)
+EntryBuilder::EntryBuilder(const Channel* channel, int source_line, const char* source_file,
+                           const char* source_function)
     : LogEntry{.source_location = {source_line, source_file, source_function}, .timestamp = kb::TimeBase::timestamp()},
       channel_(channel)
 {

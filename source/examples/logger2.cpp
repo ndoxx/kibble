@@ -20,16 +20,16 @@
 
 using namespace kb::log;
 
-void show_error_and_die(kb::ap::ArgParse &parser)
+void show_error_and_die(kb::ap::ArgParse& parser)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         std::cerr << msg << std::endl;
 
     std::cout << parser.usage() << std::endl;
     exit(0);
 }
 
-void some_func(Channel &chan)
+void some_func(Channel& chan)
 {
     klog(chan).verbose("Verbose");
     klog(chan).debug("Debug");
@@ -39,7 +39,7 @@ void some_func(Channel &chan)
     klog(chan).fatal("Fatal");
 }
 
-void some_other_func(Channel &chan)
+void some_other_func(Channel& chan)
 {
     klog(chan).verbose("Verbose");
     klog(chan).debug("Debug");
@@ -49,26 +49,26 @@ void some_other_func(Channel &chan)
     klog(chan).fatal("Fatal");
 }
 
-void baz(Channel &chan)
+void baz(Channel& chan)
 {
     klog(chan).warn("Warning message does not trigger a stack trace.");
     klog(chan).error("Error message triggers a stack trace.");
 }
 
-void bar(Channel &chan)
+void bar(Channel& chan)
 {
     baz(chan);
 }
 
-void foo(Channel &chan)
+void foo(Channel& chan)
 {
     bar(chan);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     kb::ap::ArgParse parser("logger2_example", "0.1");
-    const auto &use_powerline = parser.add_variable<bool>(
+    const auto& use_powerline = parser.add_variable<bool>(
         'p', "powerline", "Use a powerline-styled terminal formatter (needs a powerline-patched font)", false);
 
     bool success = parser.parse(argc, argv);
@@ -109,10 +109,10 @@ int main(int argc, char **argv)
     kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements(), &chan_memory);
 
     // Here, we pass the "thread" logging channel to the JobSystem object, so it can log its status
-    auto *js = new kb::th::JobSystem(area, {}, &chan_thread);
+    auto* js = new kb::th::JobSystem(area, {}, &chan_thread);
 
     // Job system profiling: this will output a json file that can be viewed in the chrome tracing utility
-    auto *session = new kb::InstrumentationSession();
+    auto* session = new kb::InstrumentationSession();
     js->set_instrumentation_session(session);
 
     // Set logger in async mode by providing a JobSystem instance
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
     // We create a task on thread 2 that will spam messages every millisecond or so
     // In asynchronous mode, the logger is able to tell which thread issued the log entry
     // These messages will mention "T2" at the beginning
-    auto &&[task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [&chan_sound]() {
+    auto&& [task, future] = js->create_task({kb::th::force_worker(2), "Task"}, [&chan_sound]() {
         for (size_t ii = 0; ii < 8; ++ii)
         {
             klog(chan_sound).warn("Hello from sound thread #{}", ii);
