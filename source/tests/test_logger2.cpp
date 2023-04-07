@@ -9,7 +9,7 @@ using namespace kb::log;
 class MockSink : public Sink
 {
 public:
-    void submit(const LogEntry &e, const ChannelPresentation &p) override
+    void submit(const LogEntry& e, const ChannelPresentation& p) override
     {
         e_ = e;
         p_ = p;

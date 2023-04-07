@@ -3,10 +3,10 @@
 #include <array>
 #include <cmath>
 #include <fstream>
-#include <iostream>
 #include <functional>
 #include <glm/glm.hpp>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <sstream>
@@ -14,7 +14,7 @@
 
 using namespace kb;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;

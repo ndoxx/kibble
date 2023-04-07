@@ -19,7 +19,7 @@ std::string get_backtrace()
     char** bt_syms = backtrace_symbols(bt, bt_size);
 
     std::stringstream ss;
-    for(int ii = 1; ii < bt_size; ++ii)
+    for (int ii = 1; ii < bt_size; ++ii)
     {
         /*Dl_info  DlInfo;
         if (dladdr(bt[ii], &DlInfo) != 0)
@@ -34,8 +34,14 @@ std::string get_backtrace()
 }
 #endif
 
-void print_backtrace() { std::cout << get_backtrace(); }
+void print_backtrace()
+{
+    std::cout << get_backtrace();
+}
 
-void printf_backtrace() { printf("%s", get_backtrace().c_str()); }
+void printf_backtrace()
+{
+    printf("%s", get_backtrace().c_str());
+}
 
 } // namespace kb

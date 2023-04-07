@@ -1,19 +1,21 @@
 #include <iomanip>
 #include <iostream>
 
-#include "logger/logger.h"
 #include "logger/dispatcher.h"
+#include "logger/logger.h"
 
 namespace kb
 {
 namespace log_deprec
 {
 
-LoggerStream::StringBuffer::StringBuffer(LoggerStream& parent) : parent_(parent) {}
+LoggerStream::StringBuffer::StringBuffer(LoggerStream& parent) : parent_(parent)
+{
+}
 
 LoggerStream::StringBuffer::~StringBuffer()
 {
-    if(pbase() != pptr())
+    if (pbase() != pptr())
         submit();
 }
 
@@ -25,13 +27,14 @@ int LoggerStream::StringBuffer::sync()
 
 LoggerStream::LoggerStream()
     : std::ostream(&buffer_), buffer_(*this), stmt_({"core"_h, MsgType::NORMAL, TimeBase::TimeStamp(), 0, 0, "", ""})
-{}
+{
+}
 
 LoggerStream::~LoggerStream()
 {
-    // BUGFIX: "Double free or corruption" error if program returns and 
+    // BUGFIX: "Double free or corruption" error if program returns and
     // std::endl has not been sent to the stream
-    if(buffer_.str().size())
+    if (buffer_.str().size())
     {
         prepare("core"_h, MsgType::RAW, 0, 0, "");
         (*this) << std::endl;
@@ -40,9 +43,9 @@ LoggerStream::~LoggerStream()
 
 void LoggerStream::prepare(hash_t channel, MsgType msg_type, uint8_t severity, int code_line, const char* code_file)
 {
-    if(channel == 0)
+    if (channel == 0)
         channel = stmt_.channel;
-    if(severity == 4)
+    if (severity == 4)
         severity = stmt_.severity;
 
     stmt_.timestamp = TimeBase::timestamp();

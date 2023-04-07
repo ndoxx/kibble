@@ -18,7 +18,7 @@ static constexpr std::array<uint32_t, k_palette_sz> k_palette = {
     0xffb400, 0xffde00, 0xd7ea02, 0x85ea02, 0x20efa8, 0x20efed, 0x20bcef, 0x2073ef,
     0x6920ef, 0xad20ef, 0xe820ef, 0xef209f, 0xef209f, 0xef209f, 0xef2020, 0xbababa};
 
-std::string create_channel_tag(const std::string &short_name, math::argb32_t color)
+std::string create_channel_tag(const std::string& short_name, math::argb32_t color)
 {
     std::stringstream ss;
     ss << "\033[1;48;2;" << color.r() << ";" << color.g() << ";" << color.b() << "m"
@@ -34,16 +34,16 @@ LogDispatcher::LogDispatcher() : backtrace_on_error_(false)
 
 LogDispatcher::~LogDispatcher()
 {
-    for (auto &&[key, sink] : sinks_)
+    for (auto&& [key, sink] : sinks_)
         sink->finish();
 }
 
-void LogDispatcher::has_channel(hash_t hname, bool &result)
+void LogDispatcher::has_channel(hash_t hname, bool& result)
 {
     result = (channels_.find(hname) != channels_.end());
 }
 
-void LogDispatcher::create_channel(const std::string &name, uint8_t verbosity)
+void LogDispatcher::create_channel(const std::string& name, uint8_t verbosity)
 {
     hash_t hname = H_(name.c_str());
 
@@ -62,7 +62,7 @@ void LogDispatcher::create_channel(const std::string &name, uint8_t verbosity)
     channels_.insert(std::make_pair(H_(name.c_str()), LogChannel{verbosity, name, tag}));
 }
 
-void LogDispatcher::set_channel_tag(const std::string &name, const std::string &custom_short_name, math::argb32_t color)
+void LogDispatcher::set_channel_tag(const std::string& name, const std::string& custom_short_name, math::argb32_t color)
 {
     std::unique_lock<std::mutex> lock(mutex_);
 
@@ -71,12 +71,12 @@ void LogDispatcher::set_channel_tag(const std::string &name, const std::string &
         findit->second.tag = create_channel_tag(custom_short_name.substr(0, 3), color);
 }
 
-void LogDispatcher::attach(const std::string &sink_name, std::unique_ptr<Sink> sink,
-                           const std::vector<hash_t> &channels)
+void LogDispatcher::attach(const std::string& sink_name, std::unique_ptr<Sink> sink,
+                           const std::vector<hash_t>& channels)
 {
     hash_t hsink = H_(sink_name.c_str());
     sinks_.insert(std::make_pair(hsink, std::move(sink)));
-    auto &sink_ref = sinks_.at(hsink);
+    auto& sink_ref = sinks_.at(hsink);
 
     for (hash_t channel : channels)
     {
@@ -86,13 +86,13 @@ void LogDispatcher::attach(const std::string &sink_name, std::unique_ptr<Sink> s
     sink_ref->on_attach();
 }
 
-void LogDispatcher::attach_all(const std::string &sink_name, std::unique_ptr<Sink> sink)
+void LogDispatcher::attach_all(const std::string& sink_name, std::unique_ptr<Sink> sink)
 {
     hash_t hsink = H_(sink_name.c_str());
     sinks_.insert(std::make_pair(hsink, std::move(sink)));
-    auto &sink_ref = sinks_.at(hsink);
+    auto& sink_ref = sinks_.at(hsink);
 
-    for (auto &&[key, chan] : channels_)
+    for (auto&& [key, chan] : channels_)
     {
         sink_subscriptions_.insert(std::make_pair(key, hsink));
         sink_ref->add_channel_subscription({key, chan.name});
@@ -106,7 +106,7 @@ void LogDispatcher::set_sink_enabled(hash_t name, bool value)
     sinks_.at(name)->set_enabled(value);
 }
 
-void LogDispatcher::dispatch(const LogStatement &stmt)
+void LogDispatcher::dispatch(const LogStatement& stmt)
 {
     std::unique_lock<std::mutex> lock(mutex_);
     if (stmt.msg_type == MsgType::BANG)
@@ -123,19 +123,19 @@ void LogDispatcher::dispatch(const LogStatement &stmt)
         return;
     }
 
-    auto &chan = it->second;
+    auto& chan = it->second;
 
     // check out all sinks subscribed to current channel
-    auto &&range = sink_subscriptions_.equal_range(stmt.channel);
+    auto&& range = sink_subscriptions_.equal_range(stmt.channel);
 
     uint8_t required_verbosity = 3 - ((stmt.severity > 3) ? 3 : stmt.severity);
     if (chan.verbosity >= required_verbosity)
     {
-        for (auto &&it2 = range.first; it2 != range.second; ++it2)
+        for (auto&& it2 = range.first; it2 != range.second; ++it2)
         {
             if (sinks_.at(it2->second)->is_enabled())
             {
-                auto &&sink = sinks_.at(it2->second);
+                auto&& sink = sinks_.at(it2->second);
                 sink->send(stmt, chan);
 
                 // send backtrace if required

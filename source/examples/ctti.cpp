@@ -32,7 +32,7 @@ consteval hash_t consteval_type_id()
     return ctti::type_id<T>();
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
@@ -40,15 +40,15 @@ int main(int argc, char **argv)
     std::cout << "Working with classes directly" << std::endl;
     std::cout << D_(ctti::type_name<std::string>()) << std::endl;
     std::cout << D_(ctti::type_name<Foo>()) << std::endl;
-    std::cout << D_(ctti::type_name<const Bar &>()) << std::endl;
-    std::cout << D_(ctti::type_name<const Baz<Bar> &>()) << std::endl;
-    std::cout << D_(ctti::type_name<const Baz<Bar>::type &>()) << std::endl;
+    std::cout << D_(ctti::type_name<const Bar&>()) << std::endl;
+    std::cout << D_(ctti::type_name<const Baz<Bar>&>()) << std::endl;
+    std::cout << D_(ctti::type_name<const Baz<Bar>::type&>()) << std::endl;
     std::cout << D_(ctti::type_name<std::vector<Foo>>()) << std::endl;
 
     std::cout << D_(ctti::type_id<Bar>()) << " == " << D_("Bar"_h) << std::endl;
     std::cout << D_(ctti::type_id<Foo>()) << " == " << D_("Foo"_h) << std::endl;
-    std::cout << D_(ctti::type_id<const Foo &>()) << " == " << D_("const Foo &"_h) << std::endl;
-    std::cout << D_(ctti::type_id<const Foo *>()) << " == " << D_("const Foo *"_h) << std::endl;
+    std::cout << D_(ctti::type_id<const Foo&>()) << " == " << D_("const Foo &"_h) << std::endl;
+    std::cout << D_(ctti::type_id<const Foo*>()) << " == " << D_("const Foo *"_h) << std::endl;
 
     std::cout << "It really is compile-time: " << D_(consteval_type_id<Foo>()) << std::endl;
 

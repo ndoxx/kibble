@@ -13,7 +13,7 @@ InstrumentationSession::InstrumentationSession()
 {
 }
 
-void InstrumentationSession::push(const ProfileResult &result)
+void InstrumentationSession::push(const ProfileResult& result)
 {
     if (!enabled_)
         return;
@@ -21,16 +21,16 @@ void InstrumentationSession::push(const ProfileResult &result)
     profile_data_[result.thread_id].push_back(result);
 }
 
-void InstrumentationSession::write(const fs::path &filepath)
+void InstrumentationSession::write(const fs::path& filepath)
 {
     std::ofstream ofs(filepath);
 
     ofs << "{\"otherData\": {},\"traceEvents\":[";
 
     size_t profile_count = 0;
-    for (const auto &profiles : profile_data_)
+    for (const auto& profiles : profile_data_)
     {
-        for (const auto &profile : profiles)
+        for (const auto& profile : profiles)
         {
             if (profile_count++ > 0)
                 ofs << ",";
@@ -54,8 +54,8 @@ void InstrumentationSession::write(const fs::path &filepath)
     ofs << "]}" << std::endl;
 }
 
-InstrumentationTimer::InstrumentationTimer(InstrumentationSession *session, const std::string &name,
-                                           const std::string &category, size_t thread_id)
+InstrumentationTimer::InstrumentationTimer(InstrumentationSession* session, const std::string& name,
+                                           const std::string& category, size_t thread_id)
     : session_(session), name_(name), category_(category), thread_id_(thread_id),
       start_(std::chrono::high_resolution_clock::now())
 {

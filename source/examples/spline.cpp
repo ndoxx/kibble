@@ -9,7 +9,7 @@
 
 using namespace kb;
 
-void export_bezier(size_t nsamples, const std::string &filename)
+void export_bezier(size_t nsamples, const std::string& filename)
 {
     math::FixedBezierSpline bez(
         std::array<glm::vec2, 5>{glm::vec2{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
@@ -34,14 +34,14 @@ namespace kb::math
 template <>
 struct PointDistance<glm::vec2>
 {
-    static inline float distance(const glm::vec2 &p0, const glm::vec2 &p1)
+    static inline float distance(const glm::vec2& p0, const glm::vec2& p1)
     {
         return glm::distance(p0, p1);
     }
 };
 } // namespace kb::math
 
-void export_cspline(size_t nsamples, const std::string &filename)
+void export_cspline(size_t nsamples, const std::string& filename)
 {
     math::HermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
     std::cout << "Spline length is: " << spl.length(0.01f) << std::endl;
@@ -61,7 +61,7 @@ void export_cspline(size_t nsamples, const std::string &filename)
     }
 }
 
-void export_ucspline(size_t nsamples, const std::string &filename)
+void export_ucspline(size_t nsamples, const std::string& filename)
 {
     math::UniformHermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 64, 0.f);
     std::cout << "Spline length is: " << spl.length(0.01f) << std::endl;
@@ -81,7 +81,7 @@ void export_ucspline(size_t nsamples, const std::string &filename)
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;

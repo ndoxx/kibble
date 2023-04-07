@@ -24,27 +24,27 @@ struct ExampleEvent
 // This event can be serialized into a stream, as it defines a stream operator
 struct StreamableExampleEvent
 {
-    friend std::ostream &operator<<(std::ostream &, const StreamableExampleEvent &);
+    friend std::ostream& operator<<(std::ostream&, const StreamableExampleEvent&);
 
     uint32_t first;
     uint32_t second;
 };
 
-std::ostream &operator<<(std::ostream &stream, const StreamableExampleEvent &e)
+std::ostream& operator<<(std::ostream& stream, const StreamableExampleEvent& e)
 {
     stream << "{first: " << e.first << ", second: " << e.second << '}';
     return stream;
 }
 
 // Free function to handle ExampleEvent events
-bool handle_event(const ExampleEvent &e)
+bool handle_event(const ExampleEvent& e)
 {
     std::cout << "handle_event(): " << e.first << ' ' << e.second << std::endl;
     return false;
 }
 
 // Free function to handle StreamableExampleEvent events
-bool handle_streamable_event(const StreamableExampleEvent &e)
+bool handle_streamable_event(const StreamableExampleEvent& e)
 {
     std::cout << "handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
     return false;
@@ -53,26 +53,26 @@ bool handle_streamable_event(const StreamableExampleEvent &e)
 class ExampleHandler
 {
 public:
-    ExampleHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    ExampleHandler(const kb::log::Channel& log_channel) : log_channel_(log_channel)
     {
     }
 
     // Member function to handle StreamableExampleEvent events
-    bool handle_streamable_event(const StreamableExampleEvent &e) const
+    bool handle_streamable_event(const StreamableExampleEvent& e) const
     {
         klog(log_channel_).uid("ExampleHandler::handle_streamable_event()").info("{} {}", e.first, e.second);
         return false;
     }
 
     // Member function to handle ExampleEvent events
-    bool handle_event(const ExampleEvent &e)
+    bool handle_event(const ExampleEvent& e)
     {
         klog(log_channel_).uid("ExampleHandler::handle_event()").info("{} {}", e.first, e.second);
         return false;
     }
 
 private:
-    const kb::log::Channel &log_channel_;
+    const kb::log::Channel& log_channel_;
 };
 
 struct PokeEvent
@@ -83,41 +83,41 @@ class BasePokeHandler
 {
 public:
     virtual ~BasePokeHandler() = default;
-    virtual bool handle_poke(const PokeEvent &) = 0;
+    virtual bool handle_poke(const PokeEvent&) = 0;
 };
 
 class DogHandler : public BasePokeHandler
 {
 public:
-    DogHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    DogHandler(const kb::log::Channel& log_channel) : log_channel_(log_channel)
     {
     }
 
-    bool handle_poke(const PokeEvent &) override
+    bool handle_poke(const PokeEvent&) override
     {
         klog(log_channel_).uid("DogHandler").info("Woof!");
         return false;
     }
 
 private:
-    const kb::log::Channel &log_channel_;
+    const kb::log::Channel& log_channel_;
 };
 
 class CatHandler : public BasePokeHandler
 {
 public:
-    CatHandler(const kb::log::Channel &log_channel) : log_channel_(log_channel)
+    CatHandler(const kb::log::Channel& log_channel) : log_channel_(log_channel)
     {
     }
 
-    bool handle_poke(const PokeEvent &) override
+    bool handle_poke(const PokeEvent&) override
     {
         klog(log_channel_).uid("CatHandler").info("Meow.");
         return false;
     }
 
 private:
-    const kb::log::Channel &log_channel_;
+    const kb::log::Channel& log_channel_;
 };
 
 auto square(int x) -> int
@@ -130,7 +130,7 @@ auto cube(int x) -> int
     return x * x * x;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;

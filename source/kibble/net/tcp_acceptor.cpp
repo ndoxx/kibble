@@ -13,7 +13,7 @@ namespace kb
 namespace net
 {
 
-TCPAcceptor::TCPAcceptor(uint16_t port, const char *address)
+TCPAcceptor::TCPAcceptor(uint16_t port, const char* address)
     : lfd_(0), port_(port), listening_(false), address_(address)
 {
 }
@@ -45,7 +45,7 @@ bool TCPAcceptor::start()
     int optval = 1;
     setsockopt(lfd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
-    int result = bind(lfd_, reinterpret_cast<sockaddr *>(&address), sizeof(address));
+    int result = bind(lfd_, reinterpret_cast<sockaddr*>(&address), sizeof(address));
     if (result != 0)
     {
         perror("bind() failed");
@@ -63,7 +63,7 @@ bool TCPAcceptor::start()
     return true;
 }
 
-TCPStream *TCPAcceptor::accept()
+TCPStream* TCPAcceptor::accept()
 {
     if (!listening_)
         return nullptr;
@@ -71,7 +71,7 @@ TCPStream *TCPAcceptor::accept()
     sockaddr_in address;
     socklen_t len = sizeof(address);
     memset(&address, 0, sizeof(address));
-    int fd = ::accept(lfd_, reinterpret_cast<sockaddr *>(&address), &len);
+    int fd = ::accept(lfd_, reinterpret_cast<sockaddr*>(&address), &len);
     if (fd < 0)
     {
         perror("accept() failed");

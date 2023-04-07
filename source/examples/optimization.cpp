@@ -16,7 +16,7 @@ struct ControlTraits<vec2>
     {
         return 2;
     }
-    static void normalize(vec2 &vec)
+    static void normalize(vec2& vec)
     {
         vec.normalize();
     }
@@ -27,11 +27,11 @@ struct OptimizationProblem
 {
     std::string name;
     kb::opt::DescentParameters<vec2> params;
-    std::function<float(const vec2 &)> loss;
+    std::function<float(const vec2&)> loss;
     vec2 expected_control;
 };
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
      */
     problems.push_back({"(convex) oblate paraboloid function",
                         {vec2(1.f, 1.f), 1.f, 0.5f, 0.f, 0.0005f},
-                        [](const vec2 &u) {
+                        [](const vec2& u) {
                             // J(x,y) = x^2 + xy + y^2
                             return u.x() * u.x() + u.x() * u.y() + u.y() * u.y();
                         },
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
      */
     problems.push_back({"(non-convex) Himmelblau's function",
                         {vec2(5.f, -2.f), 0.01f, 0.005f, 0.f, 1e-3f},
-                        [](const vec2 &u) {
+                        [](const vec2& u) {
                             // J(x,y) = (x^2+y-11)^2 + (x+y^2-7)^2
                             float A = (u.x() * u.x() + u.y() - 11);
                             float B = (u.x() + u.y() * u.y() - 7);
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
      */
     problems.push_back({"(non-convex) Rosenbrock's function",
                         {vec2(1.5f, 1.5f), 0.001f, 0.0005f, 0.f, 1e-4f},
-                        [](const vec2 &u) {
+                        [](const vec2& u) {
                             // J(x,y) = (a-x)^2 + b(y-x^2)^2
                             constexpr float a = 1.f;
                             constexpr float b = 100.f;
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     opt::StochasticDescentOptimizer<vec2> optimizer(42);
 
     // Every 5 iterations, print the state
-    optimizer.set_iteration_callback([](size_t iter, const vec2 &control, float filtered_loss) {
+    optimizer.set_iteration_callback([](size_t iter, const vec2& control, float filtered_loss) {
         if (iter % 10 == 0)
         {
             std::cout << "Iteration #" << iter << ": control=" << control << " mean loss=" << filtered_loss
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     });
 
     // Solve each problem
-    for (const auto &problem : problems)
+    for (const auto& problem : problems)
     {
         std::cout << "Minimizing the " << problem.name << " starting at " << problem.params.initial_control << '.'
                   << std::endl;

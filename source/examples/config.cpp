@@ -10,6 +10,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <fmt/std.h>
 #include <iterator>
 #include <numeric>
 #include <random>
@@ -18,23 +19,22 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include <fmt/std.h>
 
 namespace fs = std::filesystem;
 
 using namespace kb;
 using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse &parser, const Channel& chan)
+void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         klog(chan).warn(msg);
 
     klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     chan_settings.attach_sink(console_sink);
 
     ap::ArgParse parser("nuclear", "0.1");
-    const auto &cfg_path_str = parser.add_positional<std::string>("CONFIG_PATH", "Path to the config directory");
+    const auto& cfg_path_str = parser.add_positional<std::string>("CONFIG_PATH", "Path to the config directory");
     bool success = parser.parse(argc, argv);
     if (!success)
         show_error_and_die(parser, chan);
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     }
 
     cfg::Settings settings(&chan_settings);
-    for (auto &file : fs::directory_iterator(cfg_path))
+    for (auto& file : fs::directory_iterator(cfg_path))
     {
         if (fs::is_regular_file(file) && !file.path().extension().string().compare(".toml"))
             settings.load_toml(file);

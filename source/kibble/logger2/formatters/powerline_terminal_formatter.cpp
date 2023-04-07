@@ -22,7 +22,7 @@ inline auto to_rgb(kb::math::argb32_t color)
     return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
 }
 
-void PowerlineTerminalFormatter::print(const LogEntry &e, const ChannelPresentation &p)
+void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentation& p)
 {
     if (e.raw_text)
         return fmt::print("{}\n", e.message);

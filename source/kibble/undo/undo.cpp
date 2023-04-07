@@ -7,7 +7,7 @@ namespace kb
 namespace undo
 {
 
-UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) noexcept
+UndoCommand::UndoCommand(const std::string& action_text, ssize_t merge_id) noexcept
     : merge_id_(merge_id), action_text_(action_text)
 {
 }
@@ -15,17 +15,17 @@ UndoCommand::UndoCommand(const std::string &action_text, ssize_t merge_id) noexc
 void UndoCommand::undo()
 {
     // Call children's undo() in reverse order
-    std::for_each(children_.rbegin(), children_.rend(), [](const auto &child) { child->undo(); });
+    std::for_each(children_.rbegin(), children_.rend(), [](const auto& child) { child->undo(); });
 }
 
 void UndoCommand::redo()
 {
     // Call children's redo() in order
-    for (const auto &child : children_)
+    for (const auto& child : children_)
         child->redo();
 }
 
-bool UndoCommand::merge_with(const UndoCommand &)
+bool UndoCommand::merge_with(const UndoCommand&)
 {
     return false;
 }
@@ -70,7 +70,7 @@ void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
             {
                 // cmd was merged with previous command, get rid of it
                 // merge successful -> head does not move (we just "edited" the previous command)
-                auto *raw = cmd.release();
+                auto* raw = cmd.release();
                 delete raw;
             }
         }
@@ -173,8 +173,8 @@ void UndoStack::set_head(size_t index)
     // Can't use lambda capture because operands would be of different types and could not be used
     // in the ternary operator. But closure type of lambda with no capture has non-explicit
     // conversion operator to func ptr...
-    auto advance = (index < head_) ? ([](UndoStack *stk) { stk->undo_internal(); })
-                                   : ([](UndoStack *stk) { stk->redo_internal(); });
+    auto advance = (index < head_) ? ([](UndoStack* stk) { stk->undo_internal(); })
+                                   : ([](UndoStack* stk) { stk->redo_internal(); });
 
     snapshot();
     while (head_ != index)
@@ -230,7 +230,7 @@ bool UndoGroup::add_stack(hash_t stack_name)
     if (result.second)
     {
         // Forward stack signals to this level
-        auto &stack = result.first->second;
+        auto& stack = result.first->second;
         stack.on_head_change(on_head_change_);
         stack.on_clean_change(on_clean_change_);
         stack.on_can_undo_change(on_can_undo_change_);
@@ -307,28 +307,28 @@ void UndoGroup::on_head_change(std::function<void(size_t)> func)
 {
     // Set functor and propagate to all stacks
     on_head_change_ = func;
-    for (auto &&[name, stack] : stacks_)
+    for (auto&& [name, stack] : stacks_)
         stack.on_head_change(on_head_change_);
 }
 
 void UndoGroup::on_clean_change(std::function<void(bool)> func)
 {
     on_clean_change_ = func;
-    for (auto &&[name, stack] : stacks_)
+    for (auto&& [name, stack] : stacks_)
         stack.on_clean_change(on_clean_change_);
 }
 
 void UndoGroup::on_can_undo_change(std::function<void(bool)> func)
 {
     on_can_undo_change_ = func;
-    for (auto &&[name, stack] : stacks_)
+    for (auto&& [name, stack] : stacks_)
         stack.on_can_undo_change(on_can_undo_change_);
 }
 
 void UndoGroup::on_can_redo_change(std::function<void(bool)> func)
 {
     on_can_redo_change_ = func;
-    for (auto &&[name, stack] : stacks_)
+    for (auto&& [name, stack] : stacks_)
         stack.on_can_redo_change(on_can_redo_change_);
 }
 

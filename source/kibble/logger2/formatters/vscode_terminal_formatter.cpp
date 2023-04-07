@@ -31,7 +31,7 @@ inline auto to_rgb(math::argb32_t color)
     return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
 }
 
-inline std::string format_uid(const std::string &input)
+inline std::string format_uid(const std::string& input)
 {
     if (input.size() == 0)
         return "";
@@ -39,7 +39,7 @@ inline std::string format_uid(const std::string &input)
         return fmt::format("[{}] ", fmt::styled(input, fmt::emphasis::italic));
 }
 
-void VSCodeTerminalFormatter::print(const LogEntry &e, const ChannelPresentation &chan)
+void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation& chan)
 {
     if (e.raw_text)
         return fmt::print("{}\n", e.message);

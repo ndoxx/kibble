@@ -18,12 +18,12 @@ struct TextBuffer
 class AppendCommand : public UndoCommand
 {
 public:
-    AppendCommand(TextBuffer &buffer, const std::string &text)
+    AppendCommand(TextBuffer& buffer, const std::string& text)
         : UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(text)
     {
     }
 
-    AppendCommand(TextBuffer &buffer, char c)
+    AppendCommand(TextBuffer& buffer, char c)
         : UndoCommand("Append text in text buffer", 0), buffer_(buffer), text_(1, c)
     {
     }
@@ -38,9 +38,9 @@ public:
         buffer_.text.erase(buffer_.text.length() - text_.length());
     }
 
-    bool merge_with(const UndoCommand &cmd) override final
+    bool merge_with(const UndoCommand& cmd) override final
     {
-        const auto &other_text = static_cast<const AppendCommand &>(cmd).text_;
+        const auto& other_text = static_cast<const AppendCommand&>(cmd).text_;
         if (text_.compare(" ") != 0 && other_text.compare(" ") != 0)
         {
             text_ += other_text;
@@ -50,11 +50,11 @@ public:
     }
 
 private:
-    TextBuffer &buffer_;
+    TextBuffer& buffer_;
     std::string text_;
 };
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;

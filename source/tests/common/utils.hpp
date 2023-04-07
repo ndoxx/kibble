@@ -19,12 +19,15 @@ static std::vector<std::string> tokenize(const char* data, size_t size)
     return result;
 }
 
-inline std::vector<std::string> tokenize(const std::string& str) { return tokenize(str.data(), str.size()); }
+inline std::vector<std::string> tokenize(const std::string& str)
+{
+    return tokenize(str.data(), str.size());
+}
 
 [[maybe_unused]] static std::vector<const char*> make_argv(const std::vector<std::string>& arguments)
 {
     std::vector<const char*> argv;
-    for(const auto& arg : arguments)
+    for (const auto& arg : arguments)
         argv.push_back(static_cast<const char*>(arg.data()));
     argv.push_back(nullptr);
     return argv;

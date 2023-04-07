@@ -8,13 +8,13 @@ namespace kb
 namespace internal_deleter
 {
 template <>
-void Deleter<backward::StackTrace>::operator()(backward::StackTrace *p)
+void Deleter<backward::StackTrace>::operator()(backward::StackTrace* p)
 {
     delete p;
 }
 } // namespace internal_deleter
 
-StackTrace::StackTrace(size_t skip): skip_(skip)
+StackTrace::StackTrace(size_t skip) : skip_(skip)
 {
     // [[maybe_unused]] backward::TraceResolver unused__; // see https://github.com/bombela/backward-cpp/issues/206
     ptrace_ = make_internal<backward::StackTrace>();
@@ -22,11 +22,11 @@ StackTrace::StackTrace(size_t skip): skip_(skip)
     ptrace_->skip_n_firsts(skip_);
 }
 
-StackTrace::StackTrace(const StackTrace &other) : ptrace_(make_internal<backward::StackTrace>(*other.ptrace_))
+StackTrace::StackTrace(const StackTrace& other) : ptrace_(make_internal<backward::StackTrace>(*other.ptrace_))
 {
 }
 
-StackTrace &StackTrace::operator=(const StackTrace &other)
+StackTrace& StackTrace::operator=(const StackTrace& other)
 {
     ptrace_ = make_internal<backward::StackTrace>(*other.ptrace_);
     return *this;

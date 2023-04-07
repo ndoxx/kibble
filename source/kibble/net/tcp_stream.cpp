@@ -12,11 +12,11 @@ namespace net
 
 constexpr unsigned int k_max_buf_len = 4096;
 
-TCPStream::TCPStream(int fd, void *address_in) : fd_(fd)
+TCPStream::TCPStream(int fd, void* address_in) : fd_(fd)
 {
-    sockaddr_in *address = static_cast<sockaddr_in *>(address_in);
+    sockaddr_in* address = static_cast<sockaddr_in*>(address_in);
     char ip[50];
-    inet_ntop(PF_INET, static_cast<in_addr_t *>(&(address->sin_addr.s_addr)), ip, sizeof(ip) - 1);
+    inet_ntop(PF_INET, static_cast<in_addr_t*>(&(address->sin_addr.s_addr)), ip, sizeof(ip) - 1);
     peer_ip_ = ip;
     peer_port_ = ntohs(address->sin_port);
 }
@@ -26,17 +26,17 @@ TCPStream::~TCPStream()
     close(fd_);
 }
 
-ssize_t TCPStream::send(const char *buffer, size_t len)
+ssize_t TCPStream::send(const char* buffer, size_t len)
 {
     return write(fd_, buffer, len);
 }
 
-ssize_t TCPStream::receive(char *buffer, size_t len)
+ssize_t TCPStream::receive(char* buffer, size_t len)
 {
     return read(fd_, buffer, len);
 }
 
-void TCPStream::receive(std::string &msg)
+void TCPStream::receive(std::string& msg)
 {
     std::vector<char> buffer(k_max_buf_len);
     ssize_t nbytes = 0;

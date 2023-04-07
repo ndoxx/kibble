@@ -8,7 +8,7 @@
 using namespace kb;
 
 // The instrumentation session is made global for ease of use, but it's not mandatory.
-InstrumentationSession *session = nullptr;
+InstrumentationSession* session = nullptr;
 
 // The following macros simplify the declaration of an instrumentation timer.
 // The token pasting stuff allows to declare multiple timers with
@@ -68,7 +68,7 @@ void test_func_02()
  *
  * @return int
  */
-int main(int, char **)
+int main(int, char**)
 {
     // Create an instrumentation session
     session = new InstrumentationSession();

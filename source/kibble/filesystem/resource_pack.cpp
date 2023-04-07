@@ -24,7 +24,7 @@ namespace kb::kfs
 class PackInputStreambuf : public std::streambuf
 {
 public:
-    PackInputStreambuf(const fs::path &filepath, const PackLocalEntry &entry);
+    PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry);
     virtual ~PackInputStreambuf() = default;
 
 protected:
@@ -37,7 +37,7 @@ private:
     std::array<char, 1024> data_in_;
 };
 
-PackInputStreambuf::PackInputStreambuf(const fs::path &filepath, const PackLocalEntry &entry)
+PackInputStreambuf::PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry)
     : entry_(entry), remaining_(entry.size)
 {
     buf_.open(filepath, std::ios::in | std::ios::binary);
@@ -60,14 +60,14 @@ std::streambuf::int_type PackInputStreambuf::underflow()
 class PackInputStream : public std::istream
 {
 public:
-    PackInputStream(const fs::path &filepath, const PackLocalEntry &entry);
+    PackInputStream(const fs::path& filepath, const PackLocalEntry& entry);
     virtual ~PackInputStream() = default;
 
 private:
     PackInputStreambuf buf_;
 };
 
-PackInputStream::PackInputStream(const fs::path &filepath, const PackLocalEntry &entry)
+PackInputStream::PackInputStream(const fs::path& filepath, const PackLocalEntry& entry)
     : std::istream(nullptr), buf_(filepath, entry)
 {
     init(&buf_);
@@ -81,21 +81,21 @@ struct PAKHeader
     uint32_t entry_count;   // Number of file entries in this pack
 };
 
-void PackLocalEntry::write(std::ostream &stream)
+void PackLocalEntry::write(std::ostream& stream)
 {
     uint32_t path_len = uint32_t(path.size());
-    stream.write(reinterpret_cast<const char *>(&offset), sizeof(offset));
-    stream.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    stream.write(reinterpret_cast<const char *>(&path_len), sizeof(path_len));
-    stream.write(reinterpret_cast<const char *>(path.data()), long(path.size()));
+    stream.write(reinterpret_cast<const char*>(&offset), sizeof(offset));
+    stream.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    stream.write(reinterpret_cast<const char*>(&path_len), sizeof(path_len));
+    stream.write(reinterpret_cast<const char*>(path.data()), long(path.size()));
 }
 
-void PackLocalEntry::read(std::istream &stream)
+void PackLocalEntry::read(std::istream& stream)
 {
     uint32_t path_len = 0;
-    stream.read(reinterpret_cast<char *>(&offset), sizeof(offset));
-    stream.read(reinterpret_cast<char *>(&size), sizeof(size));
-    stream.read(reinterpret_cast<char *>(&path_len), sizeof(path_len));
+    stream.read(reinterpret_cast<char*>(&offset), sizeof(offset));
+    stream.read(reinterpret_cast<char*>(&size), sizeof(size));
+    stream.read(reinterpret_cast<char*>(&path_len), sizeof(path_len));
     path.resize(path_len);
     stream.read(path.data(), long(path_len));
 }
@@ -104,7 +104,7 @@ void PackLocalEntry::read(std::istream &stream)
 #define KPAK_VERSION_MAJOR 0
 #define KPAK_VERSION_MINOR 1
 
-std::set<hash_t> parse_kpakignore(const fs::path &filepath, const kb::log::Channel *log_channel)
+std::set<hash_t> parse_kpakignore(const fs::path& filepath, const kb::log::Channel* log_channel)
 {
     K_ASSERT(fs::is_regular_file(filepath), "kpakignore is not a file.", log_channel).watch(filepath);
     fs::path base_path = filepath.parent_path();
@@ -135,8 +135,8 @@ std::set<hash_t> parse_kpakignore(const fs::path &filepath, const kb::log::Chann
     return result;
 }
 
-bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_path,
-                              const kb::log::Channel *log_channel)
+bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_path,
+                              const kb::log::Channel* log_channel)
 {
     if (!fs::exists(dir_path))
     {
@@ -162,7 +162,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     std::uintmax_t max_file_size = 0;
 
     // * Explore directory recursively and build the pack list
-    for (auto &entry : fs::recursive_directory_iterator(dir_path))
+    for (auto& entry : fs::recursive_directory_iterator(dir_path))
     {
         if (entry.is_regular_file())
         {
@@ -187,10 +187,10 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
 
     // Write header
     std::ofstream ofs(archive_path, std::ios::binary);
-    ofs.write(reinterpret_cast<const char *>(&h), sizeof(PAKHeader));
+    ofs.write(reinterpret_cast<const char*>(&h), sizeof(PAKHeader));
 
     // Write index
-    for (auto &entry : entries)
+    for (auto& entry : entries)
     {
         entry.offset = uint32_t(current_offset);
         entry.write(ofs);
@@ -201,7 +201,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     size_t progress = 0;
     std::vector<char> databuf;
     databuf.reserve(size_t(max_file_size));
-    for (const auto &entry : entries)
+    for (const auto& entry : entries)
     {
         size_t progess_percent = size_t(std::round(100.f * float(++progress) / float(entries.size())));
 
@@ -218,7 +218,7 @@ bool PackFile::pack_directory(const fs::path &dir_path, const fs::path &archive_
     return true;
 }
 
-PackFile::PackFile(const fs::path &filepath, const kb::log::Channel *log_channel)
+PackFile::PackFile(const fs::path& filepath, const kb::log::Channel* log_channel)
     : filepath_(filepath), log_channel_(log_channel)
 {
     K_ASSERT(fs::exists(filepath_), "Pack file does not exist.", log_channel_).watch(filepath_);
@@ -226,7 +226,7 @@ PackFile::PackFile(const fs::path &filepath, const kb::log::Channel *log_channel
 
     // Read header & sanity check
     PAKHeader h;
-    ifs.read(reinterpret_cast<char *>(&h), sizeof(PAKHeader));
+    ifs.read(reinterpret_cast<char*>(&h), sizeof(PAKHeader));
     K_ASSERT(h.magic == KPAK_MAGIC, "Invalid KPAK file: magic number mismatch.", log_channel_).watch(h.magic);
     K_ASSERT(h.version_major == KPAK_VERSION_MAJOR, "Invalid KPAK file: version (major) mismatch.", log_channel_)
         .watch(h.version_major);
@@ -242,7 +242,7 @@ PackFile::PackFile(const fs::path &filepath, const kb::log::Channel *log_channel
     }
 }
 
-std::shared_ptr<std::istream> PackFile::get_input_stream(const PackLocalEntry &entry) const
+std::shared_ptr<std::istream> PackFile::get_input_stream(const PackLocalEntry& entry) const
 {
     return std::make_shared<PackInputStream>(filepath_, entry);
 }

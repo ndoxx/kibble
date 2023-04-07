@@ -8,7 +8,7 @@
 namespace kb::log
 {
 
-th::JobSystem *Channel::s_js_ = nullptr;
+th::JobSystem* Channel::s_js_ = nullptr;
 uint32_t Channel::s_worker_ = 1;
 bool Channel::s_exit_on_fatal_error_ = true;
 bool Channel::s_intercept_signals_ = false;
@@ -23,7 +23,7 @@ void panic_handler(int signal)
 }
 } // namespace
 
-Channel::Channel(Severity level, const std::string &full_name, const std::string &short_name, math::argb32_t tag_color)
+Channel::Channel(Severity level, const std::string& full_name, const std::string& short_name, math::argb32_t tag_color)
     : presentation_{full_name, short_name, tag_color}, level_(level)
 {
 }
@@ -39,7 +39,7 @@ void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
     policies_.push_back(ppolicy);
 }
 
-void Channel::submit(LogEntry &&entry) const
+void Channel::submit(LogEntry&& entry) const
 {
     // Check if the severity level is high enough
     if (entry.severity > level_)
@@ -48,14 +48,14 @@ void Channel::submit(LogEntry &&entry) const
     bool fatal = entry.severity == Severity::Fatal;
 
     // Check compliance with policies
-    for (const auto &ppol : policies_)
+    for (const auto& ppol : policies_)
         if (!ppol->transform_filter(entry))
             return;
 
     // Send to all attached sinks
     if (s_js_ == nullptr)
     {
-        for (auto &psink : sinks_)
+        for (auto& psink : sinks_)
             psink->submit_lock(entry, presentation_);
     }
     else
@@ -65,8 +65,8 @@ void Channel::submit(LogEntry &&entry) const
         th::JobMetadata meta(th::force_worker(s_worker_), "Log");
         meta.essential__ = true;
         // Schedule logging task. Log entry is moved.
-        auto &&[task, future] = s_js_->create_task(meta, [this, entry = std::move(entry)]() {
-            for (auto &psink : sinks_)
+        auto&& [task, future] = s_js_->create_task(meta, [this, entry = std::move(entry)]() {
+            for (auto& psink : sinks_)
                 psink->submit(entry, presentation_);
         });
         task.schedule();
@@ -77,7 +77,7 @@ void Channel::submit(LogEntry &&entry) const
         if (s_js_)
             s_js_->shutdown();
 
-        for (auto &psink : sinks_)
+        for (auto& psink : sinks_)
             psink->flush();
 
         exit(0);
@@ -86,11 +86,11 @@ void Channel::submit(LogEntry &&entry) const
 
 void Channel::flush() const
 {
-    for (const auto &psink : sinks_)
+    for (const auto& psink : sinks_)
         psink->flush();
 }
 
-void Channel::set_async(th::JobSystem *js, uint32_t worker)
+void Channel::set_async(th::JobSystem* js, uint32_t worker)
 {
     s_js_ = js;
     s_worker_ = worker;

@@ -15,7 +15,7 @@ namespace ap
 struct ParsingException : public std::exception
 {
     std::string message_;
-    const char *what() const noexcept override
+    const char* what() const noexcept override
     {
         return message_.c_str();
     }
@@ -23,7 +23,7 @@ struct ParsingException : public std::exception
 
 struct InvalidOperandException : public ParsingException
 {
-    InvalidOperandException(const std::string &argument, const std::string &value)
+    InvalidOperandException(const std::string& argument, const std::string& value)
     {
         std::stringstream ss;
         ss << "Invalid operand: \"" << value << "\" for argument: " << argument;
@@ -33,7 +33,7 @@ struct InvalidOperandException : public ParsingException
 
 struct UnknownArgumentException : public ParsingException
 {
-    UnknownArgumentException(const std::string &argument)
+    UnknownArgumentException(const std::string& argument)
     {
         std::stringstream ss;
         ss << "Unknown argument: " << argument;
@@ -43,7 +43,7 @@ struct UnknownArgumentException : public ParsingException
 
 struct SupernumeraryArgumentException : public ParsingException
 {
-    SupernumeraryArgumentException(const std::string &argument)
+    SupernumeraryArgumentException(const std::string& argument)
     {
         std::stringstream ss;
         ss << "Supernumerary argument: " << argument;
@@ -53,7 +53,7 @@ struct SupernumeraryArgumentException : public ParsingException
 
 struct MissingOperandException : public ParsingException
 {
-    MissingOperandException(const std::string &argument)
+    MissingOperandException(const std::string& argument)
     {
         std::stringstream ss;
         ss << "Missing operand after argument: " << argument;
@@ -76,7 +76,7 @@ const std::map<ArgType, std::string> k_type_str = {
     {ArgType::VEC_STRING, "string,..."},
 };
 
-ArgParse::ArgParse(const std::string &program_name, const std::string &ver_string)
+ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
     : ver_string_(ver_string), program_name_(program_name)
 {
     // Add special commands
@@ -96,13 +96,13 @@ ArgParse::ArgParse(const std::string &program_name, const std::string &ver_strin
 
 ArgParse::~ArgParse()
 {
-    for (auto &&[key, parg] : arguments_)
+    for (auto&& [key, parg] : arguments_)
         delete parg;
-    for (auto *parg : positionals_)
+    for (auto* parg : positionals_)
         delete parg;
 }
 
-void ArgParse::set_flags_exclusive(const std::set<char> &exclusive_set)
+void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
 {
     for (char key : exclusive_set)
     {
@@ -115,7 +115,7 @@ void ArgParse::set_flags_exclusive(const std::set<char> &exclusive_set)
     exclusive_flags_.push_back(exclusive_set);
 }
 
-void ArgParse::set_variables_exclusive(const std::set<char> &exclusive_set)
+void ArgParse::set_variables_exclusive(const std::set<char>& exclusive_set)
 {
     for (char key : exclusive_set)
     {
@@ -128,7 +128,7 @@ void ArgParse::set_variables_exclusive(const std::set<char> &exclusive_set)
     exclusive_variables_.push_back(exclusive_set);
 }
 
-bool ArgParse::parse(int argc, char **argv) noexcept
+bool ArgParse::parse(int argc, char** argv) noexcept
 {
     assert(argc > 0 && "Arg count should be a strictly positive integer.");
     valid_state_ = true;
@@ -181,7 +181,7 @@ bool ArgParse::parse(int argc, char **argv) noexcept
                         {
                             opt_it->second->cast(argv[ii + 1]);
                         }
-                        catch (std::invalid_argument &e)
+                        catch (std::invalid_argument& e)
                         {
                             throw InvalidOperandException(std::string("--") + opt_it->second->full_name, argv[ii + 1]);
                         }
@@ -205,7 +205,7 @@ bool ArgParse::parse(int argc, char **argv) noexcept
             }
         }
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         log_error(e.what());
         valid_state_ = false;
@@ -233,8 +233,8 @@ void ArgParse::set_dependency(char key, char req)
 bool ArgParse::compatible(char A, char B) const
 {
     // If these two arguments have an exclusive set in common, they are not compatible
-    const auto *arg_A = arguments_.at(A);
-    const auto *arg_B = arguments_.at(B);
+    const auto* arg_A = arguments_.at(A);
+    const auto* arg_B = arguments_.at(B);
     std::set<char> intersection;
 
     std::set_intersection(arg_A->exclusive_sets.begin(), arg_A->exclusive_sets.end(), arg_B->exclusive_sets.begin(),
@@ -242,7 +242,7 @@ bool ArgParse::compatible(char A, char B) const
     return (intersection.size() == 0);
 }
 
-char ArgParse::try_set_flag_group(const std::string &group) noexcept
+char ArgParse::try_set_flag_group(const std::string& group) noexcept
 {
     for (size_t ii = 1; ii < group.size(); ++ii)
     {
@@ -262,7 +262,7 @@ char ArgParse::try_set_flag_group(const std::string &group) noexcept
     return 0;
 }
 
-bool ArgParse::try_set_positional(size_t &current_positional, const std::string &arg) noexcept(false)
+bool ArgParse::try_set_positional(size_t& current_positional, const std::string& arg) noexcept(false)
 {
     if (current_positional < positionals_.size())
     {
@@ -270,7 +270,7 @@ bool ArgParse::try_set_positional(size_t &current_positional, const std::string 
         {
             positionals_[current_positional]->cast(arg);
         }
-        catch (std::invalid_argument &e)
+        catch (std::invalid_argument& e)
         {
             throw InvalidOperandException(std::string("--") + positionals_[current_positional]->full_name, arg);
         }
@@ -284,7 +284,7 @@ bool ArgParse::try_set_positional(size_t &current_positional, const std::string 
 bool ArgParse::check_positional_requirements() noexcept
 {
     // * Check that all positional arguments are set
-    for (auto *parg : positionals_)
+    for (auto* parg : positionals_)
     {
         if (!parg->is_set)
         {
@@ -302,13 +302,13 @@ bool ArgParse::check_exclusivity_constraints() noexcept
 {
     // * Check flags exclusivity constraints
     // First, get the set of all active flags
-    if (!check_intersection(get_active([](AbstractOption *parg) { return (parg->underlying_type() == ArgType::BOOL); }),
+    if (!check_intersection(get_active([](AbstractOption* parg) { return (parg->underlying_type() == ArgType::BOOL); }),
                             exclusive_flags_))
         return false;
 
     // * Check variables exclusivity constraints
     // First, get the set of all active variables
-    if (!check_intersection(get_active([](AbstractOption *parg) { return (parg->underlying_type() != ArgType::BOOL); }),
+    if (!check_intersection(get_active([](AbstractOption* parg) { return (parg->underlying_type() != ArgType::BOOL); }),
                             exclusive_variables_))
         return false;
 
@@ -318,7 +318,7 @@ bool ArgParse::check_exclusivity_constraints() noexcept
 bool ArgParse::check_dependencies() noexcept
 {
     // All dependencies of all arguments in the active set must be in the active set
-    auto active_set = get_active([](AbstractOption *) { return true; });
+    auto active_set = get_active([](AbstractOption*) { return true; });
     std::set<char> required, difference;
     for (char key : active_set)
         if (char dep = arguments_.at(key)->dependency)
@@ -346,10 +346,10 @@ bool ArgParse::check_dependencies() noexcept
     return true;
 }
 
-std::set<char> ArgParse::get_active(std::function<bool(AbstractOption *)> filter) const noexcept
+std::set<char> ArgParse::get_active(std::function<bool(AbstractOption*)> filter) const noexcept
 {
     std::set<char> active_set;
-    for (auto &&[key, parg] : arguments_)
+    for (auto&& [key, parg] : arguments_)
         if (filter(parg))
             if (parg->is_set)
                 active_set.insert(key);
@@ -357,11 +357,11 @@ std::set<char> ArgParse::get_active(std::function<bool(AbstractOption *)> filter
     return active_set;
 }
 
-bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>> &exclusives) noexcept
+bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept
 {
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
-    for (const auto &ex_set : exclusives)
+    for (const auto& ex_set : exclusives)
     {
         std::set<char> intersection;
 
@@ -392,9 +392,9 @@ void ArgParse::make_usage_string()
     // Gather all unconstrained flags & variables
     std::set<char> compat_flags;
     std::set<char> compat_vars;
-    std::vector<std::pair<AbstractOption *, AbstractOption *>> args_with_deps;
+    std::vector<std::pair<AbstractOption*, AbstractOption*>> args_with_deps;
     std::set<char> blacklist = {'h', 'v'}; // Exclude -h and -v from synopsis
-    for (auto &&[key, parg] : arguments_)
+    for (auto&& [key, parg] : arguments_)
     {
         if (parg->dependency != 0)
         {
@@ -433,7 +433,7 @@ void ArgParse::make_usage_string()
     }
 
     // Display exclusive flags
-    for (const auto &ex_set : exclusive_flags_)
+    for (const auto& ex_set : exclusive_flags_)
     {
         size_t count = 0;
         ss << " [";
@@ -449,18 +449,18 @@ void ArgParse::make_usage_string()
     // Display nonexclusive variables
     for (char key : compat_vars)
     {
-        const auto *parg = arguments_.at(key);
+        const auto* parg = arguments_.at(key);
         ss << " [-" << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << ">]";
     }
 
     // Display exclusive variables
-    for (const auto &ex_set : exclusive_variables_)
+    for (const auto& ex_set : exclusive_variables_)
     {
         size_t count = 0;
         ss << " [";
         for (char key : ex_set)
         {
-            const auto *parg = arguments_.at(key);
+            const auto* parg = arguments_.at(key);
             ss << '-' << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << '>';
             if (++count < ex_set.size())
             {
@@ -471,7 +471,7 @@ void ArgParse::make_usage_string()
     }
 
     // Display arguments with dependencies
-    for (auto &&[parg, preq] : args_with_deps)
+    for (auto&& [parg, preq] : args_with_deps)
     {
         ss << " [-" << preq->short_name;
         if (preq->underlying_type() != ArgType::BOOL)
@@ -483,7 +483,7 @@ void ArgParse::make_usage_string()
     }
 
     // Display positional arguments
-    for (const auto *parg : positionals_)
+    for (const auto* parg : positionals_)
         ss << ' ' << parg->full_name;
     ss << std::endl;
 
@@ -491,16 +491,16 @@ void ArgParse::make_usage_string()
     if (positionals_.size())
         ss << std::endl << "With:" << std::endl;
 
-    for (const auto *parg : positionals_)
+    for (const auto* parg : positionals_)
         parg->format_description(ss, usage_padding_);
 
     ss << std::endl << "Options:" << std::endl;
 
-    for (auto &&[key, parg] : arguments_)
+    for (auto&& [key, parg] : arguments_)
         if (parg->underlying_type() == ArgType::BOOL)
             parg->format_description(ss, usage_padding_);
 
-    for (auto &&[key, parg] : arguments_)
+    for (auto&& [key, parg] : arguments_)
         if (parg->underlying_type() != ArgType::BOOL)
             parg->format_description(ss, usage_padding_);
 
@@ -516,7 +516,7 @@ void ArgParse::make_version_string()
     full_ver_string_.assign(ss.str());
 }
 
-void AbstractOption::format_description(std::ostream &stream, long max_pad) const
+void AbstractOption::format_description(std::ostream& stream, long max_pad) const
 {
     std::stringstream ss;
 
@@ -551,7 +551,7 @@ void AbstractOption::format_description(std::ostream &stream, long max_pad) cons
     stream << ss.str() << description << std::endl;
 }
 
-static std::vector<std::string> split(const std::string &input)
+static std::vector<std::string> split(const std::string& input)
 {
     std::regex reg(",");
     std::sregex_token_iterator iter(input.begin(), input.end(), reg, -1);
@@ -561,7 +561,7 @@ static std::vector<std::string> split(const std::string &input)
 }
 
 template <typename T, typename U>
-static inline void assign_list(const std::string &operand, std::vector<T> &target, U unary)
+static inline void assign_list(const std::string& operand, std::vector<T>& target, U unary)
 {
     auto vstr = split(operand);
     target.resize(vstr.size());
@@ -571,13 +571,13 @@ static inline void assign_list(const std::string &operand, std::vector<T> &targe
 namespace detail
 {
 template <>
-bool StringCast<bool>(const std::string &) noexcept(false)
+bool StringCast<bool>(const std::string&) noexcept(false)
 {
     return true;
 }
 
 template <>
-int StringCast<int>(const std::string &operand) noexcept(false)
+int StringCast<int>(const std::string& operand) noexcept(false)
 {
     // Hexadecimal?
     if (operand[0] == '0' && operand[1] == 'x')
@@ -593,7 +593,7 @@ int StringCast<int>(const std::string &operand) noexcept(false)
 }
 
 template <>
-long StringCast<long>(const std::string &operand) noexcept(false)
+long StringCast<long>(const std::string& operand) noexcept(false)
 {
     // Hexadecimal?
     if (operand[0] == '0' && operand[1] == 'x')
@@ -609,57 +609,57 @@ long StringCast<long>(const std::string &operand) noexcept(false)
 }
 
 template <>
-float StringCast<float>(const std::string &operand) noexcept(false)
+float StringCast<float>(const std::string& operand) noexcept(false)
 {
     return std::stof(operand);
 }
 
 template <>
-double StringCast<double>(const std::string &operand) noexcept(false)
+double StringCast<double>(const std::string& operand) noexcept(false)
 {
     return std::stod(operand);
 }
 
 template <>
-std::string StringCast<std::string>(const std::string &operand) noexcept(false)
+std::string StringCast<std::string>(const std::string& operand) noexcept(false)
 {
     return operand;
 }
 
 template <>
-std::vector<int> StringCast<std::vector<int>>(const std::string &operand) noexcept(false)
+std::vector<int> StringCast<std::vector<int>>(const std::string& operand) noexcept(false)
 {
     std::vector<int> result;
-    assign_list(operand, result, [](const std::string &s) -> int { return std::stoi(s); });
+    assign_list(operand, result, [](const std::string& s) -> int { return std::stoi(s); });
     return result;
 }
 
 template <>
-std::vector<long> StringCast<std::vector<long>>(const std::string &operand) noexcept(false)
+std::vector<long> StringCast<std::vector<long>>(const std::string& operand) noexcept(false)
 {
     std::vector<long> result;
-    assign_list(operand, result, [](const std::string &s) -> long { return std::stol(s); });
+    assign_list(operand, result, [](const std::string& s) -> long { return std::stol(s); });
     return result;
 }
 
 template <>
-std::vector<float> StringCast<std::vector<float>>(const std::string &operand) noexcept(false)
+std::vector<float> StringCast<std::vector<float>>(const std::string& operand) noexcept(false)
 {
     std::vector<float> result;
-    assign_list(operand, result, [](const std::string &s) -> float { return std::stof(s); });
+    assign_list(operand, result, [](const std::string& s) -> float { return std::stof(s); });
     return result;
 }
 
 template <>
-std::vector<double> StringCast<std::vector<double>>(const std::string &operand) noexcept(false)
+std::vector<double> StringCast<std::vector<double>>(const std::string& operand) noexcept(false)
 {
     std::vector<double> result;
-    assign_list(operand, result, [](const std::string &s) -> double { return std::stod(s); });
+    assign_list(operand, result, [](const std::string& s) -> double { return std::stod(s); });
     return result;
 }
 
 template <>
-std::vector<std::string> StringCast<std::vector<std::string>>(const std::string &operand) noexcept(false)
+std::vector<std::string> StringCast<std::vector<std::string>>(const std::string& operand) noexcept(false)
 {
     return split(operand);
 }

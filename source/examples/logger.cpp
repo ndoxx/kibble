@@ -17,7 +17,7 @@ void init_logger()
 {
     KLOGGER_START();
 
-    for(size_t ii = 0; ii < k_channels.size(); ++ii)
+    for (size_t ii = 0; ii < k_channels.size(); ++ii)
     {
         KLOGGER(create_channel(k_channels[ii], 3));
     }
@@ -65,9 +65,9 @@ int main()
     KLOG("core", 1) << "If you are " << KS_NODE_ << "colorblind" << KC_ << " you can't see " << KF_(col::lawngreen)
                     << "this" << KC_ << ":" << std::endl;
 
-    for(uint8_t ii = 0; ii < 10; ++ii)
+    for (uint8_t ii = 0; ii < 10; ++ii)
     {
-        for(uint8_t jj = 0; jj < 10; ++jj)
+        for (uint8_t jj = 0; jj < 10; ++jj)
             KLOG("core", 1) << KF_(25 * ii, 25 * jj, 255 - 25 * jj) << char('A' + ii + jj) << " ";
         KLOG("core", 1) << std::endl;
     }

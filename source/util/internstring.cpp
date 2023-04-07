@@ -18,18 +18,18 @@ namespace fs = std::filesystem;
 using namespace kb;
 using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse &parser, const Channel &chan)
+void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
-    for (const auto &msg : parser.get_errors())
+    for (const auto& msg : parser.get_errors())
         klog(chan).warn(msg);
 
     klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-void parse_entry(const fs::directory_entry &, const fs::path &, std::map<hash_t, std::string> &, kfs::FileSystem &,
-                 const kb::log::Channel &);
-int main(int argc, char **argv)
+void parse_entry(const fs::directory_entry&, const fs::path&, std::map<hash_t, std::string>&, kfs::FileSystem&,
+                 const kb::log::Channel&);
+int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
     auto console_sink = std::make_shared<ConsoleSink>();
@@ -39,9 +39,9 @@ int main(int argc, char **argv)
 
     // * Argument parsing and sanity check
     ap::ArgParse parser("internstring", "0.1");
-    parser.set_log_output([&chan_istr](const std::string &str) { klog(chan_istr).uid("ArgParse").info(str); });
-    const auto &a_dirpath = parser.add_positional<std::string>("DIRPATH", "Path to the root source directory");
-    const auto &a_output =
+    parser.set_log_output([&chan_istr](const std::string& str) { klog(chan_istr).uid("ArgParse").info(str); });
+    const auto& a_dirpath = parser.add_positional<std::string>("DIRPATH", "Path to the root source directory");
+    const auto& a_output =
         parser.add_variable<std::string>('o', "output", "Name of the output directory (default: cwd)", "");
 
     bool success = parser.parse(argc, argv);
@@ -97,16 +97,16 @@ int main(int argc, char **argv)
     }
     else
     {
-        for (const auto &entry : fs::directory_iterator(dirpath))
+        for (const auto& entry : fs::directory_iterator(dirpath))
             if (entry.is_directory())
                 subdirs.push_back(entry.path());
     }
 
     // * Recurse
-    for (auto &&subdir : subdirs)
+    for (auto&& subdir : subdirs)
     {
         klog(chan_istr).info("subdir  {}", subdir);
-        for (const auto &entry : fs::recursive_directory_iterator(subdir))
+        for (const auto& entry : fs::recursive_directory_iterator(subdir))
             parse_entry(entry, subdir, registry, filesystem, chan_istr);
     }
 
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
     std::ofstream out_txt(outputpath);
     if (out_txt.is_open())
     {
-        for (auto &&[key, value] : registry)
+        for (auto&& [key, value] : registry)
             out_txt << key << " " << value << std::endl;
         out_txt.close();
     }
@@ -134,14 +134,14 @@ static const std::regex s_hash_str_tag("H_\\(\"([a-zA-Z0-9_\\.]+?)\"\\)");
 // BUG: seems to be greedy anyway -> will generate a faulty file
 static const std::regex s_hash_str_literal_tag("\"([a-zA-Z0-9_\\.]+?)\"_h");
 
-inline bool filter(const fs::directory_entry &entry)
+inline bool filter(const fs::directory_entry& entry)
 {
     std::string extension = entry.path().extension().string();
     return (!extension.compare(".cpp")) || (!extension.compare(".h")) || (!extension.compare(".hpp"));
 }
 
-void register_intern_string(const std::string &intern, std::map<hash_t, std::string> &registry,
-                            const kb::log::Channel &log_channel)
+void register_intern_string(const std::string& intern, std::map<hash_t, std::string>& registry,
+                            const kb::log::Channel& log_channel)
 {
     hash_t hash_intern = H_(intern.c_str()); // Hashed string
 
@@ -163,8 +163,8 @@ void register_intern_string(const std::string &intern, std::map<hash_t, std::str
     }
 }
 
-void parse_entry(const fs::directory_entry &entry, const fs::path &base, std::map<hash_t, std::string> &registry,
-                 kfs::FileSystem &filesystem, const kb::log::Channel &log_channel)
+void parse_entry(const fs::directory_entry& entry, const fs::path& base, std::map<hash_t, std::string>& registry,
+                 kfs::FileSystem& filesystem, const kb::log::Channel& log_channel)
 {
     if (!entry.is_regular_file() || !filter(entry))
         return;
