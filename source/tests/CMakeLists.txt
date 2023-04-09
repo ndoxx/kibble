@@ -1,153 +1,155 @@
 # -------- UNIT TESTS -------- #
 
-set(SRC_KIBBLE_TEST
-    catch_app.cpp
-    test_hash.cpp
-    test_ap.cpp
-    test_memory.cpp
-    test_job.cpp
-    test_logger2.cpp
-    test_fs.cpp
-    test_undo.cpp
-    test_event.cpp
-    test_optimization.cpp
-    test_settings.cpp
-    test_uuid.cpp
-   )
+# Function to generate a test target
+function(make_unit_test test_name)
+    set(NAME "${test_name}")
 
-add_executable(test_kibble ${SRC_KIBBLE_TEST})
+    add_executable(${NAME}
+        "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp"
+        catch_app.cpp
+    )
 
-target_include_directories(test_kibble
-    PRIVATE
+    target_include_directories(${NAME}
+        PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${CMAKE_SOURCE_DIR}/source/kibble"
     )
 
-
-set_target_properties(test_kibble
-    PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+    set_target_properties(${NAME}
+        PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        OUTPUT_NAME "${test_name}"
         EXCLUDE_FROM_ALL 1
-)
+    )
 
-target_link_libraries(test_kibble
-    PRIVATE
+    target_link_libraries(${NAME}
+        PRIVATE
         project_options
         project_warnings
         Catch2
         pthread
         stdc++fs
         kibble
-)
+    )
+endfunction()
 
+# Global "tests" target to build all unit tests
+add_custom_target(tests)
 
+# For all cpp file beginning by "test_" generate a unit test target
+file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+foreach(FILE ${TEST_SOURCES})
+    # Extract file name without extension and use this to declare a new target
+    get_filename_component(TEST_NAME ${FILE} NAME_WE)
+
+    if(TEST_NAME MATCHES "^test_*")
+        make_unit_test(${TEST_NAME})
+
+        # Add dependency to the group target tests,
+        # then we can do "make tests" to build all of them
+        add_dependencies(tests "${TEST_NAME}")
+        message(STATUS "Added unit test: ${TEST_NAME}")
+    endif()
+endforeach()
+
+message(STATUS "All unit tests can be built at once with 'make tests'")
 
 # -------- FUZZ TESTING -------- #
-
 add_executable(fuzz_tester fuzz_tester.cpp)
 
 target_include_directories(fuzz_tester
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
-    )
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_SOURCE_DIR}/source/kibble"
+)
 
 set_target_properties(fuzz_tester
     PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
-        EXCLUDE_FROM_ALL 1
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+    EXCLUDE_FROM_ALL 1
 )
 
 target_link_libraries(fuzz_tester
     PRIVATE
-        project_options
-        project_warnings
-        kibble
-        -coverage
-        -fsanitize=fuzzer,undefined,address
-    )
+    project_options
+    project_warnings
+    kibble
+    -coverage
+    -fsanitize=fuzzer,undefined,address
+)
 
 target_compile_options(fuzz_tester
     PRIVATE
-        -fsanitize=fuzzer,undefined,address
-    )
+    -fsanitize=fuzzer,undefined,address
+)
 
 # 10 seconds fuzz testing
 # set(FUZZ_RUNTIME
-#     10
-#     CACHE STRING "Number of seconds to run fuzz tests during ctest run"
+# 10
+# CACHE STRING "Number of seconds to run fuzz tests during ctest run"
 # )
 
 # add_test(NAME fuzz_tester_run COMMAND fuzz_tester -max_total_time=${FUZZ_RUNTIME})
 
-
-
 # -------- NUCLEAR TEST -------- #
-
 set(SRC_NUCLEAR
     nuclear.cpp
-   )
+)
 
 add_executable(nuclear ${SRC_NUCLEAR})
 
 target_include_directories(nuclear
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
-    )
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_SOURCE_DIR}/source/kibble"
+)
 
 target_include_directories(nuclear
-SYSTEM PRIVATE
+    SYSTEM PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
 )
 
-
 set_target_properties(nuclear
     PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
-        EXCLUDE_FROM_ALL 1
-    )
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+    EXCLUDE_FROM_ALL 1
+)
 
 target_link_libraries(nuclear
     PRIVATE
-        project_options
-        project_warnings
-        pthread
-        stdc++fs
-        X11
-        kibble
-    )
-
-
+    project_options
+    project_warnings
+    pthread
+    stdc++fs
+    X11
+    kibble
+)
 
 # -------- BENCHMARKING -------- #
-
 add_executable(bench "${CMAKE_CURRENT_SOURCE_DIR}/bench.cpp")
 
 target_include_directories(bench
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
-    )
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_SOURCE_DIR}/source/kibble"
+)
 
-
-    set_target_properties(bench
+set_target_properties(bench
     PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
-        EXCLUDE_FROM_ALL 1
-    )
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+    EXCLUDE_FROM_ALL 1
+)
 
 target_link_libraries(bench
     PRIVATE
-        project_options
-        stdc++fs
-        kibble
-        benchmark
-        pthread
-    )
+    project_options
+    stdc++fs
+    kibble
+    benchmark
+    pthread
+)
