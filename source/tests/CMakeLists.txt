@@ -127,6 +127,7 @@ target_link_libraries(nuclear
     pthread
     stdc++fs
     X11
+    fmt
     kibble
 )
 

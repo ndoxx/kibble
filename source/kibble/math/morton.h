@@ -3,7 +3,7 @@
 /**
  * @brief Functions to encode to and decode from Morton codes
  *
- * This is a fork of libmorton (by Forceflow)
+ * This is a rework of a 19 month old fork of libmorton (by Forceflow)
  *  -> https://github.com/Forceflow/libmorton
  *  -> Licence is MIT
  *
@@ -13,16 +13,19 @@
  *         the author's benchmarks
  *  -> API
  *      -> Using tuple return types instead of output arguments
+ *      -> Using templated functions
  *  -> Algo
- *      -> Choice of implementation (LUT/AVX2-BMI) via header selection
+ *      -> Choice of implementation (LUT/AVX2-BMI) via header selection (ENABLE_INTRIN_MORTON compilation option)
  *      -> LUTs are generated programatically at compile time
- *      -> Most significant bit search using Leiserson - Prokop - Randall algorithm
  *  -> Style & coding standards
  *      -> Naming conventions
  *      -> Code compiles with the most paranoid set of warnings
  *
  * @author ndx
+ * @version 0.1
+ * @date 2023-04-09
  *
+ * @copyright Copyright (c) 2023
  */
 
 #include <cstdint>
@@ -85,33 +88,51 @@ inline uint64_t encode(const glm::i64vec2& val)
 
 inline uint32_t encode(const glm::i32vec3& val)
 {
-    return encode(uint32_t(val[0]), uint32_t(val[1]), uint32_t(val[1]));
+    return encode(uint32_t(val[0]), uint32_t(val[1]), uint32_t(val[2]));
 }
 
 inline uint64_t encode(const glm::i64vec3& val)
 {
-    return encode(uint64_t(val[0]), uint64_t(val[1]), uint64_t(val[1]));
+    return encode(uint64_t(val[0]), uint64_t(val[1]), uint64_t(val[2]));
 }
 
-inline glm::i32vec2 decode_i32vec2(const uint32_t key)
+namespace detail
+{
+// clang-format off
+template <typename T> struct Key {};
+template <> struct Key<glm::i32vec2> { using type = uint32_t; };
+template <> struct Key<glm::i64vec2> { using type = uint64_t; };
+template <> struct Key<glm::i32vec3> { using type = uint32_t; };
+template <> struct Key<glm::i64vec3> { using type = uint64_t; };
+// clang-format on
+} // namespace detail
+
+template <typename RetT>
+inline RetT decode(const typename detail::Key<RetT>::type key);
+
+template <>
+inline glm::i32vec2 decode<glm::i32vec2>(uint32_t key)
 {
     auto&& [x, y] = decode_2d(key);
     return {x, y};
 }
 
-inline glm::i64vec2 decode_i64vec2(const uint64_t key)
+template <>
+inline glm::i64vec2 decode<glm::i64vec2>(uint64_t key)
 {
     auto&& [x, y] = decode_2d(key);
     return {x, y};
 }
 
-inline glm::i32vec3 decode_i32vec3(const uint32_t key)
+template <>
+inline glm::i32vec3 decode<glm::i32vec3>(uint32_t key)
 {
     auto&& [x, y, z] = decode_3d(key);
     return {x, y, z};
 }
 
-inline glm::i64vec3 decode_i64vec3(const uint64_t key)
+template <>
+inline glm::i64vec3 decode<glm::i64vec3>(uint64_t key)
 {
     auto&& [x, y, z] = decode_3d(key);
     return {x, y, z};

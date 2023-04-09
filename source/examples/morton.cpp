@@ -1,6 +1,8 @@
+#define USE_GLM // For the GLM wrappers
 #include "math/morton.h"
-#include <iostream>
 #include <bitset>
+#include <glm/gtx/string_cast.hpp>
+#include <iostream>
 
 using namespace kb;
 
@@ -25,6 +27,13 @@ int main(int argc, char** argv)
             std::cout << xx << ", " << yy << " -> " << std::bitset<32>(m) << " -> " << xds << ", " << yds << std::endl;
         }
     }
+
+    // * GLM wrappers
+    std::cout << morton::encode(glm::i32vec2{48, 231}) << std::endl;
+    std::cout << glm::to_string(morton::decode<glm::i32vec2>(44330u)) << std::endl;
+
+    std::cout << morton::encode(glm::i64vec3{48, 231, 72}) << std::endl;
+    std::cout << glm::to_string(morton::decode<glm::i64vec3>(5871762ul)) << std::endl;
 
     return 0;
 }
