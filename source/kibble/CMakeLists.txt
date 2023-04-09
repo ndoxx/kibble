@@ -1,3 +1,12 @@
+# -- Configuration --
+# Job system
+option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
+option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
+
+# Intrinsics
+option(ENABLE_INTRIN_MORTON "Use the BMI2 instruction set for Morton encoding" ON)
+
+# -- Targets --
 file(GLOB_RECURSE SRC_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
 add_library(kibble STATIC)
@@ -31,9 +40,11 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
     PROPERTIES COMPILE_FLAGS -mavx2
 )
 
-# Configuration
-option(ENABLE_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
-option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is empty" ON)
+if(ENABLE_INTRIN_MORTON)
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp"
+        PROPERTIES COMPILE_FLAGS -mbmi2
+    )
+endif()
 
 if(ENABLE_JOB_SYSTEM_PROFILING)
     target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)
