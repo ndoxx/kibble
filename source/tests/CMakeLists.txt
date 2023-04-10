@@ -55,6 +55,60 @@ endforeach()
 
 message(STATUS "All unit tests can be built at once with 'make tests'")
 
+# -------- BENCHMARKING -------- #
+# Function to generate a bench target
+function(make_benchmark test_name)
+    set(NAME "${test_name}")
+
+    add_executable(${NAME}
+        "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp"
+    )
+
+    target_include_directories(${NAME}
+        PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}/source/kibble"
+    )
+
+    set_target_properties(${NAME}
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        OUTPUT_NAME "${test_name}"
+        EXCLUDE_FROM_ALL 1
+    )
+
+    target_link_libraries(${NAME}
+        PRIVATE
+        project_options
+        stdc++fs
+        kibble
+        benchmark
+        pthread
+    )
+endfunction()
+
+# Global "bench" target to build all benchmarks
+add_custom_target(bench)
+
+# For all cpp file beginning by "test_" generate a unit test target
+file(GLOB BENCH_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+foreach(FILE ${BENCH_SOURCES})
+    # Extract file name without extension and use this to declare a new target
+    get_filename_component(BENCH_NAME ${FILE} NAME_WE)
+
+    if(BENCH_NAME MATCHES "^bench_*")
+        make_benchmark(${BENCH_NAME})
+
+        # Add dependency to the group target bench,
+        # then we can do "make bench" to build all of them
+        add_dependencies(bench "${BENCH_NAME}")
+        message(STATUS "Added benchmark: ${BENCH_NAME}")
+    endif()
+endforeach()
+
+message(STATUS "All benchmarks can be built at once with 'make bench'")
+
 # -------- FUZZ TESTING -------- #
 add_executable(fuzz_tester fuzz_tester.cpp)
 
@@ -129,28 +183,4 @@ target_link_libraries(nuclear
     X11
     fmt
     kibble
-)
-
-# -------- BENCHMARKING -------- #
-add_executable(bench "${CMAKE_CURRENT_SOURCE_DIR}/bench.cpp")
-
-target_include_directories(bench
-    PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}/source/kibble"
-)
-
-set_target_properties(bench
-    PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
-    EXCLUDE_FROM_ALL 1
-)
-
-target_link_libraries(bench
-    PRIVATE
-    project_options
-    stdc++fs
-    kibble
-    benchmark
-    pthread
 )

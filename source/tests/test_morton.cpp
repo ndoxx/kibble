@@ -1,6 +1,8 @@
 #include "algorithm/msb_search.h"
+#define USE_GLM
 #include "math/morton.h"
 #include <catch2/catch_all.hpp>
+#include <glm/glm.hpp>
 #include <numeric>
 #include <random>
 
@@ -294,6 +296,47 @@ TEST_CASE("Decoding, 3D, 64b")
         auto [x_t, y_t, z_t] = kb::morton::decode_3d(key);
 
         pass &= (x == x_t) && (y == y_t) && (z == z_t);
+    }
+
+    REQUIRE(pass);
+}
+
+TEST_CASE("Encoding, 3D GLM vector, 64b")
+{
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<uint64_t> dist(0, 1024);
+
+    bool pass = true;
+    for (size_t ii = 0; ii < 1000; ++ii)
+    {
+        uint64_t x = dist(rng);
+        uint64_t y = dist(rng);
+        uint64_t z = dist(rng);
+        glm::i64vec3 v{x, y, z};
+        uint64_t m = encode_naive_64(x, y, z);
+        uint64_t m_t = kb::morton::encode(v);
+
+        pass &= (m == m_t);
+    }
+
+    REQUIRE(pass);
+}
+
+TEST_CASE("Decoding, 3D GLM vector, 64b")
+{
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<uint64_t> dist(0, 32768);
+
+    bool pass = true;
+    for (size_t ii = 0; ii < 1000; ++ii)
+    {
+        uint64_t key = dist(rng);
+        auto [x, y, z] = decode_3d_naive_64(key);
+        auto vec = kb::morton::decode<glm::i64vec3>(key);
+
+        pass &= (x == uint64_t(vec.x)) && (y == uint64_t(vec.y)) && (z == uint64_t(vec.z));
     }
 
     REQUIRE(pass);
