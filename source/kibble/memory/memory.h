@@ -72,13 +72,9 @@ public:
     {
     }
 
-    /**
-     * @brief The destructor only displays the memory tracker report.
-     *
-     */
     ~MemoryArena()
     {
-        memory_tracker_.report(log_channel_);
+        shutdown();
     }
 
     /**
@@ -105,12 +101,16 @@ public:
     }
 
     /**
-     * @brief Call before destruction.
+     * @brief Call instead of dtor if arena is static or need to be reused
      *
      */
     inline void shutdown()
     {
-        is_initialized_ = false;
+        if (is_initialized_)
+        {
+            is_initialized_ = false;
+            memory_tracker_.report(log_channel_);
+        }
     }
 
     /**
@@ -200,7 +200,7 @@ public:
         // More bookkeeping
         memory_tagger_.tag_allocation(current, size);
         bounds_checker_.put_sentinel_back(current + size);
-        memory_tracker_.on_allocation(begin, decorated_size, alignment);
+        memory_tracker_.on_allocation(begin, decorated_size, alignment, file, line);
 
         klog(log_channel_)
             .uid("Arena")
