@@ -94,15 +94,16 @@ void center(std::string& input, int size)
     input = std::string(before, ' ') + input + std::string(after, ' ');
 }
 
-std::string base64_encode(const std::string data)
+std::string base64_encode(const char* data, size_t size)
 {
     std::string out;
 
     unsigned val = 0;
     int valb = -6;
-    for (char c : data)
+    for (size_t ii = 0; ii < size; ++ii)
     {
-        val = (val << 8) + static_cast<unsigned char>(c);
+
+        val = (val << 8) + static_cast<unsigned char>(data[ii]);
         valb += 8;
         while (valb >= 0)
         {

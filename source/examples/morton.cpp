@@ -1,5 +1,4 @@
-#define USE_GLM // For the GLM wrappers
-#include "math/morton.h"
+#include "math/morton_glm.h" // For the GLM wrappers
 #include <bitset>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>

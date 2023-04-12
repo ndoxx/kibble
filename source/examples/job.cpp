@@ -373,6 +373,8 @@ int main(int argc, char** argv)
     chan_kibble.attach_sink(console_sink);
     Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::crimson);
     chan_thread.attach_sink(console_sink);
+    Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::ndxorange);
+    chan_memory.attach_sink(console_sink);
 
     ap::ArgParse parser("job_system_example", "0.1");
     parser.set_log_output([&chan_kibble](const std::string& str) { klog(chan_kibble).uid("ArgParse").info(str); });
@@ -396,7 +398,7 @@ int main(int argc, char** argv)
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    memory::HeapArea area(th::JobSystem::get_memory_requirements());
+    memory::HeapArea area(th::JobSystem::get_memory_requirements(), &chan_memory);
 
     auto* js = new th::JobSystem(area, scheme, &chan_thread);
     Channel::set_async(js);

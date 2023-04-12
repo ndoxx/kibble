@@ -52,10 +52,9 @@ void HeapArea::debug_show_content()
     }
 }
 
-HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : log_channel_(channel)
+HeapArea::HeapArea(size_t size, const kb::log::Channel* channel)
 {
-    (void)log_channel_;
-    if (!init(size))
+    if (!init(size, channel))
         throw std::bad_alloc();
 }
 
