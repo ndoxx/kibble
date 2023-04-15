@@ -1,5 +1,4 @@
-#include "time/instrumentation.h"
-#include "logger/logger.h"
+#include "instrumentation.h"
 #include <fstream>
 
 namespace kb

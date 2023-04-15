@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "thread/job/config.h"
+#include "../thread/job/config.h"
 
 namespace fs = std::filesystem;
 
