@@ -511,7 +511,7 @@ T* NewArray(ArenaT& arena, size_t N, size_t alignment, const char* file, int lin
         T* as_T = reinterpret_cast<T*>(as_uint);
         const T* const end = as_T + N;
         while (as_T < end)
-            new (as_T++) T;
+            ::new (as_T++) T;
 
         // Hand user the pointer to the first instance
         return (as_T - N);
@@ -649,12 +649,12 @@ struct TypeAndCount<T[N]>
  *
  */
 
-#define K_NEW(TYPE, ARENA) new (ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
+#define K_NEW(TYPE, ARENA) ::new (ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
 #define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
     kb::memory::NewArray<kb::memory::TypeAndCount<TYPE>::type>(ARENA, kb::memory::TypeAndCount<TYPE>::count, 0,        \
                                                                __FILE__, __LINE__)
 #define K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA) kb::memory::NewArray<TYPE>(ARENA, COUNT, 0, __FILE__, __LINE__)
-#define K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT) new (ARENA.allocate(sizeof(TYPE), ALIGNMENT, 0, __FILE__, __LINE__)) TYPE
+#define K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT) ::new (ARENA.allocate(sizeof(TYPE), ALIGNMENT, 0, __FILE__, __LINE__)) TYPE
 #define K_NEW_ARRAY_ALIGN(TYPE, ARENA, ALIGNMENT)                                                                      \
     kb::memory::NewArray<kb::memory::TypeAndCount<TYPE>::type>(ARENA, kb::memory::TypeAndCount<TYPE>::count,           \
                                                                ALIGNMENT, __FILE__, __LINE__)

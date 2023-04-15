@@ -1,7 +1,7 @@
 #pragma once
 
-#include "thread/job/job_system.h"
-#include "time/clock.h"
+#include "job_system.h"
+#include "../../time/clock.h"
 #include <cstdint>
 #include <map>
 

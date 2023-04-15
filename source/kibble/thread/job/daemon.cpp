@@ -1,7 +1,7 @@
-#include "thread/job/daemon.h"
-#include "assert/assert.h"
-#include "thread/job/impl/common.h"
-#include "time/instrumentation.h"
+#include "daemon.h"
+#include "../../assert/assert.h"
+#include "../../time/instrumentation.h"
+#include "impl/common.h"
 
 namespace kb
 {
