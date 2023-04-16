@@ -87,19 +87,16 @@ int main(int argc, char** argv)
     {
         th::JobMetadata meta(th::WORKER_AFFINITY_ASYNC, msg.message);
 
-        th::SchedulingData sd;
-        // Set the interval in ms at which the tasks will be rescheduled
-        sd.interval_ms = msg.interval_ms;
-        // Set the number of repetitions
-        sd.ttl = msg.ttl;
-
         // Daemons will just log a message and wait a bit
         auto hnd = ds->create(
             [msg, &chan_kibble]() {
                 klog(chan_kibble).uid("Daemon").info(msg.message);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                return true;
             },
-            sd, meta);
+            th::SchedulingData{.interval_ms = msg.interval_ms, .ttl = msg.ttl}, meta);
+        // interval_ms: Sets the interval in ms at which the tasks will be rescheduled
+        // ttl:         Sets the number of repetitions
 
         // Save handles, in case we need to kill daemons while they're running
         hnds.push_back(hnd);

@@ -33,10 +33,10 @@ struct Daemon
 {
     /// Data necessary for repeated scheduling of this daemon
     SchedulingData scheduling_data;
-    /// When set to true, this daemon will be returned to the pool by DaemonScheduler::update()
-    bool marked_for_deletion = false;
     /// The job is kept alive by the JobSystem, the DaemonScheduler needs to store this pointer
     Job* job = nullptr;
+    /// When set to true, this daemon will be returned to the pool by DaemonScheduler::update()
+    PAGE_ALIGN std::atomic<bool> marked_for_deletion = false;
 };
 
 /// Refers to a particular daemon
@@ -74,12 +74,16 @@ public:
      * not be released to the pool once the job finishes, so there is no data
      * copy happening each time a daemon is rescheduled.
      *
+     * The daemon will self-terminate if:
+     * - the kernel returns false
+     * - the kernel throws an exception
+     * 
      * @param kernel Function executed by the daemon.
      * @param scheduling_data Data for the automated scheduling.
      * @param meta Job metadata.
      * @return DaemonHandle A handle to the newly created daemon.
      */
-    DaemonHandle create(JobKernel&& kernel, const SchedulingData& scheduling_data,
+    DaemonHandle create(std::function<bool()> kernel, SchedulingData&& scheduling_data,
                         const JobMetadata& meta = JobMetadata{});
 
     /**
@@ -103,7 +107,7 @@ public:
 
 private:
     JobSystem& js_;
-    std::map<DaemonHandle, Daemon> daemons_;
+    std::map<DaemonHandle, std::unique_ptr<Daemon>> daemons_;
     std::vector<DaemonHandle> kill_list_;
     microClock clock_;
     DaemonHandle current_handle_ = 0;
