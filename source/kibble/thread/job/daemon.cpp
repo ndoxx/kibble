@@ -44,7 +44,7 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     auto&& [it, inserted] = daemons_.insert({current_handle_++, std::make_unique<Daemon>()});
-    K_ASSERT(inserted, "Could not insert new daemon->", log_channel_);
+    K_ASSERT(inserted, "Could not insert new daemon", log_channel_);
 
     auto& daemon = *it->second;
     daemon.scheduling_data = std::move(scheduling_data);
@@ -62,7 +62,7 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
                            what());
                 self_terminate = true;
             }
-            if(self_terminate)
+            if (self_terminate)
                 daemon.marked_for_deletion.store(true, std::memory_order_release);
         },
         meta);

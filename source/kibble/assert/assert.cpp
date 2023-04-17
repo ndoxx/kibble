@@ -20,7 +20,7 @@ Assertion::~Assertion()
     {
         kb::log::EntryBuilder{channel_, line_, file_, function_}
             .level(trigger_ == Trigger::Terminate ? log::Severity::Fatal : log::Severity::Error)
-            .log(stream_.str());
+            .msg(stream_.str());
     }
     else
     {

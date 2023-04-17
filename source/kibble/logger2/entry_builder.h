@@ -52,10 +52,13 @@ public:
         return *this;
     }
 
-    void log(std::string_view m);
+    inline void msg(std::string_view sv)
+    {
+        log(sv);
+    }
 
     template <typename... ArgsT>
-    inline void log(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
+    inline void msg(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
@@ -125,6 +128,10 @@ public:
     {
         level(Severity::Fatal).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
+
+private:
+    void log(std::string_view m);
+    void log(std::string&& m);
 
 private:
     const Channel* channel_ = nullptr;

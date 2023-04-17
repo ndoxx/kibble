@@ -279,8 +279,8 @@ public:
         opt->description = description;
         if constexpr (!std::is_same_v<T, bool>)
             opt->value = default_value;
-        arguments_.insert(std::pair(short_name, opt));
-        full_to_short_.insert(std::pair(full_name, short_name));
+        arguments_.insert({short_name, opt});
+        full_to_short_.insert({full_name, short_name});
 
         return *opt;
     }
@@ -428,8 +428,8 @@ private:
     std::string program_name_;
     std::string usage_string_;
     std::string full_ver_string_;
-    std::map<char, AbstractOption*> arguments_;
-    std::map<char, std::function<void()>> triggers_;
+    std::unordered_map<char, AbstractOption*> arguments_;
+    std::unordered_map<char, std::function<void()>> triggers_;
     std::vector<AbstractOption*> positionals_;
     std::vector<std::set<char>> exclusive_flags_;
     std::vector<std::set<char>> exclusive_variables_;

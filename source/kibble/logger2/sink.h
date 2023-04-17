@@ -2,6 +2,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include "../util/sanitizer.h"
 
 namespace kb::log
 {
@@ -45,7 +46,7 @@ public:
      * @param e
      * @param p
      */
-    inline void submit_lock(const LogEntry& e, const ChannelPresentation& p)
+    NO_SANITIZE_MEMORY inline void submit_lock(const LogEntry& e, const ChannelPresentation& p)
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         submit(e, p);

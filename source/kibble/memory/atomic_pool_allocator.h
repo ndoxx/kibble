@@ -4,7 +4,7 @@
 #include "atomic_queue/atomic_queue.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "thread/sanitizer.h"
+#include "../util/sanitizer.h"
 
 // #define ALLOCATOR_PADDING_MAGIC
 

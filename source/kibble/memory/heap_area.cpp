@@ -6,6 +6,15 @@
 #include "logger2/logger.h"
 #include <fmt/color.h>
 
+// Useful to avoid uninitialized reads with Valgrind during hexdumps
+// Disable for retail build
+#ifdef K_ENABLE_AREA_MEMORY_INITIALIZATION
+#define HEAP_AREA_MEMSET_ENABLED
+#define HEAP_AREA_PADDING_MAGIC
+#define AREA_MEMSET_VALUE 0x00
+#define AREA_PADDING_MARK 0xd0
+#endif
+
 namespace kb
 {
 namespace memory

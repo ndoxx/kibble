@@ -94,8 +94,6 @@ int main(int argc, char** argv)
     auto console_sink = std::make_shared<ConsoleSink>();
     // It uses the aforementioned formatter
     console_sink->set_formatter(console_formatter);
-    // This sink will dump the data it receives to a text file
-    auto file_sink = std::make_shared<FileSink>("test.log");
 
     // * Create a few logging channels for the Kibble systems we're going to use
     // This is optional
@@ -135,7 +133,8 @@ int main(int argc, char** argv)
     Channel chan_sound(Severity::Warn, "sound", "snd", kb::col::lightorange);
     // This channel will log to the console and to a file
     chan_sound.attach_sink(console_sink);
-    chan_sound.attach_sink(file_sink);
+    // This sink will dump the data it receives to a text file
+    chan_sound.attach_sink(std::make_shared<FileSink>("test.log"));
 
     // This channel will only record messages with severity of at least Debug level (so Debug, Info, Warn, Error and
     // Fatal)

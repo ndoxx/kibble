@@ -26,4 +26,14 @@ void EntryBuilder::log(std::string_view m)
     }
 }
 
+void EntryBuilder::log(std::string&& m)
+{
+    if (channel_)
+    {
+        message = std::move(m);
+        channel_->submit(std::move(*this));
+    }
+}
+
+
 } // namespace kb::log

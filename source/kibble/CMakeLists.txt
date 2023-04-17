@@ -6,6 +6,9 @@ option(ENABLE_WORK_STEALING "Allow workers to steal jobs when their queue is emp
 # Intrinsics
 option(ENABLE_INTRIN_MORTON "Use the BMI2 instruction set for Morton encoding" ON)
 
+# Memory
+option(ENABLE_AREA_MEMORY_INITIALIZATION "Initialize heap area memory on creation" ON)
+
 # -- Targets --
 file(GLOB_RECURSE SRC_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
@@ -52,6 +55,10 @@ endif()
 
 if(ENABLE_WORK_STEALING)
     target_compile_definitions(kibble PUBLIC K_ENABLE_WORK_STEALING)
+endif()
+
+if(ENABLE_AREA_MEMORY_INITIALIZATION)
+    target_compile_definitions(kibble PUBLIC K_ENABLE_AREA_MEMORY_INITIALIZATION)
 endif()
 
 target_link_libraries(kibble

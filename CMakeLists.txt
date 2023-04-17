@@ -17,6 +17,7 @@ include(sanitizers)
 include(documentation)
 include(clang-cxx-dev-tools)
 
+
 # -- Uninstall target --
 if(NOT TARGET uninstall)
 	configure_file(
