@@ -88,14 +88,9 @@ bool WorkerThread::get_job(Job*& job)
     // Logical or is short-circuiting, only one job will be popped
     ANNOTATE_HAPPENS_AFTER(&queues_[Q_PRIVATE]); // Avoid false positives with TSan
     ANNOTATE_HAPPENS_AFTER(&queues_[Q_PUBLIC]);  // Avoid false positives with TSan
-#ifdef K_ENABLE_WORK_STEALING
     return (queues_[Q_PRIVATE].try_pop(job) || queues_[Q_PUBLIC].try_pop(job) || steal_job(job));
-#else
-    return (queues_[Q_PRIVATE].try_pop(job) || queues_[Q_PUBLIC].try_pop(job));
-#endif
 }
 
-#ifdef K_ENABLE_WORK_STEALING
 bool WorkerThread::steal_job(Job*& job)
 {
     for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
@@ -112,7 +107,6 @@ bool WorkerThread::steal_job(Job*& job)
     }
     return false;
 }
-#endif
 
 void WorkerThread::process(Job* job)
 {
