@@ -65,7 +65,7 @@ void Channel::submit(LogEntry&& entry) const
         th::JobMetadata meta(th::force_worker(s_worker_), "Log");
         meta.essential__ = true;
         // Schedule logging task. Log entry is moved.
-        auto&& [task, future] = s_js_->create_task(meta, [this, entry = std::move(entry)]() {
+        auto&& [task, future] = s_js_->create_task(std::move(meta), [this, entry = std::move(entry)]() {
             for (auto& psink : sinks_)
                 psink->submit(entry, presentation_);
         });

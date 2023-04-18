@@ -111,8 +111,9 @@ int p0(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& ch
             // Let's create a task and give it this simple lambda that waits a precise amount of time as a job kernel,
             // and also pass the metadata
             // Note that the create_task() function also returns a (shared) future, more on that later.
-            auto&& [tsk, fut] = js.create_task(
-                meta, [&load_time, ii]() { std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii])); });
+            auto&& [tsk, fut] = js.create_task(std::move(meta), [&load_time, ii]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+            });
 
             // Schedule the tsk, the workers will awake
             tsk.schedule();
@@ -217,7 +218,7 @@ int p2(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& ch
             // Create both tasks like we did in the first example
             th::JobMetadata load_meta((ii < 70 ? th::WORKER_AFFINITY_ASYNC : th::WORKER_AFFINITY_ANY), "Load");
 
-            auto [load_task, load_fut] = js.create_task(load_meta, [&load_time, ii, nloads]() {
+            auto [load_task, load_fut] = js.create_task(std::move(load_meta), [&load_time, ii, nloads]() {
                 // Simulate loading time
                 std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
                 // Sometimes, loading will fail and an exception will be thrown
@@ -319,20 +320,20 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem& js, const kb::log::Channel& c
 
             // We could pass futures as function arguments like previously
             // But lambda capture also works
-            auto&& [tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [fut_a = fut_a]() {
+            auto&& [tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [fut = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                return fut_a.get() * 2;
+                return fut.get() * 2;
             });
 
-            auto&& [tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [fut_a = fut_a]() {
+            auto&& [tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [fut = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(15));
-                return fut_a.get() * 3 - 10;
+                return fut.get() * 3 - 10;
             });
 
             auto&& [tsk_d, fut_d] =
-                js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"), [fut_b = fut_b, fut_c = fut_c]() {
+                js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"), [fut_1 = fut_b, fut_2 = fut_c]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                    return fut_b.get() < fut_c.get();
+                    return fut_1.get() < fut_2.get();
                 });
 
             tsk_b.add_parent(tsk_a);

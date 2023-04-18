@@ -166,6 +166,11 @@ public:
         std::fill(begin_, begin_ + size_, filler);
     }
 
+    inline const kb::log::Channel* get_logger_channel() const
+    {
+        return log_channel_;
+    }
+
 private:
     size_t size_;
     uint8_t* begin_;

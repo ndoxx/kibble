@@ -116,13 +116,13 @@ void JobSystem::shutdown()
     klog(log_channel_).uid("JobSystem").info("Shutdown complete.");
 }
 
-Job* JobSystem::create_job(JobKernel&& kernel, const JobMetadata& meta)
+Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
     job->kernel = std::move(kernel);
-    job->meta = meta;
+    job->meta = std::move(meta);
     return job;
 }
 

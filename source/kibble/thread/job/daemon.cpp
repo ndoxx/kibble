@@ -38,8 +38,7 @@ DaemonScheduler::~DaemonScheduler()
     }
 }
 
-DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingData&& scheduling_data,
-                                     const JobMetadata& meta)
+DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingData&& scheduling_data, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
@@ -65,7 +64,7 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
             if (self_terminate)
                 daemon.marked_for_deletion.store(true, std::memory_order_release);
         },
-        meta);
+        std::move(meta));
     daemon.job->keep_alive = true;
 
     klog(log_channel_)

@@ -79,10 +79,8 @@ struct JobMetadata
     /// Workers this job can be pushed to
     worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
 
-#ifdef K_PROFILE_JOB_SYSTEM
     /// Descriptive name for the job (only used when profiling)
     std::string name;
-#endif
 
 private:
     friend class kb::log::Channel;
@@ -287,13 +285,13 @@ public:
      * @return a pair containing the created task and its future result (std::shared_future)
      */
     template <typename FuncT, typename... ArgsT>
-    inline auto create_task(const JobMetadata& meta, FuncT&& function, ArgsT&&... args)
+    inline auto create_task(JobMetadata&& meta, FuncT&& function, ArgsT&&... args)
     {
         auto promise = std::make_shared<std::promise<std::invoke_result_t<FuncT, ArgsT...>>>();
         std::shared_future<std::invoke_result_t<FuncT, ArgsT...>> future = promise->get_future();
-        return std::make_pair(
-            Task(this, meta, std::forward<FuncT>(function), std::move(promise), std::forward<ArgsT>(args)...),
-            std::move(future));
+        return std::make_pair(Task(this, std::forward<JobMetadata>(meta), std::forward<FuncT>(function),
+                                   std::move(promise), std::forward<ArgsT>(args)...),
+                              std::move(future));
     }
 
     /**
@@ -423,7 +421,7 @@ private:
      * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
      * @return a new job from the pool
      */
-    Job* create_job(JobKernel&& kernel, const JobMetadata& meta = JobMetadata{});
+    Job* create_job(JobKernel&& kernel, JobMetadata&& meta = JobMetadata{});
 
     /**
      * @internal
@@ -569,7 +567,7 @@ public:
 
 private:
     template <typename FuncT, typename PromiseT, typename... ArgsT>
-    Task(JobSystem* js, const JobMetadata& meta, FuncT&& func, PromiseT&& promise, ArgsT&&... args) : js_(js)
+    Task(JobSystem* js, JobMetadata&& meta, FuncT&& func, PromiseT&& promise, ArgsT&&... args) : js_(js)
     {
         /*
             Job kernel is a void wrapper around the templated kernel passed in this call. This allows
@@ -603,7 +601,7 @@ private:
         };
 
         // Let the JobSystem perform job allocation, move the kernel
-        job_ = js_->create_job(std::move(kernel), meta);
+        job_ = js_->create_job(std::move(kernel), std::move(meta));
     }
 
 private:

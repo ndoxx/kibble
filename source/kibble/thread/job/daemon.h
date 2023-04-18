@@ -1,7 +1,7 @@
 #pragma once
 
-#include "job_system.h"
 #include "../../time/clock.h"
+#include "job_system.h"
 #include <cstdint>
 #include <map>
 
@@ -77,14 +77,14 @@ public:
      * The daemon will self-terminate if:
      * - the kernel returns false
      * - the kernel throws an exception
-     * 
+     *
      * @param kernel Function executed by the daemon.
      * @param scheduling_data Data for the automated scheduling.
      * @param meta Job metadata.
      * @return DaemonHandle A handle to the newly created daemon.
      */
     DaemonHandle create(std::function<bool()> kernel, SchedulingData&& scheduling_data,
-                        const JobMetadata& meta = JobMetadata{});
+                        JobMetadata&& meta = JobMetadata{});
 
     /**
      * @brief Manually stop and release a daemon.
