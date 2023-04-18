@@ -20,11 +20,7 @@ static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
 JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_name) : worker_affinity(affinity)
 {
-#ifdef K_PROFILE_JOB_SYSTEM
     name = profile_name;
-#else
-    (void)profile_name;
-#endif
 }
 
 size_t JobSystem::get_memory_requirements()
