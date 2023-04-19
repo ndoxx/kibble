@@ -24,6 +24,9 @@ void InstrumentationSession::write(const fs::path& filepath)
 {
     std::ofstream ofs(filepath);
 
+    // Trace Event Format:
+    // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/edit
+    
     ofs << "{\"otherData\": {},\"traceEvents\":[";
 
     size_t profile_count = 0;

@@ -5,7 +5,7 @@
 #include "job_graph.h"
 
 #include <future>
-#include <map>
+#include <unordered_map>
 #include <vector>
 
 namespace kb::log
@@ -479,7 +479,7 @@ private:
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<Monitor> monitor_;
     std::shared_ptr<SharedState> ss_;
-    std::map<std::thread::id, tid_t> thread_ids_;
+    std::unordered_map<std::thread::id, tid_t> thread_ids_;
     InstrumentationSession* instrumentor_ = nullptr;
     const kb::log::Channel* log_channel_ = nullptr;
 };

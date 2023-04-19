@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <map>
+#include <unordered_map>
 
 #include "../assert/assert.h"
 #include "../hash/hash.h"
@@ -94,7 +94,7 @@ public:
      *
      * @param path Relative path of the file inside the pack
      * @return A map iterator. The first element is a hash, the second is a PackLocalEntry referencing the file. If no
-     * file was found, the map's std::map<hash_t, PackLocalEntry>::end() iterator will be returned.
+     * file was found, the map's std::unordered_map<hash_t, PackLocalEntry>::end() iterator will be returned.
      */
     inline auto find(const std::string& path) const
     {
@@ -157,7 +157,7 @@ public:
 
 private:
     fs::path filepath_;
-    std::map<hash_t, PackLocalEntry> index_;
+    std::unordered_map<hash_t, PackLocalEntry> index_;
     const kb::log::Channel* log_channel_ = nullptr;
 };
 

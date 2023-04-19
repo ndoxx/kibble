@@ -10,7 +10,7 @@
 #include <filesystem>
 #include <fmt/std.h>
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <regex>
 
 namespace fs = std::filesystem;
@@ -27,7 +27,7 @@ void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
     exit(0);
 }
 
-void parse_entry(const fs::directory_entry&, const fs::path&, std::map<hash_t, std::string>&, kfs::FileSystem&,
+void parse_entry(const fs::directory_entry&, const fs::path&, std::unordered_map<hash_t, std::string>&, kfs::FileSystem&,
                  const kb::log::Channel&);
 int main(int argc, char** argv)
 {
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
     klog(chan_istr).info("Parsing sources.");
     klog(chan_istr).info("root: {}", dirpath);
 
-    std::map<hash_t, std::string> registry;
+    std::unordered_map<hash_t, std::string> registry;
     kfs::FileSystem filesystem;
 
     // Read manifest if any. If no manifest, all subdirs are explored.
@@ -140,7 +140,7 @@ inline bool filter(const fs::directory_entry& entry)
     return (!extension.compare(".cpp")) || (!extension.compare(".h")) || (!extension.compare(".hpp"));
 }
 
-void register_intern_string(const std::string& intern, std::map<hash_t, std::string>& registry,
+void register_intern_string(const std::string& intern, std::unordered_map<hash_t, std::string>& registry,
                             const kb::log::Channel& log_channel)
 {
     hash_t hash_intern = H_(intern.c_str()); // Hashed string
@@ -163,7 +163,7 @@ void register_intern_string(const std::string& intern, std::map<hash_t, std::str
     }
 }
 
-void parse_entry(const fs::directory_entry& entry, const fs::path& base, std::map<hash_t, std::string>& registry,
+void parse_entry(const fs::directory_entry& entry, const fs::path& base, std::unordered_map<hash_t, std::string>& registry,
                  kfs::FileSystem& filesystem, const kb::log::Channel& log_channel)
 {
     if (!entry.is_regular_file() || !filter(entry))

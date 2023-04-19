@@ -2,7 +2,7 @@
 
 #include "../hash/hash.h"
 #include <filesystem>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <variant>
 
@@ -162,9 +162,9 @@ private:
 
     struct SettingsStorage
     {
-        std::map<hash_t, SettingsScalar> scalars;
-        std::map<hash_t, ArrayDescriptor> arrays;
-        std::map<hash_t, std::string> key_names;
+        std::unordered_map<hash_t, SettingsScalar> scalars;
+        std::unordered_map<hash_t, ArrayDescriptor> arrays;
+        std::unordered_map<hash_t, std::string> key_names;
 
         void clear()
         {

@@ -5,7 +5,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <ostream>
 #include <type_traits>
@@ -298,7 +298,7 @@ private:
     fs::path self_directory_;
     fs::path app_settings_directory_;
     fs::path app_data_directory_;
-    std::map<hash_t, DirectoryAlias> aliases_;
+    std::unordered_map<hash_t, DirectoryAlias> aliases_;
     const kb::log::Channel* log_channel_ = nullptr;
 };
 

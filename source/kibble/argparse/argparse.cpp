@@ -61,7 +61,7 @@ struct MissingOperandException : public ParsingException
     }
 };
 
-const std::map<ArgType, std::string> k_type_str = {
+const std::unordered_map<ArgType, std::string> k_type_str = {
     {ArgType::NONE, "NONE"},
     {ArgType::BOOL, "bool"},
     {ArgType::INT, "int"},

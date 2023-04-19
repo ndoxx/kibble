@@ -3,7 +3,7 @@
 #include "../../time/clock.h"
 #include "job_system.h"
 #include <cstdint>
-#include <map>
+#include <unordered_map>
 
 namespace kb
 {
@@ -107,7 +107,7 @@ public:
 
 private:
     JobSystem& js_;
-    std::map<DaemonHandle, std::unique_ptr<Daemon>> daemons_;
+    std::unordered_map<DaemonHandle, std::unique_ptr<Daemon>> daemons_;
     std::vector<DaemonHandle> kill_list_;
     microClock clock_;
     DaemonHandle current_handle_ = 0;

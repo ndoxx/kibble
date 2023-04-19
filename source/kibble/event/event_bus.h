@@ -30,7 +30,7 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <numeric>
 #include <ostream>
@@ -663,7 +663,7 @@ private:
     }
 
 private:
-    using EventQueues = std::map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
+    using EventQueues = std::unordered_map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
     EventQueues event_queues_;
 
 #ifdef K_DEBUG
