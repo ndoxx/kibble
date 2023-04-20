@@ -11,6 +11,8 @@
 #include <set>
 #include <vector>
 
+#include <iostream>
+
 namespace kb::kfs
 {
 
@@ -25,10 +27,12 @@ class PackInputStreambuf : public std::streambuf
 {
 public:
     PackInputStreambuf(const fs::path& filepath, const PackLocalEntry& entry);
-    virtual ~PackInputStreambuf() = default;
+    ~PackInputStreambuf() = default;
 
 protected:
-    virtual int_type underflow() override;
+    int_type underflow() override;
+    pos_type seekoff(off_type off, std::ios_base::seekdir way, std::ios_base::openmode which) override;
+    pos_type seekpos(pos_type sp, std::ios_base::openmode which) override;
 
 private:
     std::filebuf buf_;
@@ -55,6 +59,42 @@ std::streambuf::int_type PackInputStreambuf::underflow()
         return traits_type::to_int_type(*gptr());
     }
     return traits_type::eof();
+}
+
+std::streambuf::pos_type PackInputStreambuf::seekoff(std::streambuf::off_type off, std::ios_base::seekdir way,
+                                                     std::ios_base::openmode which)
+{
+    off_type abs_pos;
+    if (way == std::ios_base::beg)
+    {
+        abs_pos = off + entry_.offset;
+    }
+    else if (way == std::ios_base::cur)
+    {
+        // Get current offset in file_buf
+        std::streamoff cur_pos = buf_.pubseekoff(0, std::ios_base::cur);
+        abs_pos = off + cur_pos;
+    }
+    else if (way == std::ios_base::end)
+    {
+        abs_pos = off + entry_.offset + entry_.size;
+    }
+    else
+    {
+        return pos_type(off_type(-1));
+    }
+
+    remaining_ = entry_.size - abs_pos + entry_.offset;
+
+    // Invalidate the buffer
+    setg(nullptr, nullptr, nullptr);
+
+    return buf_.pubseekoff(abs_pos, std::ios_base::beg, which);
+}
+
+std::streambuf::pos_type PackInputStreambuf::seekpos(std::streambuf::pos_type sp, std::ios_base::openmode which)
+{
+    return seekoff(std::streambuf::off_type(sp), std::ios_base::beg, which);
 }
 
 class PackInputStream : public std::istream
