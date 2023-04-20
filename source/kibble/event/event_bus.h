@@ -30,7 +30,6 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
-#include <unordered_map>
 #include <memory>
 #include <numeric>
 #include <ostream>
@@ -38,6 +37,7 @@
 #include <sstream>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "../ctti/ctti.h"
@@ -63,10 +63,7 @@ namespace detail
  * @tparam T Event type
  */
 template <typename T>
-concept Streamable = requires(std::ostream& stream, T a)
-{
-    stream << a;
-};
+concept Streamable = requires(std::ostream& stream, T a) { stream << a; };
 
 template <typename EventT>
 using EventDelegate = kb::Delegate<bool(const EventT&)>;
@@ -127,8 +124,8 @@ public:
      * @param instance class instance
      * @param priority
      */
-    template <typename ClassRef, std::invocable<typename to_pointer<ClassRef>::type, const EventT&> auto MemberFunction>
-    inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority = 0u)
+    template <typename ClassRef, auto MemberFunction>
+    inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority)
     {
         delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
         sort();
@@ -168,7 +165,7 @@ public:
      * @return true if the delegate was found and erased
      * @return false otherwise
      */
-    template <typename ClassRef, std::invocable<typename to_pointer<ClassRef>::type, const EventT&> auto MemberFunction>
+    template <typename ClassRef, auto MemberFunction>
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
     {
         auto target = EventDelegate<EventT>::template create<MemberFunction>(instance);

@@ -1,6 +1,6 @@
 #include "algorithm/msb_search.h"
 #define USE_GLM
-#include "math/morton.h"
+#include "math/morton_glm.h"
 #include <catch2/catch_all.hpp>
 #include <glm/glm.hpp>
 #include <numeric>
