@@ -54,7 +54,8 @@ public:
     template <typename... ArgsT>
     explicit MemoryArena(const char* debug_name, kb::memory::HeapArea& area, ArgsT&&... args)
         : debug_name_(debug_name), log_channel_(area.get_logger_channel()),
-          allocator_(debug_name, area, std::forward<ArgsT>(args)...), memory_tracker_(debug_name, log_channel_)
+          allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...),
+          memory_tracker_(debug_name, log_channel_)
     {
     }
 

@@ -258,7 +258,7 @@ class PoolArenaFixture
 public:
     typedef typename PoolArena::SIZE_TYPE SIZE_TYPE;
 
-    PoolArenaFixture() : area(3_kB), arena("PoolArena", area, sizeof(POD) + PoolArena::DECORATION_SIZE, 32u)
+    PoolArenaFixture() : area(3_kB), arena("PoolArena", area, sizeof(POD), 32u)
     {
     }
 

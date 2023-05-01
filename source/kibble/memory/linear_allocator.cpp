@@ -12,7 +12,7 @@ namespace kb
 namespace memory
 {
 
-LinearAllocator::LinearAllocator(const char* debug_name, HeapArea& area, std::size_t size)
+LinearAllocator::LinearAllocator(const char* debug_name, HeapArea& area, uint32_t, std::size_t size)
 {
     std::pair<void*, void*> range = area.require_block(size, debug_name);
 

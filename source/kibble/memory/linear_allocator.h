@@ -29,7 +29,7 @@ public:
      * @param size size of the block to reserve
      * @param debug_name name of this allocator, for debug purposes
      */
-    LinearAllocator(const char* debug_name, HeapArea& area, std::size_t size);
+    LinearAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t size);
 
     /**
      * @brief Return a pointer to the beginning of the block.

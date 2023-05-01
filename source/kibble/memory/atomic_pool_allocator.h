@@ -36,9 +36,9 @@ public:
      * @param node_size size of a node
      * @param debug_name name of this allocator, for debug purposes
      */
-    AtomicPoolAllocator(const char* debug_name, HeapArea& area, std::size_t node_size)
+    AtomicPoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size)
     {
-        node_size_ = node_size;
+        node_size_ = node_size + decoration_size;
         auto range = area.require_block(node_size_ * MAX_NODES, debug_name);
         begin_ = static_cast<uint8_t*>(range.first);
         end_ = begin_ + MAX_NODES * node_size_;

@@ -12,9 +12,9 @@ namespace kb
 namespace memory
 {
 
-PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, std::size_t node_size, std::size_t max_nodes)
+PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size, std::size_t max_nodes)
 {
-    node_size_ = node_size;
+    node_size_ = node_size + decoration_size;
     max_nodes_ = max_nodes;
     auto range = area.require_block(node_size_ * max_nodes_, debug_name);
     begin_ = static_cast<uint8_t*>(range.first);

@@ -35,7 +35,7 @@ public:
      * @param max_nodes maximum amount of nodes in the memory pool
      * @param debug_name name of this allocator, for debug purposes
      */
-    PoolAllocator(const char* debug_name, HeapArea& area, std::size_t node_size, std::size_t max_nodes);
+    PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size, std::size_t max_nodes);
 
     /**
      * @brief Return a pointer to the beginning of the block.
