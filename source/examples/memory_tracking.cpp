@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     kb::memory::HeapArea heap(1_MB, &chan_memory);
     // Construct a memory arena using a pool allocator, that can hold 32 instances of Data
     // Pass logging channel to arena so we can log allocations / deallocations and get a shutdown report
-    MemoryPool pool("MemPool", &chan_memory, heap, sizeof(Data) + MemoryPool::DECORATION_SIZE, 32ul);
+    MemoryPool pool("MemPool", heap, sizeof(Data) + MemoryPool::DECORATION_SIZE, 32ul);
 
     // Show all arenas in the heap area
     heap.debug_show_content();

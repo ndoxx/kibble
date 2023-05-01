@@ -10,6 +10,7 @@
 
 #include "../assert/assert.h"
 #include "../logger2/logger.h"
+#include "heap_area.h"
 #include "memory_utils.h"
 #include "policy.h"
 
@@ -51,8 +52,9 @@ public:
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    explicit MemoryArena(const char* debug_name, const kb::log::Channel* log_channel, ArgsT&&... args)
-        : allocator_(debug_name, std::forward<ArgsT>(args)...), memory_tracker_(debug_name, log_channel)
+    explicit MemoryArena(const char* debug_name, kb::memory::HeapArea& area, ArgsT&&... args)
+        : debug_name_(debug_name), log_channel_(area.get_logger_channel()),
+          allocator_(debug_name, area, std::forward<ArgsT>(args)...), memory_tracker_(debug_name, log_channel_)
     {
     }
 
@@ -176,14 +178,14 @@ public:
     }
 
 private:
+    std::string debug_name_;
+    const kb::log::Channel* log_channel_ = nullptr;
+
     AllocatorT allocator_;
     ThreadPolicyT thread_guard_;
     BoundsCheckerT bounds_checker_;
     MemoryTaggerT memory_tagger_;
     MemoryTrackerT memory_tracker_;
-
-    std::string debug_name_;
-    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 /**

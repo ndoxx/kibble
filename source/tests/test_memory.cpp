@@ -58,7 +58,7 @@ class LinArenaFixture
 public:
     typedef typename LinArena::SIZE_TYPE SIZE_TYPE;
 
-    LinArenaFixture() : area(3_kB), arena("LinArena", nullptr, area, 2_kB)
+    LinArenaFixture() : area(3_kB), arena("LinArena", area, 2_kB)
     {
     }
 
@@ -258,7 +258,7 @@ class PoolArenaFixture
 public:
     typedef typename PoolArena::SIZE_TYPE SIZE_TYPE;
 
-    PoolArenaFixture() : area(3_kB), arena("PoolArena", nullptr, area, sizeof(POD) + PoolArena::DECORATION_SIZE, 32u)
+    PoolArenaFixture() : area(3_kB), arena("PoolArena", area, sizeof(POD) + PoolArena::DECORATION_SIZE, 32u)
     {
     }
 

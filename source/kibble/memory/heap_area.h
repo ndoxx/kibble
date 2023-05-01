@@ -64,15 +64,6 @@ public:
     ~HeapArea();
 
     /**
-     * @brief Lazy-initialize the heap area.
-     *
-     * @param size size of the area
-     * @return true if everything went fine
-     * @return false otherwise
-     */
-    bool init(size_t size, const kb::log::Channel* channel = nullptr);
-
-    /**
      * @brief Get a pointer to the beginning of the area.
      *
      * @return void*

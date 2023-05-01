@@ -43,8 +43,7 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
 
     // Init job pool
     klog(log_channel_).uid("JobSystem").debug("Allocating job pool.");
-    ss_->job_pool =
-        std::make_shared<JobPoolArena>("JobPool", nullptr, area, k_job_node_size + JobPoolArena::DECORATION_SIZE);
+    ss_->job_pool = std::make_shared<JobPoolArena>("JobPool", area, k_job_node_size + JobPoolArena::DECORATION_SIZE);
 
     // Spawn threads_count_-1 workers
     klog(log_channel_).uid("JobSystem").debug("Detected {} CPU cores.", CPU_cores_count_);
