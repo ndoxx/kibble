@@ -27,8 +27,6 @@ class HeapArea;
 class PoolAllocator
 {
 public:
-    PoolAllocator() = default;
-
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
@@ -37,18 +35,7 @@ public:
      * @param max_nodes maximum amount of nodes in the memory pool
      * @param debug_name name of this allocator, for debug purposes
      */
-    PoolAllocator(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name);
-
-    /**
-     * @brief Lazy-initialize a pool allocator.
-     * Reserve a block of a given size on a HeapArea and use it for pool allocation.
-     *
-     * @param area reference to the memory resource the allocator will reserve a block from
-     * @param node_size size of a node
-     * @param max_nodes maximum amount of nodes in the memory pool
-     * @param debug_name name of this allocator, for debug purposes
-     */
-    void init(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name);
+    PoolAllocator(const char* debug_name, HeapArea& area, std::size_t node_size, std::size_t max_nodes);
 
     /**
      * @brief Return a pointer to the beginning of the block.

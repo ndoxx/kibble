@@ -133,12 +133,5 @@ Address:   {:#x})",
     return ptr_range;
 }
 
-void* HeapArea::require_pool_block(size_t element_size, size_t max_count, const char* debug_name)
-{
-    size_t pool_size = max_count * element_size;
-    auto block = require_block(pool_size, debug_name);
-    return block.first;
-}
-
 } // namespace memory
 } // namespace kb

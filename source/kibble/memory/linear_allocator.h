@@ -22,8 +22,6 @@ class HeapArea;
 class LinearAllocator
 {
 public:
-    LinearAllocator() = default;
-
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for linear allocation.
      *
@@ -31,17 +29,7 @@ public:
      * @param size size of the block to reserve
      * @param debug_name name of this allocator, for debug purposes
      */
-    LinearAllocator(HeapArea& area, std::size_t size, const char* debug_name);
-
-    /**
-     * @brief Lazy-initialize a linear allocator.
-     * Reserve a block of a given size on a HeapArea and use it for linear allocation.
-     *
-     * @param area reference to the memory resource the allocator will reserve a block from
-     * @param size size of the block to reserve
-     * @param debug_name name of this allocator, for debug purposes
-     */
-    void init(HeapArea& area, std::size_t size, const char* debug_name);
+    LinearAllocator(const char* debug_name, HeapArea& area, std::size_t size);
 
     /**
      * @brief Return a pointer to the beginning of the block.

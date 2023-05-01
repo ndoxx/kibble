@@ -45,63 +45,20 @@ public:
     static constexpr uint32_t DECORATION_SIZE = BK_FRONT_SIZE + BoundsCheckerT::SIZE_BACK;
 
     /**
-     * @brief Construct a new Memory Arena for later lazy-initialization.
-     *
-     */
-    MemoryArena() : is_initialized_(false)
-    {
-    }
-
-    /**
      * @brief Forwards all the arguments to the allocator's constructor.
      *
      * @tparam ArgsT types of the allocator's constructor arguments
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    explicit MemoryArena(ArgsT&&... args) : allocator_(std::forward<ArgsT>(args)...), is_initialized_(true)
+    explicit MemoryArena(const char* debug_name, const kb::log::Channel* log_channel, ArgsT&&... args)
+        : allocator_(debug_name, std::forward<ArgsT>(args)...), memory_tracker_(debug_name, log_channel)
     {
     }
 
     ~MemoryArena()
     {
-        shutdown();
-    }
-
-    /**
-     * @brief Forwards all the arguments to the allocator's init function.
-     *
-     * @tparam ArgsT types of the allocator's init function arguments
-     * @param args the allocator's init function arguments
-     */
-    template <typename... ArgsT>
-    inline void init(ArgsT&&... args)
-    {
-        allocator_.init(std::forward<ArgsT>(args)...);
-        is_initialized_ = true;
-    }
-
-    /**
-     * @brief Set a logger channel instance for this arena
-     *
-     * @param log_channel
-     */
-    inline void set_logger_channel(const kb::log::Channel* log_channel)
-    {
-        log_channel_ = log_channel;
-    }
-
-    /**
-     * @brief Call instead of dtor if arena is static or need to be reused
-     *
-     */
-    inline void shutdown()
-    {
-        if (is_initialized_)
-        {
-            is_initialized_ = false;
-            memory_tracker_.report(log_channel_);
-        }
+        memory_tracker_.report();
     }
 
     /**
@@ -122,27 +79,6 @@ public:
     inline const AllocatorT& get_allocator() const
     {
         return allocator_;
-    }
-
-    /**
-     * @brief Set the debug name
-     *
-     * @param name
-     */
-    inline void set_debug_name(const std::string& name)
-    {
-        debug_name_ = name;
-    }
-
-    /**
-     * @brief Check if this arena is initialized
-     *
-     * @return true if the arena is initialized
-     * @return false otherwise
-     */
-    inline bool is_initialized() const
-    {
-        return is_initialized_;
     }
 
     /**
@@ -193,15 +129,6 @@ public:
         bounds_checker_.put_sentinel_back(current + size);
         memory_tracker_.on_allocation(begin, decorated_size, alignment, file, line);
 
-        klog(log_channel_)
-            .uid("Arena")
-            .verbose(R"({} -- Allocation:
-Decorated size: {}
-Begin ptr:      {:#x}
-User ptr:       {:#x})",
-                     debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
-                     reinterpret_cast<uint64_t>(current));
-
         // Unlock resource and return user pointer
         thread_guard_.leave();
         return current;
@@ -214,7 +141,7 @@ User ptr:       {:#x})",
      *
      * @param ptr
      */
-    void deallocate(void* ptr)
+    void deallocate(void* ptr, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
     {
         thread_guard_.enter();
         // Take care to jump further back if non-POD array deallocation, because we also stored the number of instances
@@ -226,20 +153,11 @@ User ptr:       {:#x})",
         const SIZE_TYPE decorated_size = *(reinterpret_cast<SIZE_TYPE*>(begin + BoundsCheckerT::SIZE_FRONT));
 
         // Check that everything went ok
-        bounds_checker_.check_sentinel_back(begin + decorated_size - BoundsCheckerT::SIZE_BACK);
-        memory_tracker_.on_deallocation(begin);
         memory_tagger_.tag_deallocation(begin, decorated_size);
+        bounds_checker_.check_sentinel_back(begin + decorated_size - BoundsCheckerT::SIZE_BACK);
+        memory_tracker_.on_deallocation(begin, decorated_size, file, line);
 
         allocator_.deallocate(begin);
-
-        klog(log_channel_)
-            .uid("Arena")
-            .verbose(R"({} -- Deallocation:
-Decorated size: {}
-Begin ptr:      {:#x}
-User ptr:       {:#x})",
-                     debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
-                     reinterpret_cast<uint64_t>(ptr));
 
         thread_guard_.leave();
     }
@@ -265,7 +183,6 @@ private:
     MemoryTrackerT memory_tracker_;
 
     std::string debug_name_;
-    bool is_initialized_;
     const kb::log::Channel* log_channel_ = nullptr;
 };
 
@@ -529,15 +446,15 @@ T* NewArray(ArenaT& arena, size_t N, size_t alignment, const char* file, int lin
  * @param arena target arena reference
  */
 template <typename T, class ArenaT>
-void Delete(T* object, ArenaT& arena)
+void Delete(T* object, ArenaT& arena, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
 {
     if constexpr (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
         object->~T();
 
     if constexpr (std::is_polymorphic_v<T>)
-        arena.deallocate(dynamic_cast<void*>(object));
+        arena.deallocate(dynamic_cast<void*>(object), file, line);
     else
-        arena.deallocate(object);
+        arena.deallocate(object, file, line);
 }
 
 /**
@@ -550,11 +467,11 @@ void Delete(T* object, ArenaT& arena)
  * @param arena target arena reference
  */
 template <typename T, class ArenaT>
-void DeleteArray(T* object, ArenaT& arena)
+void DeleteArray(T* object, ArenaT& arena, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
 {
     if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
     {
-        arena.deallocate(object);
+        arena.deallocate(object, file, line);
     }
     else
     {
@@ -574,7 +491,7 @@ void DeleteArray(T* object, ArenaT& arena)
         // Arena's deallocate() expects a pointer 4 bytes before actual user pointer
         // NOTE(ndx): EXPECT deallocation bug when T is polymorphic, see HACK comment in Delete()
         // TODO: Test and fix this
-        arena.deallocate(as_uint - 1);
+        arena.deallocate(as_uint - 1, file, line);
     }
 }
 
@@ -651,8 +568,9 @@ struct TypeAndCount<T[N]>
                                                                ALIGNMENT, __FILE__, __LINE__)
 #define K_NEW_ARRAY_DYNAMIC_ALIGN(TYPE, COUNT, ARENA, ALIGNMENT)                                                       \
     kb::memory::NewArray<TYPE>(ARENA, COUNT, ALIGNMENT, __FILE__, __LINE__)
-#define K_DELETE(OBJECT, ARENA) kb::memory::Delete(OBJECT, ARENA)
-#define K_DELETE_ARRAY(OBJECT, ARENA) kb::memory::DeleteArray(OBJECT, ARENA)
+
+#define K_DELETE(OBJECT, ARENA) kb::memory::Delete(OBJECT, ARENA, __FILE__, __LINE__)
+#define K_DELETE_ARRAY(OBJECT, ARENA) kb::memory::DeleteArray(OBJECT, ARENA, __FILE__, __LINE__)
 
 // When this feature is implemented in C++, use source_location and something like:
 /*

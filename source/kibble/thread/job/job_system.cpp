@@ -43,7 +43,8 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
 
     // Init job pool
     klog(log_channel_).uid("JobSystem").debug("Allocating job pool.");
-    ss_->job_pool.init(area, k_job_node_size + JobPoolArena::DECORATION_SIZE, "JobPool");
+    ss_->job_pool =
+        std::make_shared<JobPoolArena>("JobPool", nullptr, area, k_job_node_size + JobPoolArena::DECORATION_SIZE);
 
     // Spawn threads_count_-1 workers
     klog(log_channel_).uid("JobSystem").debug("Detected {} CPU cores.", CPU_cores_count_);
@@ -116,7 +117,8 @@ Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
-    Job* job = K_NEW_ALIGN(Job, ss_->job_pool, k_cache_line_size);
+    auto& pool = *(ss_->job_pool);
+    Job* job = K_NEW_ALIGN(Job, pool, k_cache_line_size);
     job->kernel = std::move(kernel);
     job->meta = std::move(meta);
     return job;
@@ -130,7 +132,8 @@ void JobSystem::release_job(Job* job)
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.", log_channel_);
 
     // Return job to the pool
-    K_DELETE(job, ss_->job_pool);
+    auto& pool = *(ss_->job_pool);
+    K_DELETE(job, pool);
 }
 
 void JobSystem::schedule(Job* job)

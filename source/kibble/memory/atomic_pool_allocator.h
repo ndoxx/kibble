@@ -1,10 +1,10 @@
 #pragma once
 
+#include "../util/sanitizer.h"
 #include "assert/assert.h"
 #include "atomic_queue/atomic_queue.h"
 #include "memory/heap_area.h"
 #include "memory/memory_utils.h"
-#include "../util/sanitizer.h"
 
 // #define ALLOCATOR_PADDING_MAGIC
 
@@ -29,8 +29,6 @@ template <size_t MAX_NODES>
 class AtomicPoolAllocator
 {
 public:
-    AtomicPoolAllocator() = default;
-
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
@@ -38,24 +36,11 @@ public:
      * @param node_size size of a node
      * @param debug_name name of this allocator, for debug purposes
      */
-    AtomicPoolAllocator(HeapArea& area, std::size_t node_size, const char* debug_name)
-    {
-        init(area, node_size, debug_name);
-    }
-
-    /**
-     * @brief Lazy-initialize a pool allocator.
-     * Reserve a block of a given size on a HeapArea and use it for pool allocation.
-     *
-     * @param area reference to the memory resource the allocator will reserve a block from
-     * @param node_size size of a node
-     * @param debug_name name of this allocator, for debug purposes
-     */
-    void init(HeapArea& area, std::size_t node_size, const char* debug_name)
+    AtomicPoolAllocator(const char* debug_name, HeapArea& area, std::size_t node_size)
     {
         node_size_ = node_size;
-        void* begin = area.require_pool_block(node_size_, MAX_NODES, debug_name);
-        begin_ = static_cast<uint8_t*>(begin);
+        auto range = area.require_block(node_size_ * MAX_NODES, debug_name);
+        begin_ = static_cast<uint8_t*>(range.first);
         end_ = begin_ + MAX_NODES * node_size_;
 
         // Fill the free queue with all possible addresses

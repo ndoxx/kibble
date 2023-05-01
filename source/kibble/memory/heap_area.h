@@ -117,18 +117,6 @@ public:
     std::pair<void*, void*> require_block(size_t size, const char* debug_name = nullptr);
 
     /**
-     * @brief Convenience function to reserve a block for the specific purpose of pool allocation.
-     * A memory pool is rather defined in terms of an element / node size and a maximum count of elements. The block
-     * size is just the product of these two quantities.
-     *
-     * @param element_size size of a node inside the memory pool
-     * @param max_count maximum number of elements to be put in the pool
-     * @param debug_name name of the block used for debugging purposes
-     * @return void* pointer to the beginning of the block
-     */
-    void* require_pool_block(size_t element_size, size_t max_count, const char* debug_name = nullptr);
-
-    /**
      * @brief Show the content of the area using the logger.
      * The channel "memory" must be setup for this to work.
      *

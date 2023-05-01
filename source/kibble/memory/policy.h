@@ -163,17 +163,21 @@ public:
 class NoMemoryTracking
 {
 public:
+    NoMemoryTracking(const char*, const kb::log::Channel*)
+    {
+    }
+
     inline void on_allocation(uint8_t*, std::size_t, std::size_t, const char*, int) const
     {
     }
-    inline void on_deallocation(uint8_t*) const
+    inline void on_deallocation(uint8_t*, std::size_t, const char*, int) const
     {
     }
     inline int32_t get_allocation_count() const
     {
         return 0;
     }
-    inline void report(const kb::log::Channel*) const
+    inline void report() const
     {
     }
 };
@@ -188,6 +192,11 @@ public:
 class SimpleMemoryTracking
 {
 public:
+    SimpleMemoryTracking(const char* debug_name, const kb::log::Channel* log_channel)
+        : debug_name_(debug_name), log_channel_(log_channel)
+    {
+    }
+
     /**
      * @brief On allocating a chunk, increase internal counter
      *
@@ -201,7 +210,7 @@ public:
      * @brief On deallocating a chunk, decrease internal counter
      *
      */
-    inline void on_deallocation(uint8_t*)
+    inline void on_deallocation(uint8_t*, std::size_t, const char*, int)
     {
         --num_allocs_;
     }
@@ -220,16 +229,20 @@ public:
      * @brief Print a tracking report on the logger
      *
      */
-    inline void report(const kb::log::Channel* log_channel) const
+    inline void report() const
     {
         if (num_allocs_)
         {
-            klog(log_channel).uid("MemoryTracker").error("Alloc-dealloc mismatch: {}", num_allocs_);
+            klog(log_channel_)
+                .uid("MemoryTracker")
+                .error("Arena: {}, Alloc-dealloc mismatch: {}", debug_name_, num_allocs_);
         }
     }
 
 private:
     int32_t num_allocs_ = 0;
+    std::string debug_name_;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 class VerboseMemoryTracking
@@ -244,6 +257,11 @@ public:
         int line;
     };
 
+    VerboseMemoryTracking(const char* debug_name, const kb::log::Channel* log_channel)
+        : debug_name_(debug_name), log_channel_(log_channel)
+    {
+    }
+
     /**
      * @brief On allocating a chunk, save alloc info
      *
@@ -253,18 +271,42 @@ public:
     {
         ++num_allocs_;
         allocations_.insert({reinterpret_cast<size_t>(begin), {begin, decorated_size, alignment, file, line}});
+
+        if (log_channel_)
+        {
+            klog(log_channel_)
+                .uid("Arena")
+                .verbose(R"({} -- Allocation:
+Decorated size: {}
+Begin ptr:      {:#x}
+Alignment:      {}B,
+Location:       {}:{})",
+                         debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin), alignment,
+                         file, line);
+        }
     }
 
     /**
      * @brief On deallocating a chunk, erase alloc info
      *
      */
-    inline void on_deallocation(uint8_t* begin)
+    inline void on_deallocation(uint8_t* begin, std::size_t decorated_size, const char* file, int line)
     {
         --num_allocs_;
         if (auto it = allocations_.find(reinterpret_cast<size_t>(begin)); it != allocations_.end())
         {
             allocations_.erase(it);
+        }
+
+        if (log_channel_)
+        {
+            klog(log_channel_)
+                .uid("Arena")
+                .verbose(R"({} -- Deallocation:
+Decorated size: {}
+Begin ptr:      {:#x}
+Location:       {}:{})",
+                         debug_name_, utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin), file, line);
         }
     }
 
@@ -282,15 +324,17 @@ public:
      * @brief Print a tracking report on the logger
      *
      */
-    inline void report(const kb::log::Channel* log_channel) const
+    inline void report() const
     {
         if (num_allocs_)
         {
-            klog(log_channel).uid("MemoryTracker").error("Alloc-dealloc mismatch: {}", num_allocs_);
+            klog(log_channel_)
+                .uid("MemoryTracker")
+                .error("Arena: {}, Alloc-dealloc mismatch: {}", debug_name_, num_allocs_);
 
             for (auto&& [key, info] : allocations_)
             {
-                klog(log_channel)
+                klog(log_channel_)
                     .uid("MemoryTracker")
                     .info(R"(Unresolved:
 begin: {}
@@ -306,6 +350,8 @@ location: {}:{})",
 private:
     int32_t num_allocs_ = 0;
     std::unordered_map<size_t, AllocInfo> allocations_;
+    std::string debug_name_;
+    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 } // namespace kb::memory::policy
