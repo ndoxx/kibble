@@ -61,10 +61,14 @@ void HeapArea::debug_show_content()
     }
 }
 
-HeapArea::HeapArea(size_t size, const kb::log::Channel* channel)
+HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : size_(size), log_channel_(channel)
 {
-    if (!init(size, channel))
-        throw std::bad_alloc();
+    begin_ = new uint8_t[size_];
+    head_ = begin_;
+#ifdef HEAP_AREA_MEMSET_ENABLED
+    memset(begin_, AREA_MEMSET_VALUE, size_);
+#endif
+    klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", utils::human_size(size_), uint64_t(begin_));
 }
 
 HeapArea::~HeapArea()
@@ -77,27 +81,6 @@ void HeapArea::debug_hex_dump(std::ostream& stream, size_t size)
     if (size == 0)
         size = size_t(head_ - begin_);
     memory::hex_dump(stream, begin_, size, "HEX DUMP");
-}
-
-bool HeapArea::init(size_t size, const kb::log::Channel* channel)
-{
-    size_ = size;
-    log_channel_ = channel;
-    try
-    {
-        begin_ = new uint8_t[size_];
-    }
-    catch (std::bad_alloc const&)
-    {
-        return false;
-    }
-    head_ = begin_;
-#ifdef HEAP_AREA_MEMSET_ENABLED
-    memset(begin_, AREA_MEMSET_VALUE, size_);
-#endif
-    klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", utils::human_size(size_), uint64_t(begin_));
-
-    return true;
 }
 
 std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_name)
@@ -131,13 +114,6 @@ Address:   {:#x})",
             reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;
-}
-
-void* HeapArea::require_pool_block(size_t element_size, size_t max_count, const char* debug_name)
-{
-    size_t pool_size = max_count * element_size;
-    auto block = require_block(pool_size, debug_name);
-    return block.first;
 }
 
 } // namespace memory

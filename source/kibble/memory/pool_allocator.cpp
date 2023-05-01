@@ -12,17 +12,12 @@ namespace kb
 namespace memory
 {
 
-PoolAllocator::PoolAllocator(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name)
+PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size, std::size_t max_nodes)
 {
-    init(area, node_size, max_nodes, debug_name);
-}
-
-void PoolAllocator::init(HeapArea& area, std::size_t node_size, std::size_t max_nodes, const char* debug_name)
-{
-    node_size_ = node_size;
+    node_size_ = node_size + decoration_size;
     max_nodes_ = max_nodes;
-    void* begin = area.require_pool_block(node_size_, max_nodes_, debug_name);
-    begin_ = static_cast<uint8_t*>(begin);
+    auto range = area.require_block(node_size_ * max_nodes_, debug_name);
+    begin_ = static_cast<uint8_t*>(range.first);
     end_ = begin_ + max_nodes_ * node_size_;
     free_list_.init(begin_, node_size_, max_nodes_, 0, 0);
 }
