@@ -605,7 +605,7 @@ private:
     template <typename EventT>
     inline void track_event(const EventT& event, bool is_queued)
     {
-        if (should_track_(kb::ctti::type_id<EventT>()))
+        if (log_channel_ && should_track_(kb::ctti::type_id<EventT>()))
         {
             // Using a concept we can know at compile-time if the event supports the stream operator
             if constexpr (detail::Streamable<EventT>)

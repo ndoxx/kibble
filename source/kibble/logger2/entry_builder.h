@@ -63,26 +63,34 @@ public:
         log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
 
-    inline void verbose(std::string_view sv)
+    inline void verbose([[maybe_unused]] std::string_view sv)
     {
+#ifdef K_DEBUG
         level(Severity::Verbose).log(sv);
+#endif
     }
 
     template <typename... ArgsT>
-    inline void verbose(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
+    inline void verbose([[maybe_unused]] fmt::format_string<ArgsT...> fstr, [[maybe_unused]] ArgsT&&... args)
     {
+#ifdef K_DEBUG
         level(Severity::Verbose).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
+#endif
     }
 
-    inline void debug(std::string_view sv)
+    inline void debug([[maybe_unused]] std::string_view sv)
     {
+#ifdef K_DEBUG
         level(Severity::Debug).log(sv);
+#endif
     }
 
     template <typename... ArgsT>
-    inline void debug(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
+    inline void debug([[maybe_unused]] fmt::format_string<ArgsT...> fstr, [[maybe_unused]] ArgsT&&... args)
     {
+#ifdef K_DEBUG
         level(Severity::Debug).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
+#endif
     }
 
     inline void info(std::string_view sv)

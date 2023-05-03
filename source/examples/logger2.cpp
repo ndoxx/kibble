@@ -1,3 +1,4 @@
+#define K_DEBUG
 #include "argparse/argparse.h"
 #include "logger2/formatters/powerline_terminal_formatter.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
@@ -74,6 +75,12 @@ int main(int argc, char** argv)
     bool success = parser.parse(argc, argv);
     if (!success)
         show_error_and_die(parser);
+
+#ifdef K_DEBUG
+    std::cout << "DEBUG BUILD" << std::endl;
+#else
+    std::cout << "RELEASE BUILD" << std::endl;
+#endif
 
     // * Create shared objects for the logger
     std::shared_ptr<Formatter> console_formatter;

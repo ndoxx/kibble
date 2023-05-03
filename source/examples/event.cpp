@@ -1,10 +1,9 @@
+#define K_DEBUG
+#include "event/event_bus.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
 #include "logger2/sinks/console_sink.h"
 #include "math/color_table.h"
-
-#define K_DEBUG
-#include "event/event_bus.h"
 
 #include <iostream>
 #include <thread>

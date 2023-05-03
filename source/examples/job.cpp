@@ -1,3 +1,4 @@
+#define K_DEBUG
 #include "argparse/argparse.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
