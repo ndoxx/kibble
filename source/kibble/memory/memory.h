@@ -64,6 +64,11 @@ public:
         memory_tracker_.report();
     }
 
+    inline void disable_logging()
+    {
+        log_channel_ = nullptr;
+    }
+
     /**
      * @brief Get the allocator
      *

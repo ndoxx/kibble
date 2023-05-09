@@ -1,4 +1,6 @@
+#ifndef K_DEBUG
 #define K_DEBUG
+#endif
 #include "argparse/argparse.h"
 #include "logger2/formatters/powerline_terminal_formatter.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"

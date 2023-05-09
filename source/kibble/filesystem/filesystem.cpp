@@ -20,8 +20,6 @@
 namespace kb::kfs
 {
 
-static const std::regex r_alias("^(.+?)://(.+)");
-
 template <typename TP>
 std::time_t to_time_t(TP tp)
 {
@@ -315,6 +313,7 @@ FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::strin
     UpathParsingResult result;
 
     // Try to regex match an aliasing of the form "alias://path/to/file"
+    static const std::regex r_alias("^(.+?)://(.+)");
     std::smatch match;
     if (std::regex_search(unipath, match, r_alias))
     {
