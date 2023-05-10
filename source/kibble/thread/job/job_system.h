@@ -538,7 +538,7 @@ public:
      *
      * @return true it the job was processed, false otherwise
      */
-    inline bool is_processed()
+    inline bool is_processed() const
     {
         return job_->is_processed();
     }
