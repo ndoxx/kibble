@@ -12,6 +12,15 @@ namespace fs = std::filesystem;
 using namespace kb;
 using namespace kb::log;
 
+void list_dir(const fs::path& path, const Channel& chan)
+{
+    for (const auto& entry : fs::recursive_directory_iterator(path))
+    {
+        bool is_dir = entry.is_directory();
+        klog(chan).info("- {}: {}", (is_dir ? 'd' : 'f'), entry.path().string());
+    }
+}
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -58,6 +67,19 @@ int main(int argc, char** argv)
 
     klog(chan).info("is_older(): {}", filesystem.is_older("resources://text_file.txt", "resources://not_in_pack.txt"));
     klog(chan).info("is_older(): {}", filesystem.is_older("resources://not_in_pack.txt", "resources://text_file.txt"));
+
+    // * Syncing files
+    klog(chan).info("Syncing test");
+    fs::path config_source = filesystem.regular_path("data://iotest/config");
+    klog(chan).info("Before sync:");
+    list_dir(cfg_dir, chan);
+
+    filesystem.sync(config_source, cfg_dir);
+    klog(chan).info("After sync:");
+    list_dir(cfg_dir, chan);
+
+    // Cleanup
+    fs::remove_all(cfg_dir);
 
     return 0;
 }

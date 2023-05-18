@@ -221,6 +221,37 @@ const fs::path& FileSystem::get_app_data_directory() const
     return app_data_directory_;
 }
 
+void FileSystem::sync(const fs::path& source, const fs::path& target) const
+{
+    // Sanity check
+    if ((fs::status(target).permissions() & fs::perms::owner_write) == fs::perms::none)
+    {
+        klog(log_channel_).uid("FileSystem").error("Target access denied");
+        return;
+    }
+
+    bool dir_op = fs::is_directory(source);
+
+    klog(log_channel_)
+        .uid("FileSystem")
+        .info(R"(Syncing {}:
+source: {}
+target: {})",
+              (dir_op ? "directory" : "file"), source.string(), target.string());
+
+    std::error_code ec;
+
+    if (dir_op)
+        fs::copy(source, target, fs::copy_options::update_existing | fs::copy_options::recursive, ec);
+    else
+        fs::copy_file(source, target, fs::copy_options::update_existing, ec);
+
+    if (ec)
+    {
+        klog(log_channel_).uid("FileSystem").error(ec.message());
+    }
+}
+
 bool FileSystem::is_older(const std::string& unipath_1, const std::string& unipath_2) const
 {
     auto path_1 = regular_path(unipath_1);

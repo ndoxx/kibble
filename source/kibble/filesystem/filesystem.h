@@ -195,6 +195,16 @@ public:
     fs::path get_app_data_directory(std::string vendor, std::string appname) const;
 
     /**
+     * @brief Recursively copy newer files from source directory to target directory
+     * 
+     * If source path is a regular file, simply copy source to target if newer
+     * 
+     * @param source The directory / file to copy from
+     * @param target The directory / file to copy to
+     */
+    void sync(const fs::path& source, const fs::path& target) const;
+
+    /**
      * @brief Compare the creation / modification dates of two files.
      * Return true if the file/directory pointed to by the first argument is older than the second one. Both paths MUST
      * exist.
