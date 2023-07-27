@@ -239,16 +239,41 @@ source: {}
 target: {})",
               (dir_op ? "directory" : "file"), source.string(), target.string());
 
-    std::error_code ec;
+    std::error_code ec_copy;
 
     if (dir_op)
-        fs::copy(source, target, fs::copy_options::update_existing | fs::copy_options::recursive, ec);
-    else
-        fs::copy_file(source, target, fs::copy_options::update_existing, ec);
-
-    if (ec)
     {
-        klog(log_channel_).uid("FileSystem").error(ec.message());
+        // Copy recursively
+        fs::copy(source, target, fs::copy_options::update_existing | fs::copy_options::recursive, ec_copy);
+
+        // Also delete removed files
+        std::vector<fs::path> kill_list;
+        for (const auto& entry : fs::recursive_directory_iterator(target))
+        {
+            fs::path rel = fs::relative(entry.path(), target);
+            if (!fs::exists(source / rel))
+                kill_list.push_back(entry.path());
+        }
+
+        std::error_code ec_remove;
+        for (const auto& path : kill_list)
+        {
+            if (fs::exists(path))
+            {
+                fs::remove_all(path, ec_remove);
+                if (ec_remove)
+                {
+                    klog(log_channel_).uid("FileSystem").error(ec_remove.message());
+                }
+            }
+        }
+    }
+    else
+        fs::copy_file(source, target, fs::copy_options::update_existing, ec_copy);
+
+    if (ec_copy)
+    {
+        klog(log_channel_).uid("FileSystem").error(ec_copy.message());
     }
 }
 
