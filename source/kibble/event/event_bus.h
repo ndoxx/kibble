@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <map>
 #include <memory>
 #include <numeric>
 #include <ostream>
@@ -37,7 +38,6 @@
 #include <sstream>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 #include "../ctti/ctti.h"
@@ -573,6 +573,19 @@ public:
      */
     size_t get_unprocessed_count();
 
+    /**
+     * @brief Check if an event queue already exists.
+     *
+     * @tparam EventT
+     * @return true
+     * @return false
+     */
+    template <typename EventT>
+    inline bool has_queue()
+    {
+        return (event_queues_[kb::ctti::type_id<EventT>()] != nullptr);
+    }
+
 #ifdef K_DEBUG
     /**
      * @brief Setup a callback that decides whether a particular event type should be tracked or not.
@@ -660,7 +673,9 @@ private:
     }
 
 private:
-    using EventQueues = std::unordered_map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
+    // NOTE(ndx): Not using std::unordered_map here because we need subscription order to have
+    // a deterministic effect on event processing order.
+    using EventQueues = std::map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
     EventQueues event_queues_;
 
 #ifdef K_DEBUG
