@@ -9,6 +9,11 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+# 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+# 	set(CMAKE_EXE_LINKER_FLAGS "-lc++abi")
+# endif()
+
 # set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 include(standard_settings)
@@ -16,7 +21,6 @@ include(compiler_warnings) # Hardcore warnings
 include(sanitizers)
 include(documentation)
 include(clang-cxx-dev-tools)
-
 
 # -- Uninstall target --
 if(NOT TARGET uninstall)

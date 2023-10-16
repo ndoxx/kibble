@@ -1,4 +1,5 @@
 #include "memory/free_list.h"
+#include <cstdint>
 
 namespace kb
 {
