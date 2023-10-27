@@ -109,8 +109,14 @@ public:
     template <std::invocable<const EventT&> auto Function>
     inline void subscribe(uint32_t priority)
     {
-        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<Function>());
-        sort();
+        auto delegate = EventDelegate<EventT>::template create<Function>();
+        auto findit = std::find_if(delegates_.begin(), delegates_.end(),
+                                   [&delegate](const auto& p) { return p.second == delegate; });
+        if (findit == delegates_.end())
+        {
+            delegates_.emplace_back(priority, delegate);
+            sort();
+        }
     }
 
     /**
@@ -127,8 +133,14 @@ public:
     template <typename ClassRef, auto MemberFunction>
     inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority)
     {
-        delegates_.emplace_back(priority, EventDelegate<EventT>::template create<MemberFunction>(instance));
-        sort();
+        auto delegate = EventDelegate<EventT>::template create<MemberFunction>(instance);
+        auto findit = std::find_if(delegates_.begin(), delegates_.end(),
+                                   [&delegate](const auto& p) { return p.second == delegate; });
+        if (findit == delegates_.end())
+        {
+            delegates_.emplace_back(priority, delegate);
+            sort();
+        }
     }
 
     /**

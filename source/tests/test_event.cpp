@@ -221,6 +221,55 @@ TEST_CASE_METHOD(EventFixture, "All events can be dropped at the same time", "[e
     REQUIRE(event_bus.get_unprocessed_count() == 0);
 }
 
+struct AccumEvent
+{
+    int* accum = nullptr;
+};
+
+class SubscriptionFixture
+{
+public:
+    SubscriptionFixture()
+    {
+    }
+
+    bool handle_accum(const AccumEvent&)
+    {
+        accumulator += 1;
+        return false;
+    }
+
+protected:
+    EventBus event_bus;
+    int accumulator = 0;
+};
+
+bool handle_accum_free(const AccumEvent& evt)
+{
+    ++(*evt.accum);
+    return false;
+}
+
+TEST_CASE_METHOD(SubscriptionFixture, "Subscribing multiple times should not cause duplicate handling (free)", "[evt]")
+{
+    event_bus.subscribe<&handle_accum_free>();
+    event_bus.subscribe<&handle_accum_free>();
+
+    event_bus.fire(AccumEvent{&accumulator});
+
+    REQUIRE(accumulator == 1);
+}
+
+TEST_CASE_METHOD(SubscriptionFixture, "Subscribing multiple times should not cause duplicate handling (member)", "[evt]")
+{
+    event_bus.subscribe<&SubscriptionFixture::handle_accum>(*this);
+    event_bus.subscribe<&SubscriptionFixture::handle_accum>(*this);
+
+    event_bus.fire(AccumEvent{nullptr});
+
+    REQUIRE(accumulator == 1);
+}
+
 struct EventA
 {
     int a;
