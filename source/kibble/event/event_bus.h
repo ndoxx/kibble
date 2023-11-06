@@ -27,15 +27,12 @@
  */
 #pragma once
 
-#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
 #include <numeric>
-#include <ostream>
 #include <queue>
-#include <sstream>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -58,12 +55,12 @@ namespace detail
 
 /**
  * @internal
- * @brief Conceppt of an event that is serializable to an std::ostream.
+ * @brief Concept of an event for which an fmt lib formatter exists
  *
  * @tparam T Event type
  */
-template <typename T>
-concept Streamable = requires(std::ostream& stream, T a) { stream << a; };
+template <typename EventT>
+concept Formattable = requires(EventT) { fmt::formatter<EventT>{}; };
 
 template <typename EventT>
 using EventDelegate = kb::Delegate<bool(const EventT&)>;
@@ -601,7 +598,7 @@ public:
 #ifdef K_DEBUG
     /**
      * @brief Setup a callback that decides whether a particular event type should be tracked or not.
-     * Tracked events will be logged when enqueued or fired. An event that defines a stream operator
+     * Tracked events will be logged when enqueued or fired. An event that defines a fmt::formatter
      * will automatically be serialized to the log stream.
      * The logger must be up and running for this to work. All events are logged on
      * the "event" channel. This channel must be created and configured beforehand.
@@ -632,13 +629,10 @@ private:
     {
         if (log_channel_ && should_track_(kb::ctti::type_id<EventT>()))
         {
-            // Using a concept we can know at compile-time if the event supports the stream operator
-            if constexpr (detail::Streamable<EventT>)
+            // Using a concept we can know at compile-time if the event supports formatting
+            if constexpr (detail::Formattable<EventT>)
             {
-                std::stringstream ss;
-                ss << event;
-                klog(log_channel_)
-                    .debug("[{}] {}: {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>(), ss.str());
+                klog(log_channel_).debug("[{}] {}: {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>(), event);
             }
             else
             {

@@ -30,8 +30,15 @@ Channel::Channel(Severity level, const std::string& full_name, const std::string
 
 void Channel::attach_sink(std::shared_ptr<Sink> psink)
 {
+    std::lock_guard<std::mutex> lock(sink_mutex_);
     sinks_.push_back(psink);
     sinks_.back()->on_attach(*this);
+}
+
+void Channel::detach_sink(std::shared_ptr<Sink> psink)
+{
+    std::lock_guard<std::mutex> lock(sink_mutex_);
+    sinks_.erase(std::remove(sinks_.begin(), sinks_.end(), psink), sinks_.end());
 }
 
 void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
@@ -66,6 +73,7 @@ void Channel::submit(LogEntry&& entry) const
         meta.essential__ = true;
         // Schedule logging task. Log entry is moved.
         auto&& [task, future] = s_js_->create_task(std::move(meta), [this, entry = std::move(entry)]() {
+            std::lock_guard<std::mutex> lock(sink_mutex_);
             for (auto& psink : sinks_)
                 psink->submit(entry, presentation_);
         });

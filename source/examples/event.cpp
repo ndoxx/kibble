@@ -21,31 +21,39 @@ struct ExampleEvent
 };
 
 // This event can be serialized into a stream, as it defines a stream operator
-struct StreamableExampleEvent
+struct FormattableEvent
 {
-    friend std::ostream& operator<<(std::ostream&, const StreamableExampleEvent&);
-
     uint32_t first;
     uint32_t second;
 };
 
-std::ostream& operator<<(std::ostream& stream, const StreamableExampleEvent& e)
+template <>
+struct fmt::formatter<FormattableEvent>
 {
-    stream << "{first: " << e.first << ", second: " << e.second << '}';
-    return stream;
-}
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const FormattableEvent& fe, FormatContext& ctx) const
+    {
+        return fmt::format_to(ctx.out(), "[{}, {}]", fe.first, fe.second);
+    }
+};
 
 // Free function to handle ExampleEvent events
 bool handle_event(const ExampleEvent& e)
 {
-    std::cout << "handle_event(): " << e.first << ' ' << e.second << std::endl;
+    fmt::println("handle_event(): {} {}", e.first, e.second);
     return false;
 }
 
-// Free function to handle StreamableExampleEvent events
-bool handle_streamable_event(const StreamableExampleEvent& e)
+// Free function to handle FormattableEvent events
+bool handle_formattable_event(const FormattableEvent& e)
 {
-    std::cout << "handle_streamable_event(): " << e.first << ' ' << e.second << std::endl;
+    fmt::println("handle_formattable_event(): {} ", e);
     return false;
 }
 
@@ -56,10 +64,10 @@ public:
     {
     }
 
-    // Member function to handle StreamableExampleEvent events
-    bool handle_streamable_event(const StreamableExampleEvent& e) const
+    // Member function to handle FormattableEvent events
+    bool handle_formattable_event(const FormattableEvent& e) const
     {
-        klog(log_channel_).uid("ExampleHandler::handle_streamable_event()").info("{} {}", e.first, e.second);
+        klog(log_channel_).uid("ExampleHandler::handle_formattable_event()").info("{}", e);
         return false;
     }
 
@@ -183,9 +191,9 @@ int main(int argc, char** argv)
 
     // Register a const member function
     // This subscriber will execute first, as it has a higher priority
-    event_bus.subscribe<&ExampleHandler::handle_streamable_event>(example_handler, 1);
+    event_bus.subscribe<&ExampleHandler::handle_formattable_event>(example_handler, 1);
     // Register a free function
-    event_bus.subscribe<&handle_streamable_event>();
+    event_bus.subscribe<&handle_formattable_event>();
 
     // Enqueue events
     klog(chan_kibble).info("Queued events are logged instantly...");
@@ -196,7 +204,7 @@ int main(int argc, char** argv)
     event_bus.enqueue<ExampleEvent>({1, 2});
     // This event defines a stream operator, it will be serialized to the stream when the event
     // gets logged, displaying "{first: 1, second: 2}" next to the event label.
-    event_bus.enqueue<StreamableExampleEvent>({1, 2});
+    event_bus.enqueue<FormattableEvent>({1, 2});
 
     // Wait a bit
     using namespace std::chrono_literals;

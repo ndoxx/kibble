@@ -5,6 +5,7 @@
 #include "sink.h"
 #include <memory>
 #include <vector>
+#include <mutex>
 
 namespace kb::th
 {
@@ -50,6 +51,13 @@ public:
      * @param psink
      */
     void attach_sink(std::shared_ptr<Sink> psink);
+
+    /**
+     * @brief Remove a sink from this channel
+     * 
+     * @param psink 
+     */
+    void detach_sink(std::shared_ptr<Sink> psink);
 
     /**
      * @brief Add a policy to this channel
@@ -145,6 +153,7 @@ private:
     std::vector<std::shared_ptr<Sink>> sinks_;
     std::vector<std::shared_ptr<Policy>> policies_;
     Severity level_;
+    mutable std::mutex sink_mutex_;
 
     static th::JobSystem* s_js_;
     static uint32_t s_worker_;
