@@ -38,7 +38,7 @@ public:
         out_objects_[out_nodes_.count()] = object;
         out_nodes_.add(to);
         to.in_nodes_.add(*this);
-        to.pending_in_.fetch_add(1);
+        to.pending_in_.fetch_add(1, std::memory_order_release);
     }
 
     /// Get the input harness
@@ -56,51 +56,45 @@ public:
     /// Check if there are no pending dependencies
     inline bool is_ready() const
     {
-        return pending_in_.load() == 0;
+        return pending_in_.load(std::memory_order_acquire) == 0;
     }
 
     /// Get the number of pending dependencies
     inline size_t get_pending() const
     {
-        return pending_in_.load();
+        return pending_in_.load(std::memory_order_acquire);
     }
 
     /// Check if this node has been processed
     inline bool is_processed() const
     {
-        return processed_.load();
-    }
-
-    /// Check if this node has been scheduled
-    inline auto& scheduled()
-    {
-        return scheduled_;
+        return processed_.load(std::memory_order_acquire);
     }
 
     /// Mark this node processed and signal children that this dependency is processed
     void mark_processed()
     {
         for (auto* child : out_nodes_)
-            child->pending_in_.fetch_sub(1);
+            child->pending_in_.fetch_sub(1, std::memory_order_release);
 
-        processed_.store(true);
+        processed_.store(true, std::memory_order_release);
     }
 
     /// Try to mark this node scheduled, used to avoid multiple scheduling of children
     bool mark_scheduled()
     {
-        return !scheduled_.test_and_set();
+        return !scheduled_.test_and_set(std::memory_order_seq_cst);
     }
 
     /// (Recursively) reset the shared state only, useful for jobs that are kept alive
     void reset_state()
     {
-        scheduled_.clear();
-        processed_.store(false);
+        scheduled_.clear(std::memory_order_seq_cst);
+        processed_.store(false, std::memory_order_release);
 
         for (auto* child : out_nodes_)
         {
-            child->pending_in_.fetch_add(1);
+            child->pending_in_.fetch_add(1, std::memory_order_release);
             child->reset_state();
         }
     }

@@ -143,7 +143,7 @@ void JobSystem::schedule(Job* job)
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
 
     // Increment job count, dispatch and wake up workers
-    ss_->pending.fetch_add(1);
+    ss_->pending.fetch_add(1, std::memory_order_release);
     scheduler_->dispatch(job);
     ss_->cv_wake.notify_all();
 }

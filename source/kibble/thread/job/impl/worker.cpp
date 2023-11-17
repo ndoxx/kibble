@@ -143,7 +143,7 @@ void WorkerThread::process(Job* job)
     if (!job->keep_alive)
         js_.release_job(job);
 
-    ss_.pending.fetch_sub(1);
+    ss_.pending.fetch_sub(1, std::memory_order_release);
 }
 
 void WorkerThread::schedule_children(Job* job)
