@@ -163,7 +163,7 @@ public:
      *
      */
     UUIDGenerator()
-        : generator_(new RNG(std::random_device()())),
+        : generator_(std::random_device()()),
           distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
     {
     }
@@ -174,7 +174,7 @@ public:
      * @param seed
      */
     UUIDGenerator(uint64_t seed)
-        : generator_(new RNG(seed)),
+        : generator_(seed),
           distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
     {
     }
@@ -196,7 +196,7 @@ public:
      */
     inline UUID get()
     {
-        return UUID::from_upper_lower(distribution_(*generator_), distribution_(*generator_));
+        return UUID::from_upper_lower(distribution_(generator_), distribution_(generator_));
     }
 
     /**
@@ -209,8 +209,20 @@ public:
         return get();
     }
 
+    /// @brief Get the RNG instance
+    inline RNG& get_generator()
+    {
+        return generator_;
+    }
+
+    /// @brief Get the RNG instance (const version)
+    inline const RNG& get_generator() const
+    {
+        return generator_;
+    }
+
 private:
-    std::shared_ptr<RNG> generator_;
+    RNG generator_;
     std::uniform_int_distribution<uint64_t> distribution_;
 };
 
