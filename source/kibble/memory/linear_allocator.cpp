@@ -34,7 +34,10 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     // Out of memory
     if (current + padding + size > end_)
     {
-        K_FAIL(nullptr).msg("[LinearAllocator] Out of memory!");
+        K_FAIL(nullptr)
+            .msg("[LinearAllocator] Out of memory!")
+            .watch_var__(padding + size, "padded_size")
+            .watch_var__((std::size_t(current) + padding + size) - std::size_t(end_), "exceeded_by");
         return nullptr;
     }
 
