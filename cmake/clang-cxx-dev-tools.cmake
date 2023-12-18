@@ -12,7 +12,7 @@ list(FILTER ALL_CXX_SOURCE_FILES EXCLUDE REGEX "/source/vendor/")
 # Adding clang-format target if executable is found
 find_program(CLANG_FORMAT "clang-format")
 
-if(CLANG_FORMAT)
+if(CLANG_FORMAT AND NOT TARGET clang-format)
     add_custom_target(
         clang-format
         COMMAND clang-format

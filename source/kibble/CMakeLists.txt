@@ -15,21 +15,18 @@ target_include_directories(kibble
 
 target_include_directories(kibble
     PUBLIC
-    "${CMAKE_SOURCE_DIR}/source/vendor/fmt/include"
+    "${KB_SOURCE_DIR}/source/vendor/fmt/include"
 )
 
 target_include_directories(kibble
     SYSTEM PRIVATE
-    "${CMAKE_SOURCE_DIR}/source/vendor"
-    "${CMAKE_SOURCE_DIR}/source/vendor/atomic_queue/include"
-    "${CMAKE_SOURCE_DIR}/source/vendor/tomlplusplus/include"
+    "${KB_SOURCE_DIR}/source/vendor"
+    "${KB_SOURCE_DIR}/source/vendor/atomic_queue/include"
+    "${KB_SOURCE_DIR}/source/vendor/tomlplusplus/include"
 )
 
 set_target_properties(kibble
     PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
     POSITION_INDEPENDENT_CODE ON
 )
 
@@ -69,11 +66,9 @@ set(FMT_SYSTEM_HEADERS OFF)
 set(FMT_TEST OFF)
 set(FMT_WERROR OFF)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/source/vendor/fmt" "external/fmt")
+add_subdirectory("${KB_SOURCE_DIR}/source/vendor/fmt" "external/fmt")
 set_target_properties(fmt
     PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
     POSITION_INDEPENDENT_CODE ON
 )
 

@@ -5,13 +5,7 @@ add_executable(kpak "${CMAKE_CURRENT_SOURCE_DIR}/kpak.cpp")
 target_include_directories(kpak
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
-    )
-
-
-set_target_properties(kpak
-    PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
 target_link_libraries(kpak
@@ -32,13 +26,7 @@ add_executable(internstring "${CMAKE_CURRENT_SOURCE_DIR}/internstring.cpp")
 target_include_directories(internstring
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
-    )
-
-
-set_target_properties(internstring
-    PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
 target_link_libraries(internstring

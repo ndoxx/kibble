@@ -12,12 +12,12 @@ function(make_unit_test test_name)
     target_include_directories(${NAME}
         PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
     set_target_properties(${NAME}
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
         OUTPUT_NAME "${test_name}"
         EXCLUDE_FROM_ALL 1
     )
@@ -68,12 +68,12 @@ if(KB_TARGET_TESTS)
         target_include_directories(${NAME}
             PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}"
-            "${CMAKE_SOURCE_DIR}/source/kibble"
+            "${KB_SOURCE_DIR}/source/kibble"
         )
 
         set_target_properties(${NAME}
             PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
             OUTPUT_NAME "${test_name}"
             EXCLUDE_FROM_ALL 1
         )
@@ -116,14 +116,11 @@ if(KB_TARGET_TESTS)
     target_include_directories(fuzz_tester
         PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
     set_target_properties(fuzz_tester
         PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
         EXCLUDE_FROM_ALL 1
     )
 
@@ -159,7 +156,7 @@ if(KB_TARGET_TESTS)
     target_include_directories(nuclear
         PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
     target_include_directories(nuclear
@@ -169,9 +166,6 @@ if(KB_TARGET_TESTS)
 
     set_target_properties(nuclear
         PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/test"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/test"
         EXCLUDE_FROM_ALL 1
     )
 

@@ -5,12 +5,12 @@ function(make_example_app project_name)
     target_include_directories(${NAME}
         PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_SOURCE_DIR}/source/kibble"
+        "${KB_SOURCE_DIR}/source/kibble"
     )
 
     set_target_properties(${NAME}
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/ex"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ex"
         OUTPUT_NAME "${project_name}"
         EXCLUDE_FROM_ALL 1
     )

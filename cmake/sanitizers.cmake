@@ -47,9 +47,9 @@ function(enable_sanitizers project_name)
     if(LIST_OF_SANITIZERS)
         if(NOT "${LIST_OF_SANITIZERS}" STREQUAL "")
             target_compile_options(${project_name}
-                INTERFACE -fsanitize=${LIST_OF_SANITIZERS} ${SANITIZER_OPTIONS} -fsanitize-ignorelist=${CMAKE_SOURCE_DIR}/ignorelist.txt)
+                INTERFACE -fsanitize=${LIST_OF_SANITIZERS} ${SANITIZER_OPTIONS} -fsanitize-ignorelist=${KB_SOURCE_DIR}/ignorelist.txt)
             target_link_libraries(${project_name}
-                INTERFACE -fsanitize=${LIST_OF_SANITIZERS} ${SANITIZER_OPTIONS} -fsanitize-ignorelist=${CMAKE_SOURCE_DIR}/ignorelist.txt)
+                INTERFACE -fsanitize=${LIST_OF_SANITIZERS} ${SANITIZER_OPTIONS} -fsanitize-ignorelist=${KB_SOURCE_DIR}/ignorelist.txt)
         endif()
     endif()
 endfunction()

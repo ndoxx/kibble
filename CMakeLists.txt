@@ -12,13 +12,21 @@ if(NOT DEFINED KB_MASTER_PROJECT)
 	endif()
 endif()
 
+set(KB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(KB_MASTER_PROJECT)
+	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/lib")
+	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/lib")
+	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/bin")
+endif()
+
 # if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 # set(CMAKE_EXE_LINKER_FLAGS "-lc++abi")
 # endif()
 
 # set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
+set(CMAKE_MODULE_PATH "${KB_SOURCE_DIR}/cmake/")
 include(standard_settings)
 include(compiler_warnings) # Hardcore warnings
 include(sanitizers)
@@ -37,18 +45,25 @@ if(NOT TARGET uninstall)
 endif()
 
 # Interface library to enable us to pass on options to multiple projects
-add_library(project_warnings INTERFACE)
+if(NOT TARGET project_warnings)
+	add_library(project_warnings INTERFACE)
+endif()
+
 set_project_warnings(project_warnings)
 
-add_library(project_options INTERFACE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT TARGET project_options)
+	add_library(project_options INTERFACE)
+endif()
+
 target_compile_features(project_options INTERFACE cxx_std_20)
 enable_sanitizers(project_options)
 
 set(DOCS_INPUT
-	"${CMAKE_SOURCE_DIR}/source/kibble"
-	"${CMAKE_SOURCE_DIR}/docs"
+	"${KB_SOURCE_DIR}/source/kibble"
+	"${KB_SOURCE_DIR}/docs"
 )
 
 # -- Configuration --
@@ -61,7 +76,7 @@ option(KB_TARGET_EXAMPLES ${KB_MASTER_PROJECT})
 option(KB_TARGET_TESTS ${KB_MASTER_PROJECT})
 
 if(KB_TARGET_DOCUMENTATION)
-	setup_documentation("${DOCS_INPUT}" "${CMAKE_SOURCE_DIR}/doxygen")
+	setup_documentation("${DOCS_INPUT}" "${KB_SOURCE_DIR}/doxygen")
 endif()
 
 subdirs(source)
