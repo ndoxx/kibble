@@ -166,7 +166,6 @@ To get a local copy up and running follow these steps.
 
 * A compiler with support for C++20 (tested with clang 12.0.0)
 * CMake, minimum version 3.19
-* [fmtlib](https://github.com/fmtlib/fmt) installed on your system
 
 ## Installation
 
