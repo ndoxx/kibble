@@ -16,9 +16,9 @@
 
 #include "math/color.h"
 #include "math/color_table.h"
-#include <fmt/color.h>
-#include <fmt/core.h>
-#include <fmt/os.h>
+#include "fmt/color.h"
+#include "fmt/core.h"
+#include "fmt/os.h"
 #include <iostream>
 
 using namespace kb::log;

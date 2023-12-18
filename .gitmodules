@@ -7,3 +7,6 @@
 [submodule "source/vendor/backward-cpp"]
 	path = source/vendor/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
+[submodule "source/vendor/fmt"]
+	path = source/vendor/fmt
+	url = https://github.com/fmtlib/fmt.git

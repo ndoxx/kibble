@@ -5,7 +5,7 @@
 #include "logger2/sinks/console_sink.h"
 #include "math/color_table.h"
 
-#include <fmt/std.h>
+#include "fmt/std.h"
 
 namespace fs = std::filesystem;
 

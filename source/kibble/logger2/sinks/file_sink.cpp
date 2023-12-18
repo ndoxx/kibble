@@ -2,7 +2,7 @@
 #include "../channel.h"
 #include "../entry.h"
 #include "../severity.h"
-#include <fmt/os.h>
+#include "fmt/os.h"
 
 namespace kb::log
 {

@@ -3,7 +3,7 @@
 #include "channel.h"
 #include "entry.h"
 #include "severity.h"
-#include <fmt/core.h>
+#include "fmt/core.h"
 
 namespace kb::log
 {

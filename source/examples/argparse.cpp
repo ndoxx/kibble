@@ -5,8 +5,8 @@
 #include "math/color_table.h"
 
 #include <exception>
-#include <fmt/color.h>
-#include <fmt/std.h>
+#include "fmt/color.h"
+#include "fmt/std.h"
 #include <regex>
 #include <string>
 

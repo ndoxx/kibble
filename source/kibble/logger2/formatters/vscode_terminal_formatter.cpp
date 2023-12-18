@@ -2,8 +2,8 @@
 #include "../channel.h"
 #include "../entry.h"
 #include <array>
-#include <fmt/color.h>
-#include <fmt/core.h>
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 namespace kb::log
 {

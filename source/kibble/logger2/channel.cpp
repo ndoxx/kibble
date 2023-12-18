@@ -2,8 +2,8 @@
 #include "entry.h"
 #include "thread/job/job_system.h"
 #include <csignal>
-#include <fmt/color.h>
-#include <fmt/core.h>
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 namespace kb::log
 {

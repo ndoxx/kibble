@@ -14,10 +14,15 @@ target_include_directories(kibble
 )
 
 target_include_directories(kibble
+    PUBLIC
+    "${CMAKE_SOURCE_DIR}/source/vendor/fmt/include"
+)
+
+target_include_directories(kibble
     SYSTEM PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../vendor"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/tomlplusplus/include"
+    "${CMAKE_SOURCE_DIR}/source/vendor"
+    "${CMAKE_SOURCE_DIR}/source/vendor/atomic_queue/include"
+    "${CMAKE_SOURCE_DIR}/source/vendor/tomlplusplus/include"
 )
 
 set_target_properties(kibble
@@ -50,6 +55,29 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     target_compile_definitions(kibble PUBLIC K_DEBUG)
 endif()
 
+# --------------------- [DEPENDENCIES] ---------------------
+
+# ~~~~~~ fmtlib ~~~~~~
+set(FMT_CUDA_TEST OFF)
+set(FMT_DOC OFF)
+set(FMT_FUZZ OFF)
+set(FMT_INSTALL ON)
+set(FMT_MODULE OFF)
+set(FMT_OS ON)
+set(FMT_PEDANTIC OFF)
+set(FMT_SYSTEM_HEADERS OFF)
+set(FMT_TEST OFF)
+set(FMT_WERROR OFF)
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/source/vendor/fmt" "external/fmt")
+set_target_properties(fmt
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
+    POSITION_INDEPENDENT_CODE ON
+)
+
+# ------------------------------------------
 target_link_libraries(kibble
     PUBLIC
     fmt

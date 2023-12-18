@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <fmt/std.h>
+#include "fmt/std.h"
 #include <iterator>
 #include <numeric>
 #include <random>
