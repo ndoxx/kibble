@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(kibble VERSION 1.0.0 DESCRIPTION "lib kibble")
 
+# Check if we're building as a subproject
+if(NOT DEFINED KB_MASTER_PROJECT)
+	set(KB_MASTER_PROJECT OFF)
+
+	if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+		set(KB_MASTER_PROJECT ON)
+		message(STATUS "CMake version: ${CMAKE_VERSION}")
+	endif()
+endif()
+
 # if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 # set(CMAKE_EXE_LINKER_FLAGS "-lc++abi")
@@ -46,9 +56,9 @@ option(KB_AREA_MEMORY_INITIALIZATION "Initialize heap area memory on creation" O
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
 option(KB_TARGET_DOCUMENTATION OFF)
-option(KB_TARGET_INSTALL ON)
-option(KB_TARGET_EXAMPLES ON)
-option(KB_TARGET_TESTS ON)
+option(KB_TARGET_INSTALL ${KB_MASTER_PROJECT})
+option(KB_TARGET_EXAMPLES ${KB_MASTER_PROJECT})
+option(KB_TARGET_TESTS ${KB_MASTER_PROJECT})
 
 if(KB_TARGET_DOCUMENTATION)
 	setup_documentation("${DOCS_INPUT}" "${CMAKE_SOURCE_DIR}/doxygen")
