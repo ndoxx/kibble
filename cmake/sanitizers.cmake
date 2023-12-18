@@ -1,8 +1,8 @@
 function(enable_sanitizers project_name)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        option(ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" FALSE)
+        option(SAN_ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" FALSE)
 
-        if(ENABLE_COVERAGE)
+        if(SAN_ENABLE_COVERAGE)
             target_compile_options(project_options INTERFACE --coverage -O0 -g)
             target_link_libraries(project_options INTERFACE --coverage)
         endif()
@@ -10,35 +10,34 @@ function(enable_sanitizers project_name)
         set(SANITIZERS "")
         set(SANITIZER_OPTIONS "")
 
-        option(ENABLE_SANITIZER_ADDRESS "Enable address sanitizer" FALSE)
+        option(SAN_ADDRESS "Enable address sanitizer" FALSE)
 
-        if(ENABLE_SANITIZER_ADDRESS)
+        if(SAN_ADDRESS)
             list(APPEND SANITIZERS "address")
-            list(APPEND SANITIZER_OPTIONS -fno-omit-frame-pointer)
         endif()
 
-        option(ENABLE_SANITIZER_MEMORY "Enable memory sanitizer" FALSE)
-        option(SANITIZER_MEMORY_TRACK_ORIGINS "Enable origins tracking (slower)" TRUE)
+        option(SAN_MEMORY "Enable memory sanitizer" FALSE)
+        option(SAN_MEMORY_TRACK_ORIGINS "Enable origins tracking (slower)" TRUE)
 
-        if(ENABLE_SANITIZER_MEMORY)
+        if(SAN_MEMORY)
             list(APPEND SANITIZERS "memory")
-            list(APPEND SANITIZER_OPTIONS -fno-omit-frame-pointer)
 
-            if(SANITIZER_MEMORY_TRACK_ORIGINS)
+            if(SAN_MEMORY_TRACK_ORIGINS)
+                list(APPEND SANITIZER_OPTIONS -fno-omit-frame-pointer)
                 list(APPEND SANITIZER_OPTIONS -fsanitize-memory-track-origins=2)
             endif()
         endif()
 
-        option(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR
+        option(SAN_UNDEFINED_BEHAVIOR
             "Enable undefined behavior sanitizer" FALSE)
 
-        if(ENABLE_SANITIZER_UNDEFINED_BEHAVIOR)
+        if(SAN_UNDEFINED_BEHAVIOR)
             list(APPEND SANITIZERS "undefined")
         endif()
 
-        option(ENABLE_SANITIZER_THREAD "Enable thread sanitizer" FALSE)
+        option(SAN_THREAD "Enable thread sanitizer" FALSE)
 
-        if(ENABLE_SANITIZER_THREAD)
+        if(SAN_THREAD)
             list(APPEND SANITIZERS "thread")
         endif()
 
