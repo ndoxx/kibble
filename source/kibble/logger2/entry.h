@@ -20,8 +20,8 @@ struct LogEntry
     Severity severity = Severity::Info;
     SourceLocation source_location;
     TimeBase::TimeStamp timestamp;
-    std::string message;
-    std::string uid_text;
+    std::string message{};
+    std::string uid_text{};
     uint32_t thread_id = 0xffffffff;
     bool raw_text = false;
     std::optional<StackTrace> stack_trace = {};
