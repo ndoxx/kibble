@@ -5,14 +5,20 @@ namespace kb::log
 
 EntryBuilder::EntryBuilder(const Channel& channel, int source_line, const char* source_file,
                            const char* source_function)
-    : LogEntry{.source_location = {source_line, source_file, source_function}, .timestamp = kb::TimeBase::timestamp()},
+    : LogEntry{.source_location = {source_line, source_file, source_function},
+               .timestamp = kb::TimeBase::timestamp(),
+               .message = "",
+               .uid_text = ""},
       channel_(&channel)
 {
 }
 
 EntryBuilder::EntryBuilder(const Channel* channel, int source_line, const char* source_file,
                            const char* source_function)
-    : LogEntry{.source_location = {source_line, source_file, source_function}, .timestamp = kb::TimeBase::timestamp()},
+    : LogEntry{.source_location = {source_line, source_file, source_function},
+               .timestamp = kb::TimeBase::timestamp(),
+               .message = "",
+               .uid_text = ""},
       channel_(channel)
 {
 }
@@ -34,6 +40,5 @@ void EntryBuilder::log(std::string&& m)
         channel_->submit(std::move(*this));
     }
 }
-
 
 } // namespace kb::log

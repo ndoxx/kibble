@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.19)
 
-project(kibble VERSION 1.0.0 DESCRIPTION "lib kibble")
+project(kibble VERSION 1.0.0 DESCRIPTION "lib kibble" LANGUAGES CXX)
 
 # Check if we're building as a subproject
 if(NOT DEFINED KB_MASTER_PROJECT)
@@ -9,6 +9,8 @@ if(NOT DEFINED KB_MASTER_PROJECT)
 	if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 		set(KB_MASTER_PROJECT ON)
 		message(STATUS "CMake version: ${CMAKE_VERSION}")
+		message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+		message(STATUS "Build: [${CMAKE_BUILD_TYPE}]")
 	endif()
 endif()
 

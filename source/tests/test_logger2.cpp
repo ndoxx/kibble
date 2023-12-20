@@ -1,4 +1,6 @@
 #include "common/utils.hpp"
+
+#define K_DEBUG // For verbose / debug to actually do something
 #include "logger2/logger.h"
 #include "logger2/sink.h"
 #include "math/color_table.h"
@@ -38,7 +40,7 @@ TEST_CASE_METHOD(SinkFixture, "Properties test", "[sink]")
     // clang-format off
     klog(chan).verbose("Message"); int line = __LINE__;
     // clang-format on
-    REQUIRE(sink->e_.message.compare("Message") == 0);
+    REQUIRE(sink->e_.message == "Message");
     REQUIRE(sink->e_.source_location.line == line);
     REQUIRE(sink->e_.thread_id == 0xffffffff);
     REQUIRE(sink->e_.uid_text.empty());
