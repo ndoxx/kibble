@@ -186,7 +186,7 @@ public:
      *
      * @return uint64_t
      */
-    inline uint64_t min() const
+    static constexpr inline uint64_t min()
     {
         return std::numeric_limits<result_type>::min();
     }
@@ -196,7 +196,7 @@ public:
      *
      * @return uint64_t
      */
-    inline uint64_t max() const
+    static constexpr inline uint64_t max()
     {
         return std::numeric_limits<result_type>::max();
     }
