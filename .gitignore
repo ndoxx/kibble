@@ -9,6 +9,7 @@ script/perf_cache.sh
 script/perf_stat.sh
 source/research/
 source/tests/nuclear.cpp
+source/vendor/tmp/
 kibble.sublime-workspace
 workspace.code-workspace
 NOTES.md

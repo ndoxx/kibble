@@ -47,6 +47,7 @@ https://www.markdownguide.org/basic-syntax/#reference-style-links
   - [Installation](#installation)
   - [Examples and tests](#examples-and-tests)
   - [Documentation](#documentation)
+  - [Integration](#integration)
 - [How to help](#how-to-help)
 - [License](#license)
 - [Contact](#contact)
@@ -81,9 +82,11 @@ This library is under heavy development, and the API is subject to change. Use a
     - Directory / pack aliasing and universal paths
     - Can create and maintain a config directory located where the OS expects it
     - The kpack utility can pack a directory easily, it can also be done programmatically
+    - Safe file saving utility to avoid overwriting files with bad data
+    - MD5 checksum computation
 * Custom assertion
     - More helpful assert macro, user can debug break / continue / print stack trace / exit
-    - printf-style formatted assertions
+    - Formatted assertion message strings
 * Profiling utility
     - Easily profile execution time
     - Produce a Chrome Tracing json output
@@ -147,7 +150,7 @@ This library is under heavy development, and the API is subject to change. Use a
 * Basic TCP socket abstraction
     - Simple Berkeley socket wrapper using the Stream / Acceptor / Connector model
 * A precision chronometer with a simple interface
-* Multiple useful data structures, including sparse sets and sparse pools implementations 
+* Multiple useful data structures, including sparse sets and sparse pools implementations
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -212,6 +215,25 @@ The source files are documented with Doxygen, and higher-level documentation is 
 ```sh
   make docs
 ```
+
+## Integration
+
+Kibble can be setup as a subproject easily with CMake and git. Add Kibble as a submodule, and in the relevant `CMakeLists.txt` configure the project with `set()` directives, then simply call `add_subdirectory()`. Kibble's CMake script will detect its use as a subproject, disable the tests, examples and install targets, and let the host project handle the configuration of the output directories. For example:
+
+```cmake
+set(KB_AREA_MEMORY_INITIALIZATION ON CACHE BOOL "" FORCE)
+set(KB_JOB_SYSTEM_PROFILING ON CACHE BOOL "" FORCE)
+set(KB_MORTON_INTRIN ON CACHE BOOL "" FORCE)
+add_subdirectory("${CMAKE_SOURCE_DIR}/source/vendor/kibble" "external/kibble")
+
+set_target_properties(kibble
+    PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+)
+```
+
+Then link your executable / library against the `kibble` target. That's it.
+
 
 <!-- CONTRIBUTING -->
 # How to help
