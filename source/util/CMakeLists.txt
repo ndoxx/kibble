@@ -38,3 +38,22 @@ target_link_libraries(internstring
     )
 
 install(TARGETS internstring DESTINATION bin)
+
+
+# -------- MD5 HASH UTILITY (FOR INTERNAL USE) -------- #
+
+add_executable(kmd5 "${CMAKE_CURRENT_SOURCE_DIR}/kmd5.cpp")
+
+target_include_directories(kmd5
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${KB_SOURCE_DIR}/source/kibble"
+    )
+
+target_link_libraries(kmd5
+    PRIVATE
+        project_options
+        project_warnings
+        stdc++fs
+        kibble
+    )

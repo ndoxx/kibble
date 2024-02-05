@@ -129,16 +129,22 @@ void md5::finish()
     if (pad <= 0)
         pad += k_block_size;
 
-    if (pad > 0)
-    {
-        block_[head_] = 0x80;
-        if (pad > 1)
-            memset(block_.data() + head_ + 1, 0, size_t(pad - 1));
-        head_ += uint32_t(pad);
-    }
+    /*
+        The total length to process can exceed k_block_size when head is initially
+        between 56 and 64 bytes. This is why block_ has a size of two times k_block_size,
+        so we can write padding bytes to it linearly without worrying about a stack overflow.
+        If the frame_length does exceed k_block_size, we'll have an additional block to 
+        process later on.
+    */
+    uint32_t frame_length = head_ + uint32_t(pad);
+
+    block_[head_] = 0x80;
+    if (pad > 1)
+        memset(block_.data() + head_ + 1, 0, size_t(pad - 1));
+    head_ += uint32_t(pad);
 
     // Write message length representation, little-endian, now the length is
-    // k_block_size bytes exactly
+    // exactly congruent to 0 mod k_block_size bytes.
     uint32_t size_lo = ((length_lo_ & 0x1FFFFFFF) << 3);
     std::memcpy(block_.data() + head_, &size_lo, sizeof(uint32_t));
     head_ += sizeof(uint32_t);
@@ -147,8 +153,18 @@ void md5::finish()
     std::memcpy(block_.data() + head_, &size_hi, sizeof(uint32_t));
     head_ += sizeof(uint32_t);
 
-    // Process this last block and finish the hash
+    // We have at least one block to process.
     process_block();
+
+    // If the frame length exceeds k_block_size, we have an additional block to process.
+    if (frame_length > k_block_size)
+    {
+        // Fold second half of block_ over first half and process again.
+        // NOTE(ndx): process_block() could take an offset argument to avoid this copy.
+        std::memcpy(block_.data(), block_.data() + k_block_size, k_block_size);
+        process_block();
+    }
+
     finished_ = true;
 }
 
