@@ -84,21 +84,25 @@ void md5::process(const void* input, size_t length)
 {
     K_ASSERT(!finished_, "MD5 already finished.", nullptr);
 
-    // Try to complete a block
+    // If not enough data to complete a block, stash and return
     if (head_ + length < k_block_size)
     {
         std::memcpy(block_.data() + head_, input, length);
         head_ += length;
         return;
     }
-    std::memcpy(block_.data() + head_, input, k_block_size - head_);
+
+    // Because we did not branch on the above, we know that length >= k_block_size - head_
+    uint32_t processed = k_block_size - head_;
+    std::memcpy(block_.data() + head_, input, processed);
+    // head_ will be reset anyway, so we don't need to update it
     process_block();
 
+    // Remaining size is length - processed
     // Process data block by block while there is enough data
-    uint32_t processed = k_block_size - head_;
-    while (processed + k_block_size <= length)
+    while (length - processed >= k_block_size)
     {
-        std::memcpy(block_.data(), reinterpret_cast<const uint8_t*>(input), k_block_size);
+        std::memcpy(block_.data(), reinterpret_cast<const uint8_t*>(input) + processed, k_block_size);
         processed += k_block_size;
         process_block();
     }
