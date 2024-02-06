@@ -1,4 +1,5 @@
 #include "filesystem/md5.h"
+#include "algorithm/endian.h"
 #include "assert/assert.h"
 #include "fmt/format.h"
 #include <cstring>
@@ -87,30 +88,30 @@ void md5::process(const void* input, size_t length)
     // If not enough data to complete a block, stash and return
     if (head_ + length < k_block_size)
     {
-        std::memcpy(block_.data() + head_, input, length);
+        std::memcpy(buffer_.data() + head_, input, length);
         head_ += length;
         return;
     }
 
     // Because we did not branch on the above, we know that length >= k_block_size - head_
     uint32_t processed = k_block_size - head_;
-    std::memcpy(block_.data() + head_, input, processed);
+    std::memcpy(buffer_.data() + head_, input, processed);
     // head_ will be reset anyway, so we don't need to update it
-    process_block();
+    process_block(0);
 
     // Remaining size is length - processed
     // Process data block by block while there is enough data
     while (length - processed >= k_block_size)
     {
-        std::memcpy(block_.data(), reinterpret_cast<const uint8_t*>(input) + processed, k_block_size);
+        std::memcpy(buffer_.data(), reinterpret_cast<const uint8_t*>(input) + processed, k_block_size);
         processed += k_block_size;
-        process_block();
+        process_block(0);
     }
 
     // Store remaining bytes for next time
     if (processed != length)
     {
-        std::memcpy(block_.data(), reinterpret_cast<const uint8_t*>(input) + processed, length - processed);
+        std::memcpy(buffer_.data(), reinterpret_cast<const uint8_t*>(input) + processed, length - processed);
         head_ = uint32_t(length) - processed;
     }
 }
@@ -119,9 +120,17 @@ void md5::finish()
 {
     K_ASSERT(!finished_, "MD5 already finished.", nullptr);
 
-    update_length(head_);
+    length_ += head_;
 
-    // Merkle–Damgård length padding / strengthening
+    /*
+        Merkle–Damgård length padding / strengthening
+
+        The total length to process can exceed k_block_size when head is initially
+        between 56 and 64 bytes. This is why buffer_ has a size of two times k_block_size,
+        so we can write padding bytes to it linearly without worrying about a stack overflow.
+        If the frame_length does exceed k_block_size, we'll have an additional block to
+        process later on.
+    */
 
     // Pad with a single 1 followed by as many 0 bits as needed to make the
     // length 8 bytes shy of a multiple of k_block_size
@@ -129,41 +138,22 @@ void md5::finish()
     if (pad <= 0)
         pad += k_block_size;
 
-    /*
-        The total length to process can exceed k_block_size when head is initially
-        between 56 and 64 bytes. This is why block_ has a size of two times k_block_size,
-        so we can write padding bytes to it linearly without worrying about a stack overflow.
-        If the frame_length does exceed k_block_size, we'll have an additional block to 
-        process later on.
-    */
-    uint32_t frame_length = head_ + uint32_t(pad);
-
-    block_[head_] = 0x80;
+    buffer_[head_] = 0x80;
     if (pad > 1)
-        memset(block_.data() + head_ + 1, 0, size_t(pad - 1));
+        std::memset(buffer_.data() + head_ + 1, 0, size_t(pad - 1));
     head_ += uint32_t(pad);
 
-    // Write message length representation, little-endian, now the length is
-    // exactly congruent to 0 mod k_block_size bytes.
-    uint32_t size_lo = ((length_lo_ & 0x1FFFFFFF) << 3);
-    std::memcpy(block_.data() + head_, &size_lo, sizeof(uint32_t));
-    head_ += sizeof(uint32_t);
+    // Write original message length (in bits), now the total length is exactly congruent
+    // to 0 mod k_block_size bytes.
+    uint64_t len_bits = length_ * 8;
+    std::memcpy(buffer_.data() + head_, &len_bits, sizeof(uint64_t));
+    head_ += sizeof(uint64_t);
 
-    uint32_t size_hi = (length_hi_ << 3) | ((length_lo_ & 0xE0000000) >> 29);
-    std::memcpy(block_.data() + head_, &size_hi, sizeof(uint32_t));
-    head_ += sizeof(uint32_t);
+    // We have either one or two blocks to process.
+    uint32_t num_blocks = head_ / k_block_size;
 
-    // We have at least one block to process.
-    process_block();
-
-    // If the frame length exceeds k_block_size, we have an additional block to process.
-    if (frame_length > k_block_size)
-    {
-        // Fold second half of block_ over first half and process again.
-        // NOTE(ndx): process_block() could take an offset argument to avoid this copy.
-        std::memcpy(block_.data(), block_.data() + k_block_size, k_block_size);
-        process_block();
-    }
+    for (uint32_t ii = 0; ii < num_blocks; ++ii)
+        process_block(ii);
 
     finished_ = true;
 }
@@ -194,12 +184,12 @@ void md5::finish()
  * [ABCD  8  6 57]  [DABC 15 10 58]  [CDAB  6 15 59]  [BCDA 13 21 60]
  * [ABCD  4  6 61]  [DABC 11 10 62]  [CDAB  2 15 63]  [BCDA  9 21 64]
  */
-void md5::process_block()
+void md5::process_block(uint32_t block_offset)
 {
-    update_length(k_block_size);
+    length_ += k_block_size;
 
     auto state = state_;
-    const uint32_t* block32 = reinterpret_cast<const uint32_t*>(block_.data());
+    const uint32_t* block32 = reinterpret_cast<const uint32_t*>(buffer_.data() + block_offset * k_block_size);
 
     for (uint32_t kk = 0; kk < 64; ++kk)
     {
@@ -220,23 +210,10 @@ void md5::process_block()
     head_ = 0;
 }
 
-void md5::update_length(uint32_t increment)
-{
-    // Looks stupid but actually checks for overflow
-    // Higher word is incremented in case of roll over
-    if (length_lo_ + increment < length_lo_)
-        ++length_hi_;
-    length_lo_ += increment;
-}
-
 std::string md5::to_string() const
 {
-    // I'm sure there is a more elegant way to do this, but this works for now.
-    const uint8_t* sig = reinterpret_cast<const uint8_t*>(state_.data());
-    return fmt::format(
-        "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}", sig[0],
-        sig[1], sig[2], sig[3], sig[4], sig[5], sig[6], sig[7], sig[8], sig[9], sig[10], sig[11], sig[12], sig[13],
-        sig[14], sig[15]);
+    return fmt::format("{:08x}{:08x}{:08x}{:08x}", bswap(state_[0]), bswap(state_[1]), bswap(state_[2]),
+                       bswap(state_[3]));
 }
 
 } // namespace kb

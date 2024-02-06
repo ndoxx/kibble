@@ -49,8 +49,8 @@ def fuzz_compare(min_length, max_length, num_tests):
                 print(f"Mismatch! String: {random_string}, Nuclear MD5: {nuclear_md5}, md5sum MD5: {ref_md5}")
 
 if __name__ == "__main__":
-    min_length = 50   # Minimum string length
+    min_length = 1    # Minimum string length
     max_length = 4096 # Maximum string length
-    num_tests = 100   # Number of tests for each length
+    num_tests = 32    # Number of tests for each length
 
     fuzz_compare(min_length, max_length, num_tests)

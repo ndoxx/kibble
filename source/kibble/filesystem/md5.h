@@ -74,22 +74,14 @@ private:
      *
      * Resets head.
      */
-    void process_block();
-
-    /**
-     * @brief Update message length representation.
-     *
-     * @param increment
-     */
-    void update_length(uint32_t increment);
+    void process_block(uint32_t block_offset);
 
 private:
     static constexpr uint32_t k_block_size = 64;
 
-    std::array<uint8_t, 2 * k_block_size> block_;
+    std::array<uint8_t, 2 * k_block_size> buffer_;
     std::array<uint32_t, 4> state_{0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476};
-    uint32_t length_hi_{0};
-    uint32_t length_lo_{0};
+    uint64_t length_{0};
     uint32_t head_{0};
     bool finished_{false};
 };
