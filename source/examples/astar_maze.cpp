@@ -5,6 +5,11 @@
 
 using namespace kb;
 
+/*
+    This example shows how to use the A* algorithm to find the
+    shortest path between two points in a maze.
+*/
+
 constexpr int32_t k_width = 16;
 constexpr int32_t k_height = 16;
 
@@ -71,11 +76,16 @@ struct MapSearchState
     {
         /*
             In more complex senarios, we may want to use this state's data in conjunction
-            with the successor's data to calculate an estimated cost of moving to the
+            with the successor's data to calculate the cost of moving to the
             successor state.
-            Here we just care about the successor being a wall tile or not.
+            Because we guarantee in get_successors() that the successor is walkable, we
+            can simply return a fixed cost here.
         */
-        return 1.f + 10.f * float(!is_walkable(successor.x, successor.y));
+
+        // return 1.f + 10.f * float(!is_walkable(successor.x, successor.y));
+
+        (void)successor;
+        return 1.f;
     }
 
     // We must be able to estimate the remaining distance from this state to the goal state

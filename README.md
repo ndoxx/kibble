@@ -57,7 +57,7 @@ https://www.markdownguide.org/basic-syntax/#reference-style-links
 
 ## Kibble
 
-This C++ library is a collection of utility classes, systems, data structures and tools I happen to need quite often on my game development projects. Most of the code is original, some parts stemmed from other open source projects or blog articles I read.<br/>
+This C++ library is a collection of utility classes, systems, data structures, algorithms and tools I happen to need quite often in my game development projects. Most of the code is original, some parts stemmed from other open source projects or blog articles I read.<br/>
 There are numerous examples on how to use it, and most of the code is unit tested.
 
 At the moment, the code has only been tested under GNU/Linux, and although most of it should compile and work as-is under other operating systems, some OS-dependent code was only implemented for GNU/Linux.<br/>
@@ -132,8 +132,9 @@ This library is under heavy development, and the API is subject to change. Use a
     - Statistics class (useful for profiling)
     - Colors: multiple representations (RGBA, HSLA, CIELab, 32b ARGB) and conversion algorithms,
       multiple color difference algorithms...
-* Mathematical optimization
+* Mathematical optimization and graph algorithms
     - Generic stochastic descent optimizer with FDSA / SPSA support
+    - Generic A* search implementation
 * Constexpr string hashes and intern string system
     - User defined literal allows to write a full string in the source that will be hashed at compile-time
     - The internstring utility can parse sources and write all string hashes to a text file,

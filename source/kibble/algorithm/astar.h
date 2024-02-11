@@ -106,8 +106,12 @@ private:
  * - a comparison operator for equality
  * - a 64-bit `hash` function
  * - a `transition_cost` method that calculates the cost of moving from this state to another
- * - a `heuristic` method that estimates the remaining distance to the goal state (must never overestimate)
+ * - a `heuristic` method that estimates the remaining distance to the goal state (must never overestimate -> merely
+ * admissible)
  * - a `get_successors` method that returns a list of states that can be reached from this state
+ *
+ * The search state must be copy-constructible. Write a destructor if you perform any heap allocations,
+ * it will be called when the corresponding node is deallocated by the algorithm.
  *
  * @tparam T
  */
@@ -138,6 +142,11 @@ concept AstarState = requires(T state, const T& other, const T* other_ptr) {
  * This is heavily inspired by justinhj's astar-algorithm-cpp project on github:
  * https://github.com/justinhj/astar-algorithm-cpp
  * This implementation is more succinct, requires less user code, and uses modern C++.
+ *
+ * @note Time complexity is conditioned by the quality of the heuristic. A consistent
+ * (monotonous) heuristic is required for best performance. A merely admissible
+ * (i.e. never overestimates) heuristic will still guarantee convergence, but may
+ * be slower on account of closed nodes being re-opened.
  *
  * @note The open set is implemented as a vector-based min-heap with stl heap operations
  * instead of a priority_queue. This is essential to support heap update after a random
@@ -363,6 +372,15 @@ private:
                 // New g-score is no better, no need to update, skip
                 if ((*closed_it)->g_score <= g_score)
                     continue;
+
+                /*
+                    NOTE(ndx): We don't know if the heuristic is 'consistent' (monotonically decreasing),
+                    we only assume it is 'merely admissible' (never overestimates). So we can't be sure that
+                    the optimal path to this state is the first followed, and we can't simply ignore the successor.
+                    Thus, we need to update it and re-open it (which kills time complexity).
+                    In practice, it is very likely that an admissible heuristic is consistent as well,
+                    in which case this code path is unreachable.
+                */
 
                 // Update node
                 (*closed_it)->update(node, g_score, suc_state.heuristic(goal_->state));
