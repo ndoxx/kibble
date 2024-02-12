@@ -31,7 +31,7 @@
  * graphs.
  */
 
-namespace kb
+namespace kb::experimental
 {
 
 namespace detail
@@ -638,4 +638,4 @@ private:
     const log::Channel* log_channel_{nullptr};
 };
 
-} // namespace kb
+} // namespace kb::experimental
