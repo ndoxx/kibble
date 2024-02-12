@@ -9,8 +9,27 @@
 #include <functional>
 #include <memory>
 #include <numeric>
+#include <queue>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "fmt/format.h"
+
+/*
+ * This is a rework of the A* algorithm implemented in algorithm/astar.h
+ * One major difference is the use of a priority_queue combined with a hash set instead
+ * of a vector-based min-heap to implement the open set. A priority_queue cannot erase a
+ * random element, and can only be updated by active removal / re-insertion. By allowing
+ * nodes in the priority_queue to become invalid (lazily-removed during pop operation),
+ * and by maintaining a list of valid nodes in the hash set, open set search and update
+ * can in theory be further optimized.
+ *
+ * However, a benchmark shows that the present approach is significantly slower than the
+ * original (measured only on the maze, avg search time is 30% faster for 1e6 shots in
+ * release build). It looks like the extra overhead is not worth it for small enough
+ * graphs.
+ */
 
 namespace kb
 {
@@ -135,26 +154,9 @@ concept AstarState = requires(T state, const T& other, const T* other_ptr) {
 };
 
 /**
- * @brief Perform A* search on a graph.
+ * @brief [EXPERIMENTAL] Perform A* search on a graph.
  *
- * Intended for single use.
- *
- * This is heavily inspired by justinhj's astar-algorithm-cpp project on github:
- * https://github.com/justinhj/astar-algorithm-cpp
- * This implementation is more succinct, requires less user code, and uses modern C++.
- *
- * @note Time complexity is conditioned by the quality of the heuristic. A consistent
- * (monotonous) heuristic is required for best performance. A merely admissible
- * (i.e. never overestimates) heuristic will still guarantee convergence, but may
- * be slower on account of closed nodes being re-opened.
- *
- * @note The open set is implemented as a vector-based min-heap with stl heap operations
- * instead of a priority_queue. This is essential to support heap update after a random
- * element modification. A priority_queue cannot erase a random element, and can only be
- * updated by active removal / re-insertion. Extending the stl priority queue to support
- * random removal would imply using make_heap under the hood, which defeats the purpose.
- * I tried combining a priority_queue with a hash set to allow for node invalidation and
- * lazy removal, but it turns out to be slower on my benchmarks.
+ * @warning Use the non-experimental version in production!
  *
  * @tparam T User state type
  */
@@ -173,6 +175,7 @@ private:
         float g_score{0.f};    // Cost of reaching this node + cost of this node
         float h_score{0.f};    // Heuristic estimate of remaining distance to goal state
         float f_score{0.f};    // g + h
+        bool valid{true};      // Invalid nodes are skipped during open set pop operation
         Node* parent{nullptr}; // Keep track of parents in order to guide search
         Node* next{nullptr};   // For solution path after convergence
 
@@ -203,6 +206,15 @@ public:
         FAILURE,
     };
 
+    struct Statistics
+    {
+        size_t steps{0};
+        size_t nodes_created{0};
+        size_t node_invalidations{0};
+        size_t node_reopenings{0};
+        size_t lazy_removals{0};
+    };
+
     /**
      * @brief Construct and fully initialize an A* search object
      *
@@ -214,12 +226,10 @@ public:
     {
         start_ = create_node(start);
         goal_ = create_node(goal);
-
-        start_->h_score = start_->state.heuristic(goal);
-        start_->f_score = start_->h_score; // f = g + h, g = 0
+        start_->update(nullptr, 0.f, start_->state.heuristic(goal));
 
         // Push start node to open set
-        push_open_heap(start_);
+        push_open(start_);
     }
 
     ~Astar()
@@ -262,10 +272,10 @@ public:
         return status_;
     }
 
-    /// @brief Get the number of steps taken by the search
-    inline size_t get_steps() const
+    /// @brief Get statistics
+    inline const Statistics& get_statistics() const
     {
-        return steps_;
+        return stats_;
     }
 
     /// @brief Get the total cost of the solution
@@ -288,33 +298,6 @@ public:
     }
 
 private:
-    // Comparator for priority queue
-    struct fComparator
-    {
-        inline bool operator()(const Node* lhs, const Node* rhs) const
-        {
-            return lhs->f_score > rhs->f_score;
-        }
-    };
-
-    // For the unordered set
-    struct NodeHash
-    {
-        inline size_t operator()(const Node* node) const
-        {
-            return node->state.hash();
-        }
-    };
-
-    // Find by hash and not by value in closed set
-    struct NodeKeyEqual
-    {
-        inline bool operator()(const Node* node1, const Node* node2) const
-        {
-            return NodeHash{}(node1) == NodeHash{}(node2);
-        }
-    };
-
     /**
      * @internal
      * @brief Advance to the next best node.
@@ -330,17 +313,18 @@ private:
 
         // Failure to pop from open set means no solution
         // Also handle cancel requests from user
-        if (open_set_.empty() || cancel_request(*this))
+        if (open_hash_.empty() || cancel_request(*this))
         {
             free_all_nodes();
             status_ = Status::FAILURE;
             return status_;
         }
 
-        ++steps_;
+        ++stats_.steps;
 
         // Pop node with lower f-score
-        Node* node = pop_open_heap();
+        // NOTE(ndx): We're guaranteed to have a valid node, because the open hash set is non-empty
+        Node* node = pop_open();
 
         // Have we reached the goal?
         if (node->state == goal_->state)
@@ -364,23 +348,11 @@ private:
             // Cumulative cost of reaching this successor state
             float g_score = node->g_score + node->state.transition_cost(suc_state);
 
+            // Dummy node to search by key (faster than using std::find_if in the search methods)
             Node dummy(suc_state);
 
-            // Node is already in open set
-            if (Node* p_open_node = find_in_open_set(&dummy); p_open_node)
-            {
-                // New g-score is no better, no need to update, skip
-                if (p_open_node->g_score <= g_score)
-                    continue;
-
-                // Update node
-                p_open_node->update(node, g_score, suc_state.heuristic(goal_->state));
-
-                // Heap must be re-constructed
-                invalidate_open_heap();
-            }
             // Node is already in closed set
-            else if (Node* p_closed_node = find_in_closed_set(&dummy); p_closed_node)
+            if (Node* p_closed_node = find_in_closed_set(&dummy); p_closed_node)
             {
                 // New g-score is no better, no need to update, skip
                 if (p_closed_node->g_score <= g_score)
@@ -399,8 +371,23 @@ private:
                 p_closed_node->update(node, g_score, suc_state.heuristic(goal_->state));
 
                 // Re-open node
-                push_open_heap(p_closed_node);
+                push_open(p_closed_node);
                 closed_set_.erase(p_closed_node);
+                ++stats_.node_reopenings;
+            }
+            // Node is already in open set
+            else if (Node* p_open_node = find_in_open_set(&dummy); p_open_node)
+            {
+                // New g-score is no better, no need to update, skip
+                if (p_open_node->g_score <= g_score)
+                    continue;
+
+                // Invalidate and re-insert
+                invalidate_open(p_open_node);
+                Node* p_updated = create_node(suc_state);
+                p_updated->update(node, g_score, suc_state.heuristic(goal_->state));
+                push_open(p_updated);
+                ++stats_.node_invalidations;
             }
             // New successor
             else
@@ -410,7 +397,7 @@ private:
                 successor->update(node, g_score, suc_state.heuristic(goal_->state));
 
                 // Push to open set
-                push_open_heap(successor);
+                push_open(successor);
             }
         }
 
@@ -458,6 +445,7 @@ private:
 
         // In-place construction and initialization
         Node* node = new (address) Node(state);
+        ++stats_.nodes_created;
         return node;
     }
 
@@ -469,7 +457,7 @@ private:
      *
      * @param node
      */
-    void destroy_node(Node* node)
+    inline void destroy_node(Node* node)
     {
         node->~Node();
         pool_.deallocate(node);
@@ -482,13 +470,17 @@ private:
      */
     void free_all_nodes()
     {
-        for (Node* node : open_set_)
+        while (!open_set_.empty())
+        {
+            Node* node = open_set_.top();
             destroy_node(node);
+            open_set_.pop();
+        }
 
         for (Node* node : closed_set_)
             destroy_node(node);
 
-        open_set_.clear();
+        open_hash_.clear();
         closed_set_.clear();
 
         // Start node was either in open set or closed set, no worries
@@ -503,7 +495,17 @@ private:
      */
     void free_unused_nodes()
     {
-        for (Node* node : open_set_)
+        // Destroy invalid nodes, all valid nodes are in the open_hash set
+        while (!open_set_.empty())
+        {
+            Node* node = open_set_.top();
+            if (!node->valid)
+                destroy_node(node);
+
+            open_set_.pop();
+        }
+
+        for (Node* node : open_hash_)
             if (node->next == nullptr)
                 destroy_node(node);
 
@@ -511,20 +513,34 @@ private:
             if (node->next == nullptr)
                 destroy_node(node);
 
-        open_set_.clear();
+        open_hash_.clear();
         closed_set_.clear();
     }
 
     /**
      * @internal
-     * @brief Push a new node to the open set
+     * @brief Insert node into the open set
      *
      * @param node
      */
-    inline void push_open_heap(Node* node)
+    inline void push_open(Node* node)
     {
-        open_set_.push_back(node);
-        std::push_heap(open_set_.begin(), open_set_.end(), fComparator{});
+        open_hash_.insert(node);
+        open_set_.push(node);
+    }
+
+    /**
+     * @internal
+     * @brief Make this node invalid
+     *
+     * It will be removed from the hash set and skipped during pop operation
+     *
+     * @param node
+     */
+    inline void invalidate_open(Node* node)
+    {
+        node->valid = false;
+        open_hash_.erase(node);
     }
 
     /**
@@ -533,24 +549,22 @@ private:
      *
      * @return Node*
      */
-    inline Node* pop_open_heap()
+    Node* pop_open()
     {
-        Node* node = open_set_.front();
-        std::pop_heap(open_set_.begin(), open_set_.end(), fComparator{});
-        open_set_.pop_back();
+        // Pop nodes until a valid one is found
+        Node* node = open_set_.top();
+        while (!node->valid)
+        {
+            open_set_.pop();
+            // Lazy-removal of invalid nodes
+            destroy_node(node);
+            node = open_set_.top();
+            ++stats_.lazy_removals;
+        }
+        open_set_.pop();
+        // Remove from the hash set
+        open_hash_.erase(node);
         return node;
-    }
-
-    /**
-     * @internal
-     * @brief Rebuild the heap for the open set
-     * @note This is a costly operation. It only happens when a random element
-     * is updated in the open set, and there's no way around that.
-     *
-     */
-    inline void invalidate_open_heap()
-    {
-        std::make_heap(open_set_.begin(), open_set_.end(), fComparator{});
     }
 
     /**
@@ -558,14 +572,12 @@ private:
      * @brief Find a node with the same state in the open set
      *
      * @param node
-     * @return The node or a null pointer
+     * @return The node pointer or nullptr
      */
-    inline auto find_in_open_set(Node* node)
+    inline Node* find_in_open_set(Node* node)
     {
-        // Linear search
-        auto findit = std::find_if(open_set_.begin(), open_set_.end(),
-                                   [node](const Node* candidate) { return candidate->state == node->state; });
-        return findit != open_set_.end() ? *findit : nullptr;
+        auto findit = open_hash_.find(node);
+        return findit != open_hash_.end() ? *findit : nullptr;
     }
 
     /**
@@ -573,7 +585,7 @@ private:
      * @brief Find a node with the same state in the closed set
      *
      * @param node
-     * @return The node or a null pointer
+     * @return The node pointer or nullptr
      */
     inline Node* find_in_closed_set(Node* node)
     {
@@ -582,14 +594,45 @@ private:
     }
 
 private:
+    // Comparator for priority queue
+    struct fComparator
+    {
+        inline bool operator()(const Node* lhs, const Node* rhs) const
+        {
+            return lhs->f_score > rhs->f_score;
+        }
+    };
+
+    // For the unordered set
+    struct NodeHash
+    {
+        inline size_t operator()(const Node* node) const
+        {
+            return node->state.hash();
+        }
+    };
+
+    /*
+        std::unordered_set avoids duplicates by comparing values, and not keys.
+        We want to override this behavior and compare hashes instead.
+    */
+    struct NodeKeyEqual
+    {
+        inline bool operator()(const Node* node1, const Node* node2) const
+        {
+            return NodeHash{}(node1) == NodeHash{}(node2);
+        }
+    };
+
     detail::NodePool<Node> pool_;
     Node* start_{nullptr};
     Node* goal_{nullptr};
     Status status_{Status::RUNNING};
-    size_t steps_{0};
     float solution_cost_{std::numeric_limits<float>::max()};
+    Statistics stats_;
 
-    std::vector<Node*> open_set_;
+    std::priority_queue<Node*, std::vector<Node*>, fComparator> open_set_;
+    std::unordered_set<Node*, NodeHash, NodeKeyEqual> open_hash_;
     std::unordered_set<Node*, NodeHash, NodeKeyEqual> closed_set_;
 
     const log::Channel* log_channel_{nullptr};
