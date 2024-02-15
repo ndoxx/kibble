@@ -115,18 +115,14 @@ struct NavSearchState
     }
 
     // We must be able to get the successors of this state
-    std::vector<NavSearchState> get_successors(const NavSearchState* parent) const
+    void get_successors(std::vector<NavSearchState>& successors, const NavSearchState* parent) const
     {
-        std::vector<NavSearchState> successors;
-
         const auto& neighbors = graph->vertices[vertex_id].neighbors;
 
         // Avoid returning the previous state (guide search)
         for (size_t ii = 0; ii < neighbors.size(); ++ii)
             if (parent == nullptr || (parent->vertex_id != neighbors[ii].to))
                 successors.push_back({graph, neighbors[ii].to});
-
-        return successors;
     }
 };
 

@@ -116,7 +116,7 @@ private:
  * @tparam T
  */
 template <typename T>
-concept AstarState = requires(T state, const T& other, const T* other_ptr) {
+concept AstarState = requires(T state, const T& other, const T* other_ptr, std::vector<T>& successors) {
     {
         state == other
     } -> std::same_as<bool>;
@@ -130,8 +130,8 @@ concept AstarState = requires(T state, const T& other, const T* other_ptr) {
         state.heuristic(other)
     } -> std::convertible_to<float>;
     {
-        state.get_successors(other_ptr)
-    } -> std::convertible_to<std::vector<T>>;
+        state.get_successors(successors, other_ptr)
+    } -> std::same_as<void>;
 };
 
 /**
@@ -356,10 +356,11 @@ private:
         }
 
         // Goal not reached yet. We generate the successors
-        std::vector<T> successor_states = node->state.get_successors(node->parent ? &node->parent->state : nullptr);
+        successors_.clear();
+        node->state.get_successors(successors_, node->parent ? &node->parent->state : nullptr);
 
         // Analyze successors
-        for (const T& suc_state : successor_states)
+        for (const T& suc_state : successors_)
         {
             // Cumulative cost of reaching this successor state
             float g_score = node->g_score + node->state.transition_cost(suc_state);
@@ -589,6 +590,7 @@ private:
     size_t steps_{0};
     float solution_cost_{std::numeric_limits<float>::max()};
 
+    std::vector<T> successors_;
     std::vector<Node*> open_set_;
     std::unordered_set<Node*, NodeHash, NodeKeyEqual> closed_set_;
 

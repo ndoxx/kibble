@@ -96,10 +96,9 @@ struct MapSearchState
     }
 
     // We must be able to get the successors of this state
-    std::vector<MapSearchState> get_successors(const MapSearchState* parent) const
+    void get_successors(std::vector<MapSearchState>& successors, const MapSearchState* parent) const
     {
         // Return walkable neighbors, avoid returning the previous state (guide search)
-        std::vector<MapSearchState> successors;
         successors.reserve(4);
 
         if (is_walkable(x - 1, y) && !(parent && (*parent == MapSearchState{x - 1, y})))
@@ -113,8 +112,6 @@ struct MapSearchState
 
         if (is_walkable(x, y + 1) && !(parent && (*parent == MapSearchState{x, y + 1})))
             successors.push_back({x, y + 1});
-
-        return successors;
     }
 };
 
