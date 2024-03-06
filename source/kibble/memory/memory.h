@@ -1,15 +1,5 @@
 #pragma once
 
-#include <iomanip>
-#include <iostream>
-
-#include <cstdint>
-#include <cstring>
-#include <string>
-#include <type_traits>
-
-#include "../assert/assert.h"
-#include "../logger2/logger.h"
 #include "heap_area.h"
 #include "memory_utils.h"
 #include "policy.h"
@@ -42,8 +32,9 @@ class MemoryArena
 public:
     typedef uint32_t SIZE_TYPE; // BUG#4 if set to size_t/uint64_t, probably because of endianness
     // Size of bookkeeping data before user pointer
-    static constexpr uint32_t BK_FRONT_SIZE = BoundsCheckerT::SIZE_FRONT + sizeof(SIZE_TYPE);
-    static constexpr uint32_t DECORATION_SIZE = BK_FRONT_SIZE + BoundsCheckerT::SIZE_BACK;
+    static constexpr uint32_t BK_FRONT_SIZE =
+        policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT + sizeof(SIZE_TYPE);
+    static constexpr uint32_t DECORATION_SIZE = BK_FRONT_SIZE + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK;
 
     /**
      * @brief Forwards all the arguments to the allocator's constructor.
@@ -54,14 +45,16 @@ public:
     template <typename... ArgsT>
     explicit MemoryArena(const char* debug_name, kb::memory::HeapArea& area, ArgsT&&... args)
         : debug_name_(debug_name), log_channel_(area.get_logger_channel()),
-          allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...),
-          memory_tracker_(debug_name, log_channel_)
+          allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...)
     {
+        if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+            memory_tracker_.init(debug_name_, log_channel_);
     }
 
     ~MemoryArena()
     {
-        memory_tracker_.report();
+        if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+            memory_tracker_.report();
     }
 
     inline void disable_logging()
@@ -109,7 +102,8 @@ public:
                    [[maybe_unused]] int line)
     {
         // Lock resource
-        thread_guard_.enter();
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.enter();
 
         // Compute size after decoration and allocate
         const size_t decorated_size = DECORATION_SIZE + size;
@@ -117,28 +111,31 @@ public:
 
         uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, user_offset));
 
-        if (begin == nullptr)
-        {
-            klog(log_channel_).uid("Arena").fatal("\"{}\": Out of memory.", debug_name_);
-        }
-
         uint8_t* current = begin;
 
         // Put front sentinel for overwrite detection
-        bounds_checker_.put_sentinel_front(current);
-        current += BoundsCheckerT::SIZE_FRONT;
+        if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+        {
+            bounds_checker_.put_sentinel_front(current);
+            current += policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT;
+        }
 
         // Save allocation size
         *(reinterpret_cast<SIZE_TYPE*>(current)) = static_cast<SIZE_TYPE>(decorated_size);
         current += sizeof(SIZE_TYPE);
 
         // More bookkeeping
-        memory_tagger_.tag_allocation(current, size);
-        bounds_checker_.put_sentinel_back(current + size);
-        memory_tracker_.on_allocation(begin, decorated_size, alignment, file, line);
+        if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
+            memory_tagger_.tag_allocation(current, size);
+        if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+            bounds_checker_.put_sentinel_back(current + size);
+        if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+            memory_tracker_.on_allocation(begin, decorated_size, alignment, file, line);
 
         // Unlock resource and return user pointer
-        thread_guard_.leave();
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.leave();
+
         return current;
     }
 
@@ -151,23 +148,35 @@ public:
      */
     void deallocate(void* ptr, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
     {
-        thread_guard_.enter();
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.enter();
+
         // Take care to jump further back if non-POD array deallocation, because we also stored the number of instances
         uint8_t* begin = static_cast<uint8_t*>(ptr) - BK_FRONT_SIZE;
 
         // Check the front sentinel before we retrieve the allocation size, just in case
         // the size was corrupted by an overwrite.
-        bounds_checker_.check_sentinel_front(begin);
-        const SIZE_TYPE decorated_size = *(reinterpret_cast<SIZE_TYPE*>(begin + BoundsCheckerT::SIZE_FRONT));
+        if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+            bounds_checker_.check_sentinel_front(begin);
+
+        const SIZE_TYPE decorated_size =
+            *(reinterpret_cast<SIZE_TYPE*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT));
 
         // Check that everything went ok
-        memory_tagger_.tag_deallocation(begin, decorated_size);
-        bounds_checker_.check_sentinel_back(begin + decorated_size - BoundsCheckerT::SIZE_BACK);
-        memory_tracker_.on_deallocation(begin, decorated_size, file, line);
+        if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
+            memory_tagger_.tag_deallocation(begin, decorated_size);
+        if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+        {
+            bounds_checker_.check_sentinel_back(begin + decorated_size -
+                                                policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK);
+        }
+        if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+            memory_tracker_.on_deallocation(begin, decorated_size, file, line);
 
         allocator_.deallocate(begin);
 
-        thread_guard_.leave();
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.leave();
     }
 
     /**
@@ -178,9 +187,13 @@ public:
      */
     inline void reset()
     {
-        thread_guard_.enter();
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.enter();
+
         allocator_.reset();
-        thread_guard_.leave();
+
+        if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+            thread_guard_.leave();
     }
 
 private:
@@ -192,208 +205,6 @@ private:
     BoundsCheckerT bounds_checker_;
     MemoryTaggerT memory_tagger_;
     MemoryTrackerT memory_tracker_;
-};
-
-/**
- * @brief Buffer on a heap area with a linear allocation scheme.
- * Similar to a MemoryArena with a LinearAllocator but with specialized read() and write() functions instead of
- * allocation functions. This buffer is random access, the head can be moved anywhere thanks to a seek() function.
- *
- * @todo This class could be rewritten as a wrapper around a MemoryArena with a custom linear allocator that enables
- * random access.
- *
- * @tparam ThreadPolicyT
- */
-template <typename ThreadPolicyT = policy::SingleThread>
-class LinearBuffer
-{
-public:
-    LinearBuffer(const kb::log::Channel* log_channel = nullptr) : log_channel_(log_channel)
-    {
-    }
-
-    /**
-     * @brief Construct a new Linear Buffer of specified size.
-     *
-     * @param area target area to reserve a block from
-     * @param size buffer size
-     * @param debug_name name to use in debug mode
-     */
-    LinearBuffer(kb::memory::HeapArea& area, std::size_t size, const char* debug_name)
-    {
-        init(area, size, debug_name);
-    }
-
-    /**
-     * @brief Lazy-initialize a Linear Buffer.
-     *
-     * @param area target area to reserve a block from
-     * @param size buffer size
-     * @param debug_name name to use in debug mode
-     */
-    inline void init(kb::memory::HeapArea& area, std::size_t size, const char* debug_name)
-    {
-        std::pair<void*, void*> range = area.require_block(size, debug_name);
-        begin_ = static_cast<uint8_t*>(range.first);
-        end_ = static_cast<uint8_t*>(range.second);
-        head_ = begin_;
-        debug_name_ = debug_name;
-    }
-
-    /**
-     * @brief Set the debug name
-     *
-     * @param name
-     */
-    inline void set_debug_name(const std::string& name)
-    {
-        debug_name_ = name;
-    }
-
-    /**
-     * @brief Copy data to this buffer.
-     * The data will be written starting at the current head position, then the head will be incremented by the size of
-     * the data written.
-     *
-     * @param source pointer to the beginning of the data
-     * @param size size to copy
-     */
-    inline void write(void const* source, std::size_t size)
-    {
-        if (head_ + size >= end_)
-        {
-            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overwrite!", debug_name_);
-        }
-        memcpy(head_, source, size);
-        head_ += size;
-    }
-
-    /**
-     * @brief Copy data from this buffer.
-     * The data will be read starting from the current position, then the head will be incremented by the size of
-     * the data read.
-     *
-     * @param destination pointer to where the data should be copied to
-     * @param size size to copy
-     */
-    inline void read(void* destination, std::size_t size)
-    {
-        if (head_ + size >= end_)
-        {
-            klog(log_channel_).uid("LinearBuffer").fatal("\"{}\": Data buffer overread!", debug_name_);
-        }
-        memcpy(destination, head_, size);
-        head_ += size;
-    }
-
-    /**
-     * @brief Convenience function to write an object of any type.
-     *
-     * @see write()
-     * @tparam T type of the object to write
-     * @param source pointer to the object to write
-     */
-    template <typename T>
-    inline void write(T* source)
-    {
-        write(source, sizeof(T));
-    }
-
-    /**
-     * @brief Convenience function to read an object of any type.
-     *
-     * @see read()
-     * @tparam T type of the object to read
-     * @param destination pointer to the memory location where the object should be copied
-     */
-    template <typename T>
-    inline void read(T* destination)
-    {
-        read(destination, sizeof(T));
-    }
-
-    /**
-     * @brief Specialized writing function for string objects.
-     *
-     * @param str the string to write
-     */
-    inline void write_str(const std::string& str)
-    {
-        uint32_t str_size = uint32_t(str.size());
-        write(&str_size, sizeof(uint32_t));
-        write(str.data(), str_size);
-    }
-
-    /**
-     * @brief Specialized reading function for string objects.
-     *
-     * @param str the string to set
-     */
-    inline void read_str(std::string& str)
-    {
-        uint32_t str_size;
-        read(&str_size, sizeof(uint32_t));
-        str.resize(str_size);
-        read(str.data(), str_size);
-    }
-
-    /**
-     * @brief Reset the head position to the beginning of the block.
-     *
-     */
-    inline void reset()
-    {
-        head_ = begin_;
-    }
-
-    /**
-     * @brief Get the head position.
-     *
-     * @return uint8_t*
-     */
-    inline uint8_t* head()
-    {
-        return head_;
-    }
-
-    /**
-     * @brief Get a pointer to the beginning of the block.
-     *
-     * @return uint8_t*
-     */
-    inline uint8_t* begin()
-    {
-        return begin_;
-    }
-
-    /**
-     * @brief Get a const pointer to the beginning of the block.
-     *
-     * @return uint8_t*
-     */
-    inline const uint8_t* begin() const
-    {
-        return begin_;
-    }
-
-    /**
-     * @brief Set head to the specified position.
-     *
-     * @param ptr target position
-     */
-    inline void seek(void* ptr)
-    {
-        K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block", log_channel_).watch(ptr).watch(begin_);
-        K_ASSERT(ptr < end_, "Cannot seak after end of the block", log_channel_).watch(ptr).watch(end_);
-        head_ = static_cast<uint8_t*>(ptr);
-    }
-
-private:
-    uint8_t* begin_;
-    uint8_t* end_;
-    uint8_t* head_;
-    std::string debug_name_;
-    const kb::log::Channel* log_channel_ = nullptr;
 };
 
 /**
