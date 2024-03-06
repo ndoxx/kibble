@@ -1,13 +1,13 @@
 #pragma once
 
-#include "heap_area.h"
-#include "memory_utils.h"
-#include "policy.h"
+#include "policy/policy.h"
 
 namespace kb
 {
 namespace memory
 {
+
+class HeapArea;
 
 /**
  * @brief Organizes allocation and deallocation operations on a block of memory.
@@ -15,7 +15,7 @@ namespace memory
  * sanitization policies can be configured during instantiation, which enables bug tracking capabilities. These
  * sanitization policies default to their null-types, so the retail build can remain overhead free.
  *
- * Code inspired from::
+ * Code inspired by:
  *     https://blog.molecular-matters.com/2011/07/05/memory-system-part-1/
  *
  * @tparam AllocatorT allocation policy, handles the details of allocation and deallocation
@@ -43,23 +43,17 @@ public:
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    explicit MemoryArena(const char* debug_name, kb::memory::HeapArea& area, ArgsT&&... args)
-        : debug_name_(debug_name), log_channel_(area.get_logger_channel()),
-          allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...)
+    MemoryArena(const char* debug_name, HeapArea& area, ArgsT&&... args)
+        : allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...)
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
-            memory_tracker_.init(debug_name_, log_channel_);
+            memory_tracker_.init(debug_name, area);
     }
 
     ~MemoryArena()
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
             memory_tracker_.report();
-    }
-
-    inline void disable_logging()
-    {
-        log_channel_ = nullptr;
     }
 
     /**
@@ -196,10 +190,114 @@ public:
             thread_guard_.leave();
     }
 
-private:
-    std::string debug_name_;
-    const kb::log::Channel* log_channel_ = nullptr;
+    /**
+     * @brief Allocate an array of elements in an arena.
+     *
+     * @todo Use std::source_location when possible
+     *
+     * @tparam T type of object to allocate
+     * @param N the array size
+     * @param alignment memory alignment constraint for the user pointer
+     * @param file the source file that performed this array allocation
+     * @param line the source line that performed this array allocation
+     * @return T*
+     */
+    template <typename T>
+    T* new_array__(size_t N, size_t alignment, const char* file, int line)
+    {
+        if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
+        {
+            return static_cast<T*>(allocate(sizeof(T) * N, alignment, 0, file, line));
+        }
+        else
+        {
+            // new[] operator stores the number of instances in the first 4 bytes and
+            // returns a pointer to the address right after, we emulate this behavior here.
+            uint32_t* as_uint = static_cast<uint32_t*>(
+                allocate(sizeof(uint32_t) + sizeof(T) * N, alignment, sizeof(uint32_t), file, line));
+            *(as_uint++) = static_cast<uint32_t>(N);
 
+            // Construct instances using placement new
+            T* as_T = reinterpret_cast<T*>(as_uint);
+            const T* const end = as_T + N;
+            while (as_T < end)
+                ::new (as_T++) T;
+
+            // Hand user the pointer to the first instance
+            return (as_T - N);
+        }
+    }
+
+    // No "placement-delete" in C++, so we define this helper deleter
+    /**
+     * @brief Helper deleter.
+     * There is no notion of "placement-delete" in C++, so this function is needed so as to call the object's destructor
+     * in case it is not of trivial type.
+     *
+     * @bug Sometimes, the address returned by K_NEW is not the same as the one passed to the underlying placement new
+     * (the "user" address computed by the allocator). I suspect pointer type casting is responsible (as placement new
+     * is required to forward the input pointer), but I can't seem to pinpoint how it plays. I observe pointer mismatch
+     * when the constructed type uses multiple inheritance. My fix is to dynamic cast the pointer to void* if the type
+     * is polymorphic. Spoiler: it doesn't always work... When the base type holds a std::vector as a member for
+     * example, it still fails, for reasons... See:
+     * https://stackoverflow.com/questions/41246633/placement-new-crashing-when-used-with-virtual-inheritance-hierarchy-in-visual-c
+     *
+     * @todo Use std::source_location when possible
+     *
+     * @tparam T type of object to delete
+     * @param object pointer to the object to delete
+     */
+    template <typename T>
+    void delete__(T* object, const char* file, int line)
+    {
+        if constexpr (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
+            object->~T();
+
+        if constexpr (std::is_polymorphic_v<T>)
+            deallocate(dynamic_cast<void*>(object), file, line);
+        else
+            deallocate(object, file, line);
+    }
+
+    /**
+     * @brief Helper deleter to delete arrays.
+     *
+     * @todo Use std::source_location when possible
+     *
+     * @see Delete()
+     * @tparam T type of object to delete
+     * @param object pointer to the object to delete
+     */
+    template <typename T>
+    void delete_array__(T* object, const char* file, int line)
+    {
+        if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
+        {
+            deallocate(object, file, line);
+        }
+        else
+        {
+            union {
+                uint32_t* as_uint;
+                T* as_T;
+            };
+            // User pointer points to first instance
+            as_T = object;
+            // Number of instances stored 4 bytes before first instance
+            const uint32_t N = as_uint[-1];
+
+            // Call instances' destructor in reverse order
+            for (uint32_t ii = N; ii > 0; --ii)
+                as_T[ii - 1].~T();
+
+            // deallocate() expects a pointer 4 bytes before actual user pointer
+            // NOTE(ndx): EXPECT deallocation bug when T is polymorphic, see HACK comment in Delete()
+            // TODO: Test and fix this
+            deallocate(as_uint - 1, file, line);
+        }
+    }
+
+private:
     AllocatorT allocator_;
     ThreadPolicyT thread_guard_;
     BoundsCheckerT bounds_checker_;
@@ -207,113 +305,8 @@ private:
     MemoryTrackerT memory_tracker_;
 };
 
-/**
- * @brief Allocate an array of elements in an arena.
- *
- * @tparam T type of object to allocate
- * @tparam ArenaT type of the target arena
- * @param arena the arena this array should be allocated to
- * @param N the array size
- * @param alignment memory alignment constraint for the user pointer
- * @param file the source file that performed this array allocation
- * @param line the source line that performed this array allocation
- * @return T*
- */
-template <typename T, class ArenaT>
-T* NewArray(ArenaT& arena, size_t N, size_t alignment, const char* file, int line)
+namespace detail
 {
-    if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
-    {
-        return static_cast<T*>(arena.allocate(sizeof(T) * N, alignment, 0, file, line));
-    }
-    else
-    {
-        // new[] operator stores the number of instances in the first 4 bytes and
-        // returns a pointer to the address right after, we emulate this behavior here.
-        uint32_t* as_uint = static_cast<uint32_t*>(
-            arena.allocate(sizeof(uint32_t) + sizeof(T) * N, alignment, sizeof(uint32_t), file, line));
-        *(as_uint++) = static_cast<uint32_t>(N);
-
-        // Construct instances using placement new
-        T* as_T = reinterpret_cast<T*>(as_uint);
-        const T* const end = as_T + N;
-        while (as_T < end)
-            ::new (as_T++) T;
-
-        // Hand user the pointer to the first instance
-        return (as_T - N);
-    }
-}
-
-// No "placement-delete" in C++, so we define this helper deleter
-/**
- * @brief Helper deleter.
- * There is no notion of "placement-delete" in C++, so this function is needed so as to call the object's destructor in
- * case it is not of trivial type.
- *
- * @bug Sometimes, the address returned by K_NEW is not the same as the one passed to the underlying placement new (the
- * "user" address computed by the allocator). I suspect pointer type casting is responsible (as placement new is
- * required to forward the input pointer), but I can't seem to pinpoint how it plays. I observe pointer mismatch when
- * the constructed type uses multiple inheritance. My fix is to dynamic cast the pointer to void* if the type is
- * polymorphic. Spoiler: it doesn't always work... When the base type holds a std::vector as a member for example, it
- * still fails, for reasons... See:
- * https://stackoverflow.com/questions/41246633/placement-new-crashing-when-used-with-virtual-inheritance-hierarchy-in-visual-c
- *
- * @tparam T type of object to delete
- * @tparam ArenaT type of the target arena
- * @param object pointer to the object to delete
- * @param arena target arena reference
- */
-template <typename T, class ArenaT>
-void Delete(T* object, ArenaT& arena, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
-{
-    if constexpr (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
-        object->~T();
-
-    if constexpr (std::is_polymorphic_v<T>)
-        arena.deallocate(dynamic_cast<void*>(object), file, line);
-    else
-        arena.deallocate(object, file, line);
-}
-
-/**
- * @brief Helper deleter to delete arrays.
- *
- * @see Delete()
- * @tparam T type of object to delete
- * @tparam ArenaT type of the target arena
- * @param object pointer to the object to delete
- * @param arena target arena reference
- */
-template <typename T, class ArenaT>
-void DeleteArray(T* object, ArenaT& arena, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
-{
-    if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
-    {
-        arena.deallocate(object, file, line);
-    }
-    else
-    {
-        union {
-            uint32_t* as_uint;
-            T* as_T;
-        };
-        // User pointer points to first instance
-        as_T = object;
-        // Number of instances stored 4 bytes before first instance
-        const uint32_t N = as_uint[-1];
-
-        // Call instances' destructor in reverse order
-        for (uint32_t ii = N; ii > 0; --ii)
-            as_T[ii - 1].~T();
-
-        // Arena's deallocate() expects a pointer 4 bytes before actual user pointer
-        // NOTE(ndx): EXPECT deallocation bug when T is polymorphic, see HACK comment in Delete()
-        // TODO: Test and fix this
-        arena.deallocate(as_uint - 1, file, line);
-    }
-}
-
 /**
  * @brief Base helper template to extract type and element count informations from arrays.
  *
@@ -336,6 +329,7 @@ struct TypeAndCount<T[N]>
     typedef T type;
     static constexpr size_t count = N;
 };
+} // namespace detail
 
 } // namespace memory
 
@@ -343,64 +337,63 @@ struct TypeAndCount<T[N]>
  * @def K_NEW(TYPE, ARENA)
  * Allocate an object of type TYPE in arena ARENA. Example:\n
  * `Obj* obj = K_NEW(Obj, arena);`
- *
- * @def K_NEW_ARRAY(TYPE, ARENA)
- * Allocate an array of objects in arena ARENA. The number of objects is know an compile-time. Example:\n
- * `Obj* obj_array = K_NEW_ARRAY(Obj[42], arena);`
- *
- * @def K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA)
- * Allocate an array of objects in arena ARENA. The number of objects is known at run-time. Example:\n
- * `Obj* obj_array = K_NEW_ARRAY_DYNAMIC(Obj, num_objects, arena);`
- *
+ */
+#define K_NEW(TYPE, ARENA) ::new (ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
+
+/**
  * @def K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT)
  * Allocate an object of type TYPE in arena ARENA, the returned pointer will be aligned. Example:\n
  * `Obj* obj = K_NEW_ALIGN(Obj, arena, 4);`
- *
+ */
+#define K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT) ::new (ARENA.allocate(sizeof(TYPE), ALIGNMENT, 0, __FILE__, __LINE__)) TYPE
+
+/**
+ * @def K_NEW_ARRAY(TYPE, ARENA)
+ * Allocate an array of objects in arena ARENA. The number of objects is know an compile-time. Example:\n
+ * `Obj* obj_array = K_NEW_ARRAY(Obj[42], arena);`
+ */
+#define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
+    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(kb::memory::detail::TypeAndCount<TYPE>::count, 0,  \
+                                                                    __FILE__, __LINE__)
+
+/**
+ * @def K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA)
+ * Allocate an array of objects in arena ARENA. The number of objects is known at run-time. Example:\n
+ * `Obj* obj_array = K_NEW_ARRAY_DYNAMIC(Obj, num_objects, arena);`
+ */
+#define K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA) ARENA.new_array__<TYPE>(COUNT, 0, __FILE__, __LINE__)
+
+/**
  * @def K_NEW_ARRAY_ALIGN(TYPE, ARENA, ALIGNMENT)
  * Allocate an array of objects in arena ARENA. The number of objects is know an compile-time.
  * The returned pointer will be aligned. Example:\n
  * `Obj* obj_array = K_NEW_ARRAY_ALIGN(Obj[42], arena, 4);`
- *
+ */
+#define K_NEW_ARRAY_ALIGN(TYPE, ARENA, ALIGNMENT)                                                                      \
+    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(kb::memory::detail::TypeAndCount<TYPE>::count,     \
+                                                                    ALIGNMENT, __FILE__, __LINE__)
+
+/**
  * @def K_NEW_ARRAY_DYNAMIC_ALIGN(TYPE, COUNT, ARENA, ALIGNMENT)
  * Allocate an array of objects in arena ARENA. The number of objects is known at run-time.
  * The returned pointer will be aligned. Example:\n
  * `Obj* obj_array = K_NEW_ARRAY_DYNAMIC_ALIGN(Obj, num_objects, arena, 4);`
- *
+ */
+#define K_NEW_ARRAY_DYNAMIC_ALIGN(TYPE, COUNT, ARENA, ALIGNMENT)                                                       \
+    ARENA.new_array__<TYPE>(COUNT, ALIGNMENT, __FILE__, __LINE__)
+
+/**
  * @def K_DELETE(OBJECT, ARENA)
  * Delete an object OBJECT from arena ARENA. Example:\n
  * `K_DELETE(obj_ptr, arena);`
- *
+ */
+#define K_DELETE(OBJECT, ARENA) ARENA.delete__(OBJECT, __FILE__, __LINE__)
+
+/**
  * @def K_DELETE_ARRAY(OBJECT, ARENA)
  * Delete an array of objects OBJECT from arena ARENA. Example:\n
  * `K_DELETE_ARRAY(obj_array_ptr, arena);`
- *
  */
-
-#define K_NEW(TYPE, ARENA) ::new (ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
-#define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
-    kb::memory::NewArray<kb::memory::TypeAndCount<TYPE>::type>(ARENA, kb::memory::TypeAndCount<TYPE>::count, 0,        \
-                                                               __FILE__, __LINE__)
-#define K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA) kb::memory::NewArray<TYPE>(ARENA, COUNT, 0, __FILE__, __LINE__)
-#define K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT) ::new (ARENA.allocate(sizeof(TYPE), ALIGNMENT, 0, __FILE__, __LINE__)) TYPE
-#define K_NEW_ARRAY_ALIGN(TYPE, ARENA, ALIGNMENT)                                                                      \
-    kb::memory::NewArray<kb::memory::TypeAndCount<TYPE>::type>(ARENA, kb::memory::TypeAndCount<TYPE>::count,           \
-                                                               ALIGNMENT, __FILE__, __LINE__)
-#define K_NEW_ARRAY_DYNAMIC_ALIGN(TYPE, COUNT, ARENA, ALIGNMENT)                                                       \
-    kb::memory::NewArray<TYPE>(ARENA, COUNT, ALIGNMENT, __FILE__, __LINE__)
-
-#define K_DELETE(OBJECT, ARENA) kb::memory::Delete(OBJECT, ARENA, __FILE__, __LINE__)
-#define K_DELETE_ARRAY(OBJECT, ARENA) kb::memory::DeleteArray(OBJECT, ARENA, __FILE__, __LINE__)
-
-// When this feature is implemented in C++, use source_location and something like:
-/*
-    #include <source_location>
-
-    template <typename T, typename ArenaT, typename... Args>
-    T* k_new(ArenaT& arena, Args... args,
-             const std::source_location& location = std::source_location::current())
-    {
-        return new(arena.allocate(sizeof(T), 0, 0, location.file_name(), location.line()))(std::forward<Args>(args)...);
-    }
-*/
+#define K_DELETE_ARRAY(OBJECT, ARENA) ARENA.delete_array__(OBJECT, __FILE__, __LINE__)
 
 } // namespace kb

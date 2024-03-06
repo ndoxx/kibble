@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../util/sanitizer.h"
-#include "assert/assert.h"
+#include "../../assert/assert.h"
+#include "../../util/sanitizer.h"
+#include "../heap_area.h"
+#include "../util/arithmetic.h"
+
 #include "atomic_queue/atomic_queue.h"
-#include "memory/heap_area.h"
-#include "memory/memory_utils.h"
 
 // #define ALLOCATOR_PADDING_MAGIC
 

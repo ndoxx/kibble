@@ -2,10 +2,16 @@
 
 #include <concepts>
 #include <cstdint>
+#include <string>
 
 namespace kb::log
 {
 class Channel;
+}
+
+namespace kb::memory
+{
+class HeapArea;
 }
 
 namespace kb::memory::policy
@@ -54,16 +60,15 @@ concept is_active_memory_tagging_policy = requires(const T& policy) {
 };
 
 template <typename T>
-concept is_active_memory_tracking_policy =
-    requires(T& policy, const std::string& debug_name, const kb::log::Channel* log_channel) {
-        // clang-format off
-    { policy.init(debug_name, log_channel) }            -> std::same_as<void>;
+concept is_active_memory_tracking_policy = requires(T& policy, const std::string& debug_name, const HeapArea& area) {
+    // clang-format off
+    { policy.init(debug_name, area) }                   -> std::same_as<void>;
     { policy.on_allocation(nullptr, 0, 0, nullptr, 0) } -> std::same_as<void>;
     { policy.on_deallocation(nullptr, 0, nullptr, 0) }  -> std::same_as<void>;
     { policy.get_allocation_count() }                   -> std::convertible_to<int32_t>;
     { policy.report() }                                 -> std::same_as<void>;
-        // clang-format on
-    };
+    // clang-format on
+};
 
 template <typename T>
 struct BoundsCheckerSentinelSize

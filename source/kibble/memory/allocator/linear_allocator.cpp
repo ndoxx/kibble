@@ -1,7 +1,7 @@
-#include "memory/linear_allocator.h"
+#include "memory/allocator/linear_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
 
 #include <iostream>
 

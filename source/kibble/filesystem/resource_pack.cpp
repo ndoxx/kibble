@@ -1,12 +1,12 @@
 #include "filesystem/resource_pack.h"
 #include "assert/assert.h"
 #include "logger2/logger.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
 #include "string/string.h"
 
+#include "fmt/std.h"
 #include <array>
 #include <cmath>
-#include "fmt/std.h"
 #include <fstream>
 #include <set>
 #include <vector>

@@ -8,18 +8,20 @@
 #include <vector>
 
 #include "assert/assert.h"
-#include "logger/logger.h"
+#include "memory/allocator/linear_allocator.h"
+#include "memory/allocator/pool_allocator.h"
+#include "memory/arena.h"
 #include "memory/heap_area.h"
-#include "memory/linear_allocator.h"
 #include "memory/linear_buffer.h"
-#include "memory/memory.h"
-#include "memory/memory_utils.h"
 #include "memory/policy/bounds_checking_simple.h"
 #include "memory/policy/memory_tracking_simple.h"
-#include "memory/pool_allocator.h"
+#include "memory/util/arithmetic.h"
+#include "memory/util/literals.h"
+
 #include <catch2/catch_all.hpp>
 
 using namespace kb;
+using namespace kb::memory::literals;
 
 struct POD
 {

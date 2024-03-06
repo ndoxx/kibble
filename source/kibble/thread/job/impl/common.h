@@ -1,9 +1,9 @@
 #pragma once
 #include "assert/assert.h"
 #include "atomic_queue/atomic_queue.h"
-#include "memory/atomic_pool_allocator.h"
+#include "memory/allocator/atomic_pool_allocator.h"
+#include "memory/arena.h"
 #include "memory/heap_area.h"
-#include "memory/memory.h"
 #include "thread/job/config.h"
 
 namespace kb

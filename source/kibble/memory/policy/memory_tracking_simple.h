@@ -3,7 +3,15 @@
 #include <cstdint>
 #include <string>
 
-#include "../../logger2/logger.h"
+namespace kb::memory
+{
+class HeapArea;
+}
+
+namespace kb::log
+{
+class Channel;
+}
 
 namespace kb::memory::policy
 {
@@ -18,11 +26,7 @@ namespace kb::memory::policy
 class SimpleMemoryTracking
 {
 public:
-    inline void init(const std::string& debug_name, const kb::log::Channel* log_channel)
-    {
-        debug_name_ = debug_name;
-        log_channel_ = log_channel;
-    }
+    void init(const std::string& debug_name, const HeapArea& area);
 
     /**
      * @brief On allocating a chunk, increase internal counter
@@ -56,15 +60,7 @@ public:
      * @brief Print a tracking report on the logger
      *
      */
-    inline void report() const
-    {
-        if (num_allocs_)
-        {
-            klog(log_channel_)
-                .uid("MemoryTracker")
-                .error("Arena: {}, Alloc-dealloc mismatch: {}", debug_name_, num_allocs_);
-        }
-    }
+    void report() const;
 
 private:
     int32_t num_allocs_ = 0;

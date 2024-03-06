@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include "../../assert/assert.h"
-#include "../policy.h"
+#include "policy.h"
 
 namespace kb::memory::policy
 {

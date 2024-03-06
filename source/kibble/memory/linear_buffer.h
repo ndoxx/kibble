@@ -3,7 +3,7 @@
 #include <cstring>
 #include <string>
 
-#include "policy.h"
+#include "policy/policy.h"
 #include "../logger2/logger.h"
 
 namespace kb::memory

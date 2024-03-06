@@ -1,10 +1,11 @@
 #include "memory/heap_area.h"
 #include "assert/assert.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
+#include "memory/util/debug.h"
 #include "string/string.h"
 
-#include "logger2/logger.h"
 #include "fmt/color.h"
+#include "logger2/logger.h"
 
 // Useful to avoid uninitialized reads with Valgrind during hexdumps
 // Disable for retail build
@@ -76,11 +77,11 @@ HeapArea::~HeapArea()
     delete[] begin_;
 }
 
-void HeapArea::debug_hex_dump(std::ostream& stream, size_t size)
+void HeapArea::debug_hex_dump(size_t size)
 {
     if (size == 0)
         size = size_t(head_ - begin_);
-    memory::hex_dump(stream, begin_, size, "HEX DUMP");
+    memory::util::hex_dump(begin_, size, "HEX DUMP");
 }
 
 std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_name)

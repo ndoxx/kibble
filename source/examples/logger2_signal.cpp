@@ -5,8 +5,9 @@
 #include "logger2/policies/stack_trace_policy.h"
 #include "logger2/sinks/console_sink.h"
 #include "logger2/sinks/file_sink.h"
+#include "math/color_table.h"
 #include "memory/heap_area.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
 #include "thread/job/job_system.h"
 #include "time/instrumentation.h"
 
