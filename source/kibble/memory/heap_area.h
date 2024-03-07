@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
 #include <string>
 #include <vector>
 
@@ -120,10 +119,9 @@ public:
      * @warning This was done in a hurry to debug something during the tests, the interface is bad and this should
      * evolve into a better designed feature later on.
      *
-     * @param stream stream to output the hex dump to
      * @param size size of the dump
      */
-    void debug_hex_dump(std::ostream& stream, size_t size = 0);
+    void debug_hex_dump(size_t size = 0);
 
     /**
      * @brief Get the block allocation journal.

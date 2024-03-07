@@ -4,7 +4,7 @@
 #include <ostream>
 #include <utility>
 
-#include "free_list.h"
+#include "../util/free_list.h"
 
 namespace kb
 {

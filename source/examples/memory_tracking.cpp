@@ -5,12 +5,15 @@
 #include "logger2/sinks/console_sink.h"
 #include "logger2/sinks/file_sink.h"
 
+#include "math/color_table.h"
+#include "memory/allocator/pool_allocator.h"
+#include "memory/arena.h"
 #include "memory/heap_area.h"
-#include "memory/memory.h"
-#include "memory/memory_utils.h"
-#include "memory/policy.h"
-#include "memory/pool_allocator.h"
+#include "memory/policy/bounds_checking_simple.h"
+#include "memory/policy/memory_tracking_verbose.h"
+#include "memory/util/literals.h"
 
+using namespace kb::memory::literals;
 using namespace kb::log;
 using namespace kb;
 

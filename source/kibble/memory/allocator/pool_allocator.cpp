@@ -1,7 +1,7 @@
-#include "memory/pool_allocator.h"
+#include "memory/allocator/pool_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
 
 #include <iostream>
 
@@ -12,7 +12,8 @@ namespace kb
 namespace memory
 {
 
-PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size, std::size_t max_nodes)
+PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size,
+                             std::size_t max_nodes)
 {
     node_size_ = node_size + decoration_size;
     max_nodes_ = max_nodes;

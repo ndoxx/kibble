@@ -5,7 +5,7 @@
 #include "logger2/sinks/console_sink.h"
 #include "math/color_table.h"
 #include "memory/heap_area.h"
-#include "memory/memory_utils.h"
+#include "memory/util/arithmetic.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
