@@ -1,6 +1,8 @@
 #include "string/string.h"
 #include "hash/hash.h"
 
+#include "fmt/format.h"
+
 namespace kb
 {
 namespace su
@@ -69,18 +71,39 @@ size_t parse_size(const std::string& input, char delimiter)
     return size;
 }
 
-std::string size_to_string(size_t size)
+constexpr std::string_view size_unit_suffix(int exponent)
 {
-    static const std::string sizes[] = {"_B", "_kB", "_MB", "_GB"};
-
-    int ii = 0;
-    while (size % 1024 == 0 && ii < 4)
+    switch (exponent)
     {
-        size /= 1024;
-        ++ii;
+    case 0:
+        return "B";
+    case 1:
+        return "kB";
+    case 2:
+        return "MB";
+    case 3:
+        return "GB";
+    case 4:
+        return "TB";
+    default:
+        return "??";
+    }
+}
+
+constexpr int k_max_suffix = 4;
+
+std::string human_size(std::size_t bytes)
+{
+    int ii = 0;
+    double d_bytes = double(bytes);
+
+    if (bytes > 1024)
+    {
+        for (ii = 0; (bytes / 1024) > 0 && ii < k_max_suffix; ii++, bytes /= 1024)
+            d_bytes = double(bytes) / 1024.0;
     }
 
-    return std::to_string(size) + sizes[ii];
+    return fmt::format("{:.2f}{}", d_bytes, size_unit_suffix(ii));
 }
 
 void center(std::string& input, int size)

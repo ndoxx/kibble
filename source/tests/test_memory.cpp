@@ -15,7 +15,6 @@
 #include "memory/linear_buffer.h"
 #include "memory/policy/bounds_checking_simple.h"
 #include "memory/policy/memory_tracking_simple.h"
-#include "memory/util/arithmetic.h"
 #include "memory/util/literals.h"
 
 #include <catch2/catch_all.hpp>

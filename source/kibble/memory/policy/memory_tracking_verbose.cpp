@@ -1,7 +1,7 @@
 #include "memory/policy/memory_tracking_verbose.h"
 #include "logger2/logger.h"
 #include "memory/heap_area.h"
-#include "memory/util/arithmetic.h"
+#include "string/string.h"
 
 namespace kb::memory::policy
 {
@@ -27,7 +27,7 @@ Decorated size: {}
 Begin ptr:      {:#x}
 Alignment:      {}B,
 Location:       {}:{})",
-                     debug_name_, kb::memory::utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
+                     debug_name_, kb::su::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
                      alignment, file, line);
     }
 }
@@ -48,7 +48,7 @@ void VerboseMemoryTracking::on_deallocation(uint8_t* begin, std::size_t decorate
 Decorated size: {}
 Begin ptr:      {:#x}
 Location:       {}:{})",
-                     debug_name_, kb::memory::utils::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
+                     debug_name_, kb::su::human_size(decorated_size), reinterpret_cast<uint64_t>(begin),
                      file, line);
     }
 }

@@ -1,7 +1,6 @@
 #include "filesystem/resource_pack.h"
 #include "assert/assert.h"
 #include "logger2/logger.h"
-#include "memory/util/arithmetic.h"
 #include "string/string.h"
 
 #include "fmt/std.h"
@@ -247,7 +246,7 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
 
         klog(log_channel)
             .uid("kpak")
-            .verbose("{:3}% pack: {} ({})", progess_percent, entry.path, kb::memory::utils::human_size(entry.size));
+            .verbose("{:3}% pack: {} ({})", progess_percent, entry.path, kb::su::human_size(entry.size));
 
         std::ifstream ifs(dir_path / entry.path, std::ios::binary);
         databuf.insert(databuf.begin(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());

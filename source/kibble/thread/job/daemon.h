@@ -36,7 +36,7 @@ struct Daemon
     /// The job is kept alive by the JobSystem, the DaemonScheduler needs to store this pointer
     Job* job = nullptr;
     /// When set to true, this daemon will be returned to the pool by DaemonScheduler::update()
-    PAGE_ALIGN std::atomic<bool> marked_for_deletion = false;
+    L1_ALIGN std::atomic<bool> marked_for_deletion = false;
 };
 
 /// Refers to a particular daemon

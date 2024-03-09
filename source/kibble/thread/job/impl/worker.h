@@ -1,5 +1,5 @@
 #pragma once
-#include "thread/alignment.h"
+#include "memory/util/alignment.h"
 #include "thread/job/impl/common.h"
 #include <atomic>
 #include <condition_variable>
@@ -33,15 +33,15 @@ struct JobMetadata;
 struct SharedState
 {
     /// Number of tasks left
-    PAGE_ALIGN std::atomic<uint64_t> pending = {0};
+    L1_ALIGN std::atomic<uint64_t> pending = {0};
     /// Flag to signal workers when they should stop and join
-    PAGE_ALIGN std::atomic<bool> running = {true};
+    L1_ALIGN std::atomic<bool> running = {true};
     /// Memory arena to store job structures (page aligned)
-    PAGE_ALIGN std::shared_ptr<JobPoolArena> job_pool = nullptr;
+    L1_ALIGN std::shared_ptr<JobPoolArena> job_pool = nullptr;
     /// To wake worker threads
-    PAGE_ALIGN std::condition_variable cv_wake;
+    L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle
-    PAGE_ALIGN std::mutex wake_mutex;
+    L1_ALIGN std::mutex wake_mutex;
 };
 
 class JobSystem;
@@ -268,7 +268,7 @@ private:
     std::vector<tid_t> stealable_workers_;
     size_t stealing_round_robin_ = 0;
 
-    PAGE_ALIGN std::array<JobQueue<Job*>, 2> queues_;
+    L1_ALIGN std::array<JobQueue<Job*>, 2> queues_;
 };
 
 } // namespace kb::th

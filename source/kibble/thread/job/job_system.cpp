@@ -14,7 +14,7 @@ namespace th
 {
 
 // Maximal padding of a Job structure within the job pool
-static constexpr size_t k_job_max_align = k_cache_line_size - 1;
+static constexpr size_t k_job_max_align = kb::memory::k_cache_line_size - 1;
 // Total size of a Job node inside the pool
 static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
 
@@ -117,7 +117,7 @@ Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     auto& pool = *(ss_->job_pool);
-    Job* job = K_NEW_ALIGN(Job, pool, k_cache_line_size);
+    Job* job = K_NEW_ALIGN(Job, pool, kb::memory::k_cache_line_size);
     job->kernel = std::move(kernel);
     job->meta = std::move(meta);
     return job;

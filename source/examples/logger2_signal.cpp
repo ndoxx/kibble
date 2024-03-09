@@ -7,7 +7,6 @@
 #include "logger2/sinks/file_sink.h"
 #include "math/color_table.h"
 #include "memory/heap_area.h"
-#include "memory/util/arithmetic.h"
 #include "thread/job/job_system.h"
 #include "time/instrumentation.h"
 

@@ -3,7 +3,7 @@
 #include "../../assert/assert.h"
 #include "../../util/sanitizer.h"
 #include "../heap_area.h"
-#include "../util/arithmetic.h"
+#include "../util/alignment.h"
 
 #include "atomic_queue/atomic_queue.h"
 
@@ -121,7 +121,7 @@ public:
         // Check if alignment is required. If so, find the next aligned memory address.
         std::size_t padding = 0;
         if (alignment && std::size_t(next + offset) % alignment)
-            padding = utils::alignment_padding(next + offset, alignment);
+            padding = alignment_padding(next + offset, alignment);
 
         (void)size;
         K_ASSERT(padding + size <= node_size_,

@@ -1,7 +1,7 @@
 #include "memory/allocator/linear_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
-#include "memory/util/arithmetic.h"
+#include "memory/util/alignment.h"
 
 #include <iostream>
 
@@ -29,7 +29,7 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     // Check if alignment is required. If so, find the next aligned memory address.
     std::size_t padding = 0;
     if (alignment && std::size_t(current + offset) % alignment)
-        padding = utils::alignment_padding(current + offset, alignment);
+        padding = alignment_padding(current + offset, alignment);
 
     // Out of memory
     if (current + padding + size > end_)

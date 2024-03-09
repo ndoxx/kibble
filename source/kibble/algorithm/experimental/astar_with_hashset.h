@@ -2,6 +2,8 @@
 
 #include "../assert/assert.h"
 #include "../logger2/channel.h"
+#include "../math/constexpr_math.h"
+
 #include <algorithm>
 #include <concepts>
 #include <cstring>
@@ -35,10 +37,6 @@ namespace kb::experimental
 
 namespace detail
 {
-constexpr inline size_t round_up_pow2(int32_t base, int32_t multiple)
-{
-    return size_t((base + multiple - 1) & -multiple);
-}
 
 /**
  * @internal
@@ -58,7 +56,7 @@ public:
     };
 
     static constexpr size_t k_align = 8;
-    static constexpr size_t k_node_size = round_up_pow2(sizeof(Element), k_align);
+    static constexpr size_t k_node_size = math::round_up_pow2(sizeof(Element), k_align);
     static constexpr size_t k_default_count = 128;
 
     NodePool(size_t max_nodes = k_default_count)

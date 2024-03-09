@@ -1,7 +1,7 @@
 #include "memory/allocator/pool_allocator.h"
 #include "assert/assert.h"
 #include "memory/heap_area.h"
-#include "memory/util/arithmetic.h"
+#include "memory/util/alignment.h"
 
 #include <iostream>
 
@@ -30,7 +30,7 @@ void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
     // Check if alignment is required. If so, find the next aligned memory address.
     std::size_t padding = 0;
     if (alignment && std::size_t(next + offset) % alignment)
-        padding = utils::alignment_padding(next + offset, alignment);
+        padding = alignment_padding(next + offset, alignment);
 
     K_ASSERT(padding + size <= node_size_, "[PoolAllocator] Allocation size does not fit initial requirement.", nullptr)
         .watch(padding + size)

@@ -10,7 +10,6 @@
 #include "logger2/sinks/console_sink.h"
 #include "logger2/sinks/file_sink.h"
 #include "memory/heap_area.h"
-#include "memory/util/arithmetic.h"
 #include "thread/job/job_system.h"
 #include "time/instrumentation.h"
 

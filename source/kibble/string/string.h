@@ -148,14 +148,12 @@ size_t parse_size(const std::string& input, char delimiter = '_');
 
 /**
  * @brief Convert a size number to a string.
- * @deprecated There is a possibly better alternative in memory/util/arithmetic.h called human_size() which makes this function
- * redundant.
  *
  * @see kb::memory::utils::human_size()
  * @param size
  * @return std::string
  */
-std::string size_to_string(size_t size);
+std::string human_size(size_t size);
 
 /**
  * @brief Space-pad a string left and right to make it centered.

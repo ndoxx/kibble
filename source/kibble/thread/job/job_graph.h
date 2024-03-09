@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../alignment.h"
+#include "../../memory/util/alignment.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -168,17 +168,17 @@ private:
 
 private:
     /// Dependencies
-    PAGE_ALIGN Harness<MAX_IN> in_nodes_;
+    L1_ALIGN Harness<MAX_IN> in_nodes_;
     /// Dependent nodes
-    PAGE_ALIGN Harness<MAX_OUT> out_nodes_;
+    L1_ALIGN Harness<MAX_OUT> out_nodes_;
     /// Dependent objects
-    PAGE_ALIGN std::array<T, MAX_OUT> out_objects_;
+    L1_ALIGN std::array<T, MAX_OUT> out_objects_;
     /// Number of pending dependencies
-    PAGE_ALIGN std::atomic<size_t> pending_in_ = 0;
+    L1_ALIGN std::atomic<size_t> pending_in_ = 0;
     /// Set to true as soon as node has been processed
-    PAGE_ALIGN std::atomic<bool> processed_ = false;
+    L1_ALIGN std::atomic<bool> processed_ = false;
     /// To avoid multiple scheduling of children
-    PAGE_ALIGN std::atomic_flag scheduled_ = ATOMIC_FLAG_INIT;
+    L1_ALIGN std::atomic_flag scheduled_ = ATOMIC_FLAG_INIT;
 };
 
 } // namespace th

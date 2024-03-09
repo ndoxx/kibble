@@ -1,6 +1,6 @@
 #include "memory/heap_area.h"
 #include "assert/assert.h"
-#include "memory/util/arithmetic.h"
+#include "memory/util/alignment.h"
 #include "memory/util/debug.h"
 #include "string/string.h"
 
@@ -41,7 +41,7 @@ void HeapArea::debug_show_content()
 
     klog(log_channel_)
         .uid("HeapArea")
-        .debug("Usage: {} / {} ({}%)", utils::human_size(used_mem), utils::human_size(size_),
+        .debug("Usage: {} / {} ({}%)", su::human_size(used_mem), su::human_size(size_),
                fmt::styled(100 * usage, fmt::fg(fmt::rgb{R, G, B})));
 
     for (auto&& item : items_)
@@ -58,7 +58,7 @@ void HeapArea::debug_show_content()
             .raw()
             .debug("    {:#x} [{}] {:#x} s={}", reinterpret_cast<size_t>(item.begin),
                    fmt::styled(name, fmt::fg(fmt::rgb{R, G, B})), reinterpret_cast<size_t>(item.end),
-                   utils::human_size(item.size));
+                   su::human_size(item.size));
     }
 }
 
@@ -69,7 +69,7 @@ HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : size_(size), 
 #ifdef HEAP_AREA_MEMSET_ENABLED
     memset(begin_, AREA_MEMSET_VALUE, size_);
 #endif
-    klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", utils::human_size(size_), uint64_t(begin_));
+    klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", su::human_size(size_), uint64_t(begin_));
 }
 
 HeapArea::~HeapArea()
@@ -86,8 +86,8 @@ void HeapArea::debug_hex_dump(size_t size)
 
 std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_name)
 {
-    // Page align returned block to avoid false sharing if multiple threads access this area
-    size_t padding = utils::alignment_padding(head_, 64);
+    // Align returned block to avoid false sharing if multiple threads access this area
+    size_t padding = alignment_padding(head_, k_cache_line_size);
     K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!", log_channel_);
 
     // Mark padding area
@@ -110,8 +110,8 @@ Size:      {}
 Padding:   {}
 Remaining: {}
 Address:   {:#x})",
-            (debug_name ? debug_name : "ANON"), utils::human_size(size), utils::human_size(padding),
-            utils::human_size(static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_)),
+            (debug_name ? debug_name : "ANON"), su::human_size(size), su::human_size(padding),
+            su::human_size(static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_)),
             reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;

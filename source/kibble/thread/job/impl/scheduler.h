@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thread/alignment.h"
+#include "memory/util/alignment.h"
 #include "thread/job/config.h"
 #include <array>
 #include <cstdint>
@@ -41,9 +41,9 @@ public:
     void dispatch(Job* job);
 
 private:
-    PAGE_ALIGN JobSystem& js_;
+    L1_ALIGN JobSystem& js_;
     // Each thread has its own round robin state (64b to avoid false sharing)
-    PAGE_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
+    L1_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
 };
 
 } // namespace th
