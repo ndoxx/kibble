@@ -69,9 +69,6 @@ set(DOCS_INPUT
 )
 
 # -- Configuration --
-option(KB_AREA_MEMORY_INITIALIZATION "Initialize heap area memory on creation" ON)
-option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
-option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
 option(KB_TARGET_DOCUMENTATION OFF)
 option(KB_TARGET_INSTALL ${KB_MASTER_PROJECT})
 option(KB_TARGET_EXAMPLES ${KB_MASTER_PROJECT})

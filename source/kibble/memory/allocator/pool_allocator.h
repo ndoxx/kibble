@@ -89,7 +89,7 @@ public:
      * `size + padding <= node_size`\n
      * this is enforced by a K_ASSERT
      *
-     * If the symbol ALLOCATOR_PADDING_MAGIC is defined, padded zones will be memset to a fixed magic number.
+     * If the symbol K_USE_MEM_MARK_PADDING is defined, padded zones will be memset to a fixed magic number.
      *
      * @param size size of the chunk to allocate
      * @param alignment alignment constraint, such that `(returned_pointer + offset) % alignment == 0`

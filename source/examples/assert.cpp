@@ -1,4 +1,7 @@
+#ifndef K_DEBUG
 #define K_DEBUG
+#endif
+
 #include "assert/assert.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"

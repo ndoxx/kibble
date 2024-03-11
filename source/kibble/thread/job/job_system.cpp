@@ -101,7 +101,7 @@ void JobSystem::shutdown()
     kb::log::Channel::set_async(nullptr);
     klog(log_channel_).uid("JobSystem").debug("All threads have joined.");
 
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     // Log worker statistics
     monitor_->update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
@@ -173,7 +173,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     int64_t idle_time_us = 0;
 #endif
 
@@ -182,18 +182,18 @@ void JobSystem::wait_until(std::function<bool()> condition)
         if (!workers_[0]->foreground_work())
         {
             // There's nothing we can do, just wait. Some work may come to us.
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
             microClock clk;
 #endif
             ss_->cv_wake.notify_all(); // wake worker threads
             std::this_thread::yield(); // allow this thread to be rescheduled
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
             idle_time_us += clk.get_elapsed_time().count();
 #endif
         }
     }
 
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     auto& activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
     monitor_->report_thread_activity(activity);

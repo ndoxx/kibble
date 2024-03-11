@@ -1,6 +1,9 @@
 #include "common/utils.hpp"
 
+#ifndef K_DEBUG
 #define K_DEBUG // For verbose / debug to actually do something
+#endif
+
 #include "logger2/logger.h"
 #include "logger2/sink.h"
 #include "math/color_table.h"

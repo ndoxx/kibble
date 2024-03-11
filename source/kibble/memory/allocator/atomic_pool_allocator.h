@@ -2,12 +2,11 @@
 
 #include "../../assert/assert.h"
 #include "../../util/sanitizer.h"
+#include "../config.h"
 #include "../heap_area.h"
 #include "../util/alignment.h"
 
 #include "atomic_queue/atomic_queue.h"
-
-// #define ALLOCATOR_PADDING_MAGIC
 
 namespace kb
 {
@@ -101,7 +100,7 @@ public:
      * `size + padding <= node_size`\n
      * this is enforced by a K_ASSERT
      *
-     * If the symbol ALLOCATOR_PADDING_MAGIC is defined, padded zones will be memset to a fixed magic number.
+     * If the symbol K_USE_MEM_MARK_PADDING is defined, padded zones will be memset to a fixed magic number.
      *
      * @param size size of the chunk to allocate
      * @param alignment alignment constraint, such that `(returned_pointer + offset) % alignment == 0`
@@ -109,7 +108,7 @@ public:
      * @return the returned pointer, at the beginning of the chunk, or nullptr if the allocator reached the end of the
      * block
      */
-    void* allocate(std::size_t size, std::size_t alignment = 0, std::size_t offset = 0)
+    void* allocate([[maybe_unused]] std::size_t size, std::size_t alignment = 0, std::size_t offset = 0)
     {
         uint8_t* next;
         ANNOTATE_HAPPENS_AFTER(&free_queue_); // Avoid false positives with TSan
@@ -119,19 +118,16 @@ public:
 
         // We want the user pointer (at next+offset) to be aligned.
         // Check if alignment is required. If so, find the next aligned memory address.
-        std::size_t padding = 0;
-        if (alignment && std::size_t(next + offset) % alignment)
-            padding = alignment_padding(next + offset, alignment);
+        std::size_t padding = alignment_padding(next + offset, alignment);
 
-        (void)size;
         K_ASSERT(padding + size <= node_size_,
                  "[AtomicPoolAllocator] Allocation size does not fit initial requirement.", nullptr)
             .watch(padding + size)
             .watch(node_size_);
 
         // Mark padding area
-#ifdef ALLOCATOR_PADDING_MAGIC
-        std::fill(next, next + padding, 0xd0);
+#ifdef K_USE_MEM_MARK_PADDING
+        std::fill(next, next + padding, cfg::k_alignment_padding_mark);
 #endif
 
         return next + padding;

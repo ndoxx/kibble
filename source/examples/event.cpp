@@ -1,4 +1,7 @@
+#ifndef K_DEBUG
 #define K_DEBUG
+#endif
+
 #include "event/event_bus.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
