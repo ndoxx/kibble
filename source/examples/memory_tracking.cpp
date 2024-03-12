@@ -23,10 +23,17 @@ using namespace kb;
     In a retail build, we could use the NoMemoryTracking policy instead, which
     completly suppresses memory tracking and the associated overhead.
 */
+
+#ifdef K_DEBUG
 using MemoryPool =
     kb::memory::MemoryArena<kb::memory::PoolAllocator, kb::memory::policy::SingleThread,
                             kb::memory::policy::SimpleBoundsChecking, kb::memory::policy::NoMemoryTagging,
                             kb::memory::policy::VerboseMemoryTracking>;
+#else
+using MemoryPool = kb::memory::MemoryArena<kb::memory::PoolAllocator, kb::memory::policy::SingleThread,
+                                           kb::memory::policy::NoBoundsChecking, kb::memory::policy::NoMemoryTagging,
+                                           kb::memory::policy::VerboseMemoryTracking>;
+#endif
 
 struct Data
 {
@@ -47,11 +54,13 @@ int main(int argc, char** argv)
     Channel chan_memory(Severity::Verbose, "memory", "mem", kb::col::aliceblue);
     chan_memory.attach_sink(console_sink);
 
+    klog(chan_kibble).info("user_size: {}, alignment: {}", sizeof(Data), alignof(Data));
+
     // Allocate 1MB on the heap
     kb::memory::HeapArea heap(1_MB, &chan_memory);
     // Construct a memory arena using a pool allocator, that can hold 32 instances of Data
     // Pass logging channel to arena so we can log allocations / deallocations and get a shutdown report
-    MemoryPool pool("MemPool", heap, sizeof(Data), 32ul);
+    MemoryPool pool("MemPool", heap, 32ul, sizeof(Data), alignof(Data));
 
     // Show all arenas in the heap area
     heap.debug_show_content();

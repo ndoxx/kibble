@@ -92,8 +92,8 @@ public:
      * @param line source line where that allocation was performed
      * @return base pointer to the allocated chunk
      */
-    void* allocate(size_t size, size_t alignment, size_t offset, [[maybe_unused]] const char* file,
-                   [[maybe_unused]] int line)
+    [[nodiscard]] void* allocate(size_t size, size_t alignment, size_t offset, [[maybe_unused]] const char* file,
+                                 [[maybe_unused]] int line) noexcept
     {
         // Lock resource
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
@@ -140,7 +140,7 @@ public:
      *
      * @param ptr
      */
-    void deallocate(void* ptr, [[maybe_unused]] const char* file, [[maybe_unused]] int line)
+    void deallocate(void* ptr, [[maybe_unused]] const char* file, [[maybe_unused]] int line) noexcept
     {
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
             thread_guard_.enter();
@@ -207,6 +207,7 @@ public:
     {
         if constexpr (std::is_standard_layout_v<T> && std::is_trivial_v<T>)
         {
+            // Only need to align the base, size requirements will do the rest
             return static_cast<T*>(allocate(sizeof(T) * N, alignment, 0, file, line));
         }
         else
@@ -338,7 +339,7 @@ struct TypeAndCount<T[N]>
  * Allocate an object of type TYPE in arena ARENA. Example:\n
  * `Obj* obj = K_NEW(Obj, arena);`
  */
-#define K_NEW(TYPE, ARENA) ::new (ARENA.allocate(sizeof(TYPE), 0, 0, __FILE__, __LINE__)) TYPE
+#define K_NEW(TYPE, ARENA) ::new (ARENA.allocate(sizeof(TYPE), alignof(TYPE), 0, __FILE__, __LINE__)) TYPE
 
 /**
  * @def K_NEW_ALIGN(TYPE, ARENA, ALIGNMENT)
@@ -353,15 +354,15 @@ struct TypeAndCount<T[N]>
  * `Obj* obj_array = K_NEW_ARRAY(Obj[42], arena);`
  */
 #define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
-    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(kb::memory::detail::TypeAndCount<TYPE>::count, 0,  \
-                                                                    __FILE__, __LINE__)
+    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(kb::memory::detail::TypeAndCount<TYPE>::count,     \
+                                                                    alignof(TYPE), __FILE__, __LINE__)
 
 /**
  * @def K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA)
  * Allocate an array of objects in arena ARENA. The number of objects is known at run-time. Example:\n
  * `Obj* obj_array = K_NEW_ARRAY_DYNAMIC(Obj, num_objects, arena);`
  */
-#define K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA) ARENA.new_array__<TYPE>(COUNT, 0, __FILE__, __LINE__)
+#define K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA) ARENA.new_array__<TYPE>(COUNT, alignof(TYPE), __FILE__, __LINE__)
 
 /**
  * @def K_NEW_ARRAY_ALIGN(TYPE, ARENA, ALIGNMENT)

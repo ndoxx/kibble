@@ -25,8 +25,10 @@ using namespace kb::memory::literals;
 struct POD
 {
     uint32_t a;
-    uint32_t b;
-    uint64_t c;
+    // 4 bytes padding here for alignment of b
+    uint64_t b;
+    uint8_t c;
+    // 7 bytes padding here for alignment of struct
 };
 
 struct NonPOD
@@ -71,15 +73,17 @@ protected:
     LinArena arena;
 };
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD non-aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD default alignment", "[mem]")
 {
     POD* some_pod = K_NEW(POD, arena);
     some_pod->a = 0x42424242;
-    some_pod->b = 0xB16B00B5;
-    some_pod->c = 0xD0D0DADAD0D0DADA;
+    some_pod->b = 0xD0D0DADAD0D0DADA;
+    some_pod->c = 0x69;
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_pod) - LinArena::BK_FRONT_SIZE, sizeof(POD) +
     // LinArena::DECORATION_SIZE);
 
+    // Check that returned address is correctly aligned
+    REQUIRE(size_t(some_pod) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before user pointer
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + LinArena::DECORATION_SIZE);
 
@@ -90,8 +94,8 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
 {
     POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
     some_pod->a = 0x42424242;
-    some_pod->b = 0xB16B00B5;
-    some_pod->c = 0xD0D0DADAD0D0DADA;
+    some_pod->b = 0xD0D0DADAD0D0DADA;
+    some_pod->c = 0x69;
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_pod) - LinArena::BK_FRONT_SIZE, sizeof(POD) +
     // LinArena::DECORATION_SIZE);
 
@@ -108,14 +112,16 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[me
     for (uint32_t ALIGNMENT = 2; ALIGNMENT <= 128; ALIGNMENT *= 2)
     {
         POD* some_pod = K_NEW_ALIGN(POD, arena, ALIGNMENT);
-        some_pod->a = 0xB16B00B5;
+        some_pod->a = 0x42424242;
+        some_pod->b = 0xD0D0DADAD0D0DADA;
+        some_pod->c = 0x69;
         REQUIRE(size_t(some_pod) % ALIGNMENT == 0);
         K_DELETE(some_pod, arena);
     }
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(area.begin()), 512);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array non-aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array default alignment", "[mem]")
 {
     const uint32_t N = 10;
 
@@ -123,12 +129,14 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array non-aligned", "[m
     for (uint32_t ii = 0; ii < N; ++ii)
     {
         pod_array[ii].a = 0x42424242;
-        pod_array[ii].b = 0xB16B00B5;
-        pod_array[ii].c = 0xD0D0DADAD0D0DADA;
+        pod_array[ii].b = 0xD0D0DADAD0D0DADA;
+        pod_array[ii].c = 0x69;
     }
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(pod_array) - LinArena::BK_FRONT_SIZE - 4, N*sizeof(POD) +
     // LinArena::DECORATION_SIZE + 4);
 
+    // Check that returned address is correctly aligned
+    REQUIRE(size_t(pod_array) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before the user pointer
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array) - 1) == N * sizeof(POD) + LinArena::DECORATION_SIZE);
 
@@ -143,8 +151,8 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]"
     for (uint32_t ii = 0; ii < N; ++ii)
     {
         pod_array[ii].a = 0x42424242;
-        pod_array[ii].b = 0xB16B00B5;
-        pod_array[ii].c = 0xD0D0DADAD0D0DADA;
+        pod_array[ii].b = 0xD0D0DADAD0D0DADA;
+        pod_array[ii].c = 0x69;
     }
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(pod_array) - LinArena::BK_FRONT_SIZE - 4, N*sizeof(POD) +
     // LinArena::DECORATION_SIZE + 4);
@@ -157,12 +165,14 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]"
     K_DELETE_ARRAY(pod_array, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD non-aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD default alignment", "[mem]")
 {
     NonPOD* some_non_pod = K_NEW(NonPOD, arena)(10, 8);
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_non_pod) - LinArena::BK_FRONT_SIZE, sizeof(NonPOD) +
     // LinArena::DECORATION_SIZE);
 
+    // Check that returned address is correctly aligned
+    REQUIRE(size_t(some_non_pod) % alignof(NonPOD) == 0);
     // Arena should write the complete allocation size just before user pointer
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod) - 1) == sizeof(NonPOD) + LinArena::DECORATION_SIZE);
 
@@ -183,7 +193,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
     K_DELETE(some_non_pod, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array non-aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default alignment", "[mem]")
 {
     const uint32_t N = 4;
 
@@ -191,6 +201,8 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array non-aligned",
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(non_pod_array) - LinArena::BK_FRONT_SIZE - 4,
     // N*sizeof(NonPOD) + LinArena::DECORATION_SIZE + 4);
 
+    // Check that returned address is correctly aligned
+    REQUIRE(size_t(non_pod_array) % alignof(NonPOD) == 0);
     // Arena should write the number of instances before the returned user pointer
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array) - 1) == N);
     // Arena should write the complete allocation size just before the number of instances
@@ -227,8 +239,8 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
         {
             POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
             some_pod->a = 0x42424242;
-            some_pod->b = 0xB16B00B5;
-            some_pod->c = 0xD0D0DADAD0D0DADA;
+            some_pod->b = 0xD0D0DADAD0D0DADA;
+            some_pod->c = 0x69;
             K_DELETE(some_pod, arena);
         }
         else
@@ -242,8 +254,8 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
             for (int jj = 0; jj < 10; ++jj)
             {
                 pod_array[jj].a = 0x42424242;
-                pod_array[jj].b = 0xB16B00B5;
-                pod_array[jj].c = 0xD0D0DADAD0D0DADA;
+                pod_array[jj].b = 0xD0D0DADAD0D0DADA;
+                pod_array[jj].c = 0x69;
             }
             K_DELETE_ARRAY(pod_array, arena);
         }
@@ -262,7 +274,7 @@ class PoolArenaFixture
 public:
     typedef typename PoolArena::SIZE_TYPE SIZE_TYPE;
 
-    PoolArenaFixture() : area(3_kB), arena("PoolArena", area, sizeof(POD), 32u)
+    PoolArenaFixture() : area(3_kB), arena("PoolArena", area, sizeof(POD) + alignof(POD), 32u)
     {
     }
 
@@ -271,15 +283,17 @@ protected:
     PoolArena arena;
 };
 
-TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD non-aligned", "[mem]")
+TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD default alignment", "[mem]")
 {
     POD* some_pod = K_NEW(POD, arena);
     some_pod->a = 0x42424242;
-    some_pod->b = 0xB16B00B5;
-    some_pod->c = 0xD0D0DADAD0D0DADA;
+    some_pod->b = 0xD0D0DADAD0D0DADA;
+    some_pod->c = 0x69;
     // memory::hex_dump(std::cout, reinterpret_cast<uint8_t*>(some_pod) - PoolArena::BK_FRONT_SIZE, sizeof(POD) +
     // PoolArena::DECORATION_SIZE);
 
+    // Check that returned address is correctly aligned
+    REQUIRE(size_t(some_pod) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before user pointer
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::DECORATION_SIZE);
 

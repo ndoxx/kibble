@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../assert/assert.h"
+#include "../../math/constexpr_math.h"
 #include "../../util/sanitizer.h"
 #include "../config.h"
 #include "../heap_area.h"
@@ -33,12 +34,15 @@ public:
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
      * @param area reference to the memory resource the allocator will reserve a block from
-     * @param node_size size of a node
+     * @param decoration_size size of additional data at the beginning of each node
+     * @param user_size maximum size of object allocated by the user
+     * @param max_alignment maximum alignment requirement
      * @param debug_name name of this allocator, for debug purposes
      */
-    AtomicPoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size)
+    AtomicPoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t user_size,
+                        std::size_t max_alignment)
     {
-        node_size_ = node_size + decoration_size;
+        node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size), int32_t(max_alignment));
         auto range = area.require_block(node_size_ * MAX_NODES, debug_name);
         begin_ = static_cast<uint8_t*>(range.first);
         end_ = begin_ + MAX_NODES * node_size_;
@@ -122,8 +126,12 @@ public:
 
         K_ASSERT(padding + size <= node_size_,
                  "[AtomicPoolAllocator] Allocation size does not fit initial requirement.", nullptr)
-            .watch(padding + size)
-            .watch(node_size_);
+            .watch_var__(padding + size, "requested size")
+            .watch_var__(node_size_, "node size")
+            .watch_var__(size, "data size")
+            .watch_var__(offset, "offset")
+            .watch_var__(alignment, "alignment")
+            .watch_var__(padding, "padding");
 
         // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
