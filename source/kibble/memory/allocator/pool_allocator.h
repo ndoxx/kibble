@@ -30,12 +30,15 @@ public:
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
-     * @param area reference to the memory resource the allocator will reserve a block from
-     * @param node_size size of a node
-     * @param max_nodes maximum amount of nodes in the memory pool
      * @param debug_name name of this allocator, for debug purposes
+     * @param area reference to the memory resource the allocator will reserve a block from
+     * @param decoration_size size of additional data at the beginning of each node
+     * @param max_nodes maximum amount of nodes in the memory pool
+     * @param user_size maximum size of object allocated by the user
+     * @param max_alignment maximum alignment requirement
      */
-    PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t node_size, std::size_t max_nodes);
+    PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t max_nodes,
+                  std::size_t user_size, std::size_t max_alignment);
 
     /**
      * @brief Return a pointer to the beginning of the block.
@@ -89,7 +92,7 @@ public:
      * `size + padding <= node_size`\n
      * this is enforced by a K_ASSERT
      *
-     * If the symbol ALLOCATOR_PADDING_MAGIC is defined, padded zones will be memset to a fixed magic number.
+     * If the symbol K_USE_MEM_MARK_PADDING is defined, padded zones will be memset to a fixed magic number.
      *
      * @param size size of the chunk to allocate
      * @param alignment alignment constraint, such that `(returned_pointer + offset) % alignment == 0`

@@ -1,20 +1,12 @@
 #include "memory/heap_area.h"
 #include "assert/assert.h"
+#include "memory/config.h"
 #include "memory/util/alignment.h"
 #include "memory/util/debug.h"
 #include "string/string.h"
 
 #include "fmt/color.h"
 #include "logger2/logger.h"
-
-// Useful to avoid uninitialized reads with Valgrind during hexdumps
-// Disable for retail build
-#ifdef K_ENABLE_AREA_MEMORY_INITIALIZATION
-#define HEAP_AREA_MEMSET_ENABLED
-#define HEAP_AREA_PADDING_MAGIC
-#define AREA_MEMSET_VALUE 0x00
-#define AREA_PADDING_MARK 0xd0
-#endif
 
 namespace kb
 {
@@ -66,8 +58,8 @@ HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : size_(size), 
 {
     begin_ = new uint8_t[size_];
     head_ = begin_;
-#ifdef HEAP_AREA_MEMSET_ENABLED
-    memset(begin_, AREA_MEMSET_VALUE, size_);
+#ifdef K_USE_MEM_AREA_MEMSET
+    memset(begin_, cfg::k_area_memset_byte, size_);
 #endif
     klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", su::human_size(size_), uint64_t(begin_));
 }
@@ -88,11 +80,13 @@ std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_n
 {
     // Align returned block to avoid false sharing if multiple threads access this area
     size_t padding = alignment_padding(head_, k_cache_line_size);
-    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!", log_channel_);
+    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!", log_channel_)
+        .watch_var__(size + padding, "required")
+        .watch_var__(size_, "available");
 
     // Mark padding area
-#ifdef HEAP_AREA_PADDING_MAGIC
-    std::fill(head_, head_ + padding, AREA_PADDING_MARK);
+#ifdef K_USE_MEM_MARK_PADDING
+    std::fill(head_, head_ + padding, cfg::k_alignment_padding_mark);
 #endif
 
     std::pair<void*, void*> ptr_range = {head_ + padding, head_ + padding + size + 1};

@@ -48,8 +48,8 @@ public:
 
     /**
      * @brief Create a heap area by allocating a big contiguous chunk of memory on the heap.
-     * If the symbol HEAP_AREA_MEMSET_ENABLED is defined, memset will be called on the whole area to initialize every
-     * byte of it to a given value, specified by the AREA_MEMSET_VALUE symbol defined in memory.h
+     * If the symbol K_USE_MEM_AREA_MEMSET is defined, memset will be called on the whole area to initialize every
+     * byte of it to a given value, specified by the k_area_memset_byte constant defined in config.h
      * If an allocation error happened, the constructor will throw a std::bad_alloc exception.
      *
      * @param size size of the area
@@ -96,8 +96,8 @@ public:
      * @brief Reserve a memory block within this area, and advance the head.
      * The block is page-aligned so as to avoid false sharing if multiple threads share access to this area, this means
      * that a certain extent of the memory past the last head position will be padded. If the symbol
-     * HEAP_AREA_PADDING_MAGIC is defined, the padded zone will be memset with a specific pattern defined as
-     * AREA_PADDING_MARK in memory.h. This padding pattern could potentially be checked back afterwards to ensure no
+     * K_USE_MEM_MARK_PADDING is defined, the padded zone will be memset with a specific pattern defined as
+     * k_alignment_padding_mark in config.h. This padding pattern could potentially be checked back afterwards to ensure no
      * allocation leaked past the block boundaries.
      *
      * @param size size of the block to reserve

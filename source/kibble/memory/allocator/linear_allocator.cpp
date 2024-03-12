@@ -1,11 +1,10 @@
 #include "memory/allocator/linear_allocator.h"
 #include "assert/assert.h"
+#include "memory/config.h"
 #include "memory/heap_area.h"
 #include "memory/util/alignment.h"
 
 #include <iostream>
-
-#define ALLOCATOR_PADDING_MAGIC
 
 namespace kb
 {
@@ -27,9 +26,7 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
 
     // We want the user pointer (at current+offset) to be aligned.
     // Check if alignment is required. If so, find the next aligned memory address.
-    std::size_t padding = 0;
-    if (alignment && std::size_t(current + offset) % alignment)
-        padding = alignment_padding(current + offset, alignment);
+    std::size_t padding = alignment_padding(current + offset, alignment);
 
     // Out of memory
     if (current + padding + size > end_)
@@ -42,8 +39,8 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     }
 
     // Mark padding area
-#ifdef ALLOCATOR_PADDING_MAGIC
-    std::fill(current, current + padding, 0xd0);
+#ifdef K_USE_MEM_MARK_PADDING
+    std::fill(current, current + padding, cfg::k_alignment_padding_mark);
 #endif
 
     current_offset_ += padding + size;

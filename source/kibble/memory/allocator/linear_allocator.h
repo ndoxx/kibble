@@ -79,7 +79,7 @@ public:
      * when the sanitizer is active, or in the case of an array allocation where the size of the array is put before the
      * array pointer. This function will align the user pointer (returned_pointer + offset).
      *
-     * If the symbol ALLOCATOR_PADDING_MAGIC is defined, padded zones will be memset to a fixed magic number.
+     * If the symbol K_USE_MEM_MARK_PADDING is defined, padded zones will be memset to a fixed magic number.
      *
      * @param size size of the chunk to allocate
      * @param alignment alignment constraint, such that `(returned_pointer + offset) % alignment == 0`

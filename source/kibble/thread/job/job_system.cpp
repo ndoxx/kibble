@@ -1,5 +1,6 @@
 #include "thread/job/job_system.h"
 #include "logger2/logger.h"
+#include "math/constexpr_math.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -13,11 +14,6 @@ namespace kb
 namespace th
 {
 
-// Maximal padding of a Job structure within the job pool
-static constexpr size_t k_job_max_align = kb::memory::k_cache_line_size - 1;
-// Total size of a Job node inside the pool
-static constexpr size_t k_job_node_size = sizeof(Job) + k_job_max_align;
-
 JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_name) : worker_affinity(affinity)
 {
     name = profile_name;
@@ -25,8 +21,15 @@ JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_
 
 size_t JobSystem::get_memory_requirements()
 {
-    // Area will need to contain the memory arena, and enough space for each job
-    return sizeof(JobPoolArena) + k_max_threads * k_max_jobs * (k_job_node_size + JobPoolArena::DECORATION_SIZE);
+    // Total size of a Job node inside the pool
+    // Jobs are always aligned to the cache line, so we want the nearest multiple of alignment
+    // and we also have to take into account additional data written by the allocator
+    constexpr size_t k_job_node_size =
+        math::round_up_pow2(sizeof(Job) + JobPoolArena::DECORATION_SIZE, kb::memory::k_cache_line_size);
+
+    // Area will need enough space for each job
+    // Also add a cache line, to account for heap area block alignment
+    return k_max_threads * k_max_jobs * k_job_node_size + kb::memory::k_cache_line_size;
 }
 
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel)
@@ -43,7 +46,7 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
 
     // Init job pool
     klog(log_channel_).uid("JobSystem").debug("Allocating job pool.");
-    ss_->job_pool = std::make_shared<JobPoolArena>("JobPool", area, k_job_node_size);
+    ss_->job_pool = std::make_shared<JobPoolArena>("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size);
 
     // Spawn threads_count_-1 workers
     klog(log_channel_).uid("JobSystem").debug("Detected {} CPU cores.", CPU_cores_count_);
@@ -101,7 +104,7 @@ void JobSystem::shutdown()
     kb::log::Channel::set_async(nullptr);
     klog(log_channel_).uid("JobSystem").debug("All threads have joined.");
 
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     // Log worker statistics
     monitor_->update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
@@ -117,7 +120,7 @@ Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     auto& pool = *(ss_->job_pool);
-    Job* job = K_NEW_ALIGN(Job, pool, kb::memory::k_cache_line_size);
+    Job* job = K_NEW(Job, pool);
     job->kernel = std::move(kernel);
     job->meta = std::move(meta);
     return job;
@@ -173,7 +176,7 @@ void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     int64_t idle_time_us = 0;
 #endif
 
@@ -182,18 +185,18 @@ void JobSystem::wait_until(std::function<bool()> condition)
         if (!workers_[0]->foreground_work())
         {
             // There's nothing we can do, just wait. Some work may come to us.
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
             microClock clk;
 #endif
             ss_->cv_wake.notify_all(); // wake worker threads
             std::this_thread::yield(); // allow this thread to be rescheduled
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
             idle_time_us += clk.get_elapsed_time().count();
 #endif
         }
     }
 
-#ifdef K_PROFILE_JOB_SYSTEM
+#ifdef K_USE_JOB_SYSTEM_PROFILING
     auto& activity = workers_[0]->get_activity();
     activity.idle_time_us += idle_time_us;
     monitor_->report_thread_activity(activity);

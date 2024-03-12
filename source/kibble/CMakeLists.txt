@@ -34,21 +34,32 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
     PROPERTIES COMPILE_FLAGS -mavx2
 )
 
+option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
 if(KB_MORTON_INTRIN)
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp"
         PROPERTIES COMPILE_FLAGS -mbmi2
     )
 endif()
 
+option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 if(KB_JOB_SYSTEM_PROFILING)
-    target_compile_definitions(kibble PUBLIC K_PROFILE_JOB_SYSTEM)
+    target_compile_definitions(kibble PUBLIC K_USE_JOB_SYSTEM_PROFILING)
 endif()
 
-if(KB_AREA_MEMORY_INITIALIZATION)
-    target_compile_definitions(kibble PUBLIC K_ENABLE_AREA_MEMORY_INITIALIZATION)
-endif()
+
+option(KB_MEM_AREA_MEMSET "Initialize heap area memory on creation (DBG)" ON)
+option(KB_MEM_MARK_PADDING "Initialize padded memory with a specific pattern (DBG)" ON)
 
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    if(KB_MEM_AREA_MEMSET)
+        message(STATUS "MEM: Heap areas will be memset")
+        target_compile_definitions(kibble PUBLIC K_USE_MEM_AREA_MEMSET)
+    endif()
+    if(KB_MEM_MARK_PADDING)
+        message(STATUS "MEM: Padded memory will be marked")
+        target_compile_definitions(kibble PUBLIC K_USE_MEM_MARK_PADDING)
+    endif()
+
     target_compile_definitions(kibble PUBLIC K_DEBUG)
 endif()
 

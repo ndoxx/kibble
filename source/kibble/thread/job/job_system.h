@@ -97,7 +97,7 @@ public:
  * @brief Represents some amount of work to execute.
  *
  */
-struct Job
+struct alignas(kb::memory::k_cache_line_size) Job
 {
     using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
 
