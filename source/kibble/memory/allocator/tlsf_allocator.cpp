@@ -9,11 +9,30 @@ using std::size_t;
 namespace kb::memory
 {
 
-template <typename T1, typename T2>
-inline size_t constexpr offset_of(T1 T2::*member)
+// * Alignment utils
+inline bool is_pow2(size_t x)
 {
-    constexpr T2 object{};
-    return size_t(&(object.*member)) - size_t(&object);
+    return (x & (x - 1)) == 0;
+}
+
+inline size_t align_up(size_t x, size_t alignment)
+{
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    return (x + (alignment - 1)) & ~(alignment - 1);
+}
+
+inline size_t align_down(size_t x, size_t alignment)
+{
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    return x - (x & (alignment - 1));
+}
+
+inline void* align_ptr(const void* ptr, size_t alignment)
+{
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    const std::ptrdiff_t aligned =
+        (std::ptrdiff_t(ptr) + (std::ptrdiff_t(alignment) - 1)) & ~(std::ptrdiff_t(alignment) - 1);
+    return reinterpret_cast<void*>(aligned);
 }
 
 // * Constants
@@ -129,7 +148,7 @@ struct BlockHeader
      * @brief Clear free bit for this block
      *
      */
-    inline void set_busy()
+    inline void set_used()
     {
         size &= ~k_block_header_free_bit;
     }
@@ -161,7 +180,7 @@ struct BlockHeader
      * @brief Clear free bit for previous block
      *
      */
-    inline void set_prev_busy()
+    inline void set_prev_used()
     {
         size &= ~k_block_header_prev_free_bit;
     }
@@ -264,26 +283,39 @@ struct BlockHeader
 
     /**
      * @internal
+     * @brief Check if we can split this block
+     *
+     * @param size
+     * @return true
+     * @return false
+     */
+    inline bool can_split(size_t size_request)
+    {
+        return block_size() >= sizeof(BlockHeader) + size_request;
+    }
+
+    /**
+     * @internal
      * @brief Link to next block and set this block free
      *
      */
-    void mark_as_free()
-    {
-        // Link the block to the next block, first
-        link_next()->set_prev_free();
-        set_free();
-    }
+    void mark_as_free();
 
     /**
      * @internal
      * @brief Set this block as busy, inform next block
      *
      */
-    void mark_as_busy()
-    {
-        get_next()->set_prev_busy();
-        set_busy();
-    }
+    void mark_as_used();
+
+    /**
+     * @internal
+     * @brief Split a block into two, the second of which is free
+     *
+     * @param size New block size
+     * @return BlockHeader*
+     */
+    BlockHeader* split(size_t size);
 };
 
 /*
@@ -293,30 +325,38 @@ struct BlockHeader
 constexpr size_t k_block_size_min = sizeof(BlockHeader) - sizeof(BlockHeader*);
 constexpr size_t k_block_size_max = 1ull << k_fl_index_max;
 
-// * Alignment utils
-inline bool is_pow2(size_t x)
+void BlockHeader::mark_as_free()
 {
-    return (x & (x - 1)) == 0;
+    // Link the block to the next block, first
+    link_next()->set_prev_free();
+    set_free();
 }
 
-inline size_t align_up(size_t x, size_t alignment)
+void BlockHeader::mark_as_used()
 {
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
-    return (x + (alignment - 1)) & ~(alignment - 1);
+    get_next()->set_prev_used();
+    set_used();
 }
 
-inline size_t align_down(size_t x, size_t alignment)
+BlockHeader* BlockHeader::split(size_t size_request)
 {
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
-    return x - (x & (alignment - 1));
-}
+    // Calculate the amount of space left in the remaining block.
+    BlockHeader* remaining = offset_to_block(to_void_ptr(), size_request - k_block_header_overhead);
+    const size_t size_remaining = block_size() - (size_request + k_block_header_overhead);
 
-inline void* align_ptr(const void* ptr, size_t alignment)
-{
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
-    const std::ptrdiff_t aligned =
-        (std::ptrdiff_t(ptr) + (std::ptrdiff_t(alignment) - 1)) & ~(std::ptrdiff_t(alignment) - 1);
-    return reinterpret_cast<void*>(aligned);
+    K_ASSERT(remaining->to_void_ptr() == align_ptr(remaining->to_void_ptr(), k_align_size),
+             "remaining block not aligned properly", nullptr);
+    K_ASSERT(block_size() == size_remaining + size_request + k_block_header_overhead, "remaining block size is invalid",
+             nullptr);
+
+    remaining->set_size(size_remaining);
+
+    K_ASSERT(remaining->block_size() >= k_block_size_min, "block split with invalid size", nullptr);
+
+    set_size(size_request);
+    remaining->mark_as_free();
+
+    return remaining;
 }
 
 /**
@@ -377,11 +417,352 @@ struct TLSFAllocator::Control
     BlockHeader null_block;
 
     // Bitmaps for free lists
-    uint32_t fl_bitmap;                   // First Level Bitmap
-    uint32_t sl_bitmap[k_fl_index_count]; // Second Level Bitmaps
+    int32_t fl_bitmap;                   // First Level Bitmap
+    int32_t sl_bitmap[k_fl_index_count]; // Second Level Bitmaps
 
     // Head of free lists
     BlockHeader* blocks[k_fl_index_count][k_sl_index_count];
+
+    /**
+     * @brief Clear structure and point all empty lists at the null block
+     *
+     */
+    void construct();
+
+    /**
+     * @internal
+     * @brief Search next available free block
+     *
+     * @param fli first level index
+     * @param sli second level index
+     * @return BlockHeader* found block or nullptr
+     */
+    BlockHeader* search_suitable_block(int32_t& fli, int32_t& sli);
+
+    /**
+     * @internal
+     * @brief Remove a free block from the free list
+     *
+     * @param block The block to remove
+     * @param fli first level index
+     * @param sli second level index
+     */
+    void remove_free_block(BlockHeader* block, int32_t fli, int32_t sli);
+
+    /**
+     * @internal
+     * @brief Insert a free block into the free block list
+     *
+     * @param block The block to insert
+     * @param fli first level index
+     * @param sli second level index
+     */
+    void insert_free_block(BlockHeader* block, int32_t fli, int32_t sli);
+
+    /**
+     * @internal
+     * @brief Remove a given block from the free list
+     *
+     * @param block
+     */
+    inline void remove_block(BlockHeader* block)
+    {
+        int32_t fli, sli;
+        mapping_insert(block->block_size(), fli, sli);
+        remove_free_block(block, fli, sli);
+    }
+
+    /**
+     * @internal
+     * @brief Insert a given block into the free list
+     *
+     * @param block
+     */
+    inline void insert_block(BlockHeader* block)
+    {
+        int32_t fli, sli;
+        mapping_insert(block->block_size(), fli, sli);
+        insert_free_block(block, fli, sli);
+    }
+
+    /**
+     * @internal
+     * @brief Merge a just-freed block with an adjacent previous free block
+     *
+     * @param block
+     * @return BlockHeader*
+     */
+    BlockHeader* merge_prev(BlockHeader* block);
+
+    /**
+     * @internal
+     * @brief Merge a just-freed block with an adjacent free block
+     *
+     * @param block
+     * @return BlockHeader*
+     */
+    BlockHeader* merge_next(BlockHeader* block);
+
+    /**
+     * @internal
+     * @brief Trim any trailing block space off the end of a block, return to pool
+     *
+     * @param block
+     * @param size
+     */
+    void trim_free(BlockHeader* block, size_t size);
+
+    /**
+     * @internal
+     * @brief
+     *
+     * @param block
+     * @param size
+     * @return BlockHeader*
+     */
+    BlockHeader* trim_free_leading(BlockHeader* block, size_t size);
+
+    /**
+     * @internal
+     * @brief Trim any trailing block space off the end of a used block, return to pool
+     *
+     * @param block
+     * @param size
+     */
+    void trim_used(BlockHeader* block, size_t size);
+
+    /**
+     * @internal
+     * @brief Look for the next available free block that is large enough for requested size
+     *
+     * @param size
+     * @return BlockHeader*
+     */
+    BlockHeader* locate_free_block(size_t size);
+
+    /**
+     * @internal
+     * @brief Helper to trim free space next to a block and mark it as used
+     *
+     * @param block
+     * @param size
+     * @return void* opaque pointer to the block, or nullptr if size is zero
+     */
+    void* prepare_used(BlockHeader* block, size_t size);
 };
+
+void TLSFAllocator::Control::construct()
+{
+    null_block.next_free = &null_block;
+    null_block.prev_free = &null_block;
+
+    fl_bitmap = 0;
+    for (size_t ii = 0; ii < k_fl_index_count; ++ii)
+    {
+        sl_bitmap[ii] = 0;
+        for (size_t jj = 0; jj < k_sl_index_count; ++jj)
+        {
+            blocks[ii][jj] = &null_block;
+        }
+    }
+}
+
+BlockHeader* TLSFAllocator::Control::search_suitable_block(int32_t& fli, int32_t& sli)
+{
+    // First, search for a block in the list associated with the given indices
+    int32_t sl_map = sl_bitmap[fli] & (~0 << sli);
+    if (!sl_map)
+    {
+        // No block exists. Search in the next largest first-level list
+        const int32_t fl_map = fl_bitmap & (~0 << (fli + 1));
+        // No free blocks available, out of memory
+        if (!fl_map)
+            return nullptr;
+
+        fli = bit::ffs(fl_map);
+        sl_map = sl_bitmap[fli];
+    }
+
+    K_ASSERT(sl_map, "internal error - second level bitmap is null", nullptr);
+    sli = bit::ffs(sl_map);
+    return blocks[fli][sli];
+}
+
+void TLSFAllocator::Control::remove_free_block(BlockHeader* block, int32_t fli, int32_t sli)
+{
+    BlockHeader* prev = block->prev_free;
+    BlockHeader* next = block->next_free;
+    K_ASSERT(prev, "prev_free field can not be null", nullptr);
+    K_ASSERT(next, "next_free field can not be null", nullptr);
+    next->prev_free = prev;
+    prev->next_free = next;
+
+    // If this block is the head of the free list, set new head
+    if (blocks[fli][sli] == block)
+    {
+        blocks[fli][sli] = next;
+
+        // If the new head is null, clear the bitmap
+        if (next == &null_block)
+        {
+            sl_bitmap[fli] &= ~(1 << sli);
+
+            // If the second bitmap is now empty, clear the fl bitmap
+            if (!sl_bitmap[fli])
+                fl_bitmap &= ~(1 << fli);
+        }
+    }
+}
+
+void TLSFAllocator::Control::insert_free_block(BlockHeader* block, int32_t fli, int32_t sli)
+{
+    BlockHeader* current = blocks[fli][sli];
+    K_ASSERT(current, "free list cannot have a null entry", nullptr);
+    K_ASSERT(block, "cannot insert a null entry into the free list", nullptr);
+    block->next_free = current;
+    block->prev_free = &null_block;
+    current->prev_free = block;
+
+    K_ASSERT(block->to_void_ptr() == align_ptr(block->to_void_ptr(), k_align_size), "block not aligned properly",
+             nullptr);
+    /*
+    ** Insert the new block at the head of the list, and mark the first-
+    ** and second-level bitmaps appropriately.
+    */
+    blocks[fli][sli] = block;
+    fl_bitmap |= (1 << fli);
+    sl_bitmap[fli] |= (1 << sli);
+}
+
+/**
+ * @internal
+ * @brief Absorb a free block's storage into an adjacent previous free block
+ *
+ * @param prev
+ * @param block
+ * @return BlockHeader*
+ */
+BlockHeader* absorb(BlockHeader* prev, BlockHeader* block)
+{
+    K_ASSERT(!prev->is_last(), "previous block can't be last", nullptr);
+    // NOTE: Leaves flags untouched
+    prev->size += block->block_size() + BlockHeader::k_block_header_overhead;
+    prev->link_next();
+    return prev;
+}
+
+BlockHeader* TLSFAllocator::Control::merge_prev(BlockHeader* block)
+{
+    if (block->is_prev_free())
+    {
+        BlockHeader* prev = block->get_prev();
+        K_ASSERT(prev, "prev physical block can't be null", nullptr);
+        K_ASSERT(prev->is_free(), "prev block is not free though marked as such", nullptr);
+        remove_block(prev);
+        block = absorb(prev, block);
+    }
+
+    return block;
+}
+
+BlockHeader* TLSFAllocator::Control::merge_next(BlockHeader* block)
+{
+    BlockHeader* next = block->get_next();
+    K_ASSERT(next, "next physical block can't be null", nullptr);
+
+    if (next->is_free())
+    {
+        K_ASSERT(!block->is_last(), "previous block can't be last", nullptr);
+        remove_block(next);
+        block = absorb(block, next);
+    }
+
+    return block;
+}
+
+void TLSFAllocator::Control::trim_free(BlockHeader* block, size_t size)
+{
+    K_ASSERT(block->is_free(), "block must be free", nullptr);
+    if (block->can_split(size))
+    {
+        BlockHeader* remaining_block = block->split(size);
+        block->link_next();
+        remaining_block->set_prev_free();
+        insert_block(remaining_block);
+    }
+}
+
+BlockHeader* TLSFAllocator::Control::trim_free_leading(BlockHeader* block, size_t size)
+{
+    BlockHeader* remaining_block = block;
+    if (block->can_split(size))
+    {
+        // We want the 2nd block
+        remaining_block = block->split(size - BlockHeader::k_block_header_overhead);
+        remaining_block->set_prev_free();
+
+        block->link_next();
+        insert_block(block);
+    }
+
+    return remaining_block;
+}
+
+void TLSFAllocator::Control::trim_used(BlockHeader* block, size_t size)
+{
+    K_ASSERT(!block->is_free(), "block must be used", nullptr);
+    if (block->can_split(size))
+    {
+        // If the next block is free, we must coalesce
+        BlockHeader* remaining_block = block->split(size);
+        remaining_block->set_prev_used();
+        remaining_block = merge_next(remaining_block);
+        insert_block(remaining_block);
+    }
+}
+
+BlockHeader* TLSFAllocator::Control::locate_free_block(size_t size)
+{
+    int32_t fli = 0, sli = 0;
+    BlockHeader* block = nullptr;
+
+    if (size)
+    {
+        mapping_search(size, fli, sli);
+
+        /*
+            mapping_search can futz with the size, so for excessively large sizes it can sometimes wind up
+            with indices that are off the end of the block array.
+            So, we protect against that here, since this is the only callsite of mapping_search.
+            Note that we don't need to check sl, since it comes from a modulo operation that guarantees it's always in
+            range.
+        */
+        if (fli < int32_t(k_fl_index_count))
+            block = search_suitable_block(fli, sli);
+    }
+
+    if (block)
+    {
+        K_ASSERT(block->block_size() >= size, "could not locate free block large enough", nullptr)
+            .watch_var__(size, "requested")
+            .watch_var__(block->block_size(), "available");
+
+        remove_free_block(block, fli, sli);
+    }
+
+    return block;
+}
+
+void* TLSFAllocator::Control::prepare_used(BlockHeader* block, size_t size)
+{
+    if (block)
+    {
+        K_ASSERT(size, "size must be non-zero", nullptr);
+        trim_free(block, size);
+        block->mark_as_used();
+        return block->to_void_ptr();
+    }
+    return nullptr;
+}
 
 } // namespace kb::memory
