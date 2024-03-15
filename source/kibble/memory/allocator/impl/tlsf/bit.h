@@ -4,7 +4,7 @@
 
 using std::size_t;
 
-namespace kb::memory::bit
+namespace kb::memory::tlsf
 {
 
 #ifndef __has_builtin
@@ -119,4 +119,4 @@ inline int fls_size_t(size_t size)
     return bool(size_hi) ? 32 + fls(size_hi) : fls(int(size) & int(0xffffffff));
 }
 
-} // namespace kb::memory::bit
+} // namespace kb::memory::tlsf

@@ -5,6 +5,11 @@
 namespace kb::memory
 {
 
+namespace tlsf
+{
+struct Control;
+}
+
 class HeapArea;
 class TLSFAllocator
 {
@@ -27,9 +32,7 @@ public:
     void reset();
 
 private:
-    struct Control;
-
-    Control* control_{nullptr};
+    tlsf::Control* control_{nullptr};
 };
 
 } // namespace kb::memory
