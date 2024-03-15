@@ -3,7 +3,7 @@
 namespace kb::memory::tlsf
 {
 
-void Control::construct()
+Control::Control()
 {
     null_block.next_free = &null_block;
     null_block.prev_free = &null_block;

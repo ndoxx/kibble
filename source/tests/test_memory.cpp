@@ -10,6 +10,7 @@
 #include "assert/assert.h"
 #include "memory/allocator/linear_allocator.h"
 #include "memory/allocator/pool_allocator.h"
+#include "memory/allocator/tlsf_allocator.h"
 #include "memory/arena.h"
 #include "memory/heap_area.h"
 #include "memory/linear_buffer.h"
@@ -65,12 +66,18 @@ using LinArena =
 using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
+using TLSFArena =
+    memory::MemoryArena<memory::TLSFAllocator, memory::policy::SingleThread, memory::policy::SimpleBoundsChecking,
+                        memory::policy::NoMemoryTagging, memory::policy::SimpleMemoryTracking>;
 #else
 using LinArena =
     memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 using PoolArena =
     memory::MemoryArena<memory::PoolAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                        memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+using TLSFArena =
+    memory::MemoryArena<memory::TLSFAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
                         memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 #endif
 
@@ -324,4 +331,31 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD custom alignment"
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::DECORATION_SIZE);
 
     K_DELETE(some_pod, arena);
+}
+
+class TLSFArenaFixture
+{
+public:
+    TLSFArenaFixture() : area(10_kB), arena("TLSFArena", area, 2_kB)
+    {
+    }
+
+protected:
+    memory::HeapArea area;
+    TLSFArena arena;
+};
+
+TEST_CASE_METHOD(TLSFArenaFixture, "loadless integrity check", "[mem]")
+{
+    auto pool_report = arena.get_allocator().check_pool();
+    auto consistency_report = arena.get_allocator().check_consistency();
+
+    for (const auto& msg : pool_report.logs)
+        fmt::println("Pool> {}", msg);
+
+    for (const auto& msg : consistency_report.logs)
+        fmt::println("Cntl> {}", msg);
+
+    REQUIRE(pool_report.logs.empty());
+    REQUIRE(consistency_report.logs.empty());
 }

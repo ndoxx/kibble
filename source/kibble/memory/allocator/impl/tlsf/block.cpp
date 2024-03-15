@@ -19,7 +19,7 @@ void BlockHeader::mark_as_used()
 BlockHeader* BlockHeader::split(size_t size_request)
 {
     // Calculate the amount of space left in the remaining block.
-    BlockHeader* remaining = offset_to_block(to_void_ptr(), size_request - k_block_header_overhead);
+    BlockHeader* remaining = offset_to_block(to_void_ptr(), std::ptrdiff_t(size_request - k_block_header_overhead));
     const size_t size_remaining = block_size() - (size_request + k_block_header_overhead);
 
     K_ASSERT(remaining->to_void_ptr() == align_ptr(remaining->to_void_ptr(), k_align_size),

@@ -21,7 +21,7 @@ struct Control
      * @brief Clear structure and point all empty lists at the null block
      *
      */
-    void construct();
+    Control();
 
     /**
      * @internal

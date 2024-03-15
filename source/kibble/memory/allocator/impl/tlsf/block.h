@@ -167,17 +167,6 @@ struct BlockHeader
 
     /**
      * @internal
-     * @brief Convert this block to a const void pointer
-     *
-     * @return const void*
-     */
-    inline const void* to_void_ptr() const
-    {
-        return reinterpret_cast<const void*>(reinterpret_cast<const unsigned char*>(this) + k_block_start_offset);
-    }
-
-    /**
-     * @internal
      * @brief Convert this block to a void pointer
      *
      * @return void*
@@ -195,9 +184,9 @@ struct BlockHeader
      * @param size
      * @return BlockHeader*
      */
-    static inline BlockHeader* offset_to_block(const void* ptr, size_t size)
+    static inline BlockHeader* offset_to_block(void* ptr, std::ptrdiff_t offset)
     {
-        return reinterpret_cast<BlockHeader*>(std::ptrdiff_t(ptr) + std::ptrdiff_t(size));
+        return reinterpret_cast<BlockHeader*>(static_cast<unsigned char*>(ptr) + offset);
     }
 
     /**
@@ -218,10 +207,10 @@ struct BlockHeader
      *
      * @return BlockHeader*
      */
-    inline BlockHeader* get_next() const
+    inline BlockHeader* get_next()
     {
         K_ASSERT(!is_last(), "Next block must be busy", nullptr);
-        return offset_to_block(to_void_ptr(), block_size() - k_block_header_overhead);
+        return offset_to_block(to_void_ptr(), std::ptrdiff_t(block_size() - k_block_header_overhead));
     }
 
     /**

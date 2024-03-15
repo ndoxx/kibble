@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace kb::memory
 {
@@ -23,16 +26,30 @@ public:
      */
     TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t pool_size);
 
-    ~TLSFAllocator();
-
     void* allocate(std::size_t size, std::size_t alignment, std::size_t offset);
     void* reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset);
     void deallocate(void* ptr);
 
     void reset();
 
+    // * Debug
+    using PoolWalker = std::function<void(void*, size_t, bool)>;
+
+    struct IntegrityReport
+    {
+        std::vector<std::string> logs;
+    };
+
+    void walk_pool(PoolWalker walk);
+    IntegrityReport check_pool();
+    IntegrityReport check_consistency();
+
+private:
+    void create_pool(void* begin, std::size_t size);
+
 private:
     tlsf::Control* control_{nullptr};
+    void* pool_{nullptr};
 };
 
 } // namespace kb::memory
