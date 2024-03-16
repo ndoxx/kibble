@@ -46,11 +46,11 @@ public:
 
 private:
     void create_pool(void* begin, std::size_t size);
+    void* allocate_aligned(std::size_t size, std::size_t alignment, std::size_t offset);
 
 private:
     tlsf::Control* control_{nullptr};
     void* pool_{nullptr};
-    uint32_t decoration_size_;
 };
 
 } // namespace kb::memory

@@ -270,4 +270,7 @@ struct BlockHeader
 constexpr size_t k_block_size_min = sizeof(BlockHeader) - sizeof(BlockHeader*);
 constexpr size_t k_block_size_max = 1ull << k_fl_index_max;
 
+static_assert(sizeof(BlockHeader) == k_block_size_min + BlockHeader::k_block_header_overhead,
+              "invalid block header size");
+
 } // namespace kb::memory::tlsf

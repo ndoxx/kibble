@@ -349,6 +349,7 @@ public:
     };
 
     static constexpr size_t k_offset_single = TLSFArena::BK_FRONT_SIZE;
+    static constexpr size_t k_offset_array = TLSFArena::BK_FRONT_SIZE + sizeof(TLSFArena::SIZE_TYPE);
 
     TLSFArenaFixture() : area(10_kB), arena("TLSFArena", area, 2_kB)
     {
@@ -378,10 +379,12 @@ public:
         for (const auto& item : items)
         {
             uint8_t* block_adrs = static_cast<uint8_t*>(item.user_adrs) - item.offset;
+            // fmt::println("walk> expected block: 0x{:016x}", size_t(block_adrs));
             alloc_size.insert({size_t(block_adrs), item.user_size});
         }
 
         auto walker = [&alloc_size](void* ptr, size_t size, bool used) {
+            // fmt::println("walk> block: 0x{:016x}", size_t(ptr));
             if (auto findit = alloc_size.find(size_t(ptr)); findit != alloc_size.end())
             {
                 REQUIRE(used);
@@ -405,6 +408,8 @@ protected:
     memory::HeapArea area;
     TLSFArena arena;
     memory::TLSFAllocator::PoolWalker log_walker;
+    size_t ctor_calls{0};
+    size_t dtor_calls{0};
 };
 
 TEST_CASE("ffs", "[mem]")
@@ -434,13 +439,14 @@ TEST_CASE_METHOD(TLSFArenaFixture, "loadless integrity check", "[mem]")
 TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem]")
 {
     POD* some_pod = K_NEW(POD, arena);
-    some_pod->a = 0x42424242;
-    some_pod->b = 0xD0D0DADAD0D0DADA;
-    some_pod->c = 0x69;
     check_integrity();
 
-    // display_pool();
+    display_pool();
+    fmt::println("adrs: 0x{:016x}", size_t(some_pod));
     check_allocations({{some_pod, sizeof(POD), k_offset_single}});
+
+    // Check alignment
+    // REQUIRE(size_t(some_pod) % alignof(POD) == 0);
 
     K_DELETE(some_pod, arena);
     check_integrity();
@@ -468,4 +474,93 @@ TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[m
     check_allocations({
         {p3, sizeof(POD), k_offset_single},
     });
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation", "[mem]")
+{
+    constexpr size_t k_align = 64;
+    POD* some_pod = K_NEW_ALIGN(POD, arena, k_align);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{some_pod, sizeof(POD), k_offset_single}});
+
+    // fmt::println("adrs: 0x{:016x}", size_t(some_pod));
+    REQUIRE(size_t(some_pod) % k_align == 0);
+
+    K_DELETE(some_pod, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation, small gap", "[mem]")
+{
+    // This creates a small gap condition in the pool
+    [[maybe_unused]] uint32_t* p1 = K_NEW(uint32_t, arena);
+    [[maybe_unused]] uint32_t* p2 = K_NEW(uint32_t, arena);
+    K_DELETE(p2, arena);
+
+    constexpr size_t k_align = 64;
+    POD* some_pod = K_NEW_ALIGN(POD, arena, k_align);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({
+        {some_pod, sizeof(POD), k_offset_single},
+        {p1, sizeof(uint32_t), k_offset_single},
+    });
+
+    // Check alignment
+    // fmt::println("adrs: 0x{:016x}", size_t(some_pod));
+    REQUIRE(size_t(some_pod) % k_align == 0);
+
+    K_DELETE(some_pod, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem]")
+{
+    constexpr size_t N = 16;
+    POD* pod_array = K_NEW_ARRAY(POD[N], arena);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{pod_array, N * sizeof(POD), k_offset_single}});
+
+    K_DELETE_ARRAY(pod_array, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "single non-POD allocation / deallocation", "[mem]")
+{
+    NonPOD* some_non_pod = K_NEW(NonPOD, arena)(&ctor_calls, &dtor_calls, 10, 8);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{some_non_pod, sizeof(NonPOD), k_offset_single}});
+
+    K_DELETE(some_non_pod, arena);
+    check_integrity();
+
+    REQUIRE(ctor_calls == 1);
+    REQUIRE(dtor_calls == 1);
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "non-POD array allocation / deallocation", "[mem]")
+{
+    constexpr size_t N = 16;
+    NonPOD* non_pod_array = K_NEW_ARRAY(NonPOD[N], arena);
+    for (size_t ii = 0; ii < N; ++ii)
+        non_pod_array[ii].dtor_calls = &dtor_calls;
+
+    check_integrity();
+
+    // display_pool();
+    // Non-trivial types need to store the instance number before the first element
+    // This is accounted for in k_offset_array
+    check_allocations({{non_pod_array, N * sizeof(POD), k_offset_array}});
+
+    K_DELETE_ARRAY(non_pod_array, arena);
+    check_integrity();
+
+    REQUIRE(dtor_calls == N);
 }

@@ -47,8 +47,7 @@ size_t adjust_request_size(size_t size, size_t alignment)
     return adjusted;
 }
 
-TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, size_t pool_size)
-    : decoration_size_(decoration_size)
+TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, size_t pool_size)
 {
     // We want to reserve enough memory for the control structure, the pool, and some leeway for its 8B alignment
     size_t mem_size = sizeof(Control) + alignof(long long) + pool_size;
@@ -218,15 +217,70 @@ TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency() const
     return report;
 }
 
-void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size_t offset)
+void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size_t user_offset)
 {
-    K_ASSERT(alignment <= k_align_size, "custom alignment is not supported yet", nullptr);
+    // No need to worry about alignment smaller than k_align_size (allocations abide by a stricter alignment constraint)
+    // Custom higher alignment is handled by a special function
+    if (alignment > k_align_size)
+        return allocate_aligned(size, alignment, user_offset);
 
-    (void)alignment;
-    (void)offset;
-    const size_t total_size = size + decoration_size_;
-    const size_t adjust = adjust_request_size(total_size, k_align_size);
+
+    // Adjust size for alignment and prepare block
+    fmt::println("offset: {}", user_offset);
+    const size_t adjust = adjust_request_size(size, k_align_size);
     BlockHeader* block = control_->locate_free_block(adjust);
+    return control_->prepare_used(block, adjust);
+}
+
+void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, std::size_t user_offset)
+{
+    const size_t adjust = adjust_request_size(size, k_align_size);
+
+    /*
+        We must allocate an additional minimum block size bytes so that if
+        our free block will leave an alignment gap which is smaller, we can
+        trim a leading free block and release it back to the pool. We must
+        do this because the previous physical block is in use, therefore
+        the prev_phys_block field is not valid, and we can't simply adjust
+        the size of that block.
+    */
+    const size_t min_gap = sizeof(BlockHeader);
+    const size_t size_with_gap = adjust_request_size(adjust + alignment + min_gap, alignment);
+
+    /*
+        If alignment is less than or equals base alignment, we're done.
+        If we requested 0 bytes, return null, as allocate(0) does.
+    */
+    const size_t aligned_size = (adjust && alignment > k_align_size) ? size_with_gap : adjust;
+    BlockHeader* block = control_->locate_free_block(aligned_size);
+
+    if (block)
+    {
+        void* ptr = block->to_void_ptr();
+        void* aligned = align_ptr(ptr, alignment);
+        // NOTE(ndx): original implementation tries to align the block, we want to align the user pointer
+        // so we need to subtract the user_offset passed by call site
+        size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr) - std::ptrdiff_t(user_offset));
+
+        // If gap size is too small, offset to next aligned boundary
+        if (gap && gap < min_gap)
+        {
+            const size_t gap_remain = min_gap - gap;
+            const size_t offset = std::max(gap_remain, alignment);
+            const void* next_aligned = reinterpret_cast<void*>(std::ptrdiff_t(aligned) + std::ptrdiff_t(offset));
+
+            aligned = align_ptr(next_aligned, alignment);
+            // NOTE(ndx): subtract user offset here too, not fully tested but seems to work
+            gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr) - std::ptrdiff_t(user_offset));
+        }
+
+        if (gap)
+        {
+            K_ASSERT(gap >= min_gap, "gap size is too small", nullptr);
+            block = control_->trim_free_leading(block, gap);
+        }
+    }
+
     return control_->prepare_used(block, adjust);
 }
 
@@ -241,16 +295,16 @@ void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignme
 
 void TLSFAllocator::deallocate(void* ptr)
 {
-	if (ptr)
-	{
-		BlockHeader* block = BlockHeader::from_void_ptr(ptr);
-		K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
+    if (ptr)
+    {
+        BlockHeader* block = BlockHeader::from_void_ptr(ptr);
+        K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
 
-		block->mark_as_free();
-		block = control_->merge_prev(block);
-		block = control_->merge_next(block);
-		control_->insert_block(block);
-	}
+        block->mark_as_free();
+        block = control_->merge_prev(block);
+        block = control_->merge_next(block);
+        control_->insert_block(block);
+    }
 }
 
 void TLSFAllocator::reset()
