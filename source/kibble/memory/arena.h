@@ -30,7 +30,7 @@ template <typename AllocatorT, typename ThreadPolicyT = policy::SingleThread,
 class MemoryArena
 {
 public:
-    typedef uint32_t SIZE_TYPE; // BUG#4 if set to size_t/uint64_t, probably because of endianness
+    typedef uint32_t SIZE_TYPE;
     // Size of bookkeeping data before user pointer
     static constexpr uint32_t BK_FRONT_SIZE =
         policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT + sizeof(SIZE_TYPE);
@@ -214,15 +214,16 @@ public:
         {
             // new[] operator stores the number of instances in the first 4 bytes and
             // returns a pointer to the address right after, we emulate this behavior here.
-            uint32_t* as_uint = static_cast<uint32_t*>(
-                allocate(sizeof(uint32_t) + sizeof(T) * N, alignment, sizeof(uint32_t), file, line));
-            *(as_uint++) = static_cast<uint32_t>(N);
+            void* ptr = allocate(sizeof(T) * N + sizeof(SIZE_TYPE), alignment, sizeof(SIZE_TYPE), file, line);
+            *static_cast<SIZE_TYPE*>(ptr) = SIZE_TYPE(N);
 
+            // First object starts right after
+            T* as_T = reinterpret_cast<T*>(static_cast<uint8_t*>(ptr) + sizeof(SIZE_TYPE));
             // Construct instances using placement new
-            T* as_T = reinterpret_cast<T*>(as_uint);
+            // NOTE(ndx): The parentheses of T() are important, without them the constructor is not called
             const T* const end = as_T + N;
             while (as_T < end)
-                ::new (as_T++) T;
+                ::new (as_T++) T();
 
             // Hand user the pointer to the first instance
             return (as_T - N);
@@ -242,6 +243,7 @@ public:
      * is polymorphic. Spoiler: it doesn't always work... When the base type holds a std::vector as a member for
      * example, it still fails, for reasons... See:
      * https://stackoverflow.com/questions/41246633/placement-new-crashing-when-used-with-virtual-inheritance-hierarchy-in-visual-c
+     * UPDATE: many things have changed since then, thing bug may not even be a thing anymore.
      *
      * @todo Use std::source_location when possible
      *
@@ -278,23 +280,18 @@ public:
         }
         else
         {
-            union {
-                uint32_t* as_uint;
-                T* as_T;
-            };
-            // User pointer points to first instance
-            as_T = object;
-            // Number of instances stored 4 bytes before first instance
-            const uint32_t N = as_uint[-1];
+            // Number of instances stored sizeof(SIZE_TYPE) bytes before first instance
+            SIZE_TYPE* as_usize = reinterpret_cast<SIZE_TYPE*>(object);
+            const uint32_t N = as_usize[-1];
 
             // Call instances' destructor in reverse order
-            for (uint32_t ii = N; ii > 0; --ii)
-                as_T[ii - 1].~T();
+            for (SIZE_TYPE ii = N; ii > 0; --ii)
+                object[ii - 1].~T();
 
-            // deallocate() expects a pointer 4 bytes before actual user pointer
+            // deallocate() expects a pointer to the beginning of array allocation (where we wrote N)
             // NOTE(ndx): EXPECT deallocation bug when T is polymorphic, see HACK comment in Delete()
             // TODO: Test and fix this
-            deallocate(as_uint - 1, file, line);
+            deallocate(as_usize - 1, file, line);
         }
     }
 
@@ -354,8 +351,9 @@ struct TypeAndCount<T[N]>
  * `Obj* obj_array = K_NEW_ARRAY(Obj[42], arena);`
  */
 #define K_NEW_ARRAY(TYPE, ARENA)                                                                                       \
-    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(kb::memory::detail::TypeAndCount<TYPE>::count,     \
-                                                                    alignof(TYPE), __FILE__, __LINE__)
+    ARENA.new_array__<kb::memory::detail::TypeAndCount<TYPE>::type>(                                                   \
+        kb::memory::detail::TypeAndCount<TYPE>::count, alignof(kb::memory::detail::TypeAndCount<TYPE>::type),          \
+        __FILE__, __LINE__)
 
 /**
  * @def K_NEW_ARRAY_DYNAMIC(TYPE, COUNT, ARENA)

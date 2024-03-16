@@ -47,7 +47,8 @@ size_t adjust_request_size(size_t size, size_t alignment)
     return adjusted;
 }
 
-TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, size_t pool_size)
+TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, size_t pool_size)
+    : decoration_size_(decoration_size)
 {
     // We want to reserve enough memory for the control structure, the pool, and some leeway for its 8B alignment
     size_t mem_size = sizeof(Control) + alignof(long long) + pool_size;
@@ -55,7 +56,7 @@ TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, s
 
     // We know that the first pointer starts at the beginning of a cache line, so it's a fortiori 8B aligned
     // Construct control structure in-place
-    control_ = ::new (range.first) Control;
+    control_ = ::new (range.first) Control();
 
     // Pool starts after control structure, but needs to be aligned
     uint8_t* begin = static_cast<uint8_t*>(range.first);
@@ -104,7 +105,7 @@ void TLSFAllocator::create_pool(void* pool, std::size_t size)
     pool_ = pool;
 }
 
-void TLSFAllocator::walk_pool(PoolWalker walk)
+void TLSFAllocator::walk_pool(PoolWalker walk) const
 {
     BlockHeader* block = BlockHeader::offset_to_block(pool_, -std::ptrdiff_t(BlockHeader::k_block_header_overhead));
 
@@ -115,7 +116,7 @@ void TLSFAllocator::walk_pool(PoolWalker walk)
     }
 }
 
-TLSFAllocator::IntegrityReport TLSFAllocator::check_pool()
+TLSFAllocator::IntegrityReport TLSFAllocator::check_pool() const
 {
     IntegrityReport report;
     struct
@@ -152,7 +153,7 @@ TLSFAllocator::IntegrityReport TLSFAllocator::check_pool()
     return report;
 }
 
-TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency()
+TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency() const
 {
     IntegrityReport report;
 
@@ -217,6 +218,18 @@ TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency()
     return report;
 }
 
+void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size_t offset)
+{
+    K_ASSERT(alignment <= k_align_size, "custom alignment is not supported yet", nullptr);
+
+    (void)alignment;
+    (void)offset;
+    const size_t total_size = size + decoration_size_;
+    const size_t adjust = adjust_request_size(total_size, k_align_size);
+    BlockHeader* block = control_->locate_free_block(adjust);
+    return control_->prepare_used(block, adjust);
+}
+
 void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset)
 {
     (void)ptr;
@@ -228,7 +241,16 @@ void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignme
 
 void TLSFAllocator::deallocate(void* ptr)
 {
-    (void)ptr;
+	if (ptr)
+	{
+		BlockHeader* block = BlockHeader::from_void_ptr(ptr);
+		K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
+
+		block->mark_as_free();
+		block = control_->merge_prev(block);
+		block = control_->merge_next(block);
+		control_->insert_block(block);
+	}
 }
 
 void TLSFAllocator::reset()

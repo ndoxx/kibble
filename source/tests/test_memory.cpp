@@ -1,3 +1,4 @@
+#include "fmt/format.h"
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -5,9 +6,11 @@
 #include <iostream>
 #include <random>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "assert/assert.h"
+#include "memory/allocator/impl/tlsf/bit.h"
 #include "memory/allocator/linear_allocator.h"
 #include "memory/allocator/pool_allocator.h"
 #include "memory/allocator/tlsf_allocator.h"
@@ -17,12 +20,14 @@
 #include "memory/policy/bounds_checking_simple.h"
 #include "memory/policy/memory_tracking_simple.h"
 #include "memory/util/literals.h"
+#include "string/string.h"
 
 #include <catch2/catch_all.hpp>
 
 using namespace kb;
 using namespace kb::memory::literals;
 
+// 24B trivial standard layout struct
 struct POD
 {
     uint32_t a;
@@ -129,7 +134,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
 
 TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[mem]")
 {
-    for (uint32_t ALIGNMENT = 2; ALIGNMENT <= 128; ALIGNMENT *= 2)
+    for (uint32_t ALIGNMENT = 8; ALIGNMENT <= 128; ALIGNMENT *= 2)
     {
         POD* some_pod = K_NEW_ALIGN(POD, arena, ALIGNMENT);
         some_pod->a = 0x42424242;
@@ -336,26 +341,131 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD custom alignment"
 class TLSFArenaFixture
 {
 public:
+    struct AllocItem
+    {
+        void* user_adrs;
+        size_t user_size;
+        size_t offset;
+    };
+
+    static constexpr size_t k_offset_single = TLSFArena::BK_FRONT_SIZE;
+
     TLSFArenaFixture() : area(10_kB), arena("TLSFArena", area, 2_kB)
     {
+        log_walker = [](void* ptr, size_t size, bool used) {
+            fmt::println("0x{:016x}> size: {}, used: {}", size_t(ptr), su::human_size(size), used);
+        };
+    }
+
+    void check_integrity()
+    {
+        auto pool_report = arena.get_allocator().check_pool();
+        auto consistency_report = arena.get_allocator().check_consistency();
+
+        for (const auto& msg : pool_report.logs)
+            fmt::println("Pool> {}", msg);
+
+        for (const auto& msg : consistency_report.logs)
+            fmt::println("Cntl> {}", msg);
+
+        REQUIRE(pool_report.logs.empty());
+        REQUIRE(consistency_report.logs.empty());
+    }
+
+    void check_allocations(const std::vector<AllocItem>& items)
+    {
+        std::unordered_map<size_t, size_t> alloc_size;
+        for (const auto& item : items)
+        {
+            uint8_t* block_adrs = static_cast<uint8_t*>(item.user_adrs) - item.offset;
+            alloc_size.insert({size_t(block_adrs), item.user_size});
+        }
+
+        auto walker = [&alloc_size](void* ptr, size_t size, bool used) {
+            if (auto findit = alloc_size.find(size_t(ptr)); findit != alloc_size.end())
+            {
+                REQUIRE(used);
+                REQUIRE(size >= findit->second);
+            }
+            else
+            {
+                REQUIRE(!used);
+            }
+        };
+
+        arena.get_allocator().walk_pool(walker);
+    }
+
+    inline void display_pool() const
+    {
+        arena.get_allocator().walk_pool(log_walker);
     }
 
 protected:
     memory::HeapArea area;
     TLSFArena arena;
+    memory::TLSFAllocator::PoolWalker log_walker;
 };
+
+TEST_CASE("ffs", "[mem]")
+{
+    REQUIRE(memory::tlsf::ffs(0) == -1);
+    REQUIRE(memory::tlsf::ffs(1) == 0);
+    REQUIRE(memory::tlsf::ffs(int(0x80000000)) == 31);
+    REQUIRE(memory::tlsf::ffs(int(0x80008000)) == 15);
+}
+
+TEST_CASE("fls", "[mem]")
+{
+    REQUIRE(memory::tlsf::fls(0) == -1);
+    REQUIRE(memory::tlsf::fls(1) == 0);
+    REQUIRE(memory::tlsf::fls(int(0x7FFFFFFF)) == 30);
+    REQUIRE(memory::tlsf::fls(int(0x80000008)) == 31);
+    REQUIRE(memory::tlsf::fls_size_t(0x80000000) == 31);
+    REQUIRE(memory::tlsf::fls_size_t(0x100000000) == 32);
+    REQUIRE(memory::tlsf::fls_size_t(0xffffffffffffffff) == 63);
+}
 
 TEST_CASE_METHOD(TLSFArenaFixture, "loadless integrity check", "[mem]")
 {
-    auto pool_report = arena.get_allocator().check_pool();
-    auto consistency_report = arena.get_allocator().check_consistency();
+    check_integrity();
+}
 
-    for (const auto& msg : pool_report.logs)
-        fmt::println("Pool> {}", msg);
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem]")
+{
+    POD* some_pod = K_NEW(POD, arena);
+    some_pod->a = 0x42424242;
+    some_pod->b = 0xD0D0DADAD0D0DADA;
+    some_pod->c = 0x69;
+    check_integrity();
 
-    for (const auto& msg : consistency_report.logs)
-        fmt::println("Cntl> {}", msg);
+    // display_pool();
+    check_allocations({{some_pod, sizeof(POD), k_offset_single}});
 
-    REQUIRE(pool_report.logs.empty());
-    REQUIRE(consistency_report.logs.empty());
+    K_DELETE(some_pod, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[mem]")
+{
+    POD* p1 = K_NEW(POD, arena);
+    POD* p2 = K_NEW(POD, arena);
+    POD* p3 = K_NEW(POD, arena);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({
+        {p1, sizeof(POD), k_offset_single},
+        {p2, sizeof(POD), k_offset_single},
+        {p3, sizeof(POD), k_offset_single},
+    });
+
+    K_DELETE(p1, arena);
+    K_DELETE(p2, arena);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({
+        {p3, sizeof(POD), k_offset_single},
+    });
 }

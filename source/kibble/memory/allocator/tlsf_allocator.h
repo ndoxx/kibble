@@ -40,9 +40,9 @@ public:
         std::vector<std::string> logs;
     };
 
-    void walk_pool(PoolWalker walk);
-    IntegrityReport check_pool();
-    IntegrityReport check_consistency();
+    void walk_pool(PoolWalker walk) const;
+    IntegrityReport check_pool() const;
+    IntegrityReport check_consistency() const;
 
 private:
     void create_pool(void* begin, std::size_t size);
@@ -50,6 +50,7 @@ private:
 private:
     tlsf::Control* control_{nullptr};
     void* pool_{nullptr};
+    uint32_t decoration_size_;
 };
 
 } // namespace kb::memory
