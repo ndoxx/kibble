@@ -146,8 +146,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Drop-in replacement for some features of the CTTI lib
     - Compile-time type name and type ID (as a name hash)
 * Memory arena system
-    - Fast custom allocators (linear, pool, atomic pool)
-    - May be deprecated at some point due to std::pmr
+    - Fast custom allocators (linear, pool, atomic pool, TLSF)
 * Basic TCP socket abstraction
     - Simple Berkeley socket wrapper using the Stream / Acceptor / Connector model
 * A precision chronometer with a simple interface

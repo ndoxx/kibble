@@ -96,6 +96,7 @@
         "semaphore": "cpp",
         "span": "cpp",
         "__tree": "cpp",
-        "version": "cpp"
+        "version": "cpp",
+        "source_location": "cpp"
     }
 }

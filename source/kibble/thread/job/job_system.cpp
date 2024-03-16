@@ -25,7 +25,7 @@ size_t JobSystem::get_memory_requirements()
     // Jobs are always aligned to the cache line, so we want the nearest multiple of alignment
     // and we also have to take into account additional data written by the allocator
     constexpr size_t k_job_node_size =
-        math::round_up_pow2(sizeof(Job) + JobPoolArena::DECORATION_SIZE, kb::memory::k_cache_line_size);
+        math::round_up_pow2(sizeof(Job) + JobPoolArena::k_allocation_overhead, kb::memory::k_cache_line_size);
 
     // Area will need enough space for each job
     // Also add a cache line, to account for heap area block alignment

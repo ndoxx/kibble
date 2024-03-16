@@ -18,7 +18,7 @@ namespace rng
 class XorShiftEngine
 {
 public:
-    typedef uint64_t result_type; // Needed for compatibility with std distributions
+    using result_type = uint64_t; // Needed for compatibility with std distributions
 
     /**
      * @brief Internal engine state.
