@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "assert/assert.h"
-#include "memory/allocator/impl/tlsf/bit.h"
+#include "memory/allocator/tlsf/impl/bit.h"
 #include "memory/allocator/linear_allocator.h"
 #include "memory/allocator/pool_allocator.h"
 #include "memory/allocator/tlsf_allocator.h"
@@ -89,7 +89,7 @@ using TLSFArena =
 class LinArenaFixture
 {
 public:
-    using SIZE_TYPE = typename LinArena::SIZE_TYPE;
+    using SIZE_TYPE = typename LinArena::SizeType;
 
     LinArenaFixture() : area(3_kB), arena("LinArena", area, 2_kB)
     {
@@ -112,7 +112,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD default alignment", "[m
     // Check that returned address is correctly aligned
     REQUIRE(size_t(some_pod) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + LinArena::k_allocation_overhead);
 
     K_DELETE(some_pod, arena);
 }
@@ -127,7 +127,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
     // Check that returned address is correctly 16 bytes aligned
     REQUIRE(size_t(some_pod) % 16 == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + LinArena::k_allocation_overhead);
 
     K_DELETE(some_pod, arena);
 }
@@ -160,7 +160,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array default alignment
     // Check that returned address is correctly aligned
     REQUIRE(size_t(pod_array) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before the user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array) - 1) == N * sizeof(POD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array) - 1) == N * sizeof(POD) + LinArena::k_allocation_overhead);
 
     K_DELETE_ARRAY(pod_array, arena);
 }
@@ -180,7 +180,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]"
     // Check that returned address is correctly 32 bytes aligned
     REQUIRE(size_t(pod_array) % 32 == 0);
     // Arena should write the complete allocation size just before the user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array) - 1) == N * sizeof(POD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(pod_array) - 1) == N * sizeof(POD) + LinArena::k_allocation_overhead);
 
     K_DELETE_ARRAY(pod_array, arena);
 }
@@ -194,7 +194,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD default alignment",
     // Check that returned address is correctly aligned
     REQUIRE(size_t(some_non_pod) % alignof(NonPOD) == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod) - 1) == sizeof(NonPOD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod) - 1) == sizeof(NonPOD) + LinArena::k_allocation_overhead);
 
     K_DELETE(some_non_pod, arena);
     // Check that the destructor has been called
@@ -210,7 +210,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
     // Check that returned address is correctly 32 bytes aligned
     REQUIRE(size_t(some_non_pod) % 32 == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod) - 1) == sizeof(NonPOD) + LinArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_non_pod) - 1) == sizeof(NonPOD) + LinArena::k_allocation_overhead);
 
     K_DELETE(some_non_pod, arena);
     // Check that the destructor has been called
@@ -232,7 +232,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default align
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array) - 1) == N);
     // Arena should write the complete allocation size just before the number of instances
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array) - 2) ==
-            N * sizeof(NonPOD) + LinArena::DECORATION_SIZE + sizeof(SIZE_TYPE));
+            N * sizeof(NonPOD) + LinArena::k_allocation_overhead + sizeof(SIZE_TYPE));
 
     K_DELETE_ARRAY(non_pod_array, arena);
     // Check that the destructor has been called
@@ -254,7 +254,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[m
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array) - 1) == N);
     // Arena should write the complete allocation size just before the number of instances
     REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(non_pod_array) - 2) ==
-            N * sizeof(NonPOD) + LinArena::DECORATION_SIZE + sizeof(SIZE_TYPE));
+            N * sizeof(NonPOD) + LinArena::k_allocation_overhead + sizeof(SIZE_TYPE));
 
     K_DELETE_ARRAY(non_pod_array, arena);
     // Check that the destructor has been called
@@ -297,7 +297,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
 class PoolArenaFixture
 {
 public:
-    using SIZE_TYPE = typename PoolArena::SIZE_TYPE;
+    using SIZE_TYPE = typename PoolArena::SizeType;
 
     PoolArenaFixture() : area(3_kB), arena("PoolArena", area, 32u, sizeof(POD), 16u)
     {
@@ -318,7 +318,7 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD default alignment
     // Check that returned address is correctly aligned
     REQUIRE(size_t(some_pod) % alignof(POD) == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::k_allocation_overhead);
 
     K_DELETE(some_pod, arena);
 }
@@ -333,7 +333,7 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD custom alignment"
     // Check that returned address is correctly aligned
     REQUIRE(size_t(some_pod) % 16 == 0);
     // Arena should write the complete allocation size just before user pointer
-    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::DECORATION_SIZE);
+    REQUIRE(*(reinterpret_cast<SIZE_TYPE*>(some_pod) - 1) == sizeof(POD) + PoolArena::k_allocation_overhead);
 
     K_DELETE(some_pod, arena);
 }
@@ -348,8 +348,8 @@ public:
         size_t offset;
     };
 
-    static constexpr size_t k_offset_single = TLSFArena::BK_FRONT_SIZE;
-    static constexpr size_t k_offset_array = TLSFArena::BK_FRONT_SIZE + sizeof(TLSFArena::SIZE_TYPE);
+    static constexpr size_t k_offset_single = TLSFArena::k_front_overhead;
+    static constexpr size_t k_offset_array = TLSFArena::k_front_overhead + sizeof(TLSFArena::SizeType);
 
     TLSFArenaFixture() : area(10_kB), arena("TLSFArena", area, 2_kB)
     {
@@ -441,12 +441,11 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem
     POD* some_pod = K_NEW(POD, arena);
     check_integrity();
 
-    display_pool();
-    fmt::println("adrs: 0x{:016x}", size_t(some_pod));
+    // display_pool();
     check_allocations({{some_pod, sizeof(POD), k_offset_single}});
 
     // Check alignment
-    // REQUIRE(size_t(some_pod) % alignof(POD) == 0);
+    REQUIRE(size_t(some_pod) % alignof(POD) == 0);
 
     K_DELETE(some_pod, arena);
     check_integrity();
@@ -476,6 +475,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[m
     });
 }
 
+/*
 TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation", "[mem]")
 {
     constexpr size_t k_align = 64;
@@ -491,7 +491,9 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation
     K_DELETE(some_pod, arena);
     check_integrity();
 }
+*/
 
+/*
 TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation, small gap", "[mem]")
 {
     // This creates a small gap condition in the pool
@@ -516,6 +518,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation
     K_DELETE(some_pod, arena);
     check_integrity();
 }
+*/
 
 TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem]")
 {

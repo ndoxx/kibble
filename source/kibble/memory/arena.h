@@ -30,11 +30,20 @@ template <typename AllocatorT, typename ThreadPolicyT = policy::SingleThread,
 class MemoryArena
 {
 public:
-    typedef uint32_t SIZE_TYPE;
-    // Size of bookkeeping data before user pointer
-    static constexpr uint32_t BK_FRONT_SIZE =
-        policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT + sizeof(SIZE_TYPE);
-    static constexpr uint32_t DECORATION_SIZE = BK_FRONT_SIZE + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK;
+    // NOTE(ndx): Bookkeeping data size should be a multiple of 8B to simplify
+    // alignment strategy of some allocators (looking at you, TLSF).
+    /// @brief Data type for the allocation size written before user pointer
+    using SizeType = size_t;
+    static_assert(policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT % 8 == 0, "bad sentinel size");
+    static_assert(policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK % 8 == 0, "bad sentinel size");
+
+    /// @brief Size of bookkeeping data before user pointer
+    static constexpr size_t k_front_overhead =
+        policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT + sizeof(SizeType);
+    /// @brief Size of bookkeeping data after user data
+    static constexpr size_t k_back_overhead = policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK;
+    /// @brief Total overhead due to bookkeeping decoration
+    static constexpr size_t k_allocation_overhead = k_front_overhead + k_back_overhead;
 
     /**
      * @brief Forwards all the arguments to the allocator's constructor.
@@ -44,7 +53,7 @@ public:
      */
     template <typename... ArgsT>
     MemoryArena(const char* debug_name, HeapArea& area, ArgsT&&... args)
-        : allocator_(debug_name, area, DECORATION_SIZE, std::forward<ArgsT>(args)...)
+        : allocator_(debug_name, area, k_allocation_overhead, std::forward<ArgsT>(args)...)
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
             memory_tracker_.init(debug_name, area);
@@ -100,8 +109,8 @@ public:
             thread_guard_.enter();
 
         // Compute size after decoration and allocate
-        const size_t decorated_size = DECORATION_SIZE + size;
-        const size_t user_offset = BK_FRONT_SIZE + offset;
+        const size_t decorated_size = k_allocation_overhead + size;
+        const size_t user_offset = k_front_overhead + offset;
 
         uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, user_offset));
 
@@ -115,8 +124,8 @@ public:
         }
 
         // Save allocation size
-        *(reinterpret_cast<SIZE_TYPE*>(current)) = static_cast<SIZE_TYPE>(decorated_size);
-        current += sizeof(SIZE_TYPE);
+        *(reinterpret_cast<SizeType*>(current)) = static_cast<SizeType>(decorated_size);
+        current += sizeof(SizeType);
 
         // More bookkeeping
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
@@ -146,15 +155,15 @@ public:
             thread_guard_.enter();
 
         // Take care to jump further back if non-POD array deallocation, because we also stored the number of instances
-        uint8_t* begin = static_cast<uint8_t*>(ptr) - BK_FRONT_SIZE;
+        uint8_t* begin = static_cast<uint8_t*>(ptr) - k_front_overhead;
 
         // Check the front sentinel before we retrieve the allocation size, just in case
         // the size was corrupted by an overwrite.
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
             bounds_checker_.check_sentinel_front(begin);
 
-        const SIZE_TYPE decorated_size =
-            *(reinterpret_cast<SIZE_TYPE*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT));
+        const SizeType decorated_size =
+            *(reinterpret_cast<SizeType*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT));
 
         // Check that everything went ok
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
@@ -214,11 +223,11 @@ public:
         {
             // new[] operator stores the number of instances in the first 4 bytes and
             // returns a pointer to the address right after, we emulate this behavior here.
-            void* ptr = allocate(sizeof(T) * N + sizeof(SIZE_TYPE), alignment, sizeof(SIZE_TYPE), file, line);
-            *static_cast<SIZE_TYPE*>(ptr) = SIZE_TYPE(N);
+            void* ptr = allocate(sizeof(T) * N + sizeof(SizeType), alignment, sizeof(SizeType), file, line);
+            *static_cast<SizeType*>(ptr) = SizeType(N);
 
             // First object starts right after
-            T* as_T = reinterpret_cast<T*>(static_cast<uint8_t*>(ptr) + sizeof(SIZE_TYPE));
+            T* as_T = reinterpret_cast<T*>(static_cast<uint8_t*>(ptr) + sizeof(SizeType));
             // Construct instances using placement new
             // NOTE(ndx): The parentheses of T() are important, without them the constructor is not called
             const T* const end = as_T + N;
@@ -281,11 +290,11 @@ public:
         else
         {
             // Number of instances stored sizeof(SIZE_TYPE) bytes before first instance
-            SIZE_TYPE* as_usize = reinterpret_cast<SIZE_TYPE*>(object);
-            const uint32_t N = as_usize[-1];
+            SizeType* as_usize = reinterpret_cast<SizeType*>(object);
+            const SizeType N = as_usize[-1];
 
             // Call instances' destructor in reverse order
-            for (SIZE_TYPE ii = N; ii > 0; --ii)
+            for (SizeType ii = N; ii > 0; --ii)
                 object[ii - 1].~T();
 
             // deallocate() expects a pointer to the beginning of array allocation (where we wrote N)
@@ -324,7 +333,7 @@ struct TypeAndCount
 template <class T, size_t N>
 struct TypeAndCount<T[N]>
 {
-    typedef T type;
+    using type = T;
     static constexpr size_t count = N;
 };
 } // namespace detail

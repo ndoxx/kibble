@@ -1,6 +1,6 @@
 #include "memory/allocator/tlsf_allocator.h"
-#include "memory/allocator/impl/tlsf/block.h"
-#include "memory/allocator/impl/tlsf/control.h"
+#include "memory/allocator/tlsf/impl/block.h"
+#include "memory/allocator/tlsf/impl/control.h"
 #include "memory/config.h"
 #include "memory/heap_area.h"
 #include "memory/util/alignment.h"
@@ -220,13 +220,16 @@ TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency() const
 void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size_t user_offset)
 {
     // No need to worry about alignment smaller than k_align_size (allocations abide by a stricter alignment constraint)
-    // Custom higher alignment is handled by a special function
-    if (alignment > k_align_size)
-        return allocate_aligned(size, alignment, user_offset);
 
+    // TMP: disallow higher alignment for now
+    (void)user_offset;
+    K_ASSERT(alignment <= k_align_size, "higher custom alignment is not implemented yet", nullptr);
+
+    // Custom higher alignment is handled by a special function
+    // if (alignment > k_align_size)
+    //     return allocate_aligned(size, alignment, user_offset);
 
     // Adjust size for alignment and prepare block
-    fmt::println("offset: {}", user_offset);
     const size_t adjust = adjust_request_size(size, k_align_size);
     BlockHeader* block = control_->locate_free_block(adjust);
     return control_->prepare_used(block, adjust);
@@ -234,6 +237,11 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
 
 void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, std::size_t user_offset)
 {
+    // NOTE(ndx): original implementation tries to align the block, but we
+    // want to align the user pointer instead.
+    // TODO(ndx): modify this function to align the user pointer.
+    (void)user_offset;
+
     const size_t adjust = adjust_request_size(size, k_align_size);
 
     /*
@@ -258,9 +266,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
     {
         void* ptr = block->to_void_ptr();
         void* aligned = align_ptr(ptr, alignment);
-        // NOTE(ndx): original implementation tries to align the block, we want to align the user pointer
-        // so we need to subtract the user_offset passed by call site
-        size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr) - std::ptrdiff_t(user_offset));
+        size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr));
 
         // If gap size is too small, offset to next aligned boundary
         if (gap && gap < min_gap)
@@ -270,8 +276,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
             const void* next_aligned = reinterpret_cast<void*>(std::ptrdiff_t(aligned) + std::ptrdiff_t(offset));
 
             aligned = align_ptr(next_aligned, alignment);
-            // NOTE(ndx): subtract user offset here too, not fully tested but seems to work
-            gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr) - std::ptrdiff_t(user_offset));
+            gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr));
         }
 
         if (gap)
@@ -286,6 +291,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
 
 void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset)
 {
+    K_ASSERT(false, "reallocate() is not implemented yet.", nullptr);
     (void)ptr;
     (void)size;
     (void)alignment;
@@ -305,10 +311,6 @@ void TLSFAllocator::deallocate(void* ptr)
         block = control_->merge_next(block);
         control_->insert_block(block);
     }
-}
-
-void TLSFAllocator::reset()
-{
 }
 
 } // namespace kb::memory

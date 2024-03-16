@@ -3,7 +3,7 @@
 #include <cstddef>
 
 #include "assert/assert.h"
-#include "memory/allocator/impl/tlsf/bit.h"
+#include "memory/allocator/tlsf/impl/bit.h"
 
 using std::size_t;
 

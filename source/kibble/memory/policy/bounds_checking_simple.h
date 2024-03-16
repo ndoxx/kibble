@@ -18,6 +18,10 @@ namespace kb::memory::policy
 class SimpleBoundsChecking
 {
 public:
+    static constexpr size_t k_sentinel_size = 8;
+    static constexpr size_t k_sentinel_front = 0xf0f0f0f0f0f0f0f0;
+    static constexpr size_t k_sentinel_back = 0x0f0f0f0f0f0f0f0f;
+
     /**
      * @brief Write a 4-bytes front sentinel starting at ptr
      *
@@ -25,7 +29,7 @@ public:
      */
     inline void put_sentinel_front(uint8_t* ptr) const
     {
-        std::fill(ptr, ptr + 4, 0xf0);
+        std::fill(ptr, ptr + k_sentinel_size, 0xf0);
     }
 
     /**
@@ -35,7 +39,7 @@ public:
      */
     inline void put_sentinel_back(uint8_t* ptr) const
     {
-        std::fill(ptr, ptr + 4, 0x0f);
+        std::fill(ptr, ptr + k_sentinel_size, 0x0f);
     }
 
     /**
@@ -45,9 +49,9 @@ public:
      */
     inline void check_sentinel_front(uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<uint32_t*>(ptr) == 0xf0f0f0f0, "Memory overwrite detected (front)", nullptr)
+        K_ASSERT(*reinterpret_cast<size_t*>(ptr) == k_sentinel_front, "Memory overwrite detected (front)", nullptr)
             .watch(static_cast<void*>(ptr))
-            .watch(*reinterpret_cast<uint32_t*>(ptr));
+            .watch(*reinterpret_cast<size_t*>(ptr));
     }
 
     /**
@@ -57,17 +61,17 @@ public:
      */
     inline void check_sentinel_back(uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<uint32_t*>(ptr) == 0x0f0f0f0f, "Memory overwrite detected (back)", nullptr)
+        K_ASSERT(*reinterpret_cast<size_t*>(ptr) == 0x0f0f0f0f0f0f0f0f, "Memory overwrite detected (back)", nullptr)
             .watch(static_cast<void*>(ptr))
-            .watch(*reinterpret_cast<uint32_t*>(ptr));
+            .watch(*reinterpret_cast<size_t*>(ptr));
     }
 };
 
 template <>
 struct BoundsCheckerSentinelSize<SimpleBoundsChecking>
 {
-    static constexpr std::size_t FRONT = 4;
-    static constexpr std::size_t BACK = 4;
+    static constexpr std::size_t FRONT = SimpleBoundsChecking::k_sentinel_size;
+    static constexpr std::size_t BACK = SimpleBoundsChecking::k_sentinel_size;
 };
 
 }
