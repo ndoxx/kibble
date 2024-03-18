@@ -97,6 +97,7 @@
         "span": "cpp",
         "__tree": "cpp",
         "version": "cpp",
-        "source_location": "cpp"
+        "source_location": "cpp",
+        "*.in": "c"
     }
 }

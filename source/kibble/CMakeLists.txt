@@ -8,12 +8,12 @@ target_sources(kibble
     ${SRC_LIB}
 )
 
+configure_file(config.h.in config.h)
+
 target_include_directories(kibble
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-target_include_directories(kibble
+    "${CMAKE_CURRENT_BINARY_DIR}"
     PUBLIC
     "${KB_SOURCE_DIR}/source/vendor/fmt/include"
 )

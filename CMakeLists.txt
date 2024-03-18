@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(kibble VERSION 1.0.0 DESCRIPTION "lib kibble" LANGUAGES CXX)
+project(kibble VERSION 1.1.0 DESCRIPTION "lib kibble" LANGUAGES CXX)
 
 # Check if we're building as a subproject
 if(NOT DEFINED KB_MASTER_PROJECT)
