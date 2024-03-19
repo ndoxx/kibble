@@ -173,7 +173,7 @@ int main(int argc, char** argv)
     klog(chan_filesystem).info("General filesystem info are logged");
     klog(chan_filesystem).uid("ResourcePack").info("ResourcePack info are logged");
     klog(chan_filesystem).uid("CatFile").info("CatFile info are logged");
-    klog(chan_filesystem).uid("DofFile").info("DofFile info are NOT logged");
+    klog(chan_filesystem).uid("DogFile").info("DogFile info are NOT logged");
 
     // printf-debugging, here we come
     kbang(chan_graphics);

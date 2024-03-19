@@ -56,7 +56,7 @@ void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentat
     }
 
     // print context info if needed
-    if (uint8_t(e.severity) <= 2)
+    if (e.severity <= Severity::Warn)
     {
         // clang-format off
         fmt::print("   \u2ba1 {}\n   \u2ba1 {}:{}\n", 

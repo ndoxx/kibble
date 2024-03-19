@@ -20,7 +20,7 @@ public:
     ~StackTracePolicy() = default;
 
     /**
-     * @brief Emplace a new stack trace in the log entry if severity leve is sufficient
+     * @brief Emplace a new stack trace in the log entry if severity level is sufficient
      *
      * @param entry
      * @return true

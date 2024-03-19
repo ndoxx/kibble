@@ -1,0 +1,7 @@
+set(KIBBLE_VERSION @KIBBLE_VERSION@)
+
+@PACKAGE_INIT@
+
+set_and_check(KIBBLE_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
+
+check_required_components(kibble)
