@@ -218,6 +218,8 @@ The source files are documented with Doxygen, and higher-level documentation is 
 
 ## Integration
 
+### As a git submodule
+
 Kibble can be setup as a subproject easily with CMake and git. Add Kibble as a submodule, and in the relevant `CMakeLists.txt` configure the project with `set()` directives, then simply call `add_subdirectory()`. Kibble's CMake script will detect its use as a subproject, disable the tests, examples and install targets, and let the host project handle the configuration of the output directories. For example:
 
 ```cmake
@@ -233,6 +235,14 @@ set_target_properties(kibble
 ```
 
 Then link your executable / library against the `kibble` target. That's it.
+
+### With CMake's find_package
+
+During a system installation, Kibble also generates CMake config files so it can be found by CMake. Then all you need to do is this:
+
+```cmake
+find_package(kibble 1.1.0 REQUIRED)
+```
 
 
 <!-- CONTRIBUTING -->
