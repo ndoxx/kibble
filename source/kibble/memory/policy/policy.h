@@ -70,6 +70,13 @@ concept is_active_memory_tracking_policy = requires(T& policy, const std::string
     // clang-format on
 };
 
+template <typename AllocatorT>
+concept has_reallocate = requires(AllocatorT& allocator, void* ptr, std::size_t old_size, std::size_t new_size) {
+    // clang-format off
+    { allocator.reallocate(ptr, old_size, new_size) } -> std::same_as<void*>;
+    // clang-format on
+};
+
 template <typename T>
 struct BoundsCheckerSentinelSize
 {

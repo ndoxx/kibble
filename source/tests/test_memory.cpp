@@ -10,15 +10,16 @@
 #include <vector>
 
 #include "assert/assert.h"
-#include "memory/allocator/tlsf/impl/bit.h"
 #include "memory/allocator/linear_allocator.h"
 #include "memory/allocator/pool_allocator.h"
+#include "memory/allocator/tlsf/impl/bit.h"
 #include "memory/allocator/tlsf_allocator.h"
 #include "memory/arena.h"
 #include "memory/heap_area.h"
 #include "memory/linear_buffer.h"
 #include "memory/policy/bounds_checking_simple.h"
 #include "memory/policy/memory_tracking_simple.h"
+#include "memory/policy/memory_tracking_verbose.h"
 #include "memory/util/literals.h"
 #include "string/string.h"
 
@@ -63,6 +64,15 @@ struct NonPOD
     uint32_t c;
     uint32_t* data;
 };
+
+template <typename T>
+void check_arrays_equal(T* array1, T* array2, size_t N)
+{
+    std::vector<T> vec1(array1, array1 + N);
+    std::vector<T> vec2(array2, array2 + N);
+
+    REQUIRE(vec1 == vec2);
+}
 
 #ifdef K_DEBUG
 using LinArena =
@@ -451,6 +461,24 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem
     check_integrity();
 }
 
+TEST_CASE_METHOD(TLSFArenaFixture, "multiple allocations / deallocations", "[mem]")
+{
+    uint32_t* some_int = K_NEW(uint32_t, arena);
+    POD* some_pod = K_NEW(POD, arena);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{some_int, sizeof(uint32_t), k_offset_single}, {some_pod, sizeof(POD), k_offset_single}});
+
+    // Check alignment
+    REQUIRE(size_t(some_int) % 8 == 0);
+    REQUIRE(size_t(some_pod) % alignof(POD) == 0);
+
+    K_DELETE(some_int, arena);
+    K_DELETE(some_pod, arena);
+    check_integrity();
+}
+
 TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[mem]")
 {
     POD* p1 = K_NEW(POD, arena);
@@ -530,6 +558,86 @@ TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem]
     check_allocations({{pod_array, N * sizeof(POD), k_offset_single}});
 
     K_DELETE_ARRAY(pod_array, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is free", "[mem]")
+{
+    auto& allocator = arena.get_allocator();
+
+    constexpr size_t N1 = 16;
+    constexpr size_t N2 = 128;
+
+    std::byte* data = static_cast<std::byte*>(allocator.allocate(N1, alignof(std::byte), 0));
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{data, N1 * sizeof(std::byte), 0}});
+
+    for (size_t ii = 0; ii < N1; ++ii)
+    {
+        data[ii] = std::byte(ii);
+    }
+
+    data = static_cast<std::byte*>(allocator.reallocate(data, N2, alignof(std::byte), 0));
+    // display_pool();
+    check_allocations({{data, N2 * sizeof(std::byte), 0}});
+
+    for (size_t ii = N1; ii < N2; ++ii)
+    {
+        data[ii] = std::byte(ii);
+    }
+
+    // check data
+    std::byte expected[N2];
+    for (size_t ii = 0; ii < N2; ++ii)
+    {
+        expected[ii] = std::byte(ii);
+    }
+    check_arrays_equal(data, expected, N2);
+
+    allocator.deallocate(data);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is used", "[mem]")
+{
+    auto& allocator = arena.get_allocator();
+
+    constexpr size_t N1 = 16;
+    constexpr size_t N2 = 128;
+
+    std::byte* data = static_cast<std::byte*>(allocator.allocate(N1, alignof(std::byte), 0));
+    POD* pod = K_NEW(POD, arena);
+    check_integrity();
+
+    // display_pool();
+    check_allocations({{data, N1 * sizeof(std::byte), 0}, {pod, sizeof(POD), k_offset_single}});
+
+    for (size_t ii = 0; ii < N1; ++ii)
+    {
+        data[ii] = std::byte(ii);
+    }
+
+    data = static_cast<std::byte*>(allocator.reallocate(data, N2, alignof(std::byte), 0));
+    // display_pool();
+    check_allocations({{data, N2 * sizeof(std::byte), 0}, {pod, sizeof(POD), k_offset_single}});
+
+    for (size_t ii = N1; ii < N2; ++ii)
+    {
+        data[ii] = std::byte(ii);
+    }
+
+    // check data
+    std::byte expected[N2];
+    for (size_t ii = 0; ii < N2; ++ii)
+    {
+        expected[ii] = std::byte(ii);
+    }
+    check_arrays_equal(data, expected, N2);
+
+    allocator.deallocate(data);
+    K_DELETE(pod, arena);
     check_integrity();
 }
 

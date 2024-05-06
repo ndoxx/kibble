@@ -67,8 +67,6 @@ public:
      * @note Passing 0 in the size argument is equivalent to calling deallocate()
      * @note Passing a null pointer is equivalent to calling allocate()
      *
-     * @todo IMPLEMENT THIS
-     *
      * @param ptr
      * @param size
      * @param alignment

@@ -291,12 +291,52 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
 
 void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset)
 {
-    K_ASSERT(false, "reallocate() is not implemented yet.", nullptr);
-    (void)ptr;
-    (void)size;
-    (void)alignment;
-    (void)offset;
-    return nullptr;
+    // Zero size means free
+    if (size == 0 && ptr == nullptr)
+    {
+        deallocate(ptr);
+        return nullptr;
+    }
+    // Requests with null pointers are treated as allocations
+    else if (ptr == nullptr)
+    {
+        return allocate(size, alignment, offset);
+    }
+    else
+    {
+        BlockHeader* block = BlockHeader::from_void_ptr(ptr);
+        K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
+
+        BlockHeader* next = block->get_next();
+        const size_t cursize = block->block_size();
+        const size_t combined = cursize + next->block_size() + BlockHeader::k_block_header_overhead;
+        const size_t adjust = adjust_request_size(size, k_align_size);
+
+        // If next block is used or not large enough, we must reallocate and copy data
+        if (adjust > cursize && (!next->is_free() || adjust > combined))
+        {
+            void* newptr = allocate(size, alignment, offset);
+            if (newptr)
+            {
+                std::memcpy(newptr, ptr, std::min(cursize, size));
+                deallocate(ptr);
+            }
+            return newptr;
+        }
+        else
+        {
+            // Do we need to expand to the next block?
+            if (adjust > cursize)
+            {
+                control_->merge_next(block);
+                block->mark_as_used();
+            }
+
+            // Trim resulting block and return original pointer
+            control_->trim_used(block, adjust);
+            return ptr;
+        }
+    }
 }
 
 void TLSFAllocator::deallocate(void* ptr)
