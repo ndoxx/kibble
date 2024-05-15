@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../assert/assert.h"
+#include "barrier.h"
 #include "config.h"
 #include "job_graph.h"
 
@@ -97,7 +98,7 @@ public:
  * @brief Represents some amount of work to execute.
  *
  */
-struct alignas(kb::memory::k_cache_line_size) Job
+struct L1_ALIGN Job
 {
     using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
 
@@ -107,6 +108,8 @@ struct alignas(kb::memory::k_cache_line_size) Job
     JobKernel kernel = JobKernel{};
     /// If true, job will not be returned to the pool once finished
     bool keep_alive = false;
+    /// Barrier ID for this job and its dependents
+    uint64_t barrier_id{0};
     /// Dependency information and shared state
     JobNode node;
 
@@ -275,6 +278,23 @@ public:
     }
 
     /**
+     * @brief Create a barrier to wait on multiple jobs
+     *
+     * @param name
+     * @return uint64_t Barrier ID is just a hash for the name
+     */
+    uint64_t create_barrier(const std::string& unique_name);
+
+    /// @brief Destroy a barrier
+    void destroy_barrier(uint64_t id);
+
+    /// @brief Get barrier by ID
+    Barrier& get_barrier(uint64_t id)
+    {
+        return barriers_.at(id);
+    }
+
+    /**
      * @brief Create a task
      *
      * @tparam FuncT type of the function to execute
@@ -322,6 +342,17 @@ public:
     inline void wait(std::function<bool()> condition = []() { return true; })
     {
         wait_until([this, &condition]() { return is_busy() && condition(); });
+    }
+
+    /**
+     * @brief Hold execution on this thread until all jobs under specified barrier (and its dependents) are processed.
+     * 
+     * @param barrier_id 
+     */
+    inline void wait_on_barrier(uint64_t barrier_id)
+    {
+        const auto& barrier = get_barrier(barrier_id);
+        wait_until([&barrier]() { return !barrier.finished(); });
     }
 
     /// Get the list of workers (non-const).
@@ -456,8 +487,7 @@ private:
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
      * a timeout functionality.
      */
-    inline void wait_for(
-        Job* job, std::function<bool()> condition = []() { return true; })
+    inline void wait_for(Job* job, std::function<bool()> condition = []() { return true; })
     {
         wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
     }
@@ -480,6 +510,7 @@ private:
     std::unique_ptr<Monitor> monitor_;
     std::shared_ptr<SharedState> ss_;
     std::unordered_map<std::thread::id, tid_t> thread_ids_;
+    std::unordered_map<uint64_t, Barrier> barriers_;
     InstrumentationSession* instrumentor_ = nullptr;
     const kb::log::Channel* log_channel_ = nullptr;
 };
@@ -563,6 +594,16 @@ public:
     inline void add_parent(const Task& task)
     {
         job_->add_parent(task.job_);
+    }
+
+    /**
+     * @brief Set a barrier ID for this task and its dependents
+     *
+     * @param id
+     */
+    inline void set_barrier(uint64_t id)
+    {
+        job_->barrier_id = id;
     }
 
 private:

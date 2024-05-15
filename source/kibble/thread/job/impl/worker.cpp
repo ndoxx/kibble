@@ -4,7 +4,6 @@
 #include "thread/job/job_system.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
-#include <iostream>
 
 namespace kb::th
 {
@@ -140,8 +139,15 @@ void WorkerThread::process(Job* job)
     job->mark_processed();
     schedule_children(job);
 
+    if (job->barrier_id != 0)
+    {
+        js_.get_barrier(job->barrier_id).remove_job();
+    }
+
     if (!job->keep_alive)
+    {
         js_.release_job(job);
+    }
 
     ss_.pending.fetch_sub(1, std::memory_order_release);
 }
@@ -157,6 +163,8 @@ void WorkerThread::schedule_children(Job* job)
         */
         if (child->is_ready() && child->mark_scheduled())
         {
+            // Add child to parent's barrier (if any)
+            child->barrier_id = job->barrier_id;
             // Thread-safe call as long as the scheduler implementation is thread-safe
             js_.schedule(child);
 #ifdef K_USE_JOB_SYSTEM_PROFILING

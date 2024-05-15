@@ -4,7 +4,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <random>
 #include <thread>
 
 namespace kb::th
@@ -33,11 +32,11 @@ struct JobMetadata;
 struct SharedState
 {
     /// Number of tasks left
-    L1_ALIGN std::atomic<uint64_t> pending = {0};
+    L1_ALIGN std::atomic<uint64_t> pending{0};
     /// Flag to signal workers when they should stop and join
-    L1_ALIGN std::atomic<bool> running = {true};
+    L1_ALIGN std::atomic<bool> running{true};
     /// Memory arena to store job structures (page aligned)
-    L1_ALIGN std::shared_ptr<JobPoolArena> job_pool = nullptr;
+    L1_ALIGN std::shared_ptr<JobPoolArena> job_pool{nullptr};
     /// To wake worker threads
     L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle

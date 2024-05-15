@@ -1,4 +1,6 @@
 #include "thread/job/job_system.h"
+#include "assert/assert.h"
+#include "hash/hash.h"
 #include "logger2/logger.h"
 #include "math/constexpr_math.h"
 #include "thread/job/impl/monitor.h"
@@ -8,6 +10,7 @@
 
 #include "fmt/std.h"
 #include <thread>
+#include <tuple>
 
 namespace kb
 {
@@ -115,6 +118,19 @@ void JobSystem::shutdown()
     klog(log_channel_).uid("JobSystem").info("Shutdown complete.");
 }
 
+uint64_t JobSystem::create_barrier(const std::string& unique_name)
+{
+    hash_t hname = H_(unique_name);
+    K_ASSERT(barriers_.find(hname) == barriers_.end(), "Duplicate barrier name.", log_channel_).watch(unique_name);
+    barriers_.emplace(std::piecewise_construct, std::forward_as_tuple(hname), std::forward_as_tuple());
+    return hname;
+}
+
+void JobSystem::destroy_barrier(uint64_t id)
+{
+    barriers_.erase(id);
+}
+
 Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
@@ -144,6 +160,12 @@ void JobSystem::schedule(Job* job)
 
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
+
+    // Setup barrier if any
+    if (job->barrier_id != 0)
+    {
+        get_barrier(job->barrier_id).add_job();
+    }
 
     // Increment job count, dispatch and wake up workers
     ss_->pending.fetch_add(1, std::memory_order_release);

@@ -12,14 +12,12 @@
 #include "time/clock.h"
 #include "time/instrumentation.h"
 
+#include "fmt/color.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include "fmt/std.h"
-#include <iterator>
 #include <numeric>
 #include <random>
-#include <regex>
 #include <string>
 #include <vector>
 
@@ -70,8 +68,8 @@ void show_statistics(milliClock& clk, long serial_dur_ms, const kb::log::Channel
  *
  * @param nexp number of experiments
  * @param nloads number of loading tasks
- * @param scheme job system configuration
- * @param area initialized memory area
+ * @param js job system instance
+ * @param chan logger channel
  * @return int
  */
 int p0(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& chan)
@@ -136,8 +134,8 @@ int p0(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& ch
  * @brief Here we throw exceptions from job kernels and check that all is fine.
  *
  * @param ntasks number of jobs
- * @param minload use minimum load scheduler
- * @param disable_work_stealing
+ * @param js job system instance
+ * @param chan logger channel
  * @return int
  */
 int p1(size_t ntasks, th::JobSystem& js, const kb::log::Channel& chan)
@@ -189,8 +187,8 @@ int p1(size_t ntasks, th::JobSystem& js, const kb::log::Channel& chan)
  *
  * @param nexp number of experiments
  * @param nloads number of loading tasks
- * @param scheme job system configuration
- * @param area initialized memory area
+ * @param js job system instance
+ * @param chan logger channel
  * @return int
  */
 int p2(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& chan)
@@ -295,14 +293,14 @@ int p2(size_t nexp, size_t nloads, th::JobSystem& js, const kb::log::Channel& ch
  *                                         /   \
  *                                       A       D
  *                                         \   /
- *                                           D
+ *                                           C
  * So job 'A' needs to be executed first, then jobs 'B' and 'C' can run in parallel, and job
  * 'D' waits for both 'B' and 'C' to complete before it can run.
  *
  * @param nexp number of experiments
  * @param ngraphs number of loading jobs
- * @param scheme job system configuration
- * @param area initialized memory area
+ * @param js job system instance
+ * @param chan logger channel
  * @return int
  */
 int p3(size_t nexp, size_t ngraphs, th::JobSystem& js, const kb::log::Channel& chan)
@@ -368,6 +366,111 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem& js, const kb::log::Channel& c
     return 0;
 }
 
+/**
+ * @brief In this example we demonstrate the use of barriers to create sync-points for a group of jobs.
+ * We'll launch two groups of tasks, say update and render tasks, plus a few unrelated tasks in between.
+ * Sometimes, update tasks will schedule a child job.
+ * We'll then wait on the update and render barriers to ensure that the update and render tasks have completed.
+ * You should see no update task message after the update barrier, and render task message after the render barrier.
+ *
+ * @param nexp number of experiments
+ * @param njobs number of jobs
+ * @param js job system instance
+ * @param chan logger channel
+ * @return int
+ */
+int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& chan)
+{
+    klog(chan).info("[JobSystem Example 4] barriers");
+
+    std::vector<long> load_time(njobs, 0l);
+    random_fill(load_time.begin(), load_time.end(), 1l, 50l, 42);
+
+    // Barriers must be created up front, in main thread only
+    auto update_barrier = js.create_barrier("update");
+    auto render_barrier = js.create_barrier("render");
+
+    // Helper lambda to spawn a few unrelated tasks here and there
+    auto spawn_unrelated_tasks = [&chan, &js](size_t num) {
+        for (size_t ii = 0; ii < num; ++ii)
+        {
+            th::JobMetadata meta(th::WORKER_AFFINITY_ANY, "Unrelated");
+
+            auto&& [tsk, fut] = js.create_task(std::move(meta), [&chan]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                klog(chan).debug("{}", fmt::styled("Unrelated", fmt::fg(fmt::color::blue_violet)));
+            });
+
+            tsk.schedule();
+        }
+    };
+
+    for (size_t kk = 0; kk < nexp; ++kk)
+    {
+        klog(chan).info("Round #{}", kk);
+
+        spawn_unrelated_tasks(5);
+
+        for (size_t ii = 0; ii < njobs; ++ii)
+        {
+            th::JobMetadata meta((ii < 70 ? th::WORKER_AFFINITY_ASYNC : th::WORKER_AFFINITY_ANY), "Update");
+
+            auto&& [tsk, fut] = js.create_task(std::move(meta), [&load_time, &chan, ii]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+                klog(chan).debug("{} #{}", fmt::styled("Update", fmt::fg(fmt::color::yellow)), ii);
+            });
+
+            // Set up barrier: we'll be able to wait on it later on
+            tsk.set_barrier(update_barrier);
+
+            // Sometimes, add a child task
+            if (ii % 3 == 0)
+            {
+                auto&& [child_tsk, child_fut] =
+                    js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "Update"), [&load_time, &chan, ii]() {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
+                        klog(chan).debug("{} #{} (Child)", fmt::styled("Update", fmt::fg(fmt::color::yellow)), ii);
+                    });
+                // The child will inherit the update barrier automatically when it's scheduled
+                tsk.add_child(child_tsk);
+            }
+
+            tsk.schedule();
+        }
+
+        spawn_unrelated_tasks(5);
+
+        js.wait_on_barrier(update_barrier);
+        klog(chan).info("Update sync-point reached");
+
+        spawn_unrelated_tasks(5);
+
+        for (size_t ii = 0; ii < njobs; ++ii)
+        {
+            th::JobMetadata meta(th::WORKER_AFFINITY_ANY, "Render");
+
+            auto&& [tsk, fut] = js.create_task(std::move(meta), [&load_time, &chan, ii]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii] * 10));
+                klog(chan).debug("{} #{}", fmt::styled("Render", fmt::fg(fmt::color::green)), ii);
+            });
+
+            tsk.set_barrier(render_barrier);
+            tsk.schedule();
+        }
+
+        spawn_unrelated_tasks(20);
+
+        js.wait_on_barrier(render_barrier);
+        klog(chan).info("Render sync-point reached");
+    }
+    js.wait();
+
+    js.destroy_barrier(update_barrier);
+    js.destroy_barrier(render_barrier);
+
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
@@ -419,6 +522,7 @@ int main(int argc, char** argv)
         case 1: ret = p1(njob, *js, chan_kibble); break;
         case 2: ret = p2(nexp, njob, *js, chan_kibble); break;
         case 3: ret = p3(nexp, njob, *js, chan_kibble); break;
+        case 4: ret = p4(nexp, njob, *js, chan_kibble); break;
         default: 
         {
             klog(chan_kibble).warn("Unknown example: {}", ex());
