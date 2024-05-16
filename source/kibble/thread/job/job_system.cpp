@@ -139,7 +139,7 @@ barrier_t JobSystem::create_barrier()
     for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
     {
         bool expected{false};
-        if (barriers_[id].is_used_exchange(expected, true))
+        if (barriers_[id].mark_used(expected, true))
         {
             return id;
         }
@@ -157,7 +157,7 @@ void JobSystem::destroy_barrier(barrier_t id)
     K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
     // Mark barrier as unused
     bool expected{true};
-    barrier.is_used_exchange(expected, false);
+    barrier.mark_used(expected, false);
     K_ASSERT(expected, "Tried to destroy unused barrier.", log_channel_);
 }
 

@@ -282,15 +282,28 @@ public:
     /**
      * @brief Create a barrier to wait on multiple jobs
      *
-     * @param name
-     * @return uint64_t Barrier ID is just a hash for the name
+     * @note The barrier is already allocated by the system during construction,
+     * this function simply marks it as used.
+     *
+     * @return barrier_t Barrier ID
      */
     barrier_t create_barrier();
 
-    /// @brief Destroy a barrier
+    /**
+     * @brief Destroy a barrier
+     *
+     * @note The barrier will be physically deallocated on system destruction,
+     * this function simply marks it as unused.
+     *
+     * @param id Barrier ID
+     */
     void destroy_barrier(barrier_t id);
 
-    /// @brief Get barrier by ID
+    /**
+     * @brief Get barrier object by ID
+     *
+     * @param id Barrier ID
+     */
     Barrier& get_barrier(barrier_t id);
 
     /**
@@ -576,8 +589,9 @@ public:
     /**
      * @brief Add a job that can only be executed once this job was processed.
      *
+     * @note The child job will automatically inherit the barrier ID of this job.
+     *
      * @param task the child to add.
-     * @tparam U future data type of the child job.
      */
     inline void add_child(const Task& task)
     {
@@ -587,8 +601,9 @@ public:
     /**
      * @brief Make this task dependent on another one.
      *
+     * @note This job will automatically inherit the barrier ID of the parent.
+     *
      * @param task the parent to add.
-     * @tparam U future data type of the parent job.
      */
     inline void add_parent(const Task& task)
     {
@@ -596,7 +611,7 @@ public:
     }
 
     /**
-     * @brief Set a barrier ID for this task and its dependents
+     * @brief Set a barrier ID for this job and its dependents
      *
      * @param id
      */
@@ -606,6 +621,19 @@ public:
     }
 
 private:
+    /**
+     * @internal
+     * @brief Construct a new Task
+     *
+     * @tparam FuncT type of function to execute
+     * @tparam PromiseT promise type
+     * @tparam ArgsT kernel arguments pack
+     * @param js job system instance
+     * @param meta job metadata
+     * @param func function to execute
+     * @param promise promise to store the result
+     * @param args kernel arguments
+     */
     template <typename FuncT, typename PromiseT, typename... ArgsT>
     Task(JobSystem* js, JobMetadata&& meta, FuncT&& func, PromiseT&& promise, ArgsT&&... args) : js_(js)
     {
