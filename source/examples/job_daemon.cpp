@@ -8,17 +8,11 @@
 #include "logger2/sinks/console_sink.h"
 #include "math/color_table.h"
 #include "memory/heap_area.h"
-#include "thread/job/config.h"
 #include "thread/job/daemon.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
-
-#include <algorithm>
 #include <array>
-#include <atomic>
-#include <random>
-#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -60,7 +54,7 @@ int main(int argc, char** argv)
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    memory::HeapArea area(th::JobSystem::get_memory_requirements());
+    memory::HeapArea area(th::JobSystem::get_memory_requirements(scheme));
 
     auto* js = new th::JobSystem(area, scheme, &chan_thread);
     auto* ds = new th::DaemonScheduler(*js);

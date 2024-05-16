@@ -86,6 +86,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - MD5 checksum computation
 * Custom assertion
     - More helpful assert macro, user can debug break / continue / print stack trace / exit
+    - Optional coupling with a logger channel
     - Formatted assertion message strings
 * Profiling utility
     - Easily profile execution time
@@ -106,7 +107,8 @@ This library is under heavy development, and the API is subject to change. Use a
     - Launch multiple worker threads and execute tasks asynchronously
     - Lock-free
     - Work stealing scheme for load balancing
-    - Dependency graph
+    - Dependency graphs
+    - Barrier synchronization
     - Worker affinity
     - Recurring tasks
     - Task monitoring and profiling (using the profiling utility)
@@ -132,6 +134,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Statistics class (useful for profiling)
     - Colors: multiple representations (RGBA, HSLA, CIELab, 32b ARGB) and conversion algorithms,
       multiple color difference algorithms...
+    - Morton encoding / decoding
 * Mathematical optimization and graph algorithms
     - Generic stochastic descent optimizer with FDSA / SPSA support
     - Generic A* search implementation
@@ -147,6 +150,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Compile-time type name and type ID (as a name hash)
 * Memory arena system
     - Fast custom allocators (linear, pool, atomic pool, TLSF)
+    - Policy-based memory sanitization
 * Basic TCP socket abstraction
     - Simple Berkeley socket wrapper using the Stream / Acceptor / Connector model
 * A precision chronometer with a simple interface
@@ -157,7 +161,9 @@ This library is under heavy development, and the API is subject to change. Use a
 
 ## Deprecated components
 
-The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
+- The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
+
+- The config system will be redone at some point, its use is discouraged.
 
 
 <!-- GETTING STARTED -->

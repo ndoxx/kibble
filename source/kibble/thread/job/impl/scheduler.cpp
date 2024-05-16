@@ -5,7 +5,6 @@
 #include "thread/job/job_system.h"
 
 #include <algorithm>
-#include <limits>
 
 namespace kb
 {

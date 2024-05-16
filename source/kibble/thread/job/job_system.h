@@ -1,12 +1,14 @@
 #pragma once
 
 #include "../../assert/assert.h"
+#include "../../memory/allocator/linear_allocator.h"
+#include "../../memory/arena.h"
+#include "barrier.h"
 #include "config.h"
 #include "job_graph.h"
 
 #include <future>
 #include <unordered_map>
-#include <vector>
 
 namespace kb::log
 {
@@ -97,7 +99,7 @@ public:
  * @brief Represents some amount of work to execute.
  *
  */
-struct alignas(kb::memory::k_cache_line_size) Job
+struct L1_ALIGN Job
 {
     using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
 
@@ -107,6 +109,8 @@ struct alignas(kb::memory::k_cache_line_size) Job
     JobKernel kernel = JobKernel{};
     /// If true, job will not be returned to the pool once finished
     bool keep_alive = false;
+    /// Barrier ID for this job and its dependents
+    barrier_t barrier_id{k_no_barrier};
     /// Dependency information and shared state
     JobNode node;
 
@@ -210,6 +214,8 @@ struct JobSystemScheme
     size_t max_workers = 0;
     /// Maximum number of stealing attempts before moving to the next worker
     size_t max_stealing_attempts = 16;
+    /// Maximum number of barriers
+    size_t max_barriers = 16;
 };
 
 struct SharedState;
@@ -238,7 +244,7 @@ public:
      *
      * @return size_t Minimal size in bytes to allocate in a memory::HeapArea.
      */
-    static size_t get_memory_requirements();
+    static size_t get_memory_requirements(const JobSystemScheme& scheme);
 
     /**
      * @brief Construct a new Job System.
@@ -273,6 +279,33 @@ public:
     {
         instrumentor_ = session;
     }
+
+    /**
+     * @brief Create a barrier to wait on multiple jobs
+     *
+     * @note The barrier is already allocated by the system during construction,
+     * this function simply marks it as used.
+     *
+     * @return barrier_t Barrier ID
+     */
+    barrier_t create_barrier();
+
+    /**
+     * @brief Destroy a barrier
+     *
+     * @note The barrier will be physically deallocated on system destruction,
+     * this function simply marks it as unused.
+     *
+     * @param id Barrier ID
+     */
+    void destroy_barrier(barrier_t id);
+
+    /**
+     * @brief Get barrier object by ID
+     *
+     * @param id Barrier ID
+     */
+    Barrier& get_barrier(barrier_t id);
 
     /**
      * @brief Create a task
@@ -324,6 +357,17 @@ public:
         wait_until([this, &condition]() { return is_busy() && condition(); });
     }
 
+    /**
+     * @brief Hold execution on this thread until all jobs under specified barrier (and its dependents) are processed.
+     *
+     * @param barrier_id
+     */
+    inline void wait_on_barrier(uint64_t barrier_id)
+    {
+        const auto& barrier = get_barrier(barrier_id);
+        wait_until([&barrier]() { return !barrier.finished(); });
+    }
+
     /// Get the list of workers (non-const).
     inline auto& get_workers()
     {
@@ -355,16 +399,10 @@ public:
     }
 
     /// Get the worker at input index (non-const).
-    inline auto& get_worker(size_t idx)
-    {
-        return *workers_[idx];
-    }
+    WorkerThread& get_worker(size_t idx);
 
     /// Get the worker at input index (const).
-    inline const auto& get_worker(size_t idx) const
-    {
-        return *workers_[idx];
-    }
+    const WorkerThread& get_worker(size_t idx) const;
 
     /// Get the monitor (non-const).
     inline auto& get_monitor()
@@ -376,18 +414,6 @@ public:
     inline const auto& get_monitor() const
     {
         return *monitor_;
-    }
-
-    /// Get the shared state (non-const).
-    inline auto& get_shared_state()
-    {
-        return *ss_;
-    }
-
-    /// Get the shared state (const).
-    inline const auto& get_shared_state() const
-    {
-        return *ss_;
     }
 
     /// Get the tid of the current thread.
@@ -456,8 +482,7 @@ private:
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
      * a timeout functionality.
      */
-    inline void wait_for(
-        Job* job, std::function<bool()> condition = []() { return true; })
+    inline void wait_for(Job* job, std::function<bool()> condition = []() { return true; })
     {
         wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
     }
@@ -472,14 +497,20 @@ private:
     bool is_work_done(Job* job) const;
 
 private:
+    using JobSystemArena =
+        memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                            memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
+    std::unordered_map<std::thread::id, tid_t> thread_ids_;
     JobSystemScheme scheme_;
-    std::vector<std::unique_ptr<WorkerThread>> workers_;
+    JobSystemArena arena_;
+    std::unique_ptr<SharedState> ss_;
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<Monitor> monitor_;
-    std::shared_ptr<SharedState> ss_;
-    std::unordered_map<std::thread::id, tid_t> thread_ids_;
+    Barrier* barriers_;
+    WorkerThread* workers_;
     InstrumentationSession* instrumentor_ = nullptr;
     const kb::log::Channel* log_channel_ = nullptr;
 };
@@ -546,8 +577,9 @@ public:
     /**
      * @brief Add a job that can only be executed once this job was processed.
      *
+     * @note The child job will automatically inherit the barrier ID of this job.
+     *
      * @param task the child to add.
-     * @tparam U future data type of the child job.
      */
     inline void add_child(const Task& task)
     {
@@ -557,15 +589,39 @@ public:
     /**
      * @brief Make this task dependent on another one.
      *
+     * @note This job will automatically inherit the barrier ID of the parent.
+     *
      * @param task the parent to add.
-     * @tparam U future data type of the parent job.
      */
     inline void add_parent(const Task& task)
     {
         job_->add_parent(task.job_);
     }
 
+    /**
+     * @brief Set a barrier ID for this job and its dependents
+     *
+     * @param id
+     */
+    inline void set_barrier(uint64_t id)
+    {
+        job_->barrier_id = id;
+    }
+
 private:
+    /**
+     * @internal
+     * @brief Construct a new Task
+     *
+     * @tparam FuncT type of function to execute
+     * @tparam PromiseT promise type
+     * @tparam ArgsT kernel arguments pack
+     * @param js job system instance
+     * @param meta job metadata
+     * @param func function to execute
+     * @param promise promise to store the result
+     * @param args kernel arguments
+     */
     template <typename FuncT, typename PromiseT, typename... ArgsT>
     Task(JobSystem* js, JobMetadata&& meta, FuncT&& func, PromiseT&& promise, ArgsT&&... args) : js_(js)
     {

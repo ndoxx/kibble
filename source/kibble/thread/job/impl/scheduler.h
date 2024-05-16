@@ -3,7 +3,6 @@
 #include "memory/util/alignment.h"
 #include "thread/job/config.h"
 #include <array>
-#include <cstdint>
 
 namespace kb
 {

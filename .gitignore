@@ -13,3 +13,4 @@ source/vendor/tmp/
 kibble.sublime-workspace
 workspace.code-workspace
 NOTES.md
+.cache/

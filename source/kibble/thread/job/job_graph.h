@@ -3,7 +3,6 @@
 #include "../../memory/util/alignment.h"
 #include <array>
 #include <atomic>
-#include <cstdint>
 #include <stdexcept>
 
 namespace kb

@@ -2,13 +2,10 @@
 #include "logger2/formatters/powerline_terminal_formatter.h"
 #include "logger2/formatters/vscode_terminal_formatter.h"
 #include "logger2/logger.h"
-#include "logger2/policies/stack_trace_policy.h"
 #include "logger2/sinks/console_sink.h"
-#include "logger2/sinks/file_sink.h"
 #include "math/color_table.h"
 #include "memory/heap_area.h"
 #include "thread/job/job_system.h"
-#include "time/instrumentation.h"
 
 #include <csignal>
 #include <iostream>
@@ -68,7 +65,7 @@ int main(int argc, char** argv)
     auto console_sink = std::make_shared<ConsoleSink>();
     console_sink->set_formatter(console_formatter);
 
-    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements());
+    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements({}));
 
     Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::aquamarine);
     chan_thread.attach_sink(console_sink);

@@ -4,24 +4,26 @@
 #include "thread/job/job_system.h"
 #include "time/clock.h"
 #include "time/instrumentation.h"
-#include <iostream>
 
 namespace kb::th
 {
 
-WorkerThread::WorkerThread(const WorkerProperties& props, JobSystem& jobsys)
-    : props_(props), js_(jobsys), ss_(js_.get_shared_state())
+SharedState::SharedState(memory::HeapArea& area) : job_pool("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size)
 {
+}
+
+void WorkerThread::spawn(JobSystem* js, SharedState* ss, const WorkerProperties& props)
+{
+    js_ = js;
+    ss_ = ss;
+    props_ = props;
 #ifdef K_USE_JOB_SYSTEM_PROFILING
     activity_.tid = props_.tid;
 #endif
-}
 
-void WorkerThread::spawn()
-{
     // Generate list of stealable workers
     // Make sure that this worker cannot steal from itself
-    for (tid_t tid = 0; tid < js_.get_threads_count(); ++tid)
+    for (tid_t tid = 0; tid < js_->get_threads_count(); ++tid)
         if (props_.tid != tid)
             stealable_workers_.push_back(tid);
 
@@ -47,7 +49,7 @@ void WorkerThread::run()
 {
     K_ASSERT(is_background(), "run() should not be called in the main thread.", nullptr);
 
-    while (ss_.running.load(std::memory_order_acquire))
+    while (ss_->running.load(std::memory_order_acquire))
     {
         state_.store(State::Running, std::memory_order_release);
 
@@ -62,7 +64,7 @@ void WorkerThread::run()
 #ifdef K_USE_JOB_SYSTEM_PROFILING
         microClock clk;
 #endif
-        std::unique_lock<std::mutex> lock(ss_.wake_mutex);
+        std::unique_lock<std::mutex> lock(ss_->wake_mutex);
         /*
             The first condition in passed lambda avoids a possible deadlock, where a worker can
             go to sleep with a non-empty queue and never wakes up, while the main thread waits for
@@ -70,11 +72,12 @@ void WorkerThread::run()
             The second condition forces workers to wake up when the job system shuts down.
             This avoids another deadlock on exit.
         */
-        ss_.cv_wake.wait(lock, [this]() { return had_pending_jobs() || !ss_.running.load(std::memory_order_acquire); });
+        ss_->cv_wake.wait(lock,
+                          [this]() { return had_pending_jobs() || !ss_->running.load(std::memory_order_acquire); });
 
 #ifdef K_USE_JOB_SYSTEM_PROFILING
         activity_.idle_time_us += clk.get_elapsed_time().count();
-        js_.get_monitor().report_thread_activity(activity_);
+        js_->get_monitor().report_thread_activity(activity_);
         activity_.reset();
 #endif
     }
@@ -95,7 +98,7 @@ bool WorkerThread::steal_job(Job*& job)
 {
     for (size_t jj = 0; jj < props_.max_stealing_attempts; ++jj)
     {
-        auto& worker = js_.get_worker(rr_next());
+        auto& worker = js_->get_worker(rr_next());
         ANNOTATE_HAPPENS_AFTER(&worker.queues_[Q_PUBLIC]); // Avoid false positives with TSan
         if (worker.queues_[Q_PUBLIC].try_pop(job))
         {
@@ -125,14 +128,14 @@ void WorkerThread::process(Job* job)
     ++activity_.executed;
 
     // If an instrumentation session exists, push profile for this job
-    if (auto* instr = js_.get_instrumentation_session())
+    if (auto* instr = js_->get_instrumentation_session())
     {
         ProfileResult result;
         result.name = job->meta.name;
         result.category = "task";
         result.start = start_us;
         result.end = stop_us;
-        result.thread_id = js_.this_thread_id();
+        result.thread_id = js_->this_thread_id();
         instr->push(result);
     }
 #endif
@@ -140,10 +143,17 @@ void WorkerThread::process(Job* job)
     job->mark_processed();
     schedule_children(job);
 
-    if (!job->keep_alive)
-        js_.release_job(job);
+    if (job->barrier_id != k_no_barrier)
+    {
+        js_->get_barrier(job->barrier_id).remove_dependency();
+    }
 
-    ss_.pending.fetch_sub(1, std::memory_order_release);
+    if (!job->keep_alive)
+    {
+        js_->release_job(job);
+    }
+
+    ss_->pending.fetch_sub(1, std::memory_order_release);
 }
 
 void WorkerThread::schedule_children(Job* job)
@@ -157,8 +167,10 @@ void WorkerThread::schedule_children(Job* job)
         */
         if (child->is_ready() && child->mark_scheduled())
         {
+            // Add child to parent's barrier (if any)
+            child->barrier_id = job->barrier_id;
             // Thread-safe call as long as the scheduler implementation is thread-safe
-            js_.schedule(child);
+            js_->schedule(child);
 #ifdef K_USE_JOB_SYSTEM_PROFILING
             ++activity_.scheduled;
 #endif
