@@ -4,6 +4,7 @@
 #include "job_system.h"
 #include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 namespace kb
 {

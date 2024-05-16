@@ -509,7 +509,7 @@ int main(int argc, char** argv)
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    memory::HeapArea area(th::JobSystem::get_memory_requirements(), &chan_memory);
+    memory::HeapArea area(th::JobSystem::get_memory_requirements(scheme), &chan_memory);
 
     auto* js = new th::JobSystem(area, scheme, &chan_thread);
     Channel::set_async(js);

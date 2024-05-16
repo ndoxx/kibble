@@ -1,13 +1,14 @@
 #pragma once
 
 #include "../../assert/assert.h"
+#include "../../memory/allocator/linear_allocator.h"
+#include "../../memory/arena.h"
 #include "barrier.h"
 #include "config.h"
 #include "job_graph.h"
 
 #include <future>
 #include <unordered_map>
-#include <vector>
 
 namespace kb::log
 {
@@ -243,7 +244,7 @@ public:
      *
      * @return size_t Minimal size in bytes to allocate in a memory::HeapArea.
      */
-    static size_t get_memory_requirements();
+    static size_t get_memory_requirements(const JobSystemScheme& scheme);
 
     /**
      * @brief Construct a new Job System.
@@ -398,16 +399,10 @@ public:
     }
 
     /// Get the worker at input index (non-const).
-    inline auto& get_worker(size_t idx)
-    {
-        return *workers_[idx];
-    }
+    WorkerThread& get_worker(size_t idx);
 
     /// Get the worker at input index (const).
-    inline const auto& get_worker(size_t idx) const
-    {
-        return *workers_[idx];
-    }
+    const WorkerThread& get_worker(size_t idx) const;
 
     /// Get the monitor (non-const).
     inline auto& get_monitor()
@@ -419,18 +414,6 @@ public:
     inline const auto& get_monitor() const
     {
         return *monitor_;
-    }
-
-    /// Get the shared state (non-const).
-    inline auto& get_shared_state()
-    {
-        return *ss_;
-    }
-
-    /// Get the shared state (const).
-    inline const auto& get_shared_state() const
-    {
-        return *ss_;
     }
 
     /// Get the tid of the current thread.
@@ -514,15 +497,20 @@ private:
     bool is_work_done(Job* job) const;
 
 private:
+    using JobSystemArena =
+        memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                            memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
+    std::unordered_map<std::thread::id, tid_t> thread_ids_;
     JobSystemScheme scheme_;
-    Barrier* barriers_;
-    std::vector<std::unique_ptr<WorkerThread>> workers_;
+    JobSystemArena arena_;
+    std::unique_ptr<SharedState> ss_;
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<Monitor> monitor_;
-    std::shared_ptr<SharedState> ss_;
-    std::unordered_map<std::thread::id, tid_t> thread_ids_;
+    Barrier* barriers_;
+    WorkerThread* workers_;
     InstrumentationSession* instrumentor_ = nullptr;
     const kb::log::Channel* log_channel_ = nullptr;
 };

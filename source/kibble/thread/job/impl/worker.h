@@ -31,16 +31,18 @@ struct JobMetadata;
  */
 struct SharedState
 {
+    SharedState(memory::HeapArea& area);
+
     /// Number of tasks left
     L1_ALIGN std::atomic<uint64_t> pending{0};
     /// Flag to signal workers when they should stop and join
     L1_ALIGN std::atomic<bool> running{true};
-    /// Memory arena to store job structures (page aligned)
-    L1_ALIGN std::shared_ptr<JobPoolArena> job_pool{nullptr};
     /// To wake worker threads
     L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle
     L1_ALIGN std::mutex wake_mutex;
+    /// Memory arena to store job structures (page aligned)
+    L1_ALIGN JobPoolArena job_pool;
 };
 
 class JobSystem;
@@ -79,19 +81,16 @@ public:
     static constexpr size_t Q_PUBLIC = 0;
     static constexpr size_t Q_PRIVATE = 1;
 
-    /**
-     * @brief Construct and configure a new Worker Thread.
-     *
-     * @param props properties this worker should observe
-     * @param js job system instance
-     */
-    WorkerThread(const WorkerProperties& props, JobSystem& js);
+    WorkerThread() = default;
 
     /**
      * @brief Spawn a thread for this worker.
      *
+     * @param js job system instance
+     * @param ss shared state instance
+     * @param props properties this worker should observe
      */
-    void spawn();
+    void spawn(JobSystem* js, SharedState* ss, const WorkerProperties& props);
 
     /**
      * @brief Join this worker's thread.
@@ -258,8 +257,8 @@ private:
 
 private:
     WorkerProperties props_;
-    JobSystem& js_;
-    SharedState& ss_;
+    JobSystem* js_{nullptr};
+    SharedState* ss_;
     std::atomic<State> state_;
     std::thread thread_;
 

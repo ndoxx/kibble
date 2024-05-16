@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
     // * Job system configuration, so we can use the logger in async mode
     // Here, we pass the "memory" logging channel to the HeapArea object, so it can log allocations
-    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements(), &chan_memory);
+    kb::memory::HeapArea area(kb::th::JobSystem::get_memory_requirements({}), &chan_memory);
 
     // Here, we pass the "thread" logging channel to the JobSystem object, so it can log its status
     auto* js = new kb::th::JobSystem(area, {}, &chan_thread);
