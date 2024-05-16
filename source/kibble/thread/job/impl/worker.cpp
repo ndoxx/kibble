@@ -139,9 +139,9 @@ void WorkerThread::process(Job* job)
     job->mark_processed();
     schedule_children(job);
 
-    if (job->barrier_id != 0)
+    if (job->barrier_id != k_no_barrier)
     {
-        js_.get_barrier(job->barrier_id).remove_job();
+        js_.get_barrier(job->barrier_id).remove_dependency();
     }
 
     if (!job->keep_alive)

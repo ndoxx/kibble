@@ -1,6 +1,5 @@
 #include "thread/job/job_system.h"
 #include "assert/assert.h"
-#include "hash/hash.h"
 #include "logger2/logger.h"
 #include "math/constexpr_math.h"
 #include "thread/job/impl/monitor.h"
@@ -10,7 +9,6 @@
 
 #include "fmt/std.h"
 #include <thread>
-#include <tuple>
 
 namespace kb
 {
@@ -41,6 +39,10 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
 {
     klog(log_channel_).uid("JobSystem").info("Initializing.");
 
+    // * Allocate barriers
+    barriers_ = new Barrier[scheme.max_barriers];
+
+    // * Initialize thread pool
     // Find the number of CPU cores
     CPU_cores_count_ = std::thread::hardware_concurrency();
     // Select worker count based on scheme and CPU cores
@@ -87,7 +89,16 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
 
 JobSystem::~JobSystem()
 {
+    // * Shutdown thread pool
     shutdown();
+
+    // * Destroy barriers
+    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    {
+        K_ASSERT(!barriers_[id].is_used(), "Barrier still in use.", log_channel_).watch_var__(id, "Barrier index");
+    }
+
+    delete[] barriers_;
 }
 
 void JobSystem::shutdown()
@@ -100,7 +111,9 @@ void JobSystem::shutdown()
     ss_->running.store(false, std::memory_order_release);
     ss_->cv_wake.notify_all();
     for (auto& worker : workers_)
+    {
         worker->join();
+    }
 
     // We just killed all threads, including the logger thread
     // So we must go back to sync mode
@@ -112,23 +125,46 @@ void JobSystem::shutdown()
     monitor_->update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
     for (auto& worker : workers_)
+    {
         monitor_->log_statistics(worker->get_tid(), log_channel_);
+    }
 #endif
 
     klog(log_channel_).uid("JobSystem").info("Shutdown complete.");
 }
 
-uint64_t JobSystem::create_barrier(const std::string& unique_name)
+barrier_t JobSystem::create_barrier()
 {
-    hash_t hname = H_(unique_name);
-    K_ASSERT(barriers_.find(hname) == barriers_.end(), "Duplicate barrier name.", log_channel_).watch(unique_name);
-    barriers_.emplace(std::piecewise_construct, std::forward_as_tuple(hname), std::forward_as_tuple());
-    return hname;
+    // Find first unused barrier
+    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    {
+        bool expected{false};
+        if (barriers_[id].is_used_exchange(expected, true))
+        {
+            return id;
+        }
+    }
+
+    // No unused barrier found
+    return k_no_barrier;
 }
 
-void JobSystem::destroy_barrier(uint64_t id)
+void JobSystem::destroy_barrier(barrier_t id)
 {
-    barriers_.erase(id);
+    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    Barrier& barrier = barriers_[id];
+    // Check that barrier has no pending jobs
+    K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
+    // Mark barrier as unused
+    bool expected{true};
+    barrier.is_used_exchange(expected, false);
+    K_ASSERT(expected, "Tried to destroy unused barrier.", log_channel_);
+}
+
+Barrier& JobSystem::get_barrier(barrier_t id)
+{
+    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    return barriers_[id];
 }
 
 Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
@@ -162,9 +198,9 @@ void JobSystem::schedule(Job* job)
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
 
     // Setup barrier if any
-    if (job->barrier_id != 0)
+    if (job->barrier_id != k_no_barrier)
     {
-        get_barrier(job->barrier_id).add_job();
+        get_barrier(job->barrier_id).add_dependency();
     }
 
     // Increment job count, dispatch and wake up workers

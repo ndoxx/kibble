@@ -386,10 +386,6 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
     std::vector<long> load_time(njobs, 0l);
     random_fill(load_time.begin(), load_time.end(), 1l, 50l, 42);
 
-    // Barriers must be created up front, in main thread only
-    auto update_barrier = js.create_barrier("update");
-    auto render_barrier = js.create_barrier("render");
-
     // Helper lambda to spawn a few unrelated tasks here and there
     auto spawn_unrelated_tasks = [&chan, &js](size_t num) {
         for (size_t ii = 0; ii < num; ++ii)
@@ -408,6 +404,10 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
     for (size_t kk = 0; kk < nexp; ++kk)
     {
         klog(chan).info("Round #{}", kk);
+        // Create barriers
+        // Note that we could safely create the render_barrier later on, just before adding tasks to it
+        th::barrier_t update_barrier = js.create_barrier();
+        th::barrier_t render_barrier = js.create_barrier();
 
         spawn_unrelated_tasks(5);
 
@@ -440,7 +440,10 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
 
         spawn_unrelated_tasks(5);
 
+        // Create a sync-point here, no update task can execute after it
         js.wait_on_barrier(update_barrier);
+        // Now that the update barrier has been reached, we can safely destroy it
+        js.destroy_barrier(update_barrier);
         klog(chan).info("Update sync-point reached");
 
         spawn_unrelated_tasks(5);
@@ -460,13 +463,13 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
 
         spawn_unrelated_tasks(20);
 
+        // Create a sync-point here, no render task can execute after it
         js.wait_on_barrier(render_barrier);
+        // Now that the render barrier has been reached, we can safely destroy it
+        js.destroy_barrier(render_barrier);
         klog(chan).info("Render sync-point reached");
     }
     js.wait();
-
-    js.destroy_barrier(update_barrier);
-    js.destroy_barrier(render_barrier);
 
     return 0;
 }
@@ -502,6 +505,7 @@ int main(int argc, char** argv)
     th::JobSystemScheme scheme;
     scheme.max_workers = 0;
     scheme.max_stealing_attempts = 16;
+    scheme.max_barriers = 8;
 
     // The job system needs some pre-allocated memory for the job pool.
     // Fortunately, it can evaluate the memory requirements, so we don't have to guess.

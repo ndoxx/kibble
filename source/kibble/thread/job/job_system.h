@@ -109,7 +109,7 @@ struct L1_ALIGN Job
     /// If true, job will not be returned to the pool once finished
     bool keep_alive = false;
     /// Barrier ID for this job and its dependents
-    uint64_t barrier_id{0};
+    barrier_t barrier_id{k_no_barrier};
     /// Dependency information and shared state
     JobNode node;
 
@@ -213,6 +213,8 @@ struct JobSystemScheme
     size_t max_workers = 0;
     /// Maximum number of stealing attempts before moving to the next worker
     size_t max_stealing_attempts = 16;
+    /// Maximum number of barriers
+    size_t max_barriers = 16;
 };
 
 struct SharedState;
@@ -283,16 +285,13 @@ public:
      * @param name
      * @return uint64_t Barrier ID is just a hash for the name
      */
-    uint64_t create_barrier(const std::string& unique_name);
+    barrier_t create_barrier();
 
     /// @brief Destroy a barrier
-    void destroy_barrier(uint64_t id);
+    void destroy_barrier(barrier_t id);
 
     /// @brief Get barrier by ID
-    Barrier& get_barrier(uint64_t id)
-    {
-        return barriers_.at(id);
-    }
+    Barrier& get_barrier(barrier_t id);
 
     /**
      * @brief Create a task
@@ -346,8 +345,8 @@ public:
 
     /**
      * @brief Hold execution on this thread until all jobs under specified barrier (and its dependents) are processed.
-     * 
-     * @param barrier_id 
+     *
+     * @param barrier_id
      */
     inline void wait_on_barrier(uint64_t barrier_id)
     {
@@ -505,12 +504,12 @@ private:
     size_t CPU_cores_count_ = 0;
     size_t threads_count_ = 0;
     JobSystemScheme scheme_;
+    Barrier* barriers_;
     std::vector<std::unique_ptr<WorkerThread>> workers_;
     std::unique_ptr<Scheduler> scheduler_;
     std::unique_ptr<Monitor> monitor_;
     std::shared_ptr<SharedState> ss_;
     std::unordered_map<std::thread::id, tid_t> thread_ids_;
-    std::unordered_map<uint64_t, Barrier> barriers_;
     InstrumentationSession* instrumentor_ = nullptr;
     const kb::log::Channel* log_channel_ = nullptr;
 };
