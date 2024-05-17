@@ -61,13 +61,13 @@ size_t JobSystem::get_memory_requirements(const JobSystemScheme& scheme)
 
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel)
     : arena_("JobSystemLocalArena", area, local_arena_requirements(scheme)),
-      job_pool_("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), max_barriers_(scheme.max_barriers),
+      job_pool_("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), scheme_(scheme),
       scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)), log_channel_(log_channel)
 {
     klog(log_channel_).uid("JobSystem").info("Initializing.");
 
     // * Allocate barriers
-    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, max_barriers_, arena_);
+    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, scheme_.max_barriers, arena_);
 
     // * Allocate shared state
     shared_state_ = K_NEW(SharedState, arena_);
@@ -121,7 +121,7 @@ JobSystem::~JobSystem()
     K_DELETE(shared_state_, arena_);
 
     // * Destroy barriers
-    for (barrier_t id = 0; id < max_barriers_; ++id)
+    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
     {
         K_ASSERT(!barriers_[id].is_used(), "Barrier still in use.", log_channel_).watch_var__(id, "Barrier index");
     }
@@ -164,7 +164,7 @@ void JobSystem::shutdown()
 barrier_t JobSystem::create_barrier()
 {
     // Find first unused barrier
-    for (barrier_t id = 0; id < max_barriers_; ++id)
+    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
     {
         bool expected{false};
         if (barriers_[id].mark_used(expected, true))
@@ -179,7 +179,7 @@ barrier_t JobSystem::create_barrier()
 
 void JobSystem::destroy_barrier(barrier_t id)
 {
-    K_ASSERT(id < max_barriers_, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
     Barrier& barrier = barriers_[id];
     // Check that barrier has no pending jobs
     K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
@@ -191,7 +191,7 @@ void JobSystem::destroy_barrier(barrier_t id)
 
 Barrier& JobSystem::get_barrier(barrier_t id)
 {
-    K_ASSERT(id < max_barriers_, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
     return barriers_[id];
 }
 

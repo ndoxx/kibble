@@ -393,6 +393,11 @@ public:
         return CPU_cores_count_;
     }
 
+    inline const JobSystemScheme& get_scheme() const
+    {
+        return scheme_;
+    }
+
     /// Get the worker at input index (non-const).
     WorkerThread& get_worker(size_t idx);
 
@@ -503,9 +508,9 @@ private:
     L1_ALIGN JobSystemArena arena_;
     L1_ALIGN JobPoolArena job_pool_;
 
+    JobSystemScheme scheme_;
     size_t CPU_cores_count_{0};
     size_t threads_count_{0};
-    size_t max_barriers_{0};
     std::unordered_map<std::thread::id, tid_t> thread_ids_;
     std::unique_ptr<Scheduler> scheduler_{nullptr};
     std::unique_ptr<Monitor> monitor_{nullptr};
