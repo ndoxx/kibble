@@ -24,6 +24,11 @@ void InstrumentationSession::write(const fs::path& filepath)
 {
     std::ofstream ofs(filepath);
 
+    // FIX: Global locale may have changed, we want to make sure we use the C locale,
+    // this avoids outputting float values with comma decimal separators for instance...
+    std::locale system_locale("C");
+    ofs.imbue(system_locale);
+
     // Trace Event Format:
     // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/edit
     
