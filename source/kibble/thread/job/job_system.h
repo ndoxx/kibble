@@ -538,6 +538,8 @@ class Task
 {
 public:
     friend class JobSystem;
+    
+    Task() = default;
 
     /**
      * @brief Schedule job execution.
