@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../assert/assert.h"
+#include "../../memory/allocator/atomic_pool_allocator.h"
 #include "../../memory/allocator/linear_allocator.h"
 #include "../../memory/arena.h"
 #include "barrier.h"
@@ -392,12 +393,6 @@ public:
         return CPU_cores_count_;
     }
 
-    /// Get the configuration object passed to this system at construction.
-    inline const auto& get_scheme() const
-    {
-        return scheme_;
-    }
-
     /// Get the worker at input index (non-const).
     WorkerThread& get_worker(size_t idx);
 
@@ -501,18 +496,24 @@ private:
         memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
                             memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 
-    size_t CPU_cores_count_ = 0;
-    size_t threads_count_ = 0;
+    using JobPoolArena = memory::MemoryArena<memory::AtomicPoolAllocator<k_max_jobs * k_max_threads>,
+                                             memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                                             memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
+    L1_ALIGN JobSystemArena arena_;
+    L1_ALIGN JobPoolArena job_pool_;
+
+    size_t CPU_cores_count_{0};
+    size_t threads_count_{0};
+    size_t max_barriers_{0};
     std::unordered_map<std::thread::id, tid_t> thread_ids_;
-    JobSystemScheme scheme_;
-    JobSystemArena arena_;
-    std::unique_ptr<SharedState> ss_;
-    std::unique_ptr<Scheduler> scheduler_;
-    std::unique_ptr<Monitor> monitor_;
-    Barrier* barriers_;
-    WorkerThread* workers_;
-    InstrumentationSession* instrumentor_ = nullptr;
-    const kb::log::Channel* log_channel_ = nullptr;
+    std::unique_ptr<Scheduler> scheduler_{nullptr};
+    std::unique_ptr<Monitor> monitor_{nullptr};
+    Barrier* barriers_{nullptr};
+    SharedState* shared_state_{nullptr};
+    WorkerThread* workers_{nullptr};
+    InstrumentationSession* instrumentor_{nullptr};
+    const kb::log::Channel* log_channel_{nullptr};
 };
 
 /**
@@ -661,8 +662,8 @@ private:
     }
 
 private:
-    JobSystem* js_ = nullptr;
-    Job* job_ = nullptr;
+    JobSystem* js_{nullptr};
+    Job* job_{nullptr};
 };
 
 } // namespace th

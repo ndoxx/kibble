@@ -21,8 +21,12 @@ target_include_directories(kibble
 target_include_directories(kibble
     SYSTEM PRIVATE
     "${KB_SOURCE_DIR}/source/vendor"
-    "${KB_SOURCE_DIR}/source/vendor/atomic_queue/include"
     "${KB_SOURCE_DIR}/source/vendor/tomlplusplus/include"
+)
+
+target_include_directories(kibble
+    SYSTEM PUBLIC
+    "${KB_SOURCE_DIR}/source/vendor/atomic_queue/include"
 )
 
 set_target_properties(kibble

@@ -1,7 +1,5 @@
 #pragma once
 #include "atomic_queue/atomic_queue.h"
-#include "memory/allocator/atomic_pool_allocator.h"
-#include "memory/arena.h"
 #include "thread/job/config.h"
 
 namespace kb
@@ -14,10 +12,6 @@ using worker_affinity_t = uint32_t;
 
 template <typename T>
 using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
-
-using JobPoolArena = memory::MemoryArena<memory::AtomicPoolAllocator<k_max_jobs * k_max_threads>,
-                                         memory::policy::SingleThread, memory::policy::NoBoundsChecking,
-                                         memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 
 template <typename T>
 using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;

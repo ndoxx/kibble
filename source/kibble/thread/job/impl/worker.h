@@ -29,10 +29,8 @@ struct JobMetadata;
  * All members are page aligned, so as to avoid false sharing.
  *
  */
-struct SharedState
+struct L1_ALIGN SharedState
 {
-    SharedState(memory::HeapArea& area);
-
     /// Number of tasks left
     L1_ALIGN std::atomic<uint64_t> pending{0};
     /// Flag to signal workers when they should stop and join
@@ -41,8 +39,6 @@ struct SharedState
     L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle
     L1_ALIGN std::mutex wake_mutex;
-    /// Memory arena to store job structures (page aligned)
-    L1_ALIGN JobPoolArena job_pool;
 };
 
 class JobSystem;
@@ -59,7 +55,7 @@ class JobSystem;
  * work stealing. This makes this implementation thread-safe and quite fast.
  *
  */
-class WorkerThread
+class L1_ALIGN WorkerThread
 {
 public:
     /**

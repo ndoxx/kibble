@@ -29,9 +29,14 @@ inline size_t local_arena_requirements(const JobSystemScheme& scheme)
 
     // Allocation size for workers
     size_t workers = worker_count(scheme, std::thread::hardware_concurrency());
-    size_t worker_alloc_size = sizeof(WorkerThread) * workers + kb::memory::k_cache_line_size;
+    // Workers are always aligned to the cache line, so we want the nearest multiple of alignment
+    constexpr size_t worker_size = math::round_up_pow2(sizeof(WorkerThread), kb::memory::k_cache_line_size);
+    size_t worker_alloc_size = workers * worker_size;
 
-    return barrier_alloc_size + worker_alloc_size;
+    // Allocation size for shared state
+    constexpr size_t shared_state_size = sizeof(SharedState) + kb::memory::k_cache_line_size;
+
+    return barrier_alloc_size + worker_alloc_size + shared_state_size + kb::memory::k_cache_line_size;
 }
 
 JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_name) : worker_affinity(affinity)
@@ -55,14 +60,17 @@ size_t JobSystem::get_memory_requirements(const JobSystemScheme& scheme)
 }
 
 JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel)
-    : scheme_(scheme), arena_("JobSystemLocalArena", area, local_arena_requirements(scheme)),
-      ss_(std::make_unique<SharedState>(area)), scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)),
-      log_channel_(log_channel)
+    : arena_("JobSystemLocalArena", area, local_arena_requirements(scheme)),
+      job_pool_("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), max_barriers_(scheme.max_barriers),
+      scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)), log_channel_(log_channel)
 {
     klog(log_channel_).uid("JobSystem").info("Initializing.");
 
     // * Allocate barriers
-    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, scheme.max_barriers, arena_);
+    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, max_barriers_, arena_);
+
+    // * Allocate shared state
+    shared_state_ = K_NEW(SharedState, arena_);
 
     // * Allocate workers
     // Find the number of CPU cores
@@ -86,11 +94,11 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
     for (uint32_t ii = 0; ii < threads_count_; ++ii)
     {
         WorkerProperties props;
-        props.max_stealing_attempts = scheme_.max_stealing_attempts;
+        props.max_stealing_attempts = scheme.max_stealing_attempts;
         props.tid = ii;
 
         auto& worker = workers_[ii];
-        worker.spawn(this, &(*ss_), props);
+        worker.spawn(this, shared_state_, props);
         auto native_id = worker.is_background() ? worker.get_native_thread_id() : std::this_thread::get_id();
         thread_ids_.insert({native_id, worker.get_tid()});
         klog(log_channel_)
@@ -109,8 +117,11 @@ JobSystem::~JobSystem()
     // * Destroy workers
     K_DELETE_ARRAY(workers_, arena_);
 
+    // * Destroy shared state
+    K_DELETE(shared_state_, arena_);
+
     // * Destroy barriers
-    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    for (barrier_t id = 0; id < max_barriers_; ++id)
     {
         K_ASSERT(!barriers_[id].is_used(), "Barrier still in use.", log_channel_).watch_var__(id, "Barrier index");
     }
@@ -125,8 +136,8 @@ void JobSystem::shutdown()
     wait();
 
     // Notify all threads they are going to die
-    ss_->running.store(false, std::memory_order_release);
-    ss_->cv_wake.notify_all();
+    shared_state_->running.store(false, std::memory_order_release);
+    shared_state_->cv_wake.notify_all();
     for (size_t idx = 0; idx < threads_count_; ++idx)
     {
         workers_[idx].join();
@@ -153,7 +164,7 @@ void JobSystem::shutdown()
 barrier_t JobSystem::create_barrier()
 {
     // Find first unused barrier
-    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    for (barrier_t id = 0; id < max_barriers_; ++id)
     {
         bool expected{false};
         if (barriers_[id].mark_used(expected, true))
@@ -168,7 +179,7 @@ barrier_t JobSystem::create_barrier()
 
 void JobSystem::destroy_barrier(barrier_t id)
 {
-    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < max_barriers_, "Barrier index out of bounds.", log_channel_);
     Barrier& barrier = barriers_[id];
     // Check that barrier has no pending jobs
     K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
@@ -180,7 +191,7 @@ void JobSystem::destroy_barrier(barrier_t id)
 
 Barrier& JobSystem::get_barrier(barrier_t id)
 {
-    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < max_barriers_, "Barrier index out of bounds.", log_channel_);
     return barriers_[id];
 }
 
@@ -188,7 +199,7 @@ Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
-    Job* job = K_NEW(Job, ss_->job_pool);
+    Job* job = K_NEW(Job, job_pool_);
     job->kernel = std::move(kernel);
     job->meta = std::move(meta);
     return job;
@@ -202,7 +213,7 @@ void JobSystem::release_job(Job* job)
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.", log_channel_);
 
     // Return job to the pool
-    K_DELETE(job, ss_->job_pool);
+    K_DELETE(job, job_pool_);
 }
 
 void JobSystem::schedule(Job* job)
@@ -219,9 +230,9 @@ void JobSystem::schedule(Job* job)
     }
 
     // Increment job count, dispatch and wake up workers
-    ss_->pending.fetch_add(1, std::memory_order_release);
+    shared_state_->pending.fetch_add(1, std::memory_order_release);
     scheduler_->dispatch(job);
-    ss_->cv_wake.notify_all();
+    shared_state_->cv_wake.notify_all();
 }
 
 // Main thread and workers (on rescheduling) atomically increment pending each
@@ -231,7 +242,7 @@ void JobSystem::schedule(Job* job)
 // to be sure all worker threads have finished.
 bool JobSystem::is_busy() const
 {
-    return ss_->pending.load(std::memory_order_acquire) > 0;
+    return shared_state_->pending.load(std::memory_order_acquire) > 0;
 }
 
 bool JobSystem::is_work_done(Job* job) const
@@ -240,8 +251,8 @@ bool JobSystem::is_work_done(Job* job) const
 }
 
 // NOTE(ndx): Instead of busy-waiting I tried
-//      std::unique_lock<std::mutex> lock(ss_->wait_mutex);
-//      ss_->cv_wait.wait(lock, [this]() { return !is_busy(); });
+//      std::unique_lock<std::mutex> lock(shared_state_->wait_mutex);
+//      shared_state_->cv_wait.wait(lock, [this]() { return !is_busy(); });
 // and in WorkerThread::execute() I do this after the fetch_sub:
 //      ss_.cv_wait.notify_one();
 // But it deadlocks (lost wakeups?)
@@ -261,8 +272,8 @@ void JobSystem::wait_until(std::function<bool()> condition)
 #ifdef K_USE_JOB_SYSTEM_PROFILING
             microClock clk;
 #endif
-            ss_->cv_wake.notify_all(); // wake worker threads
-            std::this_thread::yield(); // allow this thread to be rescheduled
+            shared_state_->cv_wake.notify_all(); // wake worker threads
+            std::this_thread::yield();           // allow this thread to be rescheduled
 #ifdef K_USE_JOB_SYSTEM_PROFILING
             idle_time_us += clk.get_elapsed_time().count();
 #endif
@@ -294,8 +305,8 @@ void JobSystem::abort()
     // Join all workers as fast as possible
     try
     {
-        ss_->running.store(false, std::memory_order_release);
-        ss_->cv_wake.notify_all();
+        shared_state_->running.store(false, std::memory_order_release);
+        shared_state_->cv_wake.notify_all();
         for (size_t idx = 0; idx < threads_count_; ++idx)
         {
             workers_[idx].join();

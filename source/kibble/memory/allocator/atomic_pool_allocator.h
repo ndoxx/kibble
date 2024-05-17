@@ -24,6 +24,9 @@ namespace memory
  * a compile-time MAX_NODES parameters, which is incompatible with PoolAllocator's
  * API. As a result, most of the code here is just a copy of PoolAllocator code.
  *
+ * @todo A proper implementation could be made by copying the relevant code from
+ * atomic_queue, and tailoring it for this allocator, allowing for a runtime MAX_NODES.
+ *
  * @param max_nodes maximum amount of nodes in the memory pool
  */
 template <size_t MAX_NODES>
@@ -114,11 +117,8 @@ public:
      */
     void* allocate([[maybe_unused]] std::size_t size, std::size_t alignment = 0, std::size_t offset = 0)
     {
-        uint8_t* next;
         ANNOTATE_HAPPENS_AFTER(&free_queue_); // Avoid false positives with TSan
-        [[maybe_unused]] bool success = free_queue_.try_pop(next);
-
-        K_ASSERT(success, "[AtomicPoolAllocator] Could not fetch next block.", nullptr);
+        uint8_t* next = free_queue_.pop();
 
         // We want the user pointer (at next+offset) to be aligned.
         // Check if alignment is required. If so, find the next aligned memory address.
