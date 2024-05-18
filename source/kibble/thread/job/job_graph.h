@@ -107,6 +107,10 @@ public:
     inline auto cbegin() const { return std::cbegin(out_objects_); }
     /// Get const iterator to the end of the output harness
     inline auto cend() const   { return std::cbegin(out_objects_) + out_nodes_.count(); }
+    /// Get the number of elements in the output harness
+    inline size_t out_count() const { return out_nodes_.count(); }
+    /// Get the number of elements in the input harness
+    inline size_t in_count() const  { return in_nodes_.count(); }
     // clang-format on
 
 private:

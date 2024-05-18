@@ -129,22 +129,22 @@ struct L1_ALIGN Job
      * @internal
      * @brief Add a job that can only be executed once this job was processed.
      *
-     * @param job the child to add.
+     * @param child the child to add.
      */
-    inline void add_child(Job* job)
+    inline void add_child(Job* child)
     {
-        node.connect(job->node, job);
+        node.connect(child->node, child);
     }
 
     /**
      * @internal
      * @brief Make this job dependent on another job.
      *
-     * @param job the parent to add.
+     * @param parent the parent to add.
      */
-    inline void add_parent(Job* job)
+    inline void add_parent(Job* parent)
     {
-        job->node.connect(node, this);
+        parent->node.connect(node, this);
     }
 
     /**
@@ -302,13 +302,6 @@ public:
     void destroy_barrier(barrier_t id);
 
     /**
-     * @brief Get barrier object by ID
-     *
-     * @param id Barrier ID
-     */
-    Barrier& get_barrier(barrier_t id);
-
-    /**
      * @brief Create a task
      *
      * @tparam FuncT type of the function to execute
@@ -438,6 +431,13 @@ public:
 
 private:
     /**
+     * @brief Get barrier object by ID
+     *
+     * @param id Barrier ID
+     */
+    Barrier& get_barrier(barrier_t id);
+
+    /**
      * @internal
      * @brief Create a new job.
      * @note The returned job belongs to an internal job pool and should never be deleted manually. Once caller code is
@@ -468,10 +468,14 @@ private:
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
      * had no parent to begin with. Scheduling a non-orphan job will trigger an assertion.
+     * @note When scheduling a (topmost) parent job, pre-calculate the total number of jobs to schedule,
+     * like it's done in the Task::schedule() function with a depth-first traversal of the job graph.
+     * @note When scheduling a child job, set num_jobs to 0.
      *
      * @param job the job to submit
+     * @param num_jobs total number of jobs to schedule (this job and its children) when top parent, 0 when child job
      */
-    void schedule(Job* job);
+    void schedule(Job* job, size_t num_jobs);
 
     /**
      * @internal
@@ -538,21 +542,17 @@ class Task
 {
 public:
     friend class JobSystem;
-    
+
     Task() = default;
 
     /**
      * @brief Schedule job execution.
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
-     * @note Trying to schedule a child task will have no effect. A child job is always scheduled by
-     * the worker that processed its parent, right after it has done so.
+     * @note Trying to schedule a child task will assert, only schedule topmost parent tasks.
      *
      */
-    inline void schedule()
-    {
-        js_->schedule(job_);
-    }
+    void schedule(barrier_t barrier_id = k_no_barrier);
 
     /// Get job metadata.
     inline const auto& meta() const
@@ -604,16 +604,6 @@ public:
     inline void add_parent(const Task& task)
     {
         job_->add_parent(task.job_);
-    }
-
-    /**
-     * @brief Set a barrier ID for this job and its dependents
-     *
-     * @param id
-     */
-    inline void set_barrier(uint64_t id)
-    {
-        job_->barrier_id = id;
     }
 
 private:

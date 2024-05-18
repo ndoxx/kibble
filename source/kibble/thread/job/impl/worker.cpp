@@ -163,10 +163,8 @@ void WorkerThread::schedule_children(Job* job)
         */
         if (child->is_ready() && child->mark_scheduled())
         {
-            // Add child to parent's barrier (if any)
-            child->barrier_id = job->barrier_id;
             // Thread-safe call as long as the scheduler implementation is thread-safe
-            js_->schedule(child);
+            js_->schedule(child, 0);
 #ifdef K_USE_JOB_SYSTEM_PROFILING
             ++activity_.scheduled;
 #endif

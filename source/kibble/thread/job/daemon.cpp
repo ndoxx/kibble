@@ -3,8 +3,7 @@
 #include "../../logger2/logger.h"
 #include "../../time/instrumentation.h"
 #include "impl/common.h"
-
-#include <stdexcept>
+#include "thread/job/impl/worker.h"
 
 namespace kb
 {
@@ -128,7 +127,7 @@ void DaemonScheduler::update()
             }
 
             daemon->job->reset();
-            js_.schedule(daemon->job);
+            js_.schedule(daemon->job, 1);
         }
     }
 

@@ -316,24 +316,31 @@ int p3(size_t nexp, size_t ngraphs, th::JobSystem& js, const kb::log::Channel& c
         {
             auto&& [tsk_a, fut_a] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "A"), [ii]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                // fmt::println("Task A #{}", ii);
                 return int(ii);
             });
 
             // We could pass futures as function arguments like previously
             // But lambda capture also works
-            auto&& [tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [fut = fut_a]() {
+            auto&& [tsk_b, fut_b] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "B"), [ii, fut = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                // fmt::println("Task B #{}: {}", ii, fut.get());
+                (void)ii;
                 return fut.get() * 2;
             });
 
-            auto&& [tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [fut = fut_a]() {
+            auto&& [tsk_c, fut_c] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "C"), [ii, fut = fut_a]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(15));
+                // fmt::println("Task C #{}: {}", ii, fut.get());
+                (void)ii;
                 return fut.get() * 3 - 10;
             });
 
             auto&& [tsk_d, fut_d] =
-                js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"), [fut_1 = fut_b, fut_2 = fut_c]() {
+                js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "D"), [ii, fut_1 = fut_b, fut_2 = fut_c]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    // fmt::println("Task D #{}: {} {}", ii, fut_1.get(), fut_2.get());
+                    (void)ii;
                     return fut_1.get() < fut_2.get();
                 });
 
@@ -397,6 +404,7 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
                 klog(chan).debug("{}", fmt::styled("Unrelated", fmt::fg(fmt::color::blue_violet)));
             });
 
+            // No barrier set here
             tsk.schedule();
         }
     };
@@ -420,9 +428,6 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
                 klog(chan).debug("{} #{}", fmt::styled("Update", fmt::fg(fmt::color::yellow)), ii);
             });
 
-            // Set up barrier: we'll be able to wait on it later on
-            tsk.set_barrier(update_barrier);
-
             // Sometimes, add a child task
             if (ii % 3 == 0)
             {
@@ -435,7 +440,8 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
                 tsk.add_child(child_tsk);
             }
 
-            tsk.schedule();
+            // Set up barrier: we'll be able to wait on it later on
+            tsk.schedule(update_barrier);
         }
 
         spawn_unrelated_tasks(5);
@@ -457,8 +463,7 @@ int p4(size_t nexp, size_t njobs, th::JobSystem& js, const kb::log::Channel& cha
                 klog(chan).debug("{} #{}", fmt::styled("Render", fmt::fg(fmt::color::green)), ii);
             });
 
-            tsk.set_barrier(render_barrier);
-            tsk.schedule();
+            tsk.schedule(render_barrier);
         }
 
         spawn_unrelated_tasks(20);

@@ -1,5 +1,6 @@
 #include "thread/job/job_system.h"
 #include "assert/assert.h"
+#include "fmt/core.h"
 #include "logger2/logger.h"
 #include "math/constexpr_math.h"
 #include "memory/arena.h"
@@ -9,7 +10,9 @@
 #include "time/instrumentation.h"
 
 #include "fmt/std.h"
+#include <stack>
 #include <thread>
+#include <unordered_set>
 
 namespace kb
 {
@@ -216,21 +219,18 @@ void JobSystem::release_job(Job* job)
     K_DELETE(job, job_pool_);
 }
 
-void JobSystem::schedule(Job* job)
+void JobSystem::schedule(Job* job, size_t num_jobs)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
 
-    // Setup barrier if any
-    if (job->barrier_id != k_no_barrier)
+    // Dspatch and wake up workers
+    if (num_jobs != 0)
     {
-        get_barrier(job->barrier_id).add_dependency();
+        shared_state_->pending.fetch_add(num_jobs, std::memory_order_release);
     }
-
-    // Increment job count, dispatch and wake up workers
-    shared_state_->pending.fetch_add(1, std::memory_order_release);
     scheduler_->dispatch(job);
     shared_state_->cv_wake.notify_all();
 }
@@ -330,6 +330,68 @@ void JobSystem::abort()
     klog(log_channel_).uid("JobSystem").info("Shutting down.");
 
     exit(0);
+}
+
+void depth_first_walk(Job* job, std::function<bool(Job*)> visit)
+{
+    std::stack<Job*> stack;
+    stack.push(job);
+    while (!stack.empty())
+    {
+        job = stack.top();
+        stack.pop();
+
+        if (visit(job))
+        {
+            for (Job* child : job->node)
+            {
+                stack.push(child);
+            }
+        }
+    }
+}
+
+void Task::schedule(barrier_t barrier_id)
+{
+    JS_PROFILE_FUNCTION(js_->instrumentor_, js_->this_thread_id());
+
+    // * Sanity check
+    K_ASSERT(job_->node.in_count() == 0, "Tried to schedule a child task.", js_->log_channel_);
+
+    size_t num_jobs = 1;
+
+    if (job_->node.out_count() == 0)
+    {
+        // * Single job
+        job_->barrier_id = barrier_id;
+    }
+    else
+    {
+        // * Walk job graph
+        // Job graphs are DAGs, so we can safely use depth-first search
+        std::unordered_set<Job*> marked;
+        depth_first_walk(job_, [barrier_id, &marked](Job* job) {
+            if (!marked.contains(job))
+            {
+                // Setup barriers on all child jobs
+                job->barrier_id = barrier_id;
+                marked.insert(job);
+                // Explore children
+                return true;
+            }
+            return false;
+        });
+        num_jobs = marked.size();
+    }
+
+    // * Setup dependency count
+    if (barrier_id != k_no_barrier)
+    {
+        js_->get_barrier(job_->barrier_id).add_dependencies(num_jobs);
+    }
+
+    // * Schedule parent
+    js_->schedule(job_, num_jobs);
 }
 
 } // namespace th
