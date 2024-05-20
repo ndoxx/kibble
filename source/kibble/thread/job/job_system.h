@@ -1,12 +1,8 @@
 #pragma once
 
-#include "../../assert/assert.h"
-#include "../../memory/allocator/atomic_pool_allocator.h"
-#include "../../memory/allocator/linear_allocator.h"
-#include "../../memory/arena.h"
-#include "barrier.h"
-#include "config.h"
-#include "job_graph.h"
+#include "../../util/internal.h"
+#include "barrier_id.h"
+#include "job_meta.h"
 
 #include <future>
 #include <unordered_map>
@@ -28,202 +24,12 @@ class HeapArea;
 namespace th
 {
 
-using JobKernel = std::function<void(void)>;
-using worker_affinity_t = uint32_t;
-using tid_t = uint32_t;
-
-[[maybe_unused]] static constexpr uint32_t k_stealable_bit = 8;
-[[maybe_unused]] static constexpr uint32_t k_balance_bit = 9;
-[[maybe_unused]] static constexpr uint32_t k_tid_hint_mask = 0xff;
-
-/**
- * @brief Encode worker affinity
- *
- * @param tid_hint Target worker ID, used strictly if balance is false, otherwise actual worker ID is never lower than
- * the hint
- * @param stealable If set to true, the job can be stolen by another thread
- * @param balance  If set to true, the scheduler will use a round robin to determine the actual worker ID
- * @return constexpr worker_affinity_t
- */
-inline constexpr worker_affinity_t worker_affinity(uint32_t tid_hint, bool stealable, bool balance)
-{
-    return (tid_hint & k_tid_hint_mask) | uint32_t(stealable) << k_stealable_bit | uint32_t(balance) << k_balance_bit;
-}
-
-/**
- * @brief Encode a worker affinity that forces execution on a specific thread
- *
- * @param worker_id Target worker ID
- * @return constexpr worker_affinity_t
- */
-inline constexpr worker_affinity_t force_worker(tid_t worker_id)
-{
-    return worker_affinity(worker_id, false, false);
-}
-
-/// A job with this affinity should be executed on the main thread
-[[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_MAIN = worker_affinity(0, false, false);
-/// A job with this affinity should be executed on any background thread but can be stolen by the main thread
-[[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ASYNC = worker_affinity(1, true, true);
-/// A job with this affinity should be executed on any background thread and cannot be stolen
-[[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ASYNC_STRICT = worker_affinity(1, false, true);
-/// A job with this affinity can be executed on any worker
-[[maybe_unused]] static constexpr worker_affinity_t WORKER_AFFINITY_ANY = worker_affinity(0, true, true);
-
-/**
- * @brief Metadata associated to a job.
- *
- */
-struct JobMetadata
-{
-    JobMetadata() = default;
-    JobMetadata(worker_affinity_t affinity, const std::string& profile_name);
-
-    /// Workers this job can be pushed to
-    worker_affinity_t worker_affinity = WORKER_AFFINITY_ANY;
-
-    /// Descriptive name for the job (only used when profiling)
-    std::string name;
-
-private:
-    friend class kb::log::Channel;
-    bool essential__ = false;
-
-public:
-    inline bool is_essential() const
-    {
-        return essential__;
-    }
-};
-
-/**
- * @brief Represents some amount of work to execute.
- *
- */
-struct L1_ALIGN Job
-{
-    using JobNode = ProcessNode<Job*, k_max_parent_jobs, k_max_child_jobs>;
-
-    /// Job metadata
-    JobMetadata meta;
-    /// The function to execute
-    JobKernel kernel = JobKernel{};
-    /// If true, job will not be returned to the pool once finished
-    bool keep_alive = false;
-    /// Barrier ID for this job and its dependents
-    barrier_t barrier_id{k_no_barrier};
-    /// Dependency information and shared state
-    JobNode node;
-
-    /**
-     * @internal
-     * @brief Reset shared state
-     *
-     */
-    inline void reset()
-    {
-        node.reset_state();
-    }
-
-    /**
-     * @internal
-     * @brief Add a job that can only be executed once this job was processed.
-     *
-     * @param child the child to add.
-     */
-    inline void add_child(Job* child)
-    {
-        node.connect(child->node, child);
-    }
-
-    /**
-     * @internal
-     * @brief Make this job dependent on another job.
-     *
-     * @param parent the parent to add.
-     */
-    inline void add_parent(Job* parent)
-    {
-        parent->node.connect(node, this);
-    }
-
-    /**
-     * @internal
-     * @brief Non-blockingly check if this job's dependencies are satisfied.
-     *
-     * @return true If the dependencies are satisfied and the job can be scheduled.
-     * @return false Otherwise.
-     */
-    inline bool is_ready() const
-    {
-        return node.is_ready();
-    }
-
-    /**
-     * @internal
-     * @brief Non-blockingly check if this job has been processed.
-     *
-     * @return true If the job has been processed.
-     * @return false Otherwise.
-     */
-    inline bool is_processed() const
-    {
-        return node.is_processed();
-    }
-
-    /**
-     * @internal
-     * @brief Get the number of pending dependencies.
-     *
-     * @return size_t The dependency count.
-     */
-    inline size_t get_pending() const
-    {
-        return node.get_pending();
-    }
-
-    /**
-     * @internal
-     * @brief Mark this job processed, and update dependency information.
-     *
-     */
-    inline void mark_processed()
-    {
-        node.mark_processed();
-    }
-
-    /**
-     * @internal
-     * @brief Try to mark this node scheduled.
-     *
-     * @return true If calling thread can safely schedule this job.
-     * @return false Otherwise.
-     */
-    inline bool mark_scheduled()
-    {
-        return node.mark_scheduled();
-    }
-};
-
-/**
- * @brief Job system configuration structure.
- *
- */
-struct JobSystemScheme
-{
-    /// Maximum number of worker threads, if 0 => CPU_cores - 1
-    size_t max_workers = 0;
-    /// Maximum number of stealing attempts before moving to the next worker
-    size_t max_stealing_attempts = 16;
-    /// Maximum number of barriers
-    size_t max_barriers = 16;
-};
-
 struct SharedState;
-class Scheduler;
 class Monitor;
 class WorkerThread;
 class Task;
+class Barrier;
+struct Job;
 
 /**
  * @brief Assign work to multiple worker threads.
@@ -238,14 +44,29 @@ class JobSystem
 public:
     friend class Task;
     friend class WorkerThread;
+    friend class Scheduler;
     friend class DaemonScheduler;
+
+    /**
+     * @brief Job system configuration structure.
+     *
+     */
+    struct Config
+    {
+        /// Maximum number of worker threads, if 0 => CPU_cores - 1
+        size_t max_workers = 0;
+        /// Maximum number of stealing attempts before moving to the next worker
+        size_t max_stealing_attempts = 16;
+        /// Maximum number of barriers
+        size_t max_barriers = 16;
+    };
 
     /**
      * @brief Get the total amount of memory needed for the job pool.
      *
      * @return size_t Minimal size in bytes to allocate in a memory::HeapArea.
      */
-    static size_t get_memory_requirements(const JobSystemScheme& scheme);
+    static size_t get_memory_requirements(const Config& scheme);
 
     /**
      * @brief Construct a new Job System.
@@ -257,7 +78,7 @@ public:
      * @param area heap area for the job pool
      * @param scheme configuration structure
      */
-    JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel = nullptr);
+    JobSystem(memory::HeapArea& area, const Config& scheme, const kb::log::Channel* log_channel = nullptr);
 
     /**
      * @brief Calls shutdown() before destruction.
@@ -356,23 +177,7 @@ public:
      *
      * @param barrier_id
      */
-    inline void wait_on_barrier(uint64_t barrier_id)
-    {
-        const auto& barrier = get_barrier(barrier_id);
-        wait_until([&barrier]() { return !barrier.finished(); });
-    }
-
-    /// Get the list of workers (non-const).
-    inline auto& get_workers()
-    {
-        return workers_;
-    }
-
-    /// Get the list of workers (const).
-    inline const auto& get_workers() const
-    {
-        return workers_;
-    }
+    void wait_on_barrier(uint64_t barrier_id);
 
     /// Get the number of threads
     inline size_t get_threads_count() const
@@ -386,27 +191,9 @@ public:
         return CPU_cores_count_;
     }
 
-    inline const JobSystemScheme& get_scheme() const
+    inline const Config& get_config() const
     {
-        return scheme_;
-    }
-
-    /// Get the worker at input index (non-const).
-    WorkerThread& get_worker(size_t idx);
-
-    /// Get the worker at input index (const).
-    const WorkerThread& get_worker(size_t idx) const;
-
-    /// Get the monitor (non-const).
-    inline auto& get_monitor()
-    {
-        return *monitor_;
-    }
-
-    /// Get the monitor (const).
-    inline const auto& get_monitor() const
-    {
-        return *monitor_;
+        return config_;
     }
 
     /// Get the tid of the current thread.
@@ -430,6 +217,15 @@ public:
     void abort();
 
 private:
+    /// Get the worker at input index (non-const).
+    WorkerThread& get_worker(size_t idx);
+
+    /// Get the worker at input index (const).
+    const WorkerThread& get_worker(size_t idx) const;
+
+    /// Get the monitor (non-const).
+    Monitor& get_monitor();
+
     /**
      * @brief Get barrier object by ID
      *
@@ -447,7 +243,7 @@ private:
      * @param meta job metadata. Can be used to give a unique label to this job and setup worker affinity.
      * @return a new job from the pool
      */
-    Job* create_job(JobKernel&& kernel, JobMetadata&& meta = JobMetadata{});
+    Job* create_job(std::function<void(void)>&& kernel, JobMetadata&& meta = JobMetadata{});
 
     /**
      * @internal
@@ -477,47 +273,16 @@ private:
      */
     void schedule(Job* job, size_t num_jobs);
 
-    /**
-     * @internal
-     * @brief Hold execution on the main thread until a given job has been processed or the predicate returns false.
-     *
-     * @param job the job to wait for
-     * @param condition While this predicate evaluates to true, the function waits for job completion.
-     * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
-     * a timeout functionality.
-     */
-    inline void wait_for(Job* job, std::function<bool()> condition = []() { return true; })
-    {
-        wait_until([this, &condition, job]() { return !is_work_done(job) && condition(); });
-    }
-
-    /**
-     * @internal
-     * @brief Non-blockingly check if a job is processed.
-     *
-     * @param job the job
-     * @return true it the job was processed, false otherwise
-     */
-    bool is_work_done(Job* job) const;
-
 private:
-    using JobSystemArena =
-        memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
-                            memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+    Config config_;
 
-    using JobPoolArena = memory::MemoryArena<memory::AtomicPoolAllocator<k_max_jobs * k_max_threads>,
-                                             memory::policy::SingleThread, memory::policy::NoBoundsChecking,
-                                             memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+    struct Internal;
+    friend struct internal_deleter::Deleter<Internal>;
+    internal_ptr<Internal> internal_{nullptr};
 
-    L1_ALIGN JobSystemArena arena_;
-    L1_ALIGN JobPoolArena job_pool_;
-
-    JobSystemScheme scheme_;
     size_t CPU_cores_count_{0};
     size_t threads_count_{0};
     std::unordered_map<std::thread::id, tid_t> thread_ids_;
-    std::unique_ptr<Scheduler> scheduler_{nullptr};
-    std::unique_ptr<Monitor> monitor_{nullptr};
     Barrier* barriers_{nullptr};
     SharedState* shared_state_{nullptr};
     WorkerThread* workers_{nullptr};
@@ -555,10 +320,7 @@ public:
     void schedule(barrier_t barrier_id = k_no_barrier);
 
     /// Get job metadata.
-    inline const auto& meta() const
-    {
-        return job_->meta;
-    }
+    const JobMetadata& meta() const;
 
     /**
      * @brief Hold execution on the main thread until this job has been processed or the predicate returns false.
@@ -567,20 +329,14 @@ public:
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement
      * a timeout functionality.
      */
-    inline void wait(std::function<bool()> condition = []() { return true; })
-    {
-        js_->wait_for(job_, condition);
-    }
+    void wait(std::function<bool()> condition = []() { return true; });
 
     /**
      * @brief Non-blockingly check if this job is processed.
      *
      * @return true it the job was processed, false otherwise
      */
-    inline bool is_processed() const
-    {
-        return job_->is_processed();
-    }
+    bool is_processed() const;
 
     /**
      * @brief Add a job that can only be executed once this job was processed.
@@ -589,10 +345,7 @@ public:
      *
      * @param task the child to add.
      */
-    inline void add_child(const Task& task)
-    {
-        job_->add_child(task.job_);
-    }
+    void add_child(const Task& task);
 
     /**
      * @brief Make this task dependent on another one.
@@ -601,10 +354,7 @@ public:
      *
      * @param task the parent to add.
      */
-    inline void add_parent(const Task& task)
-    {
-        job_->add_parent(task.job_);
-    }
+    void add_parent(const Task& task);
 
 private:
     /**

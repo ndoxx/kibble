@@ -10,15 +10,6 @@
 using namespace kb;
 using namespace kb::log;
 
-void show_error_and_die(kb::ap::ArgParse& parser, const kb::log::Channel& chan)
-{
-    for (const auto& msg : parser.get_errors())
-        klog(chan).warn(msg);
-
-    klog(chan).raw().info(parser.usage());
-    exit(0);
-}
-
 std::pair<float, float> stats(const std::vector<long> durations)
 {
     float mu = float(std::accumulate(durations.begin(), durations.end(), 0)) / float(durations.size());
@@ -38,6 +29,15 @@ void show_statistics(kb::milliClock& clk, long serial_dur_ms, const kb::log::Cha
     klog(chan).verbose("Parallel time:         {}ms", parallel_dur_ms);
     klog(chan).verbose("Factor:                {}", factor);
     klog(chan).verbose("Gain:                  {}%", gain_percent);
+}
+
+void JobExample::show_error_and_die(kb::ap::ArgParse& parser, const kb::log::Channel& chan)
+{
+    for (const auto& msg : parser.get_errors())
+        klog(chan).warn(msg);
+
+    klog(chan).raw().info(parser.usage());
+    exit(0);
 }
 
 int JobExample::run(int argc, char** argv)
@@ -67,7 +67,7 @@ int JobExample::run(int argc, char** argv)
     // First, we create a scheme to configure the job system
     using namespace std::literals::string_literals;
 
-    th::JobSystemScheme scheme;
+    th::JobSystem::Config scheme;
     scheme.max_workers = 0;
     scheme.max_stealing_attempts = 16;
     scheme.max_barriers = 8;

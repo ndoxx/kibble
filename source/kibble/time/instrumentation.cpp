@@ -1,4 +1,5 @@
 #include "instrumentation.h"
+#include "config.h"
 #include <fstream>
 
 namespace kb
@@ -10,6 +11,7 @@ InstrumentationSession::InstrumentationSession()
               .time_since_epoch()
               .count())
 {
+    profile_data_.resize(KIBBLE_JOBSYS_MAX_THREADS);
 }
 
 void InstrumentationSession::push(const ProfileResult& result)
@@ -31,7 +33,7 @@ void InstrumentationSession::write(const fs::path& filepath)
 
     // Trace Event Format:
     // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/edit
-    
+
     ofs << "{\"otherData\": {},\"traceEvents\":[";
 
     size_t profile_count = 0;

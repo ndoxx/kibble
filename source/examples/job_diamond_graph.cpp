@@ -1,4 +1,5 @@
 #include "harness/job_example.h"
+#include "assert/assert.h"
 
 using namespace kb;
 

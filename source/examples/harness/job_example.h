@@ -15,8 +15,6 @@
 #include <random>
 #include <vector>
 
-void show_error_and_die(kb::ap::ArgParse& parser, const kb::log::Channel& chan);
-
 std::pair<float, float> stats(const std::vector<long> durations);
 
 void show_statistics(kb::milliClock& clk, long serial_dur_ms, const kb::log::Channel& chan);
@@ -37,6 +35,9 @@ public:
 
     int run(int argc, char** argv);
     virtual int impl(size_t nexp, size_t njobs, kb::th::JobSystem& js, const kb::log::Channel& chan) = 0;
+
+protected:
+    static void show_error_and_die(kb::ap::ArgParse& parser, const kb::log::Channel& chan);
 };
 
 // Entry point

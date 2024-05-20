@@ -1,8 +1,16 @@
 #pragma once
 
-#define KIBBLE_NAME          "@PROJECT_NAME@"
-#define KIBBLE_BUILD_TYPE    "@CMAKE_BUILD_TYPE@"
-#define KIBBLE_VERSION       "@PROJECT_VERSION@"
-#define KIBBLE_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define KIBBLE_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define KIBBLE_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#include <cstddef>
+
+#define KIBBLE_NAME                     "@PROJECT_NAME@"
+#define KIBBLE_BUILD_TYPE               "@CMAKE_BUILD_TYPE@"
+#define KIBBLE_VERSION                  "@PROJECT_VERSION@"
+#define KIBBLE_VERSION_MAJOR            @PROJECT_VERSION_MAJOR@
+#define KIBBLE_VERSION_MINOR            @PROJECT_VERSION_MINOR@
+#define KIBBLE_VERSION_PATCH            @PROJECT_VERSION_PATCH@
+
+[[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_THREADS       = @KB_JOB_MAX_THREADS@;
+[[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_JOB_QUEUE_SIZE    = @KB_JOB_JOB_QUEUE_SIZE@;
+[[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_STATS_QUEUE_SIZE  = @KB_JOB_STATS_QUEUE_SIZE@;
+[[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_CHILD_JOBS    = @KB_JOB_MAX_CHILD@;
+[[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_PARENT_JOBS   = @KB_JOB_MAX_PARENT@;

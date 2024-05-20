@@ -1,5 +1,6 @@
 #include "thread/job/impl/scheduler.h"
 #include "assert/assert.h"
+#include "thread/job/impl/job.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"

@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <mutex>
-#include <string>
 #include "../util/sanitizer.h"
 
 namespace kb::log

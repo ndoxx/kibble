@@ -1,7 +1,7 @@
 #pragma once
 
+#include "config.h"
 #include "memory/util/alignment.h"
-#include "thread/job/config.h"
 #include <array>
 
 namespace kb
@@ -42,7 +42,7 @@ public:
 private:
     L1_ALIGN JobSystem& js_;
     // Each thread has its own round robin state (64b to avoid false sharing)
-    L1_ALIGN std::array<std::size_t, k_max_threads> round_robin_;
+    L1_ALIGN std::array<std::size_t, KIBBLE_JOBSYS_MAX_THREADS> round_robin_;
 };
 
 } // namespace th

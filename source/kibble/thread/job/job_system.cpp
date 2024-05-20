@@ -1,31 +1,40 @@
 #include "thread/job/job_system.h"
 #include "assert/assert.h"
+#include "config.h"
 #include "fmt/core.h"
 #include "logger2/logger.h"
 #include "math/constexpr_math.h"
+#include "memory/allocator/atomic_pool_allocator.h"
+#include "memory/allocator/linear_allocator.h"
 #include "memory/arena.h"
+#include "memory/heap_area.h"
+#include "thread/job/impl/barrier.h"
+#include "thread/job/impl/job.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
 #include "time/instrumentation.h"
 
 #include "fmt/std.h"
+#include "util/internal.h"
 #include <stack>
 #include <thread>
 #include <unordered_set>
 
 namespace kb
 {
+
 namespace th
 {
 
-inline size_t worker_count(const JobSystemScheme& scheme, size_t CPU_cores)
+inline size_t worker_count(const JobSystem::Config& scheme, size_t CPU_cores)
 {
-    size_t max_threads = (scheme.max_workers != 0) ? std::min(k_max_threads, scheme.max_workers + 1) : k_max_threads;
+    size_t max_threads = (scheme.max_workers != 0) ? std::min(KIBBLE_JOBSYS_MAX_THREADS, scheme.max_workers + 1)
+                                                   : KIBBLE_JOBSYS_MAX_THREADS;
     return std::min(max_threads, CPU_cores);
 }
 
-inline size_t local_arena_requirements(const JobSystemScheme& scheme)
+inline size_t local_arena_requirements(const JobSystem::Config& scheme)
 {
     // Allocation size for barriers
     size_t barrier_alloc_size = sizeof(Barrier) * scheme.max_barriers + kb::memory::k_cache_line_size;
@@ -42,38 +51,74 @@ inline size_t local_arena_requirements(const JobSystemScheme& scheme)
     return barrier_alloc_size + worker_alloc_size + shared_state_size + kb::memory::k_cache_line_size;
 }
 
+struct JobSystem::Internal
+{
+    using JobSystemArena =
+        memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                            memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
+    using JobPoolArena =
+        memory::MemoryArena<memory::AtomicPoolAllocator<KIBBLE_JOBSYS_JOB_QUEUE_SIZE * KIBBLE_JOBSYS_MAX_THREADS>,
+                            memory::policy::SingleThread, memory::policy::NoBoundsChecking,
+                            memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+
+    Internal(JobSystem* js, memory::HeapArea& area)
+        : arena("JobSystemLocalArena", area, local_arena_requirements(js->get_config())),
+          job_pool("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), scheduler(*js), monitor(*js)
+    {
+    }
+
+    L1_ALIGN JobSystemArena arena;
+    L1_ALIGN JobPoolArena job_pool;
+
+    Scheduler scheduler;
+    Monitor monitor;
+};
+} // namespace th
+
+namespace internal_deleter
+{
+template <>
+void Deleter<th::JobSystem::Internal>::operator()(th::JobSystem::Internal* p)
+{
+    delete p;
+}
+} // namespace internal_deleter
+
+namespace th
+{
+
 JobMetadata::JobMetadata(worker_affinity_t affinity, const std::string& profile_name) : worker_affinity(affinity)
 {
     name = profile_name;
 }
 
-size_t JobSystem::get_memory_requirements(const JobSystemScheme& scheme)
+size_t JobSystem::get_memory_requirements(const Config& scheme)
 {
     // Total size of a Job node inside the pool
     // Jobs are always aligned to the cache line, so we want the nearest multiple of alignment
     // and we also have to take into account additional data written by the allocator
     constexpr size_t k_job_node_size =
-        math::round_up_pow2(sizeof(Job) + JobPoolArena::k_allocation_overhead, kb::memory::k_cache_line_size);
+        math::round_up_pow2(sizeof(Job) + Internal::JobPoolArena::k_allocation_overhead, kb::memory::k_cache_line_size);
 
     // Area will need enough space for each job
     // Also add a cache line, to account for heap area block alignment
-    size_t job_alloc_size = k_max_jobs * k_max_threads * k_job_node_size + kb::memory::k_cache_line_size;
+    size_t job_alloc_size =
+        KIBBLE_JOBSYS_JOB_QUEUE_SIZE * KIBBLE_JOBSYS_MAX_THREADS * k_job_node_size + kb::memory::k_cache_line_size;
 
     return local_arena_requirements(scheme) + job_alloc_size;
 }
 
-JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, const kb::log::Channel* log_channel)
-    : arena_("JobSystemLocalArena", area, local_arena_requirements(scheme)),
-      job_pool_("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), scheme_(scheme),
-      scheduler_(new Scheduler(*this)), monitor_(new Monitor(*this)), log_channel_(log_channel)
+JobSystem::JobSystem(memory::HeapArea& area, const Config& scheme, const kb::log::Channel* log_channel)
+    : config_(scheme), internal_(make_internal<Internal>(this, area)), log_channel_(log_channel)
 {
     klog(log_channel_).uid("JobSystem").info("Initializing.");
 
     // * Allocate barriers
-    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, scheme_.max_barriers, arena_);
+    barriers_ = K_NEW_ARRAY_DYNAMIC(Barrier, config_.max_barriers, internal_->arena);
 
     // * Allocate shared state
-    shared_state_ = K_NEW(SharedState, arena_);
+    shared_state_ = K_NEW(SharedState, internal_->arena);
 
     // * Allocate workers
     // Find the number of CPU cores
@@ -91,7 +136,7 @@ JobSystem::JobSystem(memory::HeapArea& area, const JobSystemScheme& scheme, cons
             .warn("Tasks marked with WORKER_AFFINITY_ASYNC will be scheduled to the main thread.");
     }
 
-    workers_ = K_NEW_ARRAY_DYNAMIC(WorkerThread, threads_count_, arena_);
+    workers_ = K_NEW_ARRAY_DYNAMIC(WorkerThread, threads_count_, internal_->arena);
 
     // * Spawn workers
     for (uint32_t ii = 0; ii < threads_count_; ++ii)
@@ -118,18 +163,18 @@ JobSystem::~JobSystem()
     shutdown();
 
     // * Destroy workers
-    K_DELETE_ARRAY(workers_, arena_);
+    K_DELETE_ARRAY(workers_, internal_->arena);
 
     // * Destroy shared state
-    K_DELETE(shared_state_, arena_);
+    K_DELETE(shared_state_, internal_->arena);
 
     // * Destroy barriers
-    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    for (barrier_t id = 0; id < config_.max_barriers; ++id)
     {
         K_ASSERT(!barriers_[id].is_used(), "Barrier still in use.", log_channel_).watch_var__(id, "Barrier index");
     }
 
-    K_DELETE_ARRAY(barriers_, arena_);
+    K_DELETE_ARRAY(barriers_, internal_->arena);
 }
 
 void JobSystem::shutdown()
@@ -153,11 +198,11 @@ void JobSystem::shutdown()
 
 #ifdef K_USE_JOB_SYSTEM_PROFILING
     // Log worker statistics
-    monitor_->update_statistics();
+    internal_->monitor.update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
     for (size_t idx = 0; idx < threads_count_; ++idx)
     {
-        monitor_->log_statistics(workers_[idx].get_tid(), log_channel_);
+        internal_->monitor.log_statistics(workers_[idx].get_tid(), log_channel_);
     }
 #endif
 
@@ -167,7 +212,7 @@ void JobSystem::shutdown()
 barrier_t JobSystem::create_barrier()
 {
     // Find first unused barrier
-    for (barrier_t id = 0; id < scheme_.max_barriers; ++id)
+    for (barrier_t id = 0; id < config_.max_barriers; ++id)
     {
         bool expected{false};
         if (barriers_[id].mark_used(expected, true))
@@ -182,7 +227,7 @@ barrier_t JobSystem::create_barrier()
 
 void JobSystem::destroy_barrier(barrier_t id)
 {
-    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.", log_channel_);
     Barrier& barrier = barriers_[id];
     // Check that barrier has no pending jobs
     K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
@@ -194,15 +239,15 @@ void JobSystem::destroy_barrier(barrier_t id)
 
 Barrier& JobSystem::get_barrier(barrier_t id)
 {
-    K_ASSERT(id < scheme_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.", log_channel_);
     return barriers_[id];
 }
 
-Job* JobSystem::create_job(JobKernel&& kernel, JobMetadata&& meta)
+Job* JobSystem::create_job(std::function<void()>&& kernel, JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
-    Job* job = K_NEW(Job, job_pool_);
+    Job* job = K_NEW(Job, internal_->job_pool);
     job->kernel = std::move(kernel);
     job->meta = std::move(meta);
     return job;
@@ -216,7 +261,7 @@ void JobSystem::release_job(Job* job)
     K_ASSERT(job->is_processed(), "Tried to release unprocessed job.", log_channel_);
 
     // Return job to the pool
-    K_DELETE(job, job_pool_);
+    K_DELETE(job, internal_->job_pool);
 }
 
 void JobSystem::schedule(Job* job, size_t num_jobs)
@@ -231,7 +276,7 @@ void JobSystem::schedule(Job* job, size_t num_jobs)
     {
         shared_state_->pending.fetch_add(num_jobs, std::memory_order_release);
     }
-    scheduler_->dispatch(job);
+    internal_->scheduler.dispatch(job);
     shared_state_->cv_wake.notify_all();
 }
 
@@ -243,11 +288,6 @@ void JobSystem::schedule(Job* job, size_t num_jobs)
 bool JobSystem::is_busy() const
 {
     return shared_state_->pending.load(std::memory_order_acquire) > 0;
-}
-
-bool JobSystem::is_work_done(Job* job) const
-{
-    return job->is_processed();
 }
 
 // NOTE(ndx): Instead of busy-waiting I tried
@@ -283,10 +323,16 @@ void JobSystem::wait_until(std::function<bool()> condition)
 #ifdef K_USE_JOB_SYSTEM_PROFILING
     auto& activity = workers_[0].get_activity();
     activity.idle_time_us += idle_time_us;
-    monitor_->report_thread_activity(activity);
+    internal_->monitor.report_thread_activity(activity);
     activity.reset();
-    monitor_->update_statistics();
+    internal_->monitor.update_statistics();
 #endif
+}
+
+void JobSystem::wait_on_barrier(uint64_t barrier_id)
+{
+    const auto& barrier = get_barrier(barrier_id);
+    wait_until([&barrier]() { return !barrier.finished(); });
 }
 
 WorkerThread& JobSystem::get_worker(size_t idx)
@@ -298,6 +344,11 @@ WorkerThread& JobSystem::get_worker(size_t idx)
 const WorkerThread& JobSystem::get_worker(size_t idx) const
 {
     return workers_[idx];
+}
+
+Monitor& JobSystem::get_monitor()
+{
+    return internal_->monitor;
 }
 
 void JobSystem::abort()
@@ -343,7 +394,7 @@ void depth_first_walk(Job* job, std::function<bool(Job*)> visit)
 
         if (visit(job))
         {
-            for (Job* child : job->node)
+            for (Job* child : *job)
             {
                 stack.push(child);
             }
@@ -356,11 +407,11 @@ void Task::schedule(barrier_t barrier_id)
     JS_PROFILE_FUNCTION(js_->instrumentor_, js_->this_thread_id());
 
     // * Sanity check
-    K_ASSERT(job_->node.in_count() == 0, "Tried to schedule a child task.", js_->log_channel_);
+    K_ASSERT(job_->in_count() == 0, "Tried to schedule a child task.", js_->log_channel_);
 
     size_t num_jobs = 1;
 
-    if (job_->node.out_count() == 0)
+    if (job_->out_count() == 0)
     {
         // * Single job
         job_->barrier_id = barrier_id;
@@ -392,6 +443,32 @@ void Task::schedule(barrier_t barrier_id)
 
     // * Schedule parent
     js_->schedule(job_, num_jobs);
+}
+
+/// Get job metadata.
+const JobMetadata& Task::meta() const
+{
+    return job_->meta;
+}
+
+void Task::wait(std::function<bool()> condition)
+{
+    js_->wait_until([this, &condition]() { return !job_->is_processed() && condition(); });
+}
+
+bool Task::is_processed() const
+{
+    return job_->is_processed();
+}
+
+void Task::add_child(const Task& task)
+{
+    job_->connect(*task.job_, task.job_);
+}
+
+void Task::add_parent(const Task& task)
+{
+    task.job_->connect(*job_, job_);
 }
 
 } // namespace th

@@ -1,5 +1,8 @@
 #include "thread/job/impl/worker.h"
 #include "../../../util/sanitizer.h"
+#include "assert/assert.h"
+#include "thread/job/impl/barrier.h"
+#include "thread/job/impl/job.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
@@ -154,7 +157,7 @@ void WorkerThread::process(Job* job)
 
 void WorkerThread::schedule_children(Job* job)
 {
-    for (Job* child : job->node)
+    for (Job* child : *job)
     {
         /*
             If two parents finish at the same time, they could potentially schedule the

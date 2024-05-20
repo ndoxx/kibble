@@ -1,6 +1,6 @@
 #pragma once
 #include "atomic_queue/atomic_queue.h"
-#include "thread/job/config.h"
+#include "config.h"
 
 namespace kb
 {
@@ -11,10 +11,10 @@ using tid_t = uint32_t;
 using worker_affinity_t = uint32_t;
 
 template <typename T>
-using JobQueue = atomic_queue::AtomicQueue<T, k_max_jobs, T{}, true, true, false, false>;
+using JobQueue = atomic_queue::AtomicQueue<T, KIBBLE_JOBSYS_JOB_QUEUE_SIZE, T{}, true, true, false, false>;
 
 template <typename T>
-using ActivityQueue = atomic_queue::AtomicQueue2<T, k_stats_queue_capacity, true, true, false, false>;
+using ActivityQueue = atomic_queue::AtomicQueue2<T, KIBBLE_JOBSYS_STATS_QUEUE_SIZE, true, true, false, false>;
 
 /**
  * @internal

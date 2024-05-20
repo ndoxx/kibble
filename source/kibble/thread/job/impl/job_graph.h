@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../memory/util/alignment.h"
+#include "../../../memory/util/alignment.h"
 #include <array>
 #include <atomic>
 #include <stdexcept>
@@ -86,7 +86,7 @@ public:
     }
 
     /// (Recursively) reset the shared state only, useful for jobs that are kept alive
-    void reset_state()
+    void reset()
     {
         scheduled_.clear(std::memory_order_seq_cst);
         processed_.store(false, std::memory_order_release);
@@ -94,7 +94,7 @@ public:
         for (auto* child : out_nodes_)
         {
             child->pending_in_.fetch_add(1, std::memory_order_release);
-            child->reset_state();
+            child->reset();
         }
     }
 

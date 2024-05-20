@@ -113,7 +113,7 @@ private:
     }
 
 private:
-    std::array<WorkerStats, k_max_threads> stats_;
+    std::array<WorkerStats, KIBBLE_JOBSYS_MAX_THREADS> stats_;
     JobSystem& js_;
     ActivityQueue<WorkerActivity> activity_queue_;
 };

@@ -3,6 +3,7 @@
 #include "../../logger2/logger.h"
 #include "../../time/instrumentation.h"
 #include "impl/common.h"
+#include "thread/job/impl/job.h"
 #include "thread/job/impl/worker.h"
 
 namespace kb

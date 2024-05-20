@@ -8,6 +8,13 @@ target_sources(kibble
     ${SRC_LIB}
 )
 
+# CMake has no integer type (seriously guys...), we use string, she'll be fine.
+set(KB_JOB_MAX_THREADS 8 CACHE STRING "Max number of worker threads")
+set(KB_JOB_JOB_QUEUE_SIZE 1024 CACHE STRING "Max jobs per worker queue")
+set(KB_JOB_STATS_QUEUE_SIZE 128 CACHE STRING "Max stats packets in monitor queue")
+set(KB_JOB_MAX_CHILD 8 CACHE STRING "Max dependent jobs per job")
+set(KB_JOB_MAX_PARENT 4 CACHE STRING "Max job dependencies")
+
 configure_file(config.h.in config.h)
 
 target_include_directories(kibble

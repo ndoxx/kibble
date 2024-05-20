@@ -3,13 +3,10 @@
 // Adapted from https://gist.github.com/TheCherno/31f135eea6ee729ab5f26a6908eb3a5e
 // Basic instrumentation profiler by Cherno
 
-#include <array>
 #include <chrono>
 #include <filesystem>
 #include <string>
 #include <vector>
-
-#include "../thread/job/config.h"
 
 namespace fs = std::filesystem;
 
@@ -78,7 +75,7 @@ public:
 private:
     const long long base_timestamp_us_;
     bool enabled_ = true;
-    std::array<std::vector<ProfileResult>, th::k_max_threads> profile_data_;
+    std::vector<std::vector<ProfileResult>> profile_data_;
 };
 
 /**

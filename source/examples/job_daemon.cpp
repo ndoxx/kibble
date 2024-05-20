@@ -1,69 +1,19 @@
-#ifndef K_DEBUG
-#define K_DEBUG
-#endif
-
-#include "argparse/argparse.h"
-#include "logger2/formatters/vscode_terminal_formatter.h"
-#include "logger2/logger.h"
-#include "logger2/sinks/console_sink.h"
-#include "math/color_table.h"
-#include "memory/heap_area.h"
+#include "harness/job_example.h"
 #include "thread/job/daemon.h"
-#include "thread/job/job_system.h"
-#include "time/clock.h"
-#include "time/instrumentation.h"
-#include <array>
-#include <thread>
-#include <vector>
 
 using namespace kb;
-using namespace kb::th;
-using namespace kb::log;
 
-void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
+class JobExampleImpl : public JobExample
 {
-    for (const auto& msg : parser.get_errors())
-        klog(chan).warn(msg);
+public:
+    int impl(size_t nexp, size_t njobs, kb::th::JobSystem& js, const kb::log::Channel& chan) override;
+};
 
-    klog(chan).raw().info(parser.usage());
-    exit(0);
-}
+JOB_MAIN(JobExampleImpl);
 
-int main(int argc, char** argv)
+int JobExampleImpl::impl(size_t nframes, size_t njobs, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
-    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
-    auto console_sink = std::make_shared<ConsoleSink>();
-    console_sink->set_formatter(console_formatter);
-    Channel chan_kibble(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
-    chan_kibble.attach_sink(console_sink);
-    Channel chan_thread(Severity::Verbose, "thread", "thd", kb::col::crimson);
-    chan_thread.attach_sink(console_sink);
-
-    ap::ArgParse parser("daemon_example", "0.1");
-    parser.set_log_output([&chan_kibble](const std::string& str) { klog(chan_kibble).uid("ArgParse").info(str); });
-    const auto& nf = parser.add_variable<int>('f', "frames", "Number of frames", 200);
-    const auto& nj = parser.add_variable<int>('j', "jobs", "Number of jobs", 50);
-
-    bool success = parser.parse(argc, argv);
-    if (!success)
-        show_error_and_die(parser, chan_kibble);
-
-    th::JobSystemScheme scheme;
-    scheme.max_workers = 0;
-    scheme.max_stealing_attempts = 16;
-
-    // The job system needs some pre-allocated memory for the job pool.
-    // Fortunately, it can evaluate the memory requirements, so we don't have to guess.
-    memory::HeapArea area(th::JobSystem::get_memory_requirements(scheme));
-
-    auto* js = new th::JobSystem(area, scheme, &chan_thread);
-    auto* ds = new th::DaemonScheduler(*js);
-
-    Channel::set_async(js);
-
-    // Job system profiling
-    auto* session = new InstrumentationSession();
-    js->set_instrumentation_session(session);
+    th::DaemonScheduler ds(js);
 
     // Data for the daemons
     struct Message
@@ -78,15 +28,15 @@ int main(int argc, char** argv)
     // The cooldown_ms property could also be initialized with a positive
     // value to delay execution.
     std::vector<Message> msgs = {{"hello", 100.f}, {"salut", 200.f, 4}, {"sunt eu", 500.f}, {"un haiduc", 1000.f}};
-    std::vector<DaemonHandle> hnds;
+    std::vector<th::DaemonHandle> hnds;
 
     // Launch daemons
     for (const auto& msg : msgs)
     {
         // Daemons will just log a message and wait a bit
-        auto hnd = ds->create(
-            [msg, &chan_kibble]() {
-                klog(chan_kibble).uid("Daemon").info(msg.message);
+        auto hnd = ds.create(
+            [msg, &chan]() {
+                klog(chan).uid("Daemon").info(msg.message);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 return true;
             },
@@ -100,34 +50,27 @@ int main(int argc, char** argv)
     }
 
     // Simulate game loop
-    size_t nframes = size_t(nf());
     for (size_t ii = 0; ii < nframes; ++ii)
     {
         microClock clk;
         // Call this function each frame so daemons can be rescheduled
-        ds->update();
+        ds.update();
 
         // Create a few independent tasks each frame
-        for (size_t jj = 0; jj < size_t(nj()); ++jj)
+        for (size_t jj = 0; jj < size_t(njobs); ++jj)
         {
-            auto&& [tsk, fut] = js->create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
-                                                []() { std::this_thread::sleep_for(std::chrono::microseconds(500)); });
+            auto&& [tsk, fut] = js.create_task(th::JobMetadata(th::WORKER_AFFINITY_ANY, "job"),
+                                               []() { std::this_thread::sleep_for(std::chrono::microseconds(500)); });
             tsk.schedule();
         }
 
         // Kill the first daemon manually after some time
         if (ii == nframes / 2)
-            ds->kill(hnds[0]);
+            ds.kill(hnds[0]);
 
         // Wait on all jobs to finish
-        js->wait();
+        js.wait();
     }
-
-    delete ds;
-    delete js;
-
-    session->write("example_daemon.json");
-    delete session;
 
     return 0;
 }
