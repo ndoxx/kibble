@@ -455,8 +455,43 @@ void Task::schedule(barrier_t barrier_id)
     }
 
     // * Schedule parent
-    bool success = js_->try_schedule(job_, num_jobs);
-    K_ASSERT(success, "Tried to schedule a non-idle job.", js_->log_channel_);
+    js_->try_schedule(job_, num_jobs);
+}
+
+bool Task::try_preempt_and_execute()
+{
+    /*
+        NOTE(ndx): Job could very well be dead and returned to the pool, and
+        I have now fucking way of knowing that. Task can be copied and moved,
+        so I can't change an atomic flag from within the kernel.
+        And I just refuse to pass the raw address of an atomic bool held by
+        a shared_ptr, because just thinking about it makes me throw up in my
+        mouth.
+    */
+
+    K_ASSERT(job_->in_count() == 0 && job_->out_count() == 0, "Tried to preempt a non-singular job.",
+             js_->log_channel_);
+
+    JobState expected1 = JobState::Idle;
+    JobState expected2 = JobState::Pending;
+
+    if (job_->exchange_state(expected1, JobState::Preempted) || job_->exchange_state(expected2, JobState::Preempted))
+    {
+        job_->kernel();
+
+        if (job_->barrier_id != k_no_barrier)
+        {
+            js_->get_barrier(job_->barrier_id).remove_dependency();
+        }
+
+        job_->force_state(JobState::Processed);
+        js_->release_job(job_);
+        js_->shared_state_->pending.fetch_sub(1, std::memory_order_release);
+
+        return true;
+    }
+
+    return false;
 }
 
 /// Get job metadata.

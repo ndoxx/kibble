@@ -21,7 +21,7 @@ JOB_MAIN(JobExampleImpl);
 int JobExampleImpl::impl(size_t nexp, size_t ntasks, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
     (void)nexp;
-    klog(chan).info("[JobSystem Example 1] throwing exceptions");
+    klog(chan).info("[JobSystem Example] throwing exceptions");
     klog(chan).info("Creating tasks.");
 
     // Create as many tasks as needed

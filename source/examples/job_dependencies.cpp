@@ -24,7 +24,7 @@ JOB_MAIN(JobExampleImpl);
  */
 int JobExampleImpl::impl(size_t nexp, size_t nloads, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
-    klog(chan).info("[JobSystem Example 2] mock async loading and staging");
+    klog(chan).info("[JobSystem Example] mock async loading and staging");
 
     // In addition to loading tasks, we also simulate staging tasks (which take less time to complete)
     std::vector<long> load_time(nloads, 0l);

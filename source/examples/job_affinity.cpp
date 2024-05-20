@@ -22,7 +22,7 @@ JOB_MAIN(JobExampleImpl);
  */
 int JobExampleImpl::impl(size_t nexp, size_t nloads, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
-    klog(chan).info("[JobSystem Example 0] mock async loading");
+    klog(chan).info("[JobSystem Example] mock async loading");
 
     // We have nloads loading operations to execute asynchronously, each of them take a random amount of time
     std::vector<long> load_time(nloads, 0l);

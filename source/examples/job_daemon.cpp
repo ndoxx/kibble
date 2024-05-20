@@ -13,6 +13,7 @@ JOB_MAIN(JobExampleImpl);
 
 int JobExampleImpl::impl(size_t nframes, size_t njobs, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
+    klog(chan).info("[JobSystem Example] daemon jobs");
     th::DaemonScheduler ds(js);
 
     // Data for the daemons

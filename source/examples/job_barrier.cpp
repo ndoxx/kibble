@@ -26,7 +26,7 @@ JOB_MAIN(JobExampleImpl);
  */
 int JobExampleImpl::impl(size_t nexp, size_t njobs, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
-    klog(chan).info("[JobSystem Example 4] barriers");
+    klog(chan).info("[JobSystem Example] barriers");
 
     std::vector<long> load_time(njobs, 0l);
     random_fill(load_time.begin(), load_time.end(), 1l, 50l, 42);

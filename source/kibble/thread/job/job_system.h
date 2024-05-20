@@ -3,6 +3,7 @@
 #include "../../util/internal.h"
 #include "barrier_id.h"
 #include "job_meta.h"
+#include "memory/util/alignment.h"
 
 #include <future>
 #include <unordered_map>
@@ -307,6 +308,7 @@ class Task
 public:
     friend class JobSystem;
 
+    // Default constructible, movable, non-copyable
     Task() = default;
 
     /**
@@ -317,6 +319,23 @@ public:
      *
      */
     void schedule(barrier_t barrier_id = k_no_barrier);
+
+    /**
+     * @brief Try to execute the job on this thread.
+     * Only singular jobs can be preempted at the moment.
+     * If the job is already in a worker queue, it will be safely skipped.
+     *
+     * @warning Experimental and unsafe. Task object cannot know if the job is dead
+     * and in the pool, some intense necrophilic action could be going on after a call.
+     * Memory is intact due to arena allocation, and the job pointer should be far away
+     * in the free list, but it's morally wrong.
+     * The only reason I considered doing this in the first place was because my Jolt
+     * job system adapter needs some kind of preemption mechanism.
+     *
+     * @return true if the job was prempted
+     * @return false if the job was already executing on a worker thread, or finished.
+     */
+    bool try_preempt_and_execute();
 
     /// Get job metadata.
     const JobMetadata& meta() const;

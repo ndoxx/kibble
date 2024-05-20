@@ -31,7 +31,7 @@ JOB_MAIN(JobExampleImpl);
  */
 int JobExampleImpl::impl(size_t nexp, size_t ngraphs, kb::th::JobSystem& js, const kb::log::Channel& chan)
 {
-    klog(chan).info("[JobSystem Example 3] diamond graphs");
+    klog(chan).info("[JobSystem Example] diamond graphs");
 
     for (size_t kk = 0; kk < nexp; ++kk)
     {
