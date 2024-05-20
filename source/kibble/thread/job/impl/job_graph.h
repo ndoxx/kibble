@@ -3,12 +3,22 @@
 #include "../../../memory/util/alignment.h"
 #include <array>
 #include <atomic>
+#include <cstddef>
 #include <stdexcept>
 
 namespace kb
 {
 namespace th
 {
+
+enum class JobState : size_t
+{
+    Idle,      // Freshly created
+    Pending,   // Scheduled
+    Preempted, // Preempted externally
+    Executing, // Running
+    Processed  // Finished
+};
 
 /**
  * @brief Holds job dependency information, and the associated shared state.
@@ -40,18 +50,6 @@ public:
         to.pending_in_.fetch_add(1, std::memory_order_release);
     }
 
-    /// Get the input harness
-    inline const auto& get_in_nodes() const
-    {
-        return in_nodes_;
-    }
-
-    /// Get the output harness
-    inline const auto& get_out_nodes() const
-    {
-        return out_nodes_;
-    }
-
     /// Check if there are no pending dependencies
     inline bool is_ready() const
     {
@@ -64,32 +62,32 @@ public:
         return pending_in_.load(std::memory_order_acquire);
     }
 
-    /// Check if this node has been processed
-    inline bool is_processed() const
+    inline void remove_dependency()
     {
-        return processed_.load(std::memory_order_acquire);
+        pending_in_.fetch_sub(1, std::memory_order_release);
     }
 
-    /// Mark this node processed and signal children that this dependency is processed
-    void mark_processed()
+    inline bool check_state(JobState expected)
     {
-        for (auto* child : out_nodes_)
-            child->pending_in_.fetch_sub(1, std::memory_order_release);
-
-        processed_.store(true, std::memory_order_release);
+        return state_.load(std::memory_order_acquire) == expected;
     }
 
-    /// Try to mark this node scheduled, used to avoid multiple scheduling of children
-    bool mark_scheduled()
+    inline void force_state(JobState desired)
     {
-        return !scheduled_.test_and_set(std::memory_order_seq_cst);
+        state_.store(desired, std::memory_order_release);
+    }
+
+    inline bool exchange_state(JobState& expected, JobState desired)
+    {
+        return state_.compare_exchange_strong(expected, desired);
     }
 
     /// (Recursively) reset the shared state only, useful for jobs that are kept alive
     void reset()
     {
-        scheduled_.clear(std::memory_order_seq_cst);
-        processed_.store(false, std::memory_order_release);
+        // scheduled_.clear(std::memory_order_seq_cst);
+        // processed_.store(false, std::memory_order_release);
+        state_.store(JobState::Idle, std::memory_order_release);
 
         for (auto* child : out_nodes_)
         {
@@ -178,10 +176,8 @@ private:
     L1_ALIGN std::array<T, MAX_OUT> out_objects_;
     /// Number of pending dependencies
     L1_ALIGN std::atomic<size_t> pending_in_ = 0;
-    /// Set to true as soon as node has been processed
-    L1_ALIGN std::atomic<bool> processed_ = false;
-    /// To avoid multiple scheduling of children
-    L1_ALIGN std::atomic_flag scheduled_ = ATOMIC_FLAG_INIT;
+    /// State of the node
+    L1_ALIGN std::atomic<JobState> state_{JobState::Idle};
 };
 
 } // namespace th

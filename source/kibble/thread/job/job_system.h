@@ -167,10 +167,7 @@ public:
      * When it evaluates to false, the function exits regardless of pending jobs. This can be used to implement
      * a timeout functionality.
      */
-    inline void wait(std::function<bool()> condition = []() { return true; })
-    {
-        wait_until([this, &condition]() { return is_busy() && condition(); });
-    }
+    void wait(std::function<bool()> condition = []() { return true; });
 
     /**
      * @brief Hold execution on this thread until all jobs under specified barrier (and its dependents) are processed.
@@ -259,7 +256,8 @@ private:
 
     /**
      * @internal
-     * @brief Schedule job execution.
+     * @brief Try to schedule job execution.
+     * Atomically exchange the job state to Pending. If exchange fails, return false.
      * The number of pending jobs will be increased, the job dispatched and all worker threads will be awakened.
      *
      * @note Only orphan jobs can be scheduled. A job is orphan if its parent has been processed, or if it
@@ -270,8 +268,9 @@ private:
      *
      * @param job the job to submit
      * @param num_jobs total number of jobs to schedule (this job and its children) when top parent, 0 when child job
+     * @return true if job was successfully scheduled, false otherwise
      */
-    void schedule(Job* job, size_t num_jobs);
+    bool try_schedule(Job* job, size_t num_jobs);
 
 private:
     Config config_;

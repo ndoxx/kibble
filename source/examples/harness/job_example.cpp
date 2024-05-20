@@ -5,6 +5,7 @@
 #include "math/color_table.h"
 #include "time/instrumentation.h"
 
+#include <filesystem>
 #include <numeric>
 
 using namespace kb;
@@ -90,7 +91,9 @@ int JobExample::run(int argc, char** argv)
     delete js;
 
 #ifdef K_USE_JOB_SYSTEM_PROFILING
-    session->write(fmt::format("profile_{}.json", argv[0]));
+    std::filesystem::path filepath = fmt::format("job_example_{}.json", fs::path(argv[0]).stem().string());
+    klog(chan_kibble).info("Writing profiling data to {}", filepath.string());
+    session->write(filepath);
     delete session;
 #endif
 

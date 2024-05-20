@@ -10,6 +10,7 @@
 #include "memory/heap_area.h"
 #include "thread/job/impl/barrier.h"
 #include "thread/job/impl/job.h"
+#include "thread/job/impl/job_graph.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
@@ -258,26 +259,32 @@ void JobSystem::release_job(Job* job)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Make sure that the job was processed
-    K_ASSERT(job->is_processed(), "Tried to release unprocessed job.", log_channel_);
+    K_ASSERT(job->check_state(JobState::Processed), "Tried to release unprocessed job.", log_channel_);
 
     // Return job to the pool
     K_DELETE(job, internal_->job_pool);
 }
 
-void JobSystem::schedule(Job* job, size_t num_jobs)
+bool JobSystem::try_schedule(Job* job, size_t num_jobs)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
-
     // Sanity check
     K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
 
-    // Dspatch and wake up workers
-    if (num_jobs != 0)
+    JobState expected = JobState::Idle;
+    if (job->exchange_state(expected, JobState::Pending))
     {
-        shared_state_->pending.fetch_add(num_jobs, std::memory_order_release);
+        // Dspatch and wake up workers
+        if (num_jobs != 0)
+        {
+            shared_state_->pending.fetch_add(num_jobs, std::memory_order_release);
+        }
+        internal_->scheduler.dispatch(job);
+        shared_state_->cv_wake.notify_all();
+        return true;
     }
-    internal_->scheduler.dispatch(job);
-    shared_state_->cv_wake.notify_all();
+
+    return false;
 }
 
 // Main thread and workers (on rescheduling) atomically increment pending each
@@ -299,7 +306,6 @@ bool JobSystem::is_busy() const
 void JobSystem::wait_until(std::function<bool()> condition)
 {
     // Do some work to assist worker threads
-    JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 #ifdef K_USE_JOB_SYSTEM_PROFILING
     int64_t idle_time_us = 0;
 #endif
@@ -329,8 +335,15 @@ void JobSystem::wait_until(std::function<bool()> condition)
 #endif
 }
 
+void JobSystem::wait(std::function<bool()> condition)
+{
+    JS_PROFILE_SCOPE(instrumentor_, "JobSystem::wait", this_thread_id());
+    wait_until([this, &condition]() { return is_busy() && condition(); });
+}
+
 void JobSystem::wait_on_barrier(uint64_t barrier_id)
 {
+    JS_PROFILE_SCOPE(instrumentor_, "JobSystem::wait_on_barrier", this_thread_id());
     const auto& barrier = get_barrier(barrier_id);
     wait_until([&barrier]() { return !barrier.finished(); });
 }
@@ -442,7 +455,8 @@ void Task::schedule(barrier_t barrier_id)
     }
 
     // * Schedule parent
-    js_->schedule(job_, num_jobs);
+    bool success = js_->try_schedule(job_, num_jobs);
+    K_ASSERT(success, "Tried to schedule a non-idle job.", js_->log_channel_);
 }
 
 /// Get job metadata.
@@ -453,12 +467,13 @@ const JobMetadata& Task::meta() const
 
 void Task::wait(std::function<bool()> condition)
 {
-    js_->wait_until([this, &condition]() { return !job_->is_processed() && condition(); });
+    JS_PROFILE_SCOPE(js_->instrumentor_, "Task::wait", js_->this_thread_id());
+    js_->wait_until([this, &condition]() { return !is_processed() && condition(); });
 }
 
 bool Task::is_processed() const
 {
-    return job_->is_processed();
+    return job_->check_state(JobState::Processed);
 }
 
 void Task::add_child(const Task& task)

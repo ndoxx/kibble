@@ -33,7 +33,7 @@ DaemonScheduler::~DaemonScheduler()
 {
     for (auto&& [hnd, daemon] : daemons_)
     {
-        daemon->job->mark_processed();
+        daemon->job->force_state(JobState::Processed);
         js_.release_job(daemon->job);
     }
 }
@@ -109,7 +109,7 @@ void DaemonScheduler::update()
         if (daemon->marked_for_deletion.load(std::memory_order_acquire))
         {
             // Job is not scheduled at this point, we need to manually release it
-            daemon->job->mark_processed();
+            daemon->job->force_state(JobState::Processed);
             js_.release_job(daemon->job);
             kill_list_.push_back(hnd);
             continue;
@@ -128,7 +128,8 @@ void DaemonScheduler::update()
             }
 
             daemon->job->reset();
-            js_.schedule(daemon->job, 1);
+            bool success = js_.try_schedule(daemon->job, 1);
+            K_ASSERT(success, "Could not schedule job.", js_.log_channel_).watch(hnd);
         }
     }
 

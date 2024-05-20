@@ -3,6 +3,7 @@
 #include "assert/assert.h"
 #include "thread/job/impl/barrier.h"
 #include "thread/job/impl/job.h"
+#include "thread/job/impl/job_graph.h"
 #include "thread/job/impl/monitor.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"
@@ -55,7 +56,11 @@ void WorkerThread::run()
         Job* job = nullptr;
         if (get_job(job))
         {
-            process(job);
+            JobState expected = JobState::Pending;
+            if (job->exchange_state(expected, JobState::Executing))
+            {
+                process(job);
+            }
             continue;
         }
 
@@ -139,7 +144,10 @@ void WorkerThread::process(Job* job)
     }
 #endif
 
-    job->mark_processed();
+    JobState expected = JobState::Executing;
+    bool success = job->exchange_state(expected, JobState::Processed);
+    K_ASSERT(success, "Failed to mark job as processed.", js_->log_channel_);
+
     schedule_children(job);
 
     if (job->barrier_id != k_no_barrier)
@@ -159,15 +167,15 @@ void WorkerThread::schedule_children(Job* job)
 {
     for (Job* child : *job)
     {
+        child->remove_dependency();
+
         /*
             If two parents finish at the same time, they could potentially schedule the
             same children at the same time. The mark_scheduled() call makes sure that only
             one parent will get to schedule the children jobs.
         */
-        if (child->is_ready() && child->mark_scheduled())
+        if (child->is_ready() && js_->try_schedule(child, 0))
         {
-            // Thread-safe call as long as the scheduler implementation is thread-safe
-            js_->schedule(child, 0);
 #ifdef K_USE_JOB_SYSTEM_PROFILING
             ++activity_.scheduled;
 #endif
@@ -179,7 +187,8 @@ bool WorkerThread::foreground_work()
 {
     K_ASSERT(!is_background(), "foreground_work() should not be called in a background thread.", nullptr);
     Job* job = nullptr;
-    if (get_job(job))
+    JobState expected = JobState::Pending;
+    if (get_job(job) && job->exchange_state(expected, JobState::Executing))
     {
         process(job);
         return true;
