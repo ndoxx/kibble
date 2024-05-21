@@ -3,7 +3,6 @@
 #include "../../util/internal.h"
 #include "barrier_id.h"
 #include "job_meta.h"
-#include "memory/util/alignment.h"
 
 #include <future>
 #include <unordered_map>
