@@ -14,6 +14,7 @@ set(KB_JOB_JOB_QUEUE_SIZE 1024 CACHE STRING "Max jobs per worker queue")
 set(KB_JOB_STATS_QUEUE_SIZE 128 CACHE STRING "Max stats packets in monitor queue")
 set(KB_JOB_MAX_CHILD 8 CACHE STRING "Max dependent jobs per job")
 set(KB_JOB_MAX_PARENT 4 CACHE STRING "Max job dependencies")
+option(KB_JOB_ATOMIC_POOL "Enable lock-free job pool in job system" ON)
 
 configure_file(config.h.in config.h)
 

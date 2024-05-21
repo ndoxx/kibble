@@ -6,8 +6,10 @@
 #include "math/constexpr_math.h"
 #include "memory/allocator/atomic_pool_allocator.h"
 #include "memory/allocator/linear_allocator.h"
+#include "memory/allocator/pool_allocator.h"
 #include "memory/arena.h"
 #include "memory/heap_area.h"
+#include "memory/policy/thread_guard_multi_thread.h"
 #include "thread/job/impl/barrier.h"
 #include "thread/job/impl/job.h"
 #include "thread/job/impl/job_graph.h"
@@ -58,14 +60,26 @@ struct JobSystem::Internal
         memory::MemoryArena<memory::LinearAllocator, memory::policy::SingleThread, memory::policy::NoBoundsChecking,
                             memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
 
+#ifdef KIBBLE_JOBSYS_ATOMIC_POOL
     using JobPoolArena =
         memory::MemoryArena<memory::AtomicPoolAllocator<KIBBLE_JOBSYS_JOB_QUEUE_SIZE * KIBBLE_JOBSYS_MAX_THREADS>,
                             memory::policy::SingleThread, memory::policy::NoBoundsChecking,
                             memory::policy::NoMemoryTagging, memory::policy::NoMemoryTracking>;
+#else
+    using JobPoolArena = memory::MemoryArena<memory::PoolAllocator, memory::policy::MultiThread<std::mutex>,
+                                             memory::policy::NoBoundsChecking, memory::policy::NoMemoryTagging,
+                                             memory::policy::NoMemoryTracking>;
+#endif
 
     Internal(JobSystem* js, memory::HeapArea& area)
         : arena("JobSystemLocalArena", area, local_arena_requirements(js->get_config())),
-          job_pool("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size), scheduler(*js), monitor(*js)
+#ifdef KIBBLE_JOBSYS_ATOMIC_POOL
+          job_pool("JobPool", area, sizeof(Job), kb::memory::k_cache_line_size),
+#else
+          job_pool("JobPool", area, KIBBLE_JOBSYS_JOB_QUEUE_SIZE * KIBBLE_JOBSYS_MAX_THREADS, sizeof(Job),
+                   kb::memory::k_cache_line_size),
+#endif
+          scheduler(*js), monitor(*js)
     {
     }
 

@@ -9,6 +9,7 @@
 #define KIBBLE_VERSION_MINOR            @PROJECT_VERSION_MINOR@
 #define KIBBLE_VERSION_PATCH            @PROJECT_VERSION_PATCH@
 
+#define KIBBLE_JOBSYS_ATOMIC_POOL                                               @KB_JOB_ATOMIC_POOL@
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_THREADS       = @KB_JOB_MAX_THREADS@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_JOB_QUEUE_SIZE    = @KB_JOB_JOB_QUEUE_SIZE@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_STATS_QUEUE_SIZE  = @KB_JOB_STATS_QUEUE_SIZE@;
