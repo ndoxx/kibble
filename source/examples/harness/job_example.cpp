@@ -81,7 +81,7 @@ int JobExample::run(int argc, char** argv)
     Channel::set_async(js);
 
     // Job system profiling
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
     auto* session = new InstrumentationSession();
     js->set_instrumentation_session(session);
 #endif
@@ -90,7 +90,7 @@ int JobExample::run(int argc, char** argv)
 
     delete js;
 
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
     std::filesystem::path filepath = fmt::format("job_example_{}.json", fs::path(argv[0]).stem().string());
     klog(chan_kibble).info("Writing profiling data to {}", filepath.string());
     session->write(filepath);

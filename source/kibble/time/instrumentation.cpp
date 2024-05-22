@@ -1,5 +1,7 @@
-#include "instrumentation.h"
+#include "time/instrumentation.h"
 #include "config.h"
+#include "fmt/core.h"
+#include "fmt/std.h"
 #include <fstream>
 
 namespace kb
@@ -16,10 +18,19 @@ InstrumentationSession::InstrumentationSession()
 
 void InstrumentationSession::push(const ProfileResult& result)
 {
-    if (!enabled_)
-        return;
+    if (enabled_)
+    {
+        // Each thread has its own queue, no need to lock.
+        profile_data_[result.thread_id].push_back(result);
+    }
+}
 
-    profile_data_[result.thread_id].push_back(result);
+void InstrumentationSession::push(ProfileResult&& result)
+{
+    if (enabled_)
+    {
+        profile_data_[result.thread_id].push_back(std::move(result));
+    }
 }
 
 void InstrumentationSession::write(const fs::path& filepath)
@@ -34,33 +45,26 @@ void InstrumentationSession::write(const fs::path& filepath)
     // Trace Event Format:
     // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/edit
 
-    ofs << "{\"otherData\": {},\"traceEvents\":[";
+    fmt::print(ofs, "{{\"otherData\": {{}},\"traceEvents\":[");
 
     size_t profile_count = 0;
     for (const auto& profiles : profile_data_)
     {
         for (const auto& profile : profiles)
         {
-            if (profile_count++ > 0)
-                ofs << ",";
-
             std::string name = profile.name;
             std::replace(name.begin(), name.end(), '"', '\'');
-
-            // clang-format off
-            ofs << "{"
-                << "\"cat\":\"" << profile.category << "\","
-                << "\"dur\":" << (profile.end - profile.start) << ',' 
-                << "\"name\":\"" << name << "\","
-                << "\"ph\":\"X\","
-                << "\"pid\":0,"
-                << "\"tid\":" << profile.thread_id + 1 << ','
-                << "\"ts\":" << profile.start - base_timestamp_us_ << '}';
-            // clang-format on
+            if (profile_count++ > 0)
+            {
+                fmt::print(ofs, ",");
+            }
+            fmt::print(ofs, "{{\"cat\":\"{}\",\"dur\":{},\"name\":\"{}\",\"ph\":\"X\",\"pid\":0,\"tid\":{},\"ts\":{}}}",
+                       profile.category, profile.end - profile.start, name, profile.thread_id + 1,
+                       profile.start - base_timestamp_us_);
         }
     }
 
-    ofs << "]}" << std::endl;
+    fmt::print(ofs, "]}}");
 }
 
 InstrumentationTimer::InstrumentationTimer(InstrumentationSession* session, const std::string& name,

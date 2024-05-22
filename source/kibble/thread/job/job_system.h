@@ -326,10 +326,7 @@ public:
      *
      * @warning Experimental and unsafe. Task object cannot know if the job is dead
      * and in the pool, some intense necrophilic action could be going on after a call.
-     * Memory is intact due to arena allocation, and the job pointer should be far away
-     * in the free list, but it's morally wrong.
-     * The only reason I considered doing this in the first place was because my Jolt
-     * job system adapter needs some kind of preemption mechanism.
+     * Maybe check that the future is NOT ready before calling this function.
      *
      * @return true if the job was prempted
      * @return false if the job was already executing on a worker thread, or finished.
@@ -340,7 +337,7 @@ public:
     const JobMetadata& meta() const;
 
     /**
-     * @brief Hold execution on the main thread until this job has been processed or the predicate returns false.
+     * @brief Hold execution on this thread until this job has been processed or the predicate returns false.
      *
      * @param condition While this predicate evaluates to true, the function waits for job completion.
      * When it evaluates to false, the function exits regardless of job completion. This can be used to implement

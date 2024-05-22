@@ -51,9 +51,12 @@ public:
     /**
      * @brief Save profiling information.
      *
+     * @note Lock-free and thread-safe.
+     *
      * @param result Profiling data.
      */
     void push(const ProfileResult& result);
+    void push(ProfileResult&& result);
 
     /**
      * @brief Write profiling information to file.

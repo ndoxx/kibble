@@ -211,7 +211,7 @@ void JobSystem::shutdown()
     kb::log::Channel::set_async(nullptr);
     klog(log_channel_).uid("JobSystem").debug("All threads have joined.");
 
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
     // Log worker statistics
     internal_->monitor.update_statistics();
     klog(log_channel_).uid("JobSystem").verbose("Thread statistics:");
@@ -319,29 +319,29 @@ bool JobSystem::is_busy() const
 // But it deadlocks (lost wakeups?)
 void JobSystem::wait_until(std::function<bool()> condition)
 {
-    // Do some work to assist worker threads
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+    // Do some work to assist other threads
+#ifdef KB_JOB_SYSTEM_PROFILING
     int64_t idle_time_us = 0;
 #endif
 
     while (condition())
     {
-        if (!workers_[0].foreground_work())
+        if (!workers_[this_thread_id()].foreground_work())
         {
             // There's nothing we can do, just wait. Some work may come to us.
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
             microClock clk;
 #endif
             shared_state_->cv_wake.notify_all(); // wake worker threads
             std::this_thread::yield();           // allow this thread to be rescheduled
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
             idle_time_us += clk.get_elapsed_time().count();
 #endif
         }
     }
 
-#ifdef K_USE_JOB_SYSTEM_PROFILING
-    auto& activity = workers_[0].get_activity();
+#ifdef KB_JOB_SYSTEM_PROFILING
+    auto& activity = workers_[this_thread_id()].get_activity();
     activity.idle_time_us += idle_time_us;
     internal_->monitor.report_thread_activity(activity);
     activity.reset();

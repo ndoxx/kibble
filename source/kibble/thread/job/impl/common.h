@@ -54,7 +54,7 @@ struct WorkerActivity
 
 // The following macros simplify the declaration of an instrumentation timer.
 // The token pasting stuff allows to declare multiple timers with different names in the same function.
-#ifdef K_USE_JOB_SYSTEM_PROFILING
+#ifdef KB_JOB_SYSTEM_PROFILING
 #define CONCAT_IMPL(first, second) first##second
 #define CONCAT(first, second) CONCAT_IMPL(first, second)
 #define JS_PROFILE_SCOPE(session, name, thread_id)                                                                     \

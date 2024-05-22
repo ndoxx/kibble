@@ -4,7 +4,6 @@
 #include "thread/job/impl/scheduler.h"
 #include "thread/job/impl/worker.h"
 #include "thread/job/job_system.h"
-#include "time/instrumentation.h"
 
 namespace kb
 {

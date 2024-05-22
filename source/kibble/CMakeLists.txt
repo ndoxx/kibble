@@ -47,7 +47,6 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
 )
 
 option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
-
 if(KB_MORTON_INTRIN)
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp"
         PROPERTIES COMPILE_FLAGS -mbmi2
@@ -55,9 +54,8 @@ if(KB_MORTON_INTRIN)
 endif()
 
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
-
 if(KB_JOB_SYSTEM_PROFILING)
-    target_compile_definitions(kibble PUBLIC K_USE_JOB_SYSTEM_PROFILING)
+    target_compile_definitions(kibble PUBLIC KB_JOB_SYSTEM_PROFILING)
 endif()
 
 option(KB_MEM_AREA_MEMSET "Initialize heap area memory on creation (DBG)" ON)
