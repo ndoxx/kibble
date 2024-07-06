@@ -4,11 +4,8 @@
  */
 
 #include <filesystem>
-#include <fstream>
 #include <unordered_map>
 #include <memory>
-#include <ostream>
-#include <type_traits>
 #include <vector>
 
 #include "../assert/assert.h"
@@ -195,9 +192,10 @@ public:
     fs::path get_app_data_directory(std::string vendor, std::string appname) const;
 
     /**
-     * @brief Recursively copy newer files from source directory to target directory
+     * @brief Synchronize files or directories
      * 
-     * If source path is a regular file, simply copy source to target if newer
+     * Only copy files if they don't exist or the source version is newer
+     * In directory mode, remove files from target that have been deleted in source
      * 
      * @param source The directory / file to copy from
      * @param target The directory / file to copy to
@@ -303,6 +301,10 @@ private:
     fs::path to_regular_path(const UpathParsingResult& result) const;
     // OS-dependent method to locate this binary
     void init_self_path();
+    // Helper to sync a single file
+    void sync_file(const fs::path& source, const fs::path& target) const;
+    // Helper to recursively sync a directory and its content
+    void sync_directory(const fs::path& source, const fs::path& target) const;
 
 private:
     fs::path self_directory_;

@@ -151,6 +151,10 @@ if(KB_TARGET_TESTS)
         nuclear.cpp
     )
 
+    set_source_files_properties("nuclear.cpp"
+        PROPERTIES COMPILE_FLAGS "-mbmi -mlzcnt"
+    )
+
     add_executable(nuclear ${SRC_NUCLEAR})
 
     target_include_directories(nuclear

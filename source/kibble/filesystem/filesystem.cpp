@@ -4,8 +4,8 @@
 #include "logger2/logger.h"
 #include "string/string.h"
 
-#include <chrono>
 #include "fmt/std.h"
+#include <chrono>
 #include <regex>
 
 #ifdef __linux__
@@ -231,7 +231,6 @@ void FileSystem::sync(const fs::path& source, const fs::path& target) const
     }
 
     bool dir_op = fs::is_directory(source);
-
     klog(log_channel_)
         .uid("FileSystem")
         .info(R"(Syncing {}:
@@ -239,41 +238,77 @@ source: {}
 target: {})",
               (dir_op ? "directory" : "file"), source.string(), target.string());
 
-    std::error_code ec_copy;
-
     if (dir_op)
     {
-        // Copy recursively
-        fs::copy(source, target, fs::copy_options::update_existing | fs::copy_options::recursive, ec_copy);
-
-        // Also delete removed files
-        std::vector<fs::path> kill_list;
-        for (const auto& entry : fs::recursive_directory_iterator(target))
-        {
-            fs::path rel = fs::relative(entry.path(), target);
-            if (!fs::exists(source / rel))
-                kill_list.push_back(entry.path());
-        }
-
-        std::error_code ec_remove;
-        for (const auto& path : kill_list)
-        {
-            if (fs::exists(path))
-            {
-                fs::remove_all(path, ec_remove);
-                if (ec_remove)
-                {
-                    klog(log_channel_).uid("FileSystem").error(ec_remove.message());
-                }
-            }
-        }
+        sync_directory(source, target);
     }
     else
-        fs::copy_file(source, target, fs::copy_options::update_existing, ec_copy);
-
-    if (ec_copy)
     {
-        klog(log_channel_).uid("FileSystem").error(ec_copy.message());
+        sync_file(source, target);
+    }
+}
+
+void FileSystem::sync_file(const fs::path& source, const fs::path& target) const
+{
+    std::error_code ec;
+
+    if (!fs::exists(target) || fs::last_write_time(source) > fs::last_write_time(target))
+    {
+        fs::copy_file(source, target, fs::copy_options::overwrite_existing, ec);
+        if (ec)
+        {
+            klog(log_channel_).uid("FileSystem").error("File copy error: {}", ec.message());
+        }
+        else
+        {
+            klog(log_channel_).uid("FileSystem").verbose("Updated file: {}", target.string());
+        }
+    }
+}
+
+void FileSystem::sync_directory(const fs::path& source, const fs::path& target) const
+{
+    // Create target directory if it doesn't exist
+    if (!fs::exists(target))
+    {
+        fs::create_directories(target);
+    }
+
+    // Sync files and subdirectories recursively
+    for (const auto& entry : fs::directory_iterator(source))
+    {
+        const auto& source_path = entry.path();
+        const auto target_path = target / source_path.filename();
+
+        if (fs::is_directory(source_path))
+        {
+            sync_directory(source_path, target_path);
+        }
+        else
+        {
+            sync_file(source_path, target_path);
+        }
+    }
+
+    // Remove files/directories in target that don't exist in source
+    for (const auto& entry : fs::directory_iterator(target))
+    {
+        const auto& target_path = entry.path();
+        const auto source_path = source / target_path.filename();
+
+        if (!fs::exists(source_path))
+        {
+            std::error_code ec;
+            fs::remove_all(target_path, ec);
+            if (ec)
+            {
+                klog(log_channel_).uid("FileSystem").error("Remove error: {}", ec.message());
+            }
+            else
+            {
+                klog(log_channel_).uid("FileSystem").verbose("Removed: {}", target_path.string());
+            }
+        }
     }
 }
 
