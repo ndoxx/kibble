@@ -48,6 +48,7 @@ https://www.markdownguide.org/basic-syntax/#reference-style-links
   - [Examples and tests](#examples-and-tests)
   - [Documentation](#documentation)
   - [Integration](#integration)
+- [Changelog](#changelog)
 - [How to help](#how-to-help)
 - [License](#license)
 - [Contact](#contact)
@@ -91,9 +92,6 @@ This library is under heavy development, and the API is subject to change. Use a
 * Profiling utility
     - Easily profile execution time
     - Produce a Chrome Tracing json output
-* Config system
-    - Read and save settings from / to multiple TOML files with a single structure
-    - Each property is referenced by an intuitive hash string reflecting the property's hierarchy
 * Event system
     - Publish / subscribe model with central message broker (event bus)
     - Deferred event handling with event queues
@@ -162,8 +160,6 @@ This library is under heavy development, and the API is subject to change. Use a
 ## Deprecated components
 
 - The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
-
-- The config system will be redone at some point, its use is discouraged.
 
 
 <!-- GETTING STARTED -->
@@ -249,6 +245,14 @@ During a system installation, Kibble also generates CMake config files so it can
 ```cmake
 find_package(kibble 1.1.0 REQUIRED)
 ```
+
+
+<!-- CHANGELOG -->
+# Changelog
+
+## ver 1.2.0
+
+- Completely removed TOML support and config utility class.
 
 
 <!-- CONTRIBUTING -->

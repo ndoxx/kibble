@@ -1,7 +1,7 @@
 #include "filesystem/filesystem.h"
 #include "filesystem/resource_pack.h"
 #include <catch2/catch_all.hpp>
-#include <iostream>
+#include <fstream>
 #include <numeric>
 
 using namespace kb;

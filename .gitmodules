@@ -1,9 +1,6 @@
 [submodule "source/vendor/atomic_queue"]
 	path = source/vendor/atomic_queue
 	url = https://github.com/max0x7ba/atomic_queue.git
-[submodule "source/vendor/tomlplusplus"]
-	path = source/vendor/tomlplusplus
-	url = https://github.com/marzer/tomlplusplus.git
 [submodule "source/vendor/backward-cpp"]
 	path = source/vendor/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
