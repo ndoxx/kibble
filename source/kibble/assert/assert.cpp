@@ -10,10 +10,8 @@ namespace detail
 
 void k_assert_impl(const char* condition, std::string_view message, const char* file, int line, const char* function)
 {
-    fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, "Assertion failed: {}\n", condition);
-    fmt::print("  -> {}\n", message);
-    fmt::print("  -> in {} at {}:{}\n", function, file, line);
-    fmt::print("{}", kb::StackTrace(K_ASSERT_STACK_TRACE_SKIP).format());
+    fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, "\nAssertion failed: {}\n  -> {}\n  -> in {} at {}:{}\n{}\n",
+               condition, message, function, file, line, kb::StackTrace(K_ASSERT_STACK_TRACE_SKIP).format());
 
     debug_break__();
 }
