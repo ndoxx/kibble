@@ -63,7 +63,7 @@ endif()
 option(KB_MEM_AREA_MEMSET "Initialize heap area memory on creation (DBG)" ON)
 option(KB_MEM_MARK_PADDING "Initialize padded memory with a specific pattern (DBG)" ON)
 
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+if($<CONFIG:Debug>)
     if(KB_MEM_AREA_MEMSET)
         message(STATUS "MEM: Heap areas will be memset")
         target_compile_definitions(kibble PUBLIC K_USE_MEM_AREA_MEMSET)
@@ -73,9 +73,12 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
         message(STATUS "MEM: Padded memory will be marked")
         target_compile_definitions(kibble PUBLIC K_USE_MEM_MARK_PADDING)
     endif()
-
-    target_compile_definitions(kibble PUBLIC K_DEBUG K_ENABLE_ASSERT)
 endif()
+
+target_compile_definitions(kibble PUBLIC
+    $<$<CONFIG:Debug>:K_DEBUG>
+    $<$<CONFIG:Debug>:K_ENABLE_ASSERT>
+)
 
 # --------------------- [DEPENDENCIES] ---------------------
 
