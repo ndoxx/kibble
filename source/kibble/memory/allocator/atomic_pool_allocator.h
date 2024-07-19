@@ -3,9 +3,9 @@
 #include "../../assert/assert.h"
 #include "../../math/constexpr_math.h"
 #include "../../util/sanitizer.h"
-#include "../config.h"
 #include "../heap_area.h"
 #include "../util/alignment.h"
+#include "../config.h"
 
 #include "atomic_queue/atomic_queue.h"
 
@@ -125,13 +125,9 @@ public:
         std::size_t padding = alignment_padding(next + offset, alignment);
 
         K_ASSERT(padding + size <= node_size_,
-                 "[AtomicPoolAllocator] Allocation size does not fit initial requirement.", nullptr)
-            .watch_var__(padding + size, "requested size")
-            .watch_var__(node_size_, "node size")
-            .watch_var__(size, "data size")
-            .watch_var__(offset, "offset")
-            .watch_var__(alignment, "alignment")
-            .watch_var__(padding, "padding");
+                 "[AtomicPoolAllocator] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
+                 "-> node size: {}\n  -> data size: {}\n  -> offset: {}\n  -> alignment: {}\n  -> padding: {}",
+                 padding + size, node_size_, size, offset, alignment, padding);
 
         // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING

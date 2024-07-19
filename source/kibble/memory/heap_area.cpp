@@ -80,9 +80,8 @@ std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_n
 {
     // Align returned block to avoid false sharing if multiple threads access this area
     size_t padding = alignment_padding(head_, k_cache_line_size);
-    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!", log_channel_)
-        .watch_var__(size + padding, "required")
-        .watch_var__(size_, "available");
+    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!\n  -> Required: {}, available: {}",
+             size + padding, size_);
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING

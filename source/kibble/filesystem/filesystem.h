@@ -4,8 +4,8 @@
  */
 
 #include <filesystem>
-#include <unordered_map>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "../assert/assert.h"
@@ -193,10 +193,10 @@ public:
 
     /**
      * @brief Synchronize files or directories
-     * 
+     *
      * Only copy files if they don't exist or the source version is newer
      * In directory mode, remove files from target that have been deleted in source
-     * 
+     *
      * @param source The directory / file to copy from
      * @param target The directory / file to copy to
      */
@@ -345,7 +345,7 @@ inline std::string FileSystem::get_file_as_string(const std::string& unipath) co
 inline const FileSystem::DirectoryAlias& FileSystem::get_alias_entry(hash_t alias_hash) const
 {
     auto findit = aliases_.find(alias_hash);
-    K_ASSERT(findit != aliases_.end(), "Unknown alias.", log_channel_).watch(alias_hash);
+    K_ASSERT(findit != aliases_.end(), "Unknown alias: {}", alias_hash);
     return findit->second;
 }
 

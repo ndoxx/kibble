@@ -32,19 +32,19 @@ inline bool is_pow2(size_t x)
 
 inline size_t align_up(size_t x, size_t alignment)
 {
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2, but got: {}", alignment);
     return (x + (alignment - 1)) & ~(alignment - 1);
 }
 
 inline size_t align_down(size_t x, size_t alignment)
 {
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2, but got: {}", alignment);
     return x - (x & (alignment - 1));
 }
 
 inline void* align_ptr(const void* ptr, size_t alignment)
 {
-    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2", nullptr);
+    K_ASSERT(is_pow2(alignment), "alignment must be a power of 2, but got: {}", alignment);
     const std::ptrdiff_t aligned =
         (std::ptrdiff_t(ptr) + (std::ptrdiff_t(alignment) - 1)) & ~(std::ptrdiff_t(alignment) - 1);
     return reinterpret_cast<void*>(aligned);

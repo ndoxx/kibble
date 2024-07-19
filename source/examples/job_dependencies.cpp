@@ -100,7 +100,7 @@ int JobExampleImpl::impl(size_t nexp, size_t nloads, kb::th::JobSystem& js, cons
                 // Check that the value is what we expect
                 [[maybe_unused]] float expect = float(ii) * 2.f * 1.23f;
                 [[maybe_unused]] constexpr float eps = 1e-10f;
-                K_ASSERT(std::fabs(val - expect) < eps, "Value is not what we expect.", &chan);
+                K_ASSERT(std::fabs(val - expect) < eps, "Value is not what we expect.");
             }
             catch (std::exception& e)
             {

@@ -145,11 +145,11 @@ void PackLocalEntry::read(std::istream& stream)
 
 std::set<hash_t> parse_kpakignore(const fs::path& filepath, const kb::log::Channel* log_channel)
 {
-    K_ASSERT(fs::is_regular_file(filepath), "kpakignore is not a file.", log_channel).watch(filepath);
+    K_ASSERT(fs::is_regular_file(filepath), "kpakignore is not a file: {}", filepath.string());
     fs::path base_path = filepath.parent_path();
 
     std::ifstream ifs(filepath);
-    K_ASSERT(ifs.is_open(), "Problem opening kpakignore file.", log_channel).watch(filepath);
+    K_ASSERT(ifs.is_open(), "Problem opening kpakignore file: {}", filepath.string());
 
     // For each line in the file, store a hash
     std::set<hash_t> result;
@@ -260,17 +260,20 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
 PackFile::PackFile(const fs::path& filepath, const kb::log::Channel* log_channel)
     : filepath_(filepath), log_channel_(log_channel)
 {
-    K_ASSERT(fs::exists(filepath_), "Pack file does not exist.", log_channel_).watch(filepath_);
+    K_ASSERT(fs::exists(filepath_), "Pack file does not exist: {}", filepath_.string());
     std::ifstream ifs(filepath_, std::ios::binary);
 
     // Read header & sanity check
     PAKHeader h;
     ifs.read(reinterpret_cast<char*>(&h), sizeof(PAKHeader));
-    K_ASSERT(h.magic == KPAK_MAGIC, "Invalid KPAK file: magic number mismatch.", log_channel_).watch(h.magic);
-    K_ASSERT(h.version_major == KPAK_VERSION_MAJOR, "Invalid KPAK file: version (major) mismatch.", log_channel_)
-        .watch(h.version_major);
-    K_ASSERT(h.version_minor == KPAK_VERSION_MINOR, "Invalid KPAK file: version (minor) mismatch.", log_channel_)
-        .watch(h.version_minor);
+    K_ASSERT(h.magic == KPAK_MAGIC, "Invalid KPAK file: magic number mismatch.\n  -> Expected: {}, got: {}", KPAK_MAGIC,
+             h.magic);
+    K_ASSERT(h.version_major == KPAK_VERSION_MAJOR,
+             "Invalid KPAK file: version (major) mismatch.\n  -> Expected: {}, got: {}", KPAK_VERSION_MAJOR,
+             h.version_major);
+    K_ASSERT(h.version_minor == KPAK_VERSION_MINOR,
+             "Invalid KPAK file: version (minor) mismatch.\n  -> Expected: {}, got: {}", KPAK_VERSION_MINOR,
+             h.version_minor);
 
     // Read index
     for (size_t ii = 0; ii < h.entry_count; ++ii)

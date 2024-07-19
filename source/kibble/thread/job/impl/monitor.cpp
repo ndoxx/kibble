@@ -31,9 +31,8 @@ void Monitor::update_statistics()
 
 void Monitor::log_statistics(tid_t tid, const kb::log::Channel* channel) const
 {
-    K_ASSERT(tid < js_.get_threads_count(), "Worker TID out of range.", channel)
-        .watch(tid)
-        .watch(js_.get_threads_count());
+    K_ASSERT(tid < js_.get_threads_count(), "Worker TID out of range.\n  -> TID: {}, threads count: {}", tid,
+             js_.get_threads_count());
 
     const auto& stats = get_statistics(tid);
     double mean_active_ms = stats.active_time_ms / double(stats.cycles);

@@ -23,13 +23,13 @@ BlockHeader* BlockHeader::split(size_t size_request)
     const size_t size_remaining = block_size() - (size_request + k_block_header_overhead);
 
     K_ASSERT(remaining->to_void_ptr() == align_ptr(remaining->to_void_ptr(), k_align_size),
-             "remaining block not aligned properly", nullptr);
-    K_ASSERT(block_size() == size_remaining + size_request + k_block_header_overhead, "remaining block size is invalid",
-             nullptr);
+             "remaining block not aligned properly");
+    K_ASSERT(block_size() == size_remaining + size_request + k_block_header_overhead,
+             "remaining block size is invalid");
 
     remaining->set_size(size_remaining);
 
-    K_ASSERT(remaining->block_size() >= k_block_size_min, "block split with invalid size", nullptr);
+    K_ASSERT(remaining->block_size() >= k_block_size_min, "block split with invalid size");
 
     set_size(size_request);
     remaining->mark_as_free();

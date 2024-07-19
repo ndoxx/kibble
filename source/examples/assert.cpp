@@ -1,35 +1,34 @@
-#ifndef K_DEBUG
-#define K_DEBUG
+#ifndef K_ENABLE_ASSERT
+#define K_ENABLE_ASSERT
 #endif
-
 #include "assert/assert.h"
-#include "logger2/formatters/vscode_terminal_formatter.h"
-#include "logger2/logger.h"
-#include "logger2/sinks/console_sink.h"
-#include "logger2/sinks/file_sink.h"
-#include "math/color_table.h"
 
-using namespace kb::log;
+__attribute__((optnone)) int bar(int x)
+{
+    K_ASSERT(x < 10, "x should be less than 10, but it's {}", x);
+    return x * x;
+}
+
+__attribute__((optnone)) int foo(int x)
+{
+    return bar(x) + bar(-x);
+}
 
 int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
 
-    auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
-    auto console_sink = std::make_shared<ConsoleSink>();
-    auto file_sink = std::make_shared<FileSink>("assert.log");
-    console_sink->set_formatter(console_formatter);
-    Channel chan(Severity::Verbose, "kibble", "kib", kb::col::aliceblue);
-    chan.attach_sink(console_sink);
-    chan.attach_sink(file_sink);
+    // int x = foo(2);
+    int x = foo(3);
+    // int x = foo(125);
+    // K_ASSERT(x == 8, "x should be 8");
+    K_ASSERT(x == 8, "x should be 8, but it's {}", x);
+    // K_CHECK(x == 8, "x should be 8, but it's {}", x);
+    // K_FAIL("too bad, buddy!");
+    // K_FAIL("too bad, {}!", "buddy");
 
-    int x = 0, y = 1;
+    fmt::println("x: {}", x);
 
-    // * Assertions are disabled in release builds
-    // Comment the #define K_DEBUG line and compile in release to make this assertion message disappear
-    // * Fatal log messages will flush all sinks before terminating program
-    // The file assert.log should contain the assertion message
-    K_ASSERT(x > y, "x is not greater than y", &chan).watch(x).watch(y);
-    klog(chan).info("If assertions are enabled, program terminates before this line");
+    return 0;
 }

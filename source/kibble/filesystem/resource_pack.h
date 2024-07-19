@@ -174,7 +174,7 @@ inline const PackLocalEntry& PackFile::get_entry(const std::string& path) const
 inline const PackLocalEntry& PackFile::get_entry(hash_t key) const
 {
     auto findit = index_.find(key);
-    K_ASSERT(findit != index_.end(), "Unknown entry.", log_channel_).watch(key);
+    K_ASSERT(findit != index_.end(), "Unknown entry: {}", key);
     return findit->second;
 }
 

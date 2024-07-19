@@ -35,7 +35,7 @@ BlockHeader* Control::search_suitable_block(int32_t& fli, int32_t& sli)
         sl_map = sl_bitmap[fli];
     }
 
-    K_ASSERT(sl_map, "internal error - second level bitmap is null", nullptr);
+    K_ASSERT(sl_map, "internal error - second level bitmap is null");
     sli = ffs(sl_map);
     return blocks[fli][sli];
 }
@@ -44,8 +44,8 @@ void Control::remove_free_block(BlockHeader* block, int32_t fli, int32_t sli)
 {
     BlockHeader* prev = block->prev_free;
     BlockHeader* next = block->next_free;
-    K_ASSERT(prev, "prev_free field can not be null", nullptr);
-    K_ASSERT(next, "next_free field can not be null", nullptr);
+    K_ASSERT(prev, "prev_free field can not be null");
+    K_ASSERT(next, "next_free field can not be null");
     next->prev_free = prev;
     prev->next_free = next;
 
@@ -69,14 +69,13 @@ void Control::remove_free_block(BlockHeader* block, int32_t fli, int32_t sli)
 void Control::insert_free_block(BlockHeader* block, int32_t fli, int32_t sli)
 {
     BlockHeader* current = blocks[fli][sli];
-    K_ASSERT(current, "free list cannot have a null entry", nullptr);
-    K_ASSERT(block, "cannot insert a null entry into the free list", nullptr);
+    K_ASSERT(current, "free list cannot have a null entry");
+    K_ASSERT(block, "cannot insert a null entry into the free list");
     block->next_free = current;
     block->prev_free = &null_block;
     current->prev_free = block;
 
-    K_ASSERT(block->to_void_ptr() == align_ptr(block->to_void_ptr(), k_align_size), "block not aligned properly",
-             nullptr);
+    K_ASSERT(block->to_void_ptr() == align_ptr(block->to_void_ptr(), k_align_size), "block not aligned properly");
     /*
     ** Insert the new block at the head of the list, and mark the first-
     ** and second-level bitmaps appropriately.
@@ -110,7 +109,7 @@ void Control::insert_block(BlockHeader* block)
  */
 BlockHeader* absorb(BlockHeader* prev, BlockHeader* block)
 {
-    K_ASSERT(!prev->is_last(), "previous block can't be last", nullptr);
+    K_ASSERT(!prev->is_last(), "previous block can't be last");
     // NOTE: Leaves flags untouched
     prev->size += block->block_size() + BlockHeader::k_block_header_overhead;
     prev->link_next();
@@ -122,8 +121,8 @@ BlockHeader* Control::merge_prev(BlockHeader* block)
     if (block->is_prev_free())
     {
         BlockHeader* prev = block->get_prev();
-        K_ASSERT(prev, "prev physical block can't be null", nullptr);
-        K_ASSERT(prev->is_free(), "prev block is not free though marked as such", nullptr);
+        K_ASSERT(prev, "prev physical block can't be null");
+        K_ASSERT(prev->is_free(), "prev block is not free though marked as such");
         remove_block(prev);
         block = absorb(prev, block);
     }
@@ -134,11 +133,11 @@ BlockHeader* Control::merge_prev(BlockHeader* block)
 BlockHeader* Control::merge_next(BlockHeader* block)
 {
     BlockHeader* next = block->get_next();
-    K_ASSERT(next, "next physical block can't be null", nullptr);
+    K_ASSERT(next, "next physical block can't be null");
 
     if (next->is_free())
     {
-        K_ASSERT(!block->is_last(), "previous block can't be last", nullptr);
+        K_ASSERT(!block->is_last(), "previous block can't be last");
         remove_block(next);
         block = absorb(block, next);
     }
@@ -148,7 +147,7 @@ BlockHeader* Control::merge_next(BlockHeader* block)
 
 void Control::trim_free(BlockHeader* block, size_t size)
 {
-    K_ASSERT(block->is_free(), "block must be free", nullptr);
+    K_ASSERT(block->is_free(), "block must be free");
     if (block->can_split(size))
     {
         BlockHeader* remaining_block = block->split(size);
@@ -176,7 +175,7 @@ BlockHeader* Control::trim_free_leading(BlockHeader* block, size_t size)
 
 void Control::trim_used(BlockHeader* block, size_t size)
 {
-    K_ASSERT(!block->is_free(), "block must be used", nullptr);
+    K_ASSERT(!block->is_free(), "block must be used");
     if (block->can_split(size))
     {
         // If the next block is free, we must coalesce
@@ -209,9 +208,9 @@ BlockHeader* Control::locate_free_block(size_t size)
 
     if (block)
     {
-        K_ASSERT(block->block_size() >= size, "could not locate free block large enough", nullptr)
-            .watch_var__(size, "requested")
-            .watch_var__(block->block_size(), "available");
+        K_ASSERT(block->block_size() >= size,
+                 "could not locate free block large enough.\n  -> requested: {}, available: {}", size,
+                 block->block_size());
 
         remove_free_block(block, fli, sli);
     }
@@ -223,7 +222,7 @@ void* Control::prepare_used(BlockHeader* block, size_t size)
 {
     if (block)
     {
-        K_ASSERT(size, "size must be non-zero", nullptr);
+        K_ASSERT(size, "size must be non-zero");
         trim_free(block, size);
         block->mark_as_used();
         return block->to_void_ptr();

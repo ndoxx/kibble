@@ -27,9 +27,9 @@ void Scheduler::dispatch(Job* job)
     uint32_t tid_hint = job->meta.worker_affinity & k_tid_hint_mask;
 
     // Sanity check
-    K_ASSERT(tid_hint < js_.get_threads_count(), "Affinity TID hint bigger than workers count", nullptr)
-        .watch(tid_hint)
-        .watch(js_.get_threads_count());
+    K_ASSERT(tid_hint < js_.get_threads_count(),
+             "Affinity TID hint bigger than workers count.\n  -> TID hint: {}, threads count: {}", tid_hint,
+             js_.get_threads_count());
 
     // Use TID hint strictly when balance is false, otherwise make sure that the TID produced is never lower than the
     // hint

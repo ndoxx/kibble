@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 
 #include "../../assert/assert.h"
 #include "policy.h"
@@ -49,9 +49,8 @@ public:
      */
     inline void check_sentinel_front(uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<size_t*>(ptr) == k_sentinel_front, "Memory overwrite detected (front)", nullptr)
-            .watch(static_cast<void*>(ptr))
-            .watch(*reinterpret_cast<size_t*>(ptr));
+        K_CHECK(*reinterpret_cast<size_t*>(ptr) == k_sentinel_front, "Memory overwrite detected (front) at: 0x{:016x}",
+                 reinterpret_cast<size_t>(ptr));
     }
 
     /**
@@ -61,9 +60,8 @@ public:
      */
     inline void check_sentinel_back(uint8_t* ptr) const
     {
-        K_ASSERT(*reinterpret_cast<size_t*>(ptr) == 0x0f0f0f0f0f0f0f0f, "Memory overwrite detected (back)", nullptr)
-            .watch(static_cast<void*>(ptr))
-            .watch(*reinterpret_cast<size_t*>(ptr));
+        K_CHECK(*reinterpret_cast<size_t*>(ptr) == 0x0f0f0f0f0f0f0f0f,
+                 "Memory overwrite detected (back) at: 0x{:016x}", reinterpret_cast<size_t>(ptr));
     }
 };
 
@@ -74,4 +72,4 @@ struct BoundsCheckerSentinelSize<SimpleBoundsChecking>
     static constexpr std::size_t BACK = SimpleBoundsChecking::k_sentinel_size;
 };
 
-}
+} // namespace kb::memory::policy

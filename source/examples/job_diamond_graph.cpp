@@ -90,7 +90,7 @@ int JobExampleImpl::impl(size_t nexp, size_t ngraphs, kb::th::JobSystem& js, con
             [[maybe_unused]] bool val = fut.get();
             // Check that the value is what we expect
             [[maybe_unused]] bool expect = 2 * ii < 3 * ii - 10;
-            K_ASSERT(val == expect, "Value is not what we expect.", &chan);
+            K_ASSERT(val == expect, "Value is not what we expect.");
 
             ++ii;
         }

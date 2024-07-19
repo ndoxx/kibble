@@ -3,8 +3,10 @@
 #include <cstring>
 #include <string>
 
-#include "policy/policy.h"
+#include "../assert/assert.h"
 #include "../logger2/logger.h"
+#include "heap_area.h"
+#include "policy/policy.h"
 
 namespace kb::memory
 {
@@ -198,8 +200,10 @@ public:
      */
     inline void seek(void* ptr)
     {
-        K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block", log_channel_).watch(ptr).watch(begin_);
-        K_ASSERT(ptr < end_, "Cannot seak after end of the block", log_channel_).watch(ptr).watch(end_);
+        K_ASSERT(ptr >= begin_, "Cannot seak before beginning of the block.\n  -> ptr: {:016x}, begin: {:016x}",
+                 reinterpret_cast<size_t>(ptr), reinterpret_cast<size_t>(begin));
+        K_ASSERT(ptr < end_, "Cannot seak after end of the block.\n  -> ptr: {:016x}, end: {:016x}",
+                 reinterpret_cast<size_t>(ptr), reinterpret_cast<size_t>(end_));
         head_ = static_cast<uint8_t*>(ptr);
     }
 

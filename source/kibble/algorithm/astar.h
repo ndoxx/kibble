@@ -113,21 +113,11 @@ private:
  */
 template <typename T>
 concept AstarState = requires(T state, const T& other, const T* other_ptr, std::vector<T>& successors) {
-    {
-        state == other
-    } -> std::same_as<bool>;
-    {
-        state.hash()
-    } -> std::convertible_to<size_t>;
-    {
-        state.transition_cost(other)
-    } -> std::convertible_to<float>;
-    {
-        state.heuristic(other)
-    } -> std::convertible_to<float>;
-    {
-        state.get_successors(successors, other_ptr)
-    } -> std::same_as<void>;
+    { state == other } -> std::same_as<bool>;
+    { state.hash() } -> std::convertible_to<size_t>;
+    { state.transition_cost(other) } -> std::convertible_to<float>;
+    { state.heuristic(other) } -> std::convertible_to<float>;
+    { state.get_successors(successors, other_ptr) } -> std::same_as<void>;
 };
 
 /**
@@ -225,8 +215,7 @@ public:
             for (Node* node = start_; node; node = node->next)
                 destroy_node(node);
 
-        K_ASSERT(pool_.allocation_count() == 0, "Node pool leaked memory.", log_channel_)
-            .watch_var__(pool_.allocation_count(), "#allocations");
+        K_ASSERT(pool_.allocation_count() == 0, "Node pool leaked memory. Alloc count: {}", pool_.allocation_count());
     }
 
     /**
@@ -450,8 +439,7 @@ private:
         // Pool allocation
         Node* address = pool_.allocate();
 
-        K_ASSERT(address != nullptr, "Out of memory.", log_channel_)
-            .watch_var__(pool_.allocation_count(), "#allocations");
+        K_ASSERT(address != nullptr, "Out of memory. Alloc count: {}", pool_.allocation_count());
 
         // In-place construction and initialization
         Node* node = new (address) Node(state);

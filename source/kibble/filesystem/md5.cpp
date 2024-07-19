@@ -3,7 +3,6 @@
 #include "assert/assert.h"
 #include "fmt/format.h"
 #include <cstring>
-#include <functional>
 
 namespace kb
 {
@@ -83,7 +82,7 @@ md5::md5(const void* input, size_t length)
 
 void md5::process(const void* input, size_t length)
 {
-    K_ASSERT(!finished_, "MD5 already finished.", nullptr);
+    K_ASSERT(!finished_, "MD5 already finished.");
 
     // If not enough data to complete a block, stash and return
     if (head_ + length < k_block_size)
@@ -118,7 +117,7 @@ void md5::process(const void* input, size_t length)
 
 void md5::finish()
 {
-    K_ASSERT(!finished_, "MD5 already finished.", nullptr);
+    K_ASSERT(!finished_, "MD5 already finished.");
 
     length_ += head_;
 

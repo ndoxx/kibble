@@ -48,8 +48,9 @@ int JobExampleImpl::impl(size_t nexp, size_t njobs, kb::th::JobSystem& js, const
 
                 // Make sure we did not execute a job that was preempted
                 std::lock_guard lock(mutex);
-                K_ASSERT(!preempted.contains(ii), "Job was preempted but was executed by worker anyway", &chan)
-                    .watch_var__(ii, "job index");
+                (void)preempted;
+                K_ASSERT(!preempted.contains(ii), "Job was preempted but was executed by worker anyway: job_index={}",
+                         ii);
             });
 
             tsk.schedule();

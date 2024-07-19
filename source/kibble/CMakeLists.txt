@@ -47,6 +47,7 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
 )
 
 option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
+
 if(KB_MORTON_INTRIN)
     set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp"
         PROPERTIES COMPILE_FLAGS -mbmi2
@@ -54,6 +55,7 @@ if(KB_MORTON_INTRIN)
 endif()
 
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
+
 if(KB_JOB_SYSTEM_PROFILING)
     target_compile_definitions(kibble PUBLIC KB_JOB_SYSTEM_PROFILING)
 endif()
@@ -72,7 +74,7 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
         target_compile_definitions(kibble PUBLIC K_USE_MEM_MARK_PADDING)
     endif()
 
-    target_compile_definitions(kibble PUBLIC K_DEBUG)
+    target_compile_definitions(kibble PUBLIC K_DEBUG K_ENABLE_ASSERT)
 endif()
 
 # --------------------- [DEPENDENCIES] ---------------------
@@ -119,7 +121,7 @@ if(KB_TARGET_INSTALL)
     # Installation directories
     include(GNUInstallDirs)
     set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/kibble"
-        CACHE PATH "Location of header files" )
+        CACHE PATH "Location of header files")
 
     # Install all API header files
     file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.h")

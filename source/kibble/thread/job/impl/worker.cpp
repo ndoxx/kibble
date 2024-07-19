@@ -47,7 +47,7 @@ void WorkerThread::submit(Job* job, bool stealable)
 
 void WorkerThread::run()
 {
-    K_ASSERT(is_background(), "run() should not be called in the main thread.", nullptr);
+    K_ASSERT(is_background(), "run() should not be called in the main thread.");
 
     while (ss_->running.load(std::memory_order_acquire))
     {
@@ -145,8 +145,8 @@ void WorkerThread::process(Job* job)
 #endif
 
     JobState expected = JobState::Executing;
-    bool success = job->exchange_state(expected, JobState::Processed);
-    K_ASSERT(success, "Failed to mark job as processed.", js_->log_channel_);
+    [[maybe_unused]] bool success = job->exchange_state(expected, JobState::Processed);
+    K_ASSERT(success, "Failed to mark job as processed.");
 
     schedule_children(job);
 

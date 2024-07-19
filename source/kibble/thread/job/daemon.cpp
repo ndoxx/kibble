@@ -43,7 +43,7 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     auto&& [it, inserted] = daemons_.insert({current_handle_++, std::make_unique<Daemon>()});
-    K_ASSERT(inserted, "Could not insert new daemon", log_channel_);
+    K_ASSERT(inserted, "Could not insert new daemon");
 
     auto& daemon = *it->second;
     daemon.scheduling_data = std::move(scheduling_data);
@@ -90,7 +90,7 @@ void DaemonScheduler::kill(DaemonHandle hnd)
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
     auto findit = daemons_.find(hnd);
-    K_ASSERT(findit != daemons_.end(), "Could not find daemon->", log_channel_).watch(hnd);
+    K_ASSERT(findit != daemons_.end(), "Could not find daemon {}", hnd);
     findit->second->marked_for_deletion.store(true, std::memory_order_release);
 }
 
@@ -128,8 +128,8 @@ void DaemonScheduler::update()
             }
 
             daemon->job->reset();
-            bool success = js_.try_schedule(daemon->job, 1);
-            K_ASSERT(success, "Could not schedule job.", js_.log_channel_).watch(hnd);
+            [[maybe_unused]] bool success = js_.try_schedule(daemon->job, 1);
+            K_ASSERT(success, "Could not schedule job. Dameon handle: {}", hnd);
         }
     }
 

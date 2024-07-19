@@ -1,39 +1,21 @@
-#include "assert.h"
-#include "../logger2/entry_builder.h"
+#include "assert/assert.h"
+#include "util/debug_break.h"
+#include "util/stack_trace.h"
 
-#include <iostream>
-#include <stdexcept>
+#include "fmt/color.h"
+#include "fmt/core.h"
 
-namespace kb::util
+namespace detail
 {
 
-Assertion::Assertion(std::string expression, const kb::log::Channel* channel, const char* file, const char* function,
-                     int line, Trigger trigger)
-    : channel_{channel}, file_{file}, function_{function}, line_{line}, trigger_{trigger}
+void k_assert_impl(const char* condition, std::string_view message, const char* file, int line, const char* function)
 {
-    stream_ << "Assertion failed: " << expression << '\n';
+    fmt::print(fg(fmt::color::red) | fmt::emphasis::bold, "Assertion failed: {}\n", condition);
+    fmt::print("  -> {}\n", message);
+    fmt::print("  -> in {} at {}:{}\n", function, file, line);
+    fmt::print("{}", kb::StackTrace(K_ASSERT_STACK_TRACE_SKIP).format());
+
+    debug_break__();
 }
 
-Assertion::~Assertion()
-{
-    if (channel_)
-    {
-        kb::log::EntryBuilder{channel_, line_, file_, function_}
-            .level(trigger_ == Trigger::Terminate ? log::Severity::Fatal : log::Severity::Error)
-            .msg(stream_.str());
-    }
-    else
-    {
-        std::cerr << stream_.str() << std::endl;
-        if (trigger_ == Trigger::Terminate)
-            std::terminate();
-    }
-}
-
-void Assertion::ex()
-{
-    trigger_ = Trigger::Exception;
-    throw std::runtime_error(stream_.str());
-}
-
-} // namespace kb::util
+} // namespace detail

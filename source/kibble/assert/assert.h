@@ -1,126 +1,32 @@
-/**
- * @file assert.h
- * @brief Better assertions.
- *
- * Adapted from https://github.com/planetchili/Chil/blob/master/Core/src/utl/Assert.h
- *
- * The macros in this file make assertions more useful. A source file and code line will be printed when an assertion
- * fails, and variable values can be tracked.
- *
- * @author ndx
- * @version 0.2
- * @date 2023-04-06
- *
- */
-
 #pragma once
 
-#include <sstream>
-#include <string>
+#include "fmt/format.h"
 
-/**
- * @def K_DEBUG_BREAK()
- * Break into debugger.
- *
- * @def K_ASSERT(EXPR, MSG, CHAN)
- * Assert that an expression EXPR evaluates to true. If it not, log an error message MSG on channel CHAN with some
- * contextual information.
- *
- */
-
-// Macro to break into debugger
-#ifdef K_DEBUG
-#ifdef __linux__
-#include <csignal>
-#define K_DEBUG_BREAK() raise(SIGTRAP)
-#endif
-#ifdef _WIN32
-#define K_DEBUG_BREAK() __debugbreak()
-#endif
-#else
-#define K_DEBUG_BREAK()
+#ifndef K_ASSERT_STACK_TRACE_SKIP
+#define K_ASSERT_STACK_TRACE_SKIP 0
 #endif
 
-namespace kb::log
+namespace detail
 {
-class Channel;
+void k_assert_impl(const char* condition, std::string_view message, const char* file, int line, const char* function);
 }
 
-namespace kb::util
-{
-
-class Assertion
-{
-public:
-    enum class Trigger
-    {
-        Log,
-        Terminate,
-        Exception,
-    };
-
-    Assertion(std::string expression, const kb::log::Channel* channel, const char* file, const char* function, int line,
-              Trigger trig = Trigger::Terminate);
-
-    ~Assertion();
-
-    inline Assertion& msg(const std::string& message)
-    {
-        stream_ << "    Msg: " << message << '\n';
-        return *this;
-    }
-
-    template <typename T>
-    inline Assertion& watch_var__(T&& val, const char* name)
-    {
-        stream_ << "    " << name << " <- " << std::forward<T>(val) << '\n';
-        return *this;
-    }
-
-    [[noreturn]] void ex();
-
-private:
-    const kb::log::Channel* channel_ = nullptr;
-    const char* file_;
-    const char* function_;
-    int line_ = -1;
-    Trigger trigger_;
-    std::ostringstream stream_;
-};
-
-} // namespace kb::util
-
-#ifndef K_ENABLE_ASSERT
-#ifdef K_DEBUG
-#define K_ENABLE_ASSERT true
-#else
-#define K_ENABLE_ASSERT false
-#endif
-#endif
-
-#define ZZ_STR(x) #x
-#define K_ASSERT(EXPR, MSG, CHAN)                                                                                      \
-    (!K_ENABLE_ASSERT || bool(EXPR))                                                                                   \
-        ? void(0)                                                                                                      \
-        : (void)kb::util::Assertion{ZZ_STR(EXPR), CHAN, __FILE__, __PRETTY_FUNCTION__, __LINE__}.msg(MSG)
-
-#define K_CHECK(EXPR, MSG, CHAN)                                                                                       \
-    bool(EXPR)                                                                                                         \
-        ? void(0)                                                                                                      \
-        : (void)kb::util::                                                                                             \
-              Assertion{ZZ_STR(EXPR),                                                                                  \
-                        CHAN,                                                                                          \
-                        __FILE__,                                                                                      \
-                        __PRETTY_FUNCTION__,                                                                           \
-                        __LINE__,                                                                                      \
-                        K_ENABLE_ASSERT ? kb::util::Assertion::Trigger::Terminate : kb::util::Assertion::Trigger::Log} \
-                  .msg(MSG)
-
-#define K_FAIL(CHAN)                                                                                                   \
-    (void)kb::util::Assertion                                                                                          \
+#define K_CHECK_IMPL(condition, message, ...)                                                                          \
+    do                                                                                                                 \
     {                                                                                                                  \
-        "[Always Fail]", CHAN, __FILE__, __PRETTY_FUNCTION__, __LINE__,                                                \
-            K_ENABLE_ASSERT ? kb::util::Assertion::Trigger::Terminate : kb::util::Assertion::Trigger::Log              \
-    }
+        if (!(condition))                                                                                              \
+        {                                                                                                              \
+            ::detail::k_assert_impl(#condition, fmt::format(message, __VA_ARGS__), __FILE__, __LINE__,                 \
+                                    __PRETTY_FUNCTION__);                                                              \
+        }                                                                                                              \
+    } while (0)
 
-#define watch(EXPR) watch_var__((EXPR), ZZ_STR(EXPR))
+#define K_CHECK(...) K_CHECK_IMPL(__VA_ARGS__, "")
+
+#define K_FAIL(...) K_CHECK_IMPL(false, __VA_ARGS__, "")
+
+#ifdef K_ENABLE_ASSERT
+#define K_ASSERT(...) K_CHECK(__VA_ARGS__)
+#else
+#define K_ASSERT(...) ((void)0)
+#endif

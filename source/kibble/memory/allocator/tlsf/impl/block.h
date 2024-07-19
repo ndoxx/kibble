@@ -197,7 +197,7 @@ struct BlockHeader
      */
     inline BlockHeader* get_prev() const
     {
-        K_ASSERT(is_prev_free(), "Previous block must be free", nullptr);
+        K_ASSERT(is_prev_free(), "Previous block must be free");
         return prev_physical;
     }
 
@@ -209,7 +209,7 @@ struct BlockHeader
      */
     inline BlockHeader* get_next()
     {
-        K_ASSERT(!is_last(), "Next block must be busy", nullptr);
+        K_ASSERT(!is_last(), "Next block must be busy");
         return offset_to_block(to_void_ptr(), std::ptrdiff_t(block_size() - k_block_header_overhead));
     }
 

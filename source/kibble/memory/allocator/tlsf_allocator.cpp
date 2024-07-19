@@ -74,14 +74,12 @@ TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, s
 
 void TLSFAllocator::create_pool(void* pool, std::size_t size)
 {
-    K_ASSERT(size_t(pool) % k_align_size == 0, "pool memory must be aligned", nullptr)
-        .watch_var__(k_align_size, "alignment requirement");
+    K_ASSERT(size_t(pool) % k_align_size == 0, "pool memory must be {}B aligned", k_align_size);
 
     const size_t pool_bytes = align_down(size - k_pool_overhead, k_align_size);
-    K_ASSERT(pool_bytes >= k_block_size_min && pool_bytes <= k_block_size_max, "bad pool size", nullptr)
-        .watch_var__(k_pool_overhead + k_block_size_min, "minimum required")
-        .watch_var__((k_pool_overhead + k_block_size_max) / 256, "maximum allowed")
-        .watch_var__(pool_bytes, "requested");
+    K_ASSERT(pool_bytes >= k_block_size_min && pool_bytes <= k_block_size_max,
+             "bad pool size.\n  -> minimum required: {}\n  -> maximum allowed: {}\n  -> requested: {}",
+             k_pool_overhead + k_block_size_min, (k_pool_overhead + k_block_size_max) / 256, pool_bytes);
 
     /*
         Create the main free block. Offset the start of the block slightly
@@ -223,7 +221,8 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
 
     // TMP: disallow higher alignment for now
     (void)user_offset;
-    K_ASSERT(alignment <= k_align_size, "higher custom alignment is not implemented yet", nullptr);
+    (void)alignment;
+    K_ASSERT(alignment <= k_align_size, "higher custom alignment is not implemented yet");
 
     // Custom higher alignment is handled by a special function
     // if (alignment > k_align_size)
@@ -281,7 +280,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
 
         if (gap)
         {
-            K_ASSERT(gap >= min_gap, "gap size is too small", nullptr);
+            K_ASSERT(gap >= min_gap, "gap size is too small: Minimum: {}, got: {}", min_gap, gap);
             block = control_->trim_free_leading(block, gap);
         }
     }
@@ -305,7 +304,7 @@ void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignme
     else
     {
         BlockHeader* block = BlockHeader::from_void_ptr(ptr);
-        K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
+        K_ASSERT(!block->is_free(), "block already marked as free");
 
         BlockHeader* next = block->get_next();
         const size_t cursize = block->block_size();
@@ -344,7 +343,7 @@ void TLSFAllocator::deallocate(void* ptr)
     if (ptr)
     {
         BlockHeader* block = BlockHeader::from_void_ptr(ptr);
-        K_ASSERT(!block->is_free(), "block already marked as free", nullptr);
+        K_ASSERT(!block->is_free(), "block already marked as free");
 
         block->mark_as_free();
         block = control_->merge_prev(block);

@@ -141,7 +141,7 @@ public:
     {
         if (!has(val))
         {
-            K_ASSERT(val < SIZE, "Exceeding SparseSet capacity", nullptr).watch(val).watch(SIZE);
+            K_ASSERT(val < SIZE, "Exceeding SparseSet capacity: {} / {}", val, SIZE);
 
             dense[size_] = val;
             sparse[val] = T(size_);
@@ -480,7 +480,7 @@ public:
      */
     T acquire()
     {
-        K_ASSERT(size_ + 1 < SIZE, "Exceeding SparsePool capacity", nullptr).watch(size_).watch(SIZE);
+        K_ASSERT(size_ + 1 < SIZE, "Exceeding SparsePool capacity: {} / {}", size_, SIZE);
 
         T index = T(size_++);
         T handle = dense[index];
@@ -498,7 +498,7 @@ public:
      */
     void release(T handle)
     {
-        K_ASSERT(is_valid(handle), "Cannot release unknown handle", nullptr).watch(handle);
+        K_ASSERT(is_valid(handle), "Cannot release unknown handle: {}", handle);
 
         T index = sparse[handle];
         T temp = dense[--size_];
@@ -704,7 +704,7 @@ public:
      */
     T acquire()
     {
-        K_ASSERT(size_ + 1 < SIZE, "Exceeding SecureSparsePool capacity", nullptr).watch(size_).watch(SIZE);
+        K_ASSERT(size_ + 1 < SIZE, "Exceeding SecureSparsePool capacity: {} / {}", size_, SIZE);
 
         T index = T(size_++);
         T unguarded = dense[index];
@@ -722,9 +722,8 @@ public:
      */
     void release(T handle)
     {
-        K_ASSERT(is_valid(handle), "Cannot release unknown handle", nullptr)
-            .watch(size_t(unguard(handle)))
-            .watch(size_t(guard_value(handle)));
+        K_ASSERT(is_valid(handle), "Cannot release unknown handle: [{}|{}]", size_t(unguard(handle)),
+                 size_t(guard_value(handle)));
 
         T unguarded = handle & k_handle_mask;
         T index = sparse[unguarded];

@@ -186,7 +186,7 @@ JobSystem::~JobSystem()
     // * Destroy barriers
     for (barrier_t id = 0; id < config_.max_barriers; ++id)
     {
-        K_ASSERT(!barriers_[id].is_used(), "Barrier still in use.", log_channel_).watch_var__(id, "Barrier index");
+        K_ASSERT(!barriers_[id].is_used(), "Barrier still in use. Barrier index: {}", id);
     }
 
     K_DELETE_ARRAY(barriers_, internal_->arena);
@@ -242,19 +242,19 @@ barrier_t JobSystem::create_barrier()
 
 void JobSystem::destroy_barrier(barrier_t id)
 {
-    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds: {} / {}", id, config_.max_barriers);
     Barrier& barrier = barriers_[id];
     // Check that barrier has no pending jobs
-    K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.", log_channel_);
+    K_ASSERT(barrier.finished(), "Tried to destroy barrier with unfinished jobs.");
     // Mark barrier as unused
     bool expected{true};
     barrier.mark_used(expected, false);
-    K_ASSERT(expected, "Tried to destroy unused barrier.", log_channel_);
+    K_ASSERT(expected, "Tried to destroy unused barrier.");
 }
 
 Barrier& JobSystem::get_barrier(barrier_t id)
 {
-    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.", log_channel_);
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.");
     return barriers_[id];
 }
 
@@ -273,7 +273,7 @@ void JobSystem::release_job(Job* job)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     // Make sure that the job was processed
-    K_ASSERT(job->check_state(JobState::Processed), "Tried to release unprocessed job.", log_channel_);
+    K_ASSERT(job->check_state(JobState::Processed), "Tried to release unprocessed job.");
 
     // Return job to the pool
     K_DELETE(job, internal_->job_pool);
@@ -283,7 +283,7 @@ bool JobSystem::try_schedule(Job* job, size_t num_jobs)
 {
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
     // Sanity check
-    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.", log_channel_);
+    K_ASSERT(job->is_ready(), "Tried to schedule job with unfinished dependencies.");
 
     JobState expected = JobState::Idle;
     if (job->exchange_state(expected, JobState::Pending))
@@ -434,7 +434,7 @@ void Task::schedule(barrier_t barrier_id)
     JS_PROFILE_FUNCTION(js_->instrumentor_, js_->this_thread_id());
 
     // * Sanity check
-    K_ASSERT(job_->in_count() == 0, "Tried to schedule a child task.", js_->log_channel_);
+    K_ASSERT(job_->in_count() == 0, "Tried to schedule a child task.");
 
     size_t num_jobs = 1;
 
@@ -483,8 +483,7 @@ bool Task::try_preempt_and_execute()
         mouth.
     */
 
-    K_ASSERT(job_->in_count() == 0 && job_->out_count() == 0, "Tried to preempt a non-singular job.",
-             js_->log_channel_);
+    K_ASSERT(job_->in_count() == 0 && job_->out_count() == 0, "Tried to preempt a non-singular job.");
 
     JobState expected1 = JobState::Idle;
     JobState expected2 = JobState::Pending;

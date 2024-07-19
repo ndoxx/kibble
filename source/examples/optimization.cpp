@@ -1,7 +1,7 @@
 #include "algorithm/optimization.h"
 #include "../tests/common/vec.h"
 
-#include <array>
+#include <iostream>
 
 using namespace kb;
 
