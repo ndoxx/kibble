@@ -3,6 +3,7 @@
 #include "../../util/internal.h"
 #include "barrier_id.h"
 #include "job_meta.h"
+#include "promise_pool.h"
 
 #include <future>
 #include <unordered_map>
@@ -135,8 +136,22 @@ public:
     template <typename FuncT, typename... ArgsT>
     inline auto create_task(JobMetadata&& meta, FuncT&& function, ArgsT&&... args)
     {
-        auto promise = std::make_shared<std::promise<std::invoke_result_t<FuncT, ArgsT...>>>();
-        std::shared_future<std::invoke_result_t<FuncT, ArgsT...>> future = promise->get_future();
+        /*
+            NOTE(ndx): I have to use a shared pointer for the promise, because the promise
+            itself being non-copyable, cannot be captured by the job kernel lambda. But
+            to avoid frequent heap allocations, I'm pooling the promises.
+            See promise_pool.h for implementation detail.
+            This could in theory be solved differently with std::move_only_function in C++23.
+        */
+
+        using ResultType = std::invoke_result_t<FuncT, ArgsT...>;
+        using PromiseType = std::promise<ResultType>;
+        using AllocPromiseType =
+            std::allocator_traits<PromiseAllocator<PromiseType>>::template rebind_alloc<PromiseType>;
+
+        auto promise = std::allocate_shared<PromiseType>(AllocPromiseType{});
+        std::shared_future<ResultType> future = promise->get_future();
+
         return std::make_pair(Task(this, std::forward<JobMetadata>(meta), std::forward<FuncT>(function),
                                    std::move(promise), std::forward<ArgsT>(args)...),
                               std::move(future));
