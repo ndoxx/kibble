@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <exception>
+#include <functional>
+#include <tuple>
 #include <type_traits>
 
 namespace kb
@@ -16,6 +19,56 @@ struct BadDelegateCallException : public std::exception
     {
         return "Cannot invoke a member function without a class instance";
     }
+};
+
+// Primary template
+template <typename T, typename = void>
+struct function_traits;
+
+// Specialization for function types
+template <typename R, typename... Args>
+struct function_traits<R(Args...)>
+{
+    using return_type = R;
+    using args_tuple = std::tuple<std::decay_t<Args>...>;
+    static constexpr std::size_t arity = sizeof...(Args);
+
+    template <std::size_t N>
+    using arg_type = std::tuple_element_t<N, args_tuple>;
+};
+
+// Specialization for function pointers
+template <typename R, typename... Args>
+struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)>
+{
+};
+
+// Specialization for member function pointers
+template <typename C, typename R, typename... Args>
+struct function_traits<R (C::*)(Args...)> : public function_traits<R(Args...)>
+{
+    using class_type = C;
+};
+
+// Specialization for const member function pointers
+template <typename C, typename R, typename... Args>
+struct function_traits<R (C::*)(Args...) const> : public function_traits<R(Args...)>
+{
+    using class_type = C;
+};
+
+// Specialization for member object pointers
+template <typename C, typename R>
+struct function_traits<R C::*>
+{
+    using return_type = R;
+    using class_type = C;
+};
+
+// Specialization for functors and lambdas
+template <typename T>
+struct function_traits<T, std::void_t<decltype(&T::operator())>> : public function_traits<decltype(&T::operator())>
+{
 };
 
 /**
@@ -164,4 +217,78 @@ private:
     const void* instance_ = nullptr;
     stub_function stub_ = &stub_null;
 };
+
+template <size_t ArgSize = 64>
+class PackagedDelegate
+{
+public:
+    struct alignas(std::max_align_t) ArgStorage
+    {
+        std::byte data[ArgSize];
+    };
+
+    template <typename Signature>
+    PackagedDelegate(const Delegate<Signature>& delegate) : instance_(&delegate)
+    {
+        using ReturnType = typename function_traits<Signature>::return_type;
+        using ArgsTuple = typename function_traits<Signature>::args_tuple;
+        static_assert(sizeof(ArgsTuple) <= sizeof(ArgStorage), "Arguments too large for ArgStorage");
+
+        execute_ = [](const void* instance, const ArgStorage* args, void* result) {
+            auto& del = *static_cast<const Delegate<Signature>*>(instance);
+            if constexpr (std::is_void_v<ReturnType>)
+            {
+                std::apply(del, *reinterpret_cast<const ArgsTuple*>(args));
+            }
+            else
+            {
+                *static_cast<ReturnType*>(result) = std::apply(del, *reinterpret_cast<const ArgsTuple*>(args));
+            }
+        };
+    }
+
+    /**
+     * @brief Store argument values for future execution
+     *
+     * @note It is the caller's responsibility to ensure that the argument types
+     * match those expected by the stored delegate. Mismatched types will lead
+     * to undefined behavior.
+     *
+     * @tparam Args
+     * @param args
+     */
+    template <typename... Args>
+    inline void prepare(Args&&... args)
+    {
+        using ArgsTuple = std::tuple<std::decay_t<Args>...>;
+        new (&arg_storage_) ArgsTuple(std::forward<Args>(args)...);
+    }
+
+    template <typename ReturnType>
+    ReturnType execute() const
+    {
+        if constexpr (std::is_void_v<ReturnType>)
+        {
+            execute_(instance_, &arg_storage_, nullptr);
+        }
+        else
+        {
+            ReturnType result;
+            execute_(instance_, &arg_storage_, &result);
+            return result;
+        }
+    }
+
+    inline void operator()() const
+    {
+        execute<void>();
+    }
+
+private:
+    using ExecuteFunc = void (*)(const void*, const ArgStorage*, void*);
+    ArgStorage arg_storage_;
+    ExecuteFunc execute_;
+    const void* instance_;
+};
+
 } // namespace kb

@@ -1,6 +1,3 @@
-#include <array>
-#include <iostream>
-#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -24,11 +21,43 @@ auto cube(int x) -> int
     return x * x * x;
 }
 
+float foo(float a, int* b, const size_t& c)
+{
+    float res = 0.f;
+    for (size_t ii = 0; ii < c; ++ii)
+    {
+        res += a * float(*b) / float(ii + 1);
+    }
+    return res;
+}
+
 TEST_CASE("It is possible to delegate a free function", "[delegate]")
 {
     auto d = Delegate<int(int)>::create<&square>();
     REQUIRE(d(2) == 4);
     REQUIRE(d(5) == 25);
+}
+
+TEST_CASE("It is possible to delegate a free function", "[packaged-delegate]")
+{
+    auto d = Delegate<int(int)>::create<&square>();
+    PackagedDelegate pd(d);
+    pd.prepare(2);
+    REQUIRE(pd.execute<int>() == 4);
+    pd.prepare(5);
+    REQUIRE(pd.execute<int>() == 25);
+}
+
+TEST_CASE("Packaged delegates can store multiple arguments", "[packaged-delegate]")
+{
+    auto d = Delegate<float(float, int*, const size_t&)>::create<&foo>();
+
+    int b = 2;
+    size_t c = 3;
+    PackagedDelegate pd(d);
+    pd.prepare(0.1f, &b, c);
+
+    REQUIRE(pd.execute<float>() == foo(0.1f, &b, c));
 }
 
 TEST_CASE("It is possible to delegate a non-mutating member function", "[delegate]")
@@ -38,11 +67,29 @@ TEST_CASE("It is possible to delegate a non-mutating member function", "[delegat
     REQUIRE(d() == 5);
 }
 
+TEST_CASE("It is possible to delegate a non-mutating member function", "[packaged-delegate]")
+{
+    auto str = std::string{"Hello"};
+    auto d = Delegate<size_t()>::create<&std::string::size>(&str);
+    PackagedDelegate pd(d);
+    REQUIRE(pd.execute<size_t>() == 5);
+}
+
 TEST_CASE("It is possible to delegate a mutating member function", "[delegate]")
 {
     auto str = std::string{"Hello"};
     auto d = Delegate<void(int)>::create<&std::string::push_back>(&str);
     d('!');
+    REQUIRE(str.compare("Hello!") == 0);
+}
+
+TEST_CASE("It is possible to delegate a mutating member function", "[packaged-delegate]")
+{
+    auto str = std::string{"Hello"};
+    auto d = Delegate<void(int)>::create<&std::string::push_back>(&str);
+    PackagedDelegate pd(d);
+    pd.prepare('!');
+    pd();
     REQUIRE(str.compare("Hello!") == 0);
 }
 
@@ -260,7 +307,8 @@ TEST_CASE_METHOD(SubscriptionFixture, "Subscribing multiple times should not cau
     REQUIRE(accumulator == 1);
 }
 
-TEST_CASE_METHOD(SubscriptionFixture, "Subscribing multiple times should not cause duplicate handling (member)", "[evt]")
+TEST_CASE_METHOD(SubscriptionFixture, "Subscribing multiple times should not cause duplicate handling (member)",
+                 "[evt]")
 {
     event_bus.subscribe<&SubscriptionFixture::handle_accum>(*this);
     event_bus.subscribe<&SubscriptionFixture::handle_accum>(*this);
