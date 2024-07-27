@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <istream>
-#include <memory>
 #include <ostream>
 #include <random>
 
@@ -174,8 +173,7 @@ public:
      * @param seed
      */
     UUIDGenerator(uint64_t seed)
-        : generator_(seed),
-          distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
+        : generator_(seed), distribution_(std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max())
     {
     }
 

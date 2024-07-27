@@ -37,4 +37,4 @@ private:
     SynchronizationPrimitiveT primitive_;
 };
 
-}
+} // namespace kb::memory::policy

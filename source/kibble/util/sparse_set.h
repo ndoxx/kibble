@@ -321,7 +321,9 @@ public:
         if (!has(val))
         {
             if (val >= capacity_)
+            {
                 reserve(val + 1);
+            }
 
             dense[size_] = val;
             sparse[val] = T(size_);
@@ -524,7 +526,9 @@ constexpr UIntT make_mask(const UIntT shift_pos)
     UIntT result = 0;
 
     for (UIntT ii = shift_pos; ii < sizeof(UIntT) * UIntT(8); ++ii)
+    {
         result |= UIntT(1u) << ii;
+    }
 
     return result;
 }

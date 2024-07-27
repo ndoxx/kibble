@@ -38,11 +38,15 @@ TCPStream* TCPConnector::connect(const std::string& server, uint16_t port)
     // Try to convert DNS host name. If it fails, we assume the string was an IP address.
     // TODO: parse the string for a valid IP
     if (resolve_host(server, &address.sin_addr))
+    {
         inet_pton(PF_INET, server.c_str(), &address.sin_addr);
+    }
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0)
+    {
         return nullptr;
+    }
 
     return new TCPStream(fd, &address);
 }

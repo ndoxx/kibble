@@ -20,7 +20,7 @@ protected:
 
 TEST_CASE_METHOD(PathFixture, "Getting self directory", "[path]")
 {
-    REQUIRE(fs::exists(filesystem.get_self_directory() / "test_kibble"));
+    REQUIRE(fs::exists(filesystem.get_self_directory() / "../../data"));
 }
 
 TEST_CASE_METHOD(PathFixture, "Retrieving aliased directory", "[path]")

@@ -167,7 +167,9 @@ UUID UUID::from_upper_lower(uint64_t upper, uint64_t lower)
 UUID& UUID::operator=(const UUID& other)
 {
     if (&other == this)
+    {
         return *this;
+    }
 
     __m128i x = _mm_load_si128(reinterpret_cast<const __m128i*>(other.data_));
     _mm_store_si128(reinterpret_cast<__m128i*>(data_), x);

@@ -24,7 +24,9 @@ static constexpr uint32_t dilate_masks_32[6] = {0xFFFFFFFF, 0x0000FFFF, 0x00FF00
 static constexpr uint32_t gen_dilate(uint32_t a, uint32_t offset)
 {
     for (int ii = 1; ii < 6; ++ii)
+    {
         a = (a | (a << (4 * sizeof(uint32_t) >> (ii - 1)))) & dilate_masks_32[ii];
+    }
 
     return a << offset;
 }
@@ -34,7 +36,9 @@ static constexpr uint32_t gen_contract(uint32_t a, uint32_t offset)
     a = a >> offset;
     a = a & dilate_masks_32[5];
     for (int ii = 0; ii < 5; ++ii)
+    {
         a = (a | (a >> (1 << ii))) & dilate_masks_32[4 - ii];
+    }
 
     return a;
 }
@@ -44,7 +48,9 @@ static constexpr std::array<T, SIZE> make_dilation_LUT(uint32_t offset)
 {
     std::array<T, SIZE> result{};
     for (T ii = 0; ii < T(SIZE); ++ii)
+    {
         result[ii] = T(gen_dilate(uint32_t(ii), offset));
+    }
 
     return result;
 }
@@ -54,7 +60,9 @@ static constexpr std::array<T, SIZE> make_contraction_LUT(uint32_t offset)
 {
     std::array<T, SIZE> result{};
     for (std::size_t ii = 0; ii < SIZE; ++ii)
+    {
         result[ii] = T(gen_contract(uint32_t(ii), offset));
+    }
 
     return result;
 }
@@ -74,7 +82,9 @@ public:
         keyT a = 0;
         unsigned int loops = sizeof(keyT);
         for (unsigned int ii = 0; ii < loops; ++ii)
+        {
             a |= keyT(LUT[(m >> ((ii * 8) + startshift)) & mask_8<keyT>()] << (4 * ii));
+        }
 
         return static_cast<coordT>(a);
     }
@@ -125,7 +135,9 @@ static constexpr uint32_t dilate_masks_32[4] = {0x030000FF, 0x0300F00F, 0x030C30
 static constexpr uint32_t gen_dilate(uint32_t a, uint32_t offset)
 {
     for (int ii = 0; ii < 4; ++ii)
+    {
         a = (a | (a << (4 * sizeof(uint32_t) >> ii))) & dilate_masks_32[ii];
+    }
 
     return a << offset;
 }
@@ -135,7 +147,9 @@ static constexpr uint32_t gen_contract(uint32_t a, uint32_t offset)
     a = a >> offset;
     a = a & dilate_masks_32[3];
     for (int ii = 0; ii < 3; ++ii)
+    {
         a = (a | (a >> (1 << (ii + 1)))) & dilate_masks_32[2 - ii];
+    }
 
     return a;
 }
@@ -145,7 +159,9 @@ static constexpr std::array<T, SIZE> make_dilation_LUT(uint32_t offset)
 {
     std::array<T, SIZE> result{};
     for (T ii = 0; ii < T(SIZE); ++ii)
+    {
         result[ii] = T(gen_dilate(uint32_t(ii), offset));
+    }
 
     return result;
 }
@@ -155,7 +171,9 @@ static constexpr std::array<T, SIZE> make_contraction_LUT(uint32_t offset)
 {
     std::array<T, SIZE> result{};
     for (std::size_t ii = 0; ii < SIZE; ++ii)
+    {
         result[ii] = T(gen_contract(uint32_t(ii), offset));
+    }
 
     return result;
 }
@@ -177,7 +195,9 @@ public:
         keyT a = 0;
         unsigned int loops = (sizeof(keyT) <= 4) ? 4 : 7; // ceil for 32bit, floor for 64bit
         for (unsigned int ii = 0; ii < loops; ++ii)
+        {
             a |= keyT(LUT[(m >> ((ii * 9) + startshift)) & mask_9<keyT>()] << keyT(3 * ii));
+        }
 
         return static_cast<coordT>(a);
     }

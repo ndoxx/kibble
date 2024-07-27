@@ -2,7 +2,7 @@
 #include "../../string/string.h"
 
 #include "fmt/color.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include <unordered_map>
 
 namespace kb::memory::util
@@ -40,15 +40,21 @@ void hex_dump(const void* ptr, std::size_t size, const std::string& title)
     {
         // Show 32 bytes aligned addresses
         if (std::size_t(current) % 32 == 0)
+        {
             fmt::print("[0x{:016x}] ", std::size_t(current));
+        }
 
         // Separator after 16 bytes aligned addresses
         else if (std::size_t(current) % 16 == 0)
+        {
             fmt::print(" ");
+        }
 
         // Out-of-scope data in dark gray dots
         if (current < begin || current >= end)
+        {
             fmt::print("{}", fmt::styled("........", fmt::fg(fmt::rgb(100, 100, 100))));
+        }
         else
         {
             // Get current value
@@ -57,17 +63,25 @@ void hex_dump(const void* ptr, std::size_t size, const std::string& title)
             auto it = s_highlights.find(value);
             // Highlight recognized words
             if (it != s_highlights.end())
+            {
                 fmt::print("{:08x}", fmt::styled(value, fmt::bg(it->second)));
+            }
             // Basic display
             else
+            {
                 fmt::print("{:08x}", value);
+            }
         }
 
         // Jump lines before 32 bytes aligned addresses
         if (std::size_t(current) % 32 == 28)
+        {
             fmt::print("\n");
+        }
         else
+        {
             fmt::print(" ");
+        }
 
         ++current;
     }

@@ -1,9 +1,9 @@
 #include "vscode_terminal_formatter.h"
 #include "../channel.h"
 #include "../entry.h"
-#include <array>
 #include "fmt/color.h"
 #include "fmt/core.h"
+#include <array>
 
 namespace kb::log
 {
@@ -34,15 +34,21 @@ inline auto to_rgb(math::argb32_t color)
 inline std::string format_uid(const std::string& input)
 {
     if (input.size() == 0)
+    {
         return "";
+    }
     else
+    {
         return fmt::format("[{}] ", fmt::styled(input, fmt::emphasis::italic));
+    }
 }
 
 void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation& chan)
 {
     if (e.raw_text)
+    {
         return fmt::print("{}\n", e.message);
+    }
 
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
 

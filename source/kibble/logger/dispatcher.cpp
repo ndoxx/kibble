@@ -21,8 +21,7 @@ static constexpr std::array<uint32_t, k_palette_sz> k_palette = {
 std::string create_channel_tag(const std::string& short_name, math::argb32_t color)
 {
     std::stringstream ss;
-    ss << "\033[1;48;2;" << color.r() << ";" << color.g() << ";" << color.b() << "m"
-       << "[" << short_name << "]\033[0m";
+    ss << "\033[1;48;2;" << color.r() << ";" << color.g() << ";" << color.b() << "m" << "[" << short_name << "]\033[0m";
     return ss.str();
 }
 
@@ -35,7 +34,9 @@ LogDispatcher::LogDispatcher() : backtrace_on_error_(false)
 LogDispatcher::~LogDispatcher()
 {
     for (auto&& [key, sink] : sinks_)
+    {
         sink->finish();
+    }
 }
 
 void LogDispatcher::has_channel(hash_t hname, bool& result)
@@ -68,7 +69,9 @@ void LogDispatcher::set_channel_tag(const std::string& name, const std::string& 
 
     auto findit = channels_.find(H_(name));
     if (findit != channels_.end())
+    {
         findit->second.tag = create_channel_tag(custom_short_name.substr(0, 3), color);
+    }
 }
 
 void LogDispatcher::attach(const std::string& sink_name, std::unique_ptr<Sink> sink,

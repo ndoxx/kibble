@@ -3,7 +3,6 @@
 #include "util/stack_trace.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
 
 namespace detail
 {

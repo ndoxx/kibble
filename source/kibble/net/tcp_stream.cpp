@@ -46,9 +46,13 @@ void TCPStream::receive(std::string& msg)
         nbytes = recv(fd_, &buffer[0], k_max_buf_len, 0);
         // append string from buffer.
         if (nbytes != -1)
+        {
             msg.append(buffer.cbegin(), buffer.cend());
+        }
         else
+        {
             std::cerr << "TCPStream receive error." << std::endl;
+        }
     } while (nbytes == k_max_buf_len);
 }
 

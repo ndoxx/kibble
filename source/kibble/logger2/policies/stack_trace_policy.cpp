@@ -11,7 +11,9 @@ StackTracePolicy::StackTracePolicy(Severity level, size_t skip) : level_(level),
 bool StackTracePolicy::transform_filter(LogEntry& entry) const
 {
     if (entry.severity <= level_)
+    {
         entry.stack_trace.emplace(skip_);
+    }
 
     return true;
 }

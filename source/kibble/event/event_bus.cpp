@@ -1,4 +1,5 @@
 #include "event_bus.h"
+#include <numeric>
 
 namespace kb::event
 {
@@ -12,9 +13,15 @@ bool EventBus::dispatch(std::chrono::nanoseconds timeout)
     // An event once handled can cause another event to be enqueued, so
     // we iterate till all events have been processed
     while (!empty())
-        for (auto&& [id, queue] : event_queues_)
+    {
+        for (const auto& [id, queue] : event_queues_)
+        {
             if (!queue->process(deadline) && enable_timeout)
+            {
                 return false;
+            }
+        }
+    }
 
     return true;
 }
@@ -22,14 +29,20 @@ bool EventBus::dispatch(std::chrono::nanoseconds timeout)
 void EventBus::drop()
 {
     for (auto&& [id, queue] : event_queues_)
+    {
         queue->drop();
+    }
 }
 
 bool EventBus::empty()
 {
     for (auto&& [id, queue] : event_queues_)
+    {
         if (!queue->empty())
+        {
             return false;
+        }
+    }
 
     return true;
 }

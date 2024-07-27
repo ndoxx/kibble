@@ -63,7 +63,9 @@ public:
     {
         // Return null if no more entry left
         if (head_ == nullptr)
+        {
             return nullptr;
+        }
 
         ++allocation_count_;
         // Obtain one element from the head of the free list
@@ -210,8 +212,12 @@ public:
     {
         // Only the nodes in the solution path are alive at this point
         if (status_ == Status::SUCCESS)
+        {
             for (Node* node = start_; node; node = node->next)
+            {
                 destroy_node(node);
+            }
+        }
 
         K_ASSERT(pool_.allocation_count() == 0, "Node pool leaked memory. Alloc count: {}", pool_.allocation_count());
     }
@@ -267,7 +273,9 @@ public:
     inline void walk_path(std::function<void(const T&)> visitor)
     {
         for (Node* node = start_; node; node = node->next)
+        {
             visitor(node->state);
+        }
     }
 
 private:
@@ -309,7 +317,9 @@ private:
     {
         // If search already converged, return early
         if (status_ != Status::RUNNING)
+        {
             return status_;
+        }
 
         // Failure to pop from open set means no solution
         // Also handle cancel requests from user
@@ -355,7 +365,9 @@ private:
             {
                 // New g-score is no better, no need to update, skip
                 if (p_open_node->g_score <= g_score)
+                {
                     continue;
+                }
 
                 // Update node
                 p_open_node->update(node, g_score, suc_state.heuristic(goal_->state));
@@ -368,7 +380,9 @@ private:
             {
                 // New g-score is no better, no need to update, skip
                 if (p_closed_node->g_score <= g_score)
+                {
                     continue;
+                }
 
                 /*
                     NOTE(ndx): We don't know if the heuristic is 'consistent' (monotonically decreasing),
@@ -466,10 +480,14 @@ private:
     void free_all_nodes()
     {
         for (Node* node : open_set_)
+        {
             destroy_node(node);
+        }
 
         for (Node* node : closed_set_)
+        {
             destroy_node(node);
+        }
 
         open_set_.clear();
         closed_set_.clear();
@@ -487,12 +505,20 @@ private:
     void free_unused_nodes()
     {
         for (Node* node : open_set_)
+        {
             if (node->next == nullptr)
+            {
                 destroy_node(node);
+            }
+        }
 
         for (Node* node : closed_set_)
+        {
             if (node->next == nullptr)
+            {
                 destroy_node(node);
+            }
+        }
 
         open_set_.clear();
         closed_set_.clear();

@@ -42,7 +42,9 @@ Catenary::Catenary(float x1, float y1, float x2, float y2, float s, float max_er
     // if not, set length to distance plus some slack
     float dist2 = v * v + h * h;
     if (s * s < dist2 + k_min_slack)
+    {
         s = std::sqrt(dist2) + k_min_slack;
+    }
 
     // * Solve for parameter a_, this equates to solving a transcendental equation for a unique root
     // Run along the function graph till the sign changes, this provides a good initial guess for the

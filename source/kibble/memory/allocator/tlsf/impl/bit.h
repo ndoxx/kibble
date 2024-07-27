@@ -71,7 +71,9 @@ inline int fls_generic(int word)
     int bit = 32;
 
     if (!word)
+    {
         bit -= 1;
+    }
     if (!(word & 0xffff0000))
     {
         word <<= 16;

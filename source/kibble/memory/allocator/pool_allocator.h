@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
-#include <utility>
 
 #include "../util/free_list.h"
 

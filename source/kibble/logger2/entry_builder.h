@@ -2,8 +2,8 @@
 
 #include "channel.h"
 #include "entry.h"
-#include "severity.h"
 #include "fmt/core.h"
+#include "severity.h"
 
 namespace kb::log
 {

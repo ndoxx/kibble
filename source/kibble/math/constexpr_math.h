@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <limits>
+#include <type_traits>
 
 /*
     Collection of various compile-time math functions.
@@ -90,14 +91,14 @@ inline constexpr uint32_t np2(uint32_t x)
 
 /**
  * @brief Round up to multiple of power of 2
- * 
+ *
  * @param base The number to round
  * @param multiple A power of 2
- * @return constexpr size_t 
+ * @return constexpr size_t
  */
-inline constexpr size_t round_up_pow2(int32_t base, int32_t multiple)
+inline constexpr std::size_t round_up_pow2(int32_t base, int32_t multiple)
 {
-    return size_t((base + multiple - 1) & -multiple);
+    return std::size_t((base + multiple - 1) & -multiple);
 }
 
 /**
@@ -146,11 +147,15 @@ template <typename IntT, typename = std::enable_if_t<std::is_integral<IntT>::val
 inline constexpr IntT round_up(IntT base, IntT multiple)
 {
     if (multiple == 0)
+    {
         return base;
+    }
 
     IntT remainder = base % multiple;
     if (remainder == 0)
+    {
         return base;
+    }
 
     return base + multiple - remainder;
 }

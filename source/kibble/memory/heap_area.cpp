@@ -1,6 +1,6 @@
 #include "memory/heap_area.h"
 #include "assert/assert.h"
-#include "memory/config.h"
+#include "config.h"
 #include "memory/util/alignment.h"
 #include "memory/util/debug.h"
 #include "string/string.h"
@@ -59,7 +59,7 @@ HeapArea::HeapArea(size_t size, const kb::log::Channel* channel) : size_(size), 
     begin_ = new uint8_t[size_];
     head_ = begin_;
 #ifdef K_USE_MEM_AREA_MEMSET
-    memset(begin_, cfg::k_area_memset_byte, size_);
+    memset(begin_, k_area_memset_byte, size_);
 #endif
     klog(log_channel_).uid("HeapArea").debug("Size: {} Begin: {:#x}", su::human_size(size_), uint64_t(begin_));
 }
@@ -72,7 +72,9 @@ HeapArea::~HeapArea()
 void HeapArea::debug_hex_dump(size_t size)
 {
     if (size == 0)
+    {
         size = size_t(head_ - begin_);
+    }
     memory::util::hex_dump(begin_, size, "HEX DUMP");
 }
 
@@ -85,7 +87,7 @@ std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_n
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
-    std::fill(head_, head_ + padding, cfg::k_alignment_padding_mark);
+    std::fill(head_, head_ + padding, k_alignment_padding_mark);
 #endif
 
     std::pair<void*, void*> ptr_range = {head_ + padding, head_ + padding + size + 1};

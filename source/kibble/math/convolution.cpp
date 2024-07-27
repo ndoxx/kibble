@@ -48,20 +48,9 @@ void SeparableGaussianKernel::init(uint32_t size, float _sigma)
 
     // Renormalize weights to unit
     for (uint32_t ii = 0; ii < half_size; ++ii)
-        weights[ii] /= sum;
-}
-
-std::ostream& operator<<(std::ostream& stream, const SeparableGaussianKernel& gk)
-{
-    stream << "[";
-    for (uint32_t ii = 0; ii < gk.half_size; ++ii)
     {
-        stream << gk.weights[ii];
-        if (ii != gk.half_size - 1)
-            stream << " ";
+        weights[ii] /= sum;
     }
-    stream << "]";
-    return stream;
 }
 
 } // namespace math

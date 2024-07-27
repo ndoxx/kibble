@@ -4,7 +4,7 @@
  * @file msb_search.h
  * @author ndx
  * @brief Leiserson - Prokop - Randall algorithm implementation
- * 
+ *
  * -> to find the most significant bit in a word using De Bruijn multiplication for fast log2
  * -> See: Using de Bruijn Sequences to Index a 1 in a Computer Word (Charles E. Leiserson, Harald Prokop Keith & H.
  * Randall) http://supertech.csail.mit.edu/papers/debruijn.pdf
@@ -56,7 +56,9 @@ template <typename T>
 std::size_t msb_search(T v)
 {
     for (T ii = 1; ii <= detail::MSB_Data<T>::k_max_iter; ii *= 2)
+    {
         v |= v >> ii;
+    }
 
     return detail::MSB_Data<T>::k_mul_de_bruijn_bit[(v * detail::MSB_Data<T>::k_magic) >> detail::MSB_Data<T>::k_shift];
 }

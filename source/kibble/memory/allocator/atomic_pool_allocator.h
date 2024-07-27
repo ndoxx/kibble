@@ -5,7 +5,7 @@
 #include "../../util/sanitizer.h"
 #include "../heap_area.h"
 #include "../util/alignment.h"
-#include "../config.h"
+#include "config.h"
 
 #include "atomic_queue/atomic_queue.h"
 
@@ -52,7 +52,9 @@ public:
 
         // Fill the free queue with all possible addresses
         for (uint8_t* runner = begin_; runner < end_; runner += node_size_)
+        {
             free_queue_.push(runner);
+        }
     }
 
     /**
@@ -131,7 +133,7 @@ public:
 
         // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
-        std::fill(next, next + padding, cfg::k_alignment_padding_mark);
+        std::fill(next, next + padding, k_alignment_padding_mark);
 #endif
 
         return next + padding;

@@ -564,7 +564,9 @@ public:
     inline void push(std::unique_ptr<UndoCommand> cmd)
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].push(std::move(cmd));
+        }
     }
 
     /**
@@ -589,7 +591,9 @@ public:
     inline void clear()
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].clear();
+        }
     }
 
     /**
@@ -600,7 +604,9 @@ public:
     inline void undo()
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].undo();
+        }
     }
 
     /**
@@ -611,7 +617,9 @@ public:
     inline void redo()
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].redo();
+        }
     }
 
     /**
@@ -623,7 +631,9 @@ public:
     inline void set_head(size_t index)
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].set_head(index);
+        }
     }
 
     /**
@@ -634,7 +644,9 @@ public:
     inline void set_clean()
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].set_clean();
+        }
     }
 
     /**
@@ -645,7 +657,9 @@ public:
     inline void reset_clean()
     {
         if (active_stack_)
+        {
             stacks_[active_stack_].reset_clean();
+        }
     }
 
     /**
@@ -659,7 +673,9 @@ public:
     inline bool set_undo_limit(size_t undo_limit)
     {
         if (active_stack_)
+        {
             return stacks_[active_stack_].set_undo_limit(undo_limit);
+        }
         return false;
     }
 

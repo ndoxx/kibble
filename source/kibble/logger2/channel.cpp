@@ -48,20 +48,28 @@ void Channel::submit(LogEntry&& entry) const
 {
     // Check if the severity level is high enough
     if (entry.severity > level_)
+    {
         return;
+    }
 
     bool fatal = entry.severity == Severity::Fatal;
 
     // Check compliance with policies
     for (const auto& ppol : policies_)
+    {
         if (!ppol->transform_filter(entry))
+        {
             return;
+        }
+    }
 
     // Send to all attached sinks
     if (s_js_ == nullptr)
     {
         for (auto& psink : sinks_)
+        {
             psink->submit_lock(entry, presentation_);
+        }
     }
     else
     {
@@ -73,7 +81,9 @@ void Channel::submit(LogEntry&& entry) const
         auto&& [task, future] = s_js_->create_task(std::move(meta), [this, entry = std::move(entry)]() {
             std::lock_guard<std::mutex> lock(sink_mutex_);
             for (auto& psink : sinks_)
+            {
                 psink->submit(entry, presentation_);
+            }
         });
         task.schedule();
     }
@@ -81,10 +91,14 @@ void Channel::submit(LogEntry&& entry) const
     if (s_exit_on_fatal_error_ && fatal)
     {
         if (s_js_)
+        {
             s_js_->shutdown();
+        }
 
         for (auto& psink : sinks_)
+        {
             psink->flush();
+        }
 
         exit(0);
     }
@@ -93,7 +107,9 @@ void Channel::submit(LogEntry&& entry) const
 void Channel::flush() const
 {
     for (const auto& psink : sinks_)
+    {
         psink->flush();
+    }
 }
 
 void Channel::set_async(th::JobSystem* js, uint32_t worker)

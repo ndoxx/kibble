@@ -24,18 +24,26 @@ void WorkerThread::spawn(JobSystem* js, SharedState* ss, const WorkerProperties&
     // Generate list of stealable workers
     // Make sure that this worker cannot steal from itself
     for (tid_t tid = 0; tid < js_->get_threads_count(); ++tid)
+    {
         if (props_.tid != tid)
+        {
             stealable_workers_.push_back(tid);
+        }
+    }
 
     // Spawn thread if it is not the main thread
     if (is_background())
+    {
         thread_ = std::thread(&WorkerThread::run, this);
+    }
 }
 
 void WorkerThread::join()
 {
     if (is_background())
+    {
         thread_.join();
+    }
 }
 
 void WorkerThread::submit(Job* job, bool stealable)

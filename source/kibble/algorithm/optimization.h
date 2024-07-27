@@ -202,14 +202,18 @@ public:
             using size_type = typename ControlTraits<ControlT>::size_type;
             constexpr auto sz = ControlTraits<ControlT>::size();
             for (size_type ii = 0; ii < sz; ++ii)
+            {
                 del[ii] = bernoulli_remap(dis(gen_));
+            }
             ControlTraits<ControlT>::normalize(del);
             float forward_loss = loss_(uu + ck * del);
             float backward_loss = loss_(uu - ck * del);
             float h = (forward_loss - backward_loss);
             ControlT g_hat;
             for (size_type ii = 0; ii < sz; ++ii)
+            {
                 g_hat[ii] = h * (0.5f / (ck * del[ii]));
+            }
 
             // Update and constrain control parameters
             uu -= ak * g_hat;

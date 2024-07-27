@@ -4,8 +4,8 @@
 #include "severity.h"
 #include "sink.h"
 #include <memory>
-#include <vector>
 #include <mutex>
+#include <vector>
 
 namespace kb::th
 {
@@ -54,8 +54,8 @@ public:
 
     /**
      * @brief Remove a sink from this channel
-     * 
-     * @param psink 
+     *
+     * @param psink
      */
     void detach_sink(std::shared_ptr<Sink> psink);
 

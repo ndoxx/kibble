@@ -3,6 +3,8 @@
 #endif
 #include "assert/assert.h"
 
+#include "fmt/core.h"
+
 __attribute__((optnone)) int bar(int x)
 {
     K_ASSERT(x < 10, "x should be less than 10, but it's {}", x);

@@ -62,7 +62,9 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
                 self_terminate = true;
             }
             if (self_terminate)
+            {
                 daemon.marked_for_deletion.store(true, std::memory_order_release);
+            }
         },
         std::move(meta));
     daemon.job->keep_alive = true;

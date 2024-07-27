@@ -22,7 +22,9 @@ void UndoCommand::redo()
 {
     // Call children's redo() in order
     for (const auto& child : children_)
+    {
         child->redo();
+    }
 }
 
 bool UndoCommand::merge_with(const UndoCommand&)
@@ -53,7 +55,9 @@ void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
         history_.erase(std::next(history_.begin(), ssize_t(head_)), history_.end());
         // If clean state was located after head, reset it
         if (ssize_t(head_) < clean_index_)
+        {
             reset_clean_internal();
+        }
     }
 
     // Try to merge with previous command
@@ -80,7 +84,9 @@ void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
     {
         // If limit will be exceeded, pop front command
         if ((undo_limit_ > 0) && (count() >= undo_limit_))
+        {
             history_.pop_front();
+        }
 
         // Push command to the stack
         history_.push_back(std::move(cmd));
@@ -90,7 +96,9 @@ void UndoStack::push(std::unique_ptr<UndoCommand> cmd)
     if (history_.back()->is_obsolete())
     {
         if (clean_index_ >= ssize_t(count()))
+        {
             reset_clean_internal();
+        }
         history_.pop_back();
     }
 
@@ -115,13 +123,21 @@ void UndoStack::snapshot()
 void UndoStack::check_state_transitions()
 {
     if (head() != last_snapshot_.head)
+    {
         on_head_change_(head());
+    }
     if (is_clean() != last_snapshot_.is_clean)
+    {
         on_clean_change_(is_clean());
+    }
     if (can_undo() != last_snapshot_.can_undo)
+    {
         on_can_undo_change_(can_undo());
+    }
     if (can_redo() != last_snapshot_.can_redo)
+    {
         on_can_redo_change_(can_redo());
+    }
 }
 
 void UndoStack::undo_internal()
@@ -164,11 +180,15 @@ void UndoStack::set_head(size_t index)
 {
     // Clip index
     if (index > count())
+    {
         index = count();
+    }
 
     // Nothing to do
     if (index == head_)
+    {
         return;
+    }
 
     // Can't use lambda capture because operands would be of different types and could not be used
     // in the ternary operator. But closure type of lambda with no capture has non-explicit
@@ -178,7 +198,9 @@ void UndoStack::set_head(size_t index)
 
     snapshot();
     while (head_ != index)
+    {
         advance(this);
+    }
     check_state_transitions();
 }
 
@@ -224,7 +246,9 @@ bool UndoGroup::add_stack(hash_t stack_name)
 {
     // Stack name must be non-zero
     if (stack_name == 0)
+    {
         return false;
+    }
 
     auto result = stacks_.emplace(stack_name, UndoStack{});
     if (result.second)
@@ -257,7 +281,9 @@ bool UndoGroup::remove_stack(hash_t stack_name)
 bool UndoGroup::set_active(hash_t stack_name)
 {
     if (active_stack_ == stack_name)
+    {
         return true;
+    }
 
     if (auto findit = stacks_.find(stack_name); findit != stacks_.end())
     {
@@ -276,7 +302,9 @@ bool UndoGroup::relabel_stack(hash_t old_name, hash_t new_name)
         stacks_.insert(std::move(nh));
 
         if (active_stack_ == old_name)
+        {
             active_stack_ = new_name;
+        }
 
         return true;
     }
@@ -308,28 +336,36 @@ void UndoGroup::on_head_change(std::function<void(size_t)> func)
     // Set functor and propagate to all stacks
     on_head_change_ = func;
     for (auto&& [name, stack] : stacks_)
+    {
         stack.on_head_change(on_head_change_);
+    }
 }
 
 void UndoGroup::on_clean_change(std::function<void(bool)> func)
 {
     on_clean_change_ = func;
     for (auto&& [name, stack] : stacks_)
+    {
         stack.on_clean_change(on_clean_change_);
+    }
 }
 
 void UndoGroup::on_can_undo_change(std::function<void(bool)> func)
 {
     on_can_undo_change_ = func;
     for (auto&& [name, stack] : stacks_)
+    {
         stack.on_can_undo_change(on_can_undo_change_);
+    }
 }
 
 void UndoGroup::on_can_redo_change(std::function<void(bool)> func)
 {
     on_can_redo_change_ = func;
     for (auto&& [name, stack] : stacks_)
+    {
         stack.on_can_redo_change(on_can_redo_change_);
+    }
 }
 
 } // namespace undo

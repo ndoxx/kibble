@@ -33,7 +33,9 @@ SaveFile::~SaveFile()
 SaveFile::ErrorCode SaveFile::commit() noexcept
 {
     if (committed_)
+    {
         return ErrorCode::WARN_ALREADY_COMMITTED;
+    }
 
     tmp_stream_.close();
     if (!tmp_stream_.good())
@@ -45,12 +47,16 @@ SaveFile::ErrorCode SaveFile::commit() noexcept
 
     // Move file to backup
     if (fs::exists(bak_path_))
+    {
         fs::remove(bak_path_);
+    }
 
     try
     {
         if (fs::exists(dst_path_))
+        {
             fs::rename(dst_path_, bak_path_);
+        }
         // Move temporary file to destination
         fs::rename(tmp_path_, dst_path_);
     }

@@ -1,9 +1,9 @@
 #include "memory/allocator/pool_allocator.h"
 #include "assert/assert.h"
+#include "config.h"
 #include "math/constexpr_math.h"
 #include "memory/heap_area.h"
 #include "memory/util/alignment.h"
-#include "memory/config.h"
 
 namespace kb
 {
@@ -35,7 +35,7 @@ void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
-    std::fill(next, next + padding, cfg::k_alignment_padding_mark);
+    std::fill(next, next + padding, k_alignment_padding_mark);
 #endif
 
     return next + padding;

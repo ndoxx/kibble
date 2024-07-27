@@ -136,20 +136,32 @@ float SimplexNoiseGenerator::operator()(float xin, float yin, float zin)
     if (x0 >= y0)
     {
         if (y0 >= z0)
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(1, 0, 0, 1, 1, 0); // X Y Z order
+        }
         else if (x0 >= z0)
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(1, 0, 0, 1, 0, 1); // X Z Y order
+        }
         else
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 0, 1, 1, 0, 1); // Z X Y order
+        }
     }
     else
     {
         if (y0 < z0)
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 0, 1, 0, 1, 1); // Z Y X order
+        }
         else if (x0 < z0)
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 1, 0, 0, 1, 1); // Y Z X order
+        }
         else
+        {
             std::tie(i1, j1, k1, i2, j2, k2) = std::make_tuple(0, 1, 0, 1, 1, 0); // Y X Z order
+        }
     }
 #endif
     // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),

@@ -147,7 +147,9 @@ struct vec3_hash
         // Combine component hashes to obtain a position hash
         // Similar to Boost's hash_combine function
         for (int ii = 0; ii < 3; ++ii)
+        {
             detail::update_hash_seed_internal(seed, hakz::epsilon_hash(vec[ii]));
+        }
 
         return seed; // Two epsilon-distant vectors will share a common hash
     }
@@ -269,6 +271,8 @@ inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
 {
     kb::hash_t ret = hashes[0];
     for (size_t ii = 1; ii < hashes.size(); ++ii)
+    {
         ret = HCOMBINE_(ret, hashes[ii]);
+    }
     return ret;
 }

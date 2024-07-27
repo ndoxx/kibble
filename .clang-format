@@ -4,5 +4,6 @@ AccessModifierOffset: '-4'
 AlwaysBreakTemplateDeclarations: Yes
 DerivePointerAlignment: false
 PointerAlignment: Left
+InsertBraces: true
 
 ...

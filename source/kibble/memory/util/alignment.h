@@ -25,7 +25,9 @@ constexpr size_t k_cache_line_size = 64;
 [[maybe_unused]] static inline std::size_t alignment_padding(uint8_t* base_address, std::size_t alignment)
 {
     if (std::size_t(base_address) % alignment == 0)
+    {
         return 0;
+    }
 
     size_t base_address_sz = reinterpret_cast<std::size_t>(base_address);
     std::size_t multiplier = (base_address_sz / alignment) + 1;

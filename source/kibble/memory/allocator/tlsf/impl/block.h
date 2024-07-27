@@ -38,7 +38,7 @@ struct BlockHeader
         It should be the case, a pointer to a struct is 8B, and the size member is
         a size_t which is 8B large and 8B aligned.
     */
-    static constexpr size_t k_block_start_offset = sizeof(prev_physical) + sizeof(size);
+    static constexpr size_t k_block_start_offset = sizeof(BlockHeader*) + sizeof(size);
 
     // * Functionality
 

@@ -9,7 +9,7 @@ namespace kb
 
 /**
  * @brief Compute the MD5 hash of arbitrary data.
- * 
+ *
  * Will only work on little-endian machines.
  *
  */

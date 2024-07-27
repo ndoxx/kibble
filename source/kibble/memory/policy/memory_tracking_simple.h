@@ -68,4 +68,4 @@ private:
     const kb::log::Channel* log_channel_ = nullptr;
 };
 
-} // namespace kb::policy
+} // namespace kb::memory::policy

@@ -120,7 +120,9 @@ T bezier_evaluate(float tt, const VecT& coeffs)
         if constexpr (DIFF_ORDER > 0)
         {
             for (size_t jj = 0; jj < DIFF_ORDER; ++jj)
+            {
                 diff_coeff *= ii + jj + 1;
+            }
         }
 
         sum += tpow * float(diff_coeff) * coeffs[size_t(ii + DIFF_ORDER)];
@@ -174,7 +176,9 @@ template <typename T, typename VecT>
 T deCasteljau(unsigned rr, unsigned ii, float tt, const VecT& points)
 {
     if (rr == 0)
+    {
         return points[ii];
+    }
 
     T p1 = deCasteljau(rr - 1, ii, tt, points);
     T p2 = deCasteljau(rr - 1, ii + 1, tt, points);
@@ -219,12 +223,16 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, S
     right[SIZE - LEVEL - 1] = points.back();
 
     if constexpr (LEVEL == SIZE - 1)
+    {
         return;
+    }
     else
     {
         std::array<T, SIZE - LEVEL - 1> lerps;
         for (size_t ii = 0; ii < points.size() - 1; ++ii)
+        {
             lerps[ii] = lerp(points[ii], points[ii + 1], param);
+        }
 
         deCasteljauSplit<T, SIZE, LEVEL + 1>(lerps, left, right, param);
     }
@@ -241,22 +249,7 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, S
  * @param lower_bound initial lower bound
  * @return size_t index of the target arc-length
  */
-size_t arclen_binary_search(float target, const std::vector<float>& arc_length, size_t lower_bound = 0)
-{
-    // Binary search
-    size_t lb = lower_bound;
-    size_t ub = arc_length.size();
-    size_t idx = lb;
-    while (lb < ub)
-    {
-        idx = lb + (((ub - lb) / 2));
-        if (arc_length[idx] < target)
-            lb = idx + 1;
-        else
-            ub = idx;
-    }
-    return (arc_length[idx] > target) ? idx - 1 : idx;
-}
+size_t arclen_binary_search(float target, const std::vector<float>& arc_length, size_t lower_bound = 0);
 
 /**
  * @internal
@@ -269,20 +262,7 @@ size_t arclen_binary_search(float target, const std::vector<float>& arc_length, 
  * @param last_index last index obtained through iterated calls to this function
  * @return a pair containing the arc-length value and table index
  */
-std::pair<float, size_t> arclen_remap(float tt, const std::vector<float>& arc_length, size_t last_index = 0)
-{
-    float target = std::clamp(tt, 0.f, 1.f) * arc_length.back();
-    size_t idx = arclen_binary_search(target, arc_length, last_index);
-    if (idx == arc_length.size() - 1)
-        return {1.f, idx};
-
-    float len_before = arc_length[idx];
-    float len_after = arc_length[idx + 1];
-    float len_segment = len_after - len_before;
-    float alpha = (target - len_before) / len_segment;
-    float ret = (float(idx) + alpha) / float(arc_length.size() - 1);
-    return {ret, idx};
-}
+std::pair<float, size_t> arclen_remap(float tt, const std::vector<float>& arc_length, size_t last_index = 0);
 
 } // namespace detail
 
@@ -449,7 +429,9 @@ private:
         // Longest path is the one that goes through all points in order
         float max_length = 0.f;
         for (size_t ii = 0; ii < control_.size() - 1; ++ii)
+        {
             max_length += PointDistance<T>::distance(control_[ii], control_[ii + 1]);
+        }
         return {0.5f * (max_length + min_length), 0.5f * (max_length - min_length)};
     }
 
@@ -523,7 +505,9 @@ public:
         std::vector<T> tangents(control_.size(), T(0));
         tangents[0] = start_tangent;
         for (size_t ii = 1; ii < tangents.size() - 1; ++ii)
+        {
             tangents[ii] = (1.f - tension) * (control_[ii + 1] - control_[ii - 1]);
+        }
         tangents[control_.size() - 1] = end_tangent;
 
         // Each spline segment is a cubic Bezier spline
@@ -553,7 +537,9 @@ public:
     {
         float sum = 0.f;
         for (const auto& seg : segment_)
+        {
             sum += seg.length(max_error);
+        }
         return sum;
     }
 
@@ -757,7 +743,9 @@ private:
         uu = std::clamp(uu, 0.f, std::nexttoward(1.f, -1));
         size_t idx = size_t(std::floor(float(arc_length_inverse_.size() - 1) * uu));
         if (idx == arc_length_inverse_.size() - 1)
+        {
             return arc_length_inverse_.back();
+        }
         float alpha = float(arc_length_inverse_.size() - 1) * uu - float(idx);
         return std::lerp(arc_length_inverse_[idx], arc_length_inverse_[idx + 1], alpha);
     }

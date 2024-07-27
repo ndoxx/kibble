@@ -1,6 +1,5 @@
 #include "math/color.h"
 
-#include <array>
 #include <cmath>
 #include <random>
 
@@ -47,30 +46,46 @@ ColorHSLA ColorHSLA::random_hue(float s, float l, unsigned long long seed)
 float hue_to_rgb(float v1, float v2, float vH)
 {
     if (vH < 0)
+    {
         vH += 1;
+    }
     if (vH > 1)
+    {
         vH -= 1;
+    }
     if ((6 * vH) < 1)
+    {
         return (v1 + (v2 - v1) * 6.f * vH);
+    }
     if ((2 * vH) < 1)
+    {
         return (v2);
+    }
     if ((3 * vH) < 2)
+    {
         return (v1 + (v2 - v1) * ((2.f / 3.f) - vH) * 6);
+    }
     return (v1);
 }
 
 ColorRGBA to_RGBA(const ColorHSLA& hsla)
 {
     if (hsla.s == 0)
+    {
         return math::ColorRGBA(hsla.l, hsla.l, hsla.l);
+    }
     else
     {
         float v1 = 0.f;
         float v2 = 0.f;
         if (hsla.l < 0.5f)
+        {
             v2 = hsla.l * (1 + hsla.s);
+        }
         else
+        {
             v2 = (hsla.l + hsla.s) - (hsla.s * hsla.l);
+        }
 
         v1 = 2 * hsla.l - v2;
 
@@ -97,15 +112,25 @@ ColorHSLA to_HSLA(const ColorRGBA& rgba)
         float del_G = (((cmax - rgba.g) / 6.f) + (delta * 0.5f)) / delta;
         float del_B = (((cmax - rgba.b) / 6.f) + (delta * 0.5f)) / delta;
         if (rgba.r == cmax)
+        {
             H = del_B - del_G;
+        }
         else if (rgba.g == cmax)
+        {
             H = (1.f / 3.f) + del_R - del_B;
+        }
         else if (rgba.b == cmax)
+        {
             H = (2.f / 3.f) + del_G - del_R;
+        }
         if (H < 0)
+        {
             H += 1;
+        }
         if (H > 1)
+        {
             H -= 1;
+        }
     }
     return math::ColorHSLA(H, S, L, rgba.a);
 }

@@ -43,8 +43,12 @@ FileSystem::FileSystem(const kb::log::Channel* log_channel) : log_channel_(log_c
 FileSystem::~FileSystem()
 {
     for (auto&& [key, entry] : aliases_)
+    {
         for (auto* packfile : entry.packfiles)
+        {
             delete packfile;
+        }
+    }
 }
 
 bool FileSystem::setup_settings_directory(std::string vendor, std::string appname, std::string alias)
@@ -58,7 +62,9 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
+    {
         homebuf = getpwuid(getuid())->pw_dir;
+    }
 
     fs::path home_directory = fs::canonical(homebuf);
     K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
@@ -67,9 +73,13 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     // Check if ~/.config/<vendor>/<appname> is applicable, if not, fallback to
     // ~/.<vendor>/<appname>/config
     if (fs::exists(home_directory / ".config"))
+    {
         app_settings_directory_ = home_directory / ".config" / vendor / appname;
+    }
     else
+    {
         app_settings_directory_ = home_directory / su::concat('.', vendor) / appname / "config";
+    }
 #else
 #error setup_config_directory() not yet implemented for this platform.
 #endif
@@ -93,7 +103,9 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
 
     // Alias the config directory
     if (alias.empty())
+    {
         alias = "config";
+    }
     alias_directory(app_settings_directory_, alias);
 
     return true;
@@ -110,7 +122,9 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
+    {
         homebuf = getpwuid(getuid())->pw_dir;
+    }
 
     fs::path home_directory = fs::canonical(homebuf);
     K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
@@ -119,9 +133,13 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     // Check if ~/.local/share/<vendor>/<appname> is applicable, if not, fallback to
     // ~/.<vendor>/<appname>/appdata
     if (fs::exists(home_directory / ".local/share"))
+    {
         app_data_directory_ = home_directory / ".local/share" / vendor / appname;
+    }
     else
+    {
         app_data_directory_ = home_directory / su::concat('.', vendor) / appname / "appdata";
+    }
 #else
 #error setup_app_data_directory() not yet implemented for this platform.
 #endif
@@ -145,7 +163,9 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
 
     // Alias the data directory
     if (alias.empty())
+    {
         alias = "appdata";
+    }
     alias_directory(app_data_directory_, alias);
 
     return true;
@@ -162,7 +182,9 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
     if ((homebuf = getenv("HOME")) == NULL)
+    {
         homebuf = getpwuid(getuid())->pw_dir;
+    }
 
     fs::path home_directory = fs::canonical(homebuf);
     K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
@@ -174,9 +196,13 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
     auto candidate2 = home_directory / su::concat('.', vendor) / appname / "appdata";
 
     if (fs::exists(candidate1))
+    {
         return candidate1;
+    }
     else if (fs::exists(candidate2))
+    {
         return candidate2;
+    }
     else
     {
         klog(log_channel_)
@@ -419,7 +445,9 @@ FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::strin
     }
     // A regular path was submitted
     else
+    {
         result.path_component = unipath;
+    }
 
     return result;
 }
@@ -428,7 +456,9 @@ fs::path FileSystem::to_regular_path(const UpathParsingResult& result) const
 {
     // If an alias was found, path_component is relative to the aliased base directory
     if (result.alias_entry)
+    {
         return fs::absolute((result.alias_entry->base / result.path_component)).lexically_normal();
+    }
     // Simply return a canonical path
     return fs::absolute(result.path_component).lexically_normal();
 }
@@ -463,7 +493,9 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
 
     auto mode = std::ios::in;
     if (binary)
+    {
         mode |= std::ios::binary;
+    }
 
     std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
     K_ASSERT(pifs->is_open(), "Unable to open input file: {}", filepath.string());
@@ -479,7 +511,9 @@ void FileSystem::init_self_path()
     K_ASSERT(len != -1, "Cannot read self path using readlink. Buf len: {}", len);
 
     if (len != -1)
+    {
         buff[len] = '\0';
+    }
     self_path = fs::path(buff);
 #else
 #error init_self_path() not yet implemented for this platform.

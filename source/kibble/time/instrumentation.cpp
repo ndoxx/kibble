@@ -77,7 +77,9 @@ InstrumentationTimer::InstrumentationTimer(InstrumentationSession* session, cons
 InstrumentationTimer::~InstrumentationTimer()
 {
     if (session_ == nullptr)
+    {
         return;
+    }
 
     auto stop = std::chrono::high_resolution_clock::now();
     long long start_us = std::chrono::time_point_cast<std::chrono::microseconds>(start_).time_since_epoch().count();

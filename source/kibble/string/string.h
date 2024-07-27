@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 #include <functional>
-#include <locale>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -187,10 +186,10 @@ inline void split_string(const std::string& str, Container& cont, char delim = '
 
 /**
  * @brief Base64-encode some data.
- * 
- * @param data 
- * @param size 
- * @return std::string 
+ *
+ * @param data
+ * @param size
+ * @return std::string
  */
 std::string base64_encode(const char* data, size_t size);
 

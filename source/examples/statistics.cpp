@@ -1,18 +1,26 @@
 #include "math/statistics.h"
 
-#include <array>
 #include <cmath>
-#include <fstream>
-#include <functional>
 #include <glm/glm.hpp>
-#include <iomanip>
 #include <iostream>
-#include <limits>
-#include <random>
-#include <sstream>
 #include <vector>
 
 using namespace kb;
+
+/**
+ * @brief Serialize all statistics to a stream
+ *
+ * @param stream
+ * @param stats
+ * @return std::ostream&
+ */
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, const math::Statistics<T>& stats)
+{
+    stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u()
+           << ')';
+    return stream;
+}
 
 int main(int argc, char** argv)
 {

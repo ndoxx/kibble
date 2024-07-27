@@ -57,13 +57,17 @@ public:
         : allocator_(debug_name, area, k_allocation_overhead, std::forward<ArgsT>(args)...)
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+        {
             memory_tracker_.init(debug_name, area);
+        }
     }
 
     ~MemoryArena()
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+        {
             memory_tracker_.report();
+        }
     }
 
     /**
@@ -107,7 +111,9 @@ public:
     {
         // Lock resource
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.enter();
+        }
 
         // Compute size after decoration and allocate
         const size_t decorated_size = k_allocation_overhead + size;
@@ -130,15 +136,23 @@ public:
 
         // More bookkeeping
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
+        {
             memory_tagger_.tag_allocation(current, size);
+        }
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+        {
             bounds_checker_.put_sentinel_back(current + size);
+        }
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+        {
             memory_tracker_.on_allocation(begin, decorated_size, alignment, file, line);
+        }
 
         // Unlock resource and return user pointer
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.leave();
+        }
 
         return current;
     }
@@ -153,7 +167,9 @@ public:
     void deallocate(void* ptr, [[maybe_unused]] const char* file, [[maybe_unused]] int line) noexcept
     {
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.enter();
+        }
 
         // Take care to jump further back if non-POD array deallocation, because we also stored the number of instances
         uint8_t* begin = static_cast<uint8_t*>(ptr) - k_front_overhead;
@@ -161,26 +177,34 @@ public:
         // Check the front sentinel before we retrieve the allocation size, just in case
         // the size was corrupted by an overwrite.
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
+        {
             bounds_checker_.check_sentinel_front(begin);
+        }
 
         const SizeType decorated_size =
             *(reinterpret_cast<SizeType*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT));
 
         // Check that everything went ok
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
+        {
             memory_tagger_.tag_deallocation(begin, decorated_size);
+        }
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
         {
             bounds_checker_.check_sentinel_back(begin + decorated_size -
                                                 policy::BoundsCheckerSentinelSize<BoundsCheckerT>::BACK);
         }
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
+        {
             memory_tracker_.on_deallocation(begin, decorated_size, file, line);
+        }
 
         allocator_.deallocate(begin);
 
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.leave();
+        }
     }
 
     /**
@@ -192,12 +216,16 @@ public:
     inline void reset()
     {
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.enter();
+        }
 
         allocator_.reset();
 
         if constexpr (policy::is_active_threading_policy<ThreadPolicyT>)
+        {
             thread_guard_.leave();
+        }
     }
 
     /**
@@ -233,7 +261,9 @@ public:
             // NOTE(ndx): The parentheses of T() are important, without them the constructor is not called
             const T* const end = as_T + N;
             while (as_T < end)
+            {
                 ::new (as_T++) T();
+            }
 
             // Hand user the pointer to the first instance
             return (as_T - N);
@@ -264,12 +294,18 @@ public:
     void delete__(T* object, const char* file, int line)
     {
         if constexpr (!(std::is_standard_layout_v<T> && std::is_trivial_v<T>))
+        {
             object->~T();
+        }
 
         if constexpr (std::is_polymorphic_v<T>)
+        {
             deallocate(dynamic_cast<void*>(object), file, line);
+        }
         else
+        {
             deallocate(object, file, line);
+        }
     }
 
     /**
@@ -296,7 +332,9 @@ public:
 
             // Call instances' destructor in reverse order
             for (SizeType ii = N; ii > 0; --ii)
+            {
                 object[ii - 1].~T();
+            }
 
             // deallocate() expects a pointer to the beginning of array allocation (where we wrote N)
             // NOTE(ndx): EXPECT deallocation bug when T is polymorphic, see HACK comment in Delete()

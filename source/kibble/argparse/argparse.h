@@ -184,7 +184,9 @@ public:
     inline const std::string& version()
     {
         if (full_ver_string_.size() == 0)
+        {
             make_version_string();
+        }
         return full_ver_string_;
     }
 
@@ -202,7 +204,9 @@ public:
     inline const std::string& usage()
     {
         if (usage_string_.size() == 0)
+        {
             make_usage_string();
+        }
         return usage_string_;
     }
 
@@ -275,7 +279,9 @@ public:
         opt->full_name = full_name;
         opt->description = description;
         if constexpr (!std::is_same_v<T, bool>)
+        {
             opt->value = default_value;
+        }
         arguments_.insert({short_name, opt});
         full_to_short_.insert({full_name, short_name});
 

@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <concepts>
-#include <cstdint>
-#include <ostream>
 
 namespace kb
 {
@@ -18,7 +16,7 @@ namespace math
  * Inspired by https://github.com/vectorgraphics/asymptote/blob/master/statistics.h
  */
 template <typename FloatT = float>
-requires std::floating_point<FloatT>
+    requires std::floating_point<FloatT>
 class Statistics
 {
 public:
@@ -108,20 +106,6 @@ public:
     inline FloatT stdev_u() const
     {
         return stdev(var_[1], {2});
-    }
-
-    /**
-     * @brief Serialize all statistics to a stream
-     *
-     * @param stream
-     * @param stats
-     * @return std::ostream&
-     */
-    friend std::ostream& operator<<(std::ostream& stream, const Statistics& stats)
-    {
-        stream << stats.mean() << " [\u00b1" << stats.stdev() << "] (+" << stats.stdev_l() << "/-" << stats.stdev_u()
-               << ')';
-        return stream;
     }
 
 private:

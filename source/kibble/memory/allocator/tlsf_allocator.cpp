@@ -1,7 +1,7 @@
 #include "memory/allocator/tlsf_allocator.h"
 #include "memory/allocator/tlsf/impl/block.h"
 #include "memory/allocator/tlsf/impl/control.h"
-#include "memory/config.h"
+#include "config.h"
 #include "memory/heap_area.h"
 #include "memory/util/alignment.h"
 
@@ -65,7 +65,7 @@ TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, s
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
-    std::fill(pad_begin, pool_begin, cfg::k_alignment_padding_mark);
+    std::fill(pad_begin, pool_begin, k_alignment_padding_mark);
 #endif
 
     // Create pool

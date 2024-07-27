@@ -21,14 +21,18 @@ TCPAcceptor::TCPAcceptor(uint16_t port, const char* address)
 TCPAcceptor::~TCPAcceptor()
 {
     if (lfd_)
+    {
         close(lfd_);
+    }
 }
 
 bool TCPAcceptor::start()
 {
     // If already listening, return
     if (listening_)
+    {
         return 0;
+    }
 
     // Create a listening socket
     lfd_ = socket(PF_INET, SOCK_STREAM, 0);
@@ -38,9 +42,13 @@ bool TCPAcceptor::start()
     address.sin_family = PF_INET;
     address.sin_port = htons(port_);
     if (!address_.empty())
+    {
         inet_pton(PF_INET, address_.c_str(), &address.sin_addr);
+    }
     else
+    {
         address.sin_addr.s_addr = INADDR_ANY;
+    }
 
     int optval = 1;
     setsockopt(lfd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
@@ -66,7 +74,9 @@ bool TCPAcceptor::start()
 TCPStream* TCPAcceptor::accept()
 {
     if (!listening_)
+    {
         return nullptr;
+    }
 
     sockaddr_in address;
     socklen_t len = sizeof(address);

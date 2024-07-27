@@ -210,12 +210,16 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
             // Do we ignore this file?
             hash_t key = H_(rel_path);
             if (ignored.find(key) != ignored.end())
+            {
                 continue;
+            }
 
             current_offset += PackLocalEntry::k_serialized_size + rel_path.string().size();
             entries.push_back({0, uint32_t(entry.file_size()), rel_path.string()});
             if (entry.file_size() > max_file_size)
+            {
                 max_file_size = entry.file_size();
+            }
         }
     }
 

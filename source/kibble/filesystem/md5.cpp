@@ -1,7 +1,8 @@
 #include "filesystem/md5.h"
 #include "algorithm/endian.h"
 #include "assert/assert.h"
-#include "fmt/format.h"
+
+#include "fmt/core.h"
 #include <cstring>
 
 namespace kb
@@ -135,11 +136,15 @@ void md5::finish()
     // length 8 bytes shy of a multiple of k_block_size
     int32_t pad = int32_t(k_block_size - 2 * sizeof(uint32_t) - head_);
     if (pad <= 0)
+    {
         pad += k_block_size;
+    }
 
     buffer_[head_] = 0x80;
     if (pad > 1)
+    {
         std::memset(buffer_.data() + head_ + 1, 0, size_t(pad - 1));
+    }
     head_ += uint32_t(pad);
 
     // Write original message length (in bits), now the total length is exactly congruent
@@ -152,7 +157,9 @@ void md5::finish()
     uint32_t num_blocks = head_ / k_block_size;
 
     for (uint32_t ii = 0; ii < num_blocks; ++ii)
+    {
         process_block(ii);
+    }
 
     finished_ = true;
 }
@@ -204,7 +211,9 @@ void md5::process_block(uint32_t block_offset)
     }
 
     for (uint32_t ii = 0; ii < 4; ++ii)
+    {
         state_[ii] += state[ii];
+    }
 
     head_ = 0;
 }

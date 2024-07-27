@@ -126,7 +126,9 @@ private:
         inline void add(ProcessNode& node)
         {
             if (count_ + 1 == SIZE)
+            {
                 throw std::overflow_error("Maximum node amount reached.");
+            }
 
             slots_[count_++] = &node;
         }
@@ -135,7 +137,9 @@ private:
         inline const auto& operator[](int idx) const
         {
             if (idx >= count_)
+            {
                 throw std::out_of_range("Index out of bounds in harness.");
+            }
 
             return slots_[idx];
         }
@@ -144,7 +148,9 @@ private:
         inline auto& operator[](int idx)
         {
             if (idx >= count_)
+            {
                 throw std::out_of_range("Index out of bounds in harness.");
+            }
 
             return slots_[idx];
         }

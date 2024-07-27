@@ -1,15 +1,9 @@
 #pragma once
 
 #include <array>
-#include <atomic>
-#include <filesystem>
-#include <unordered_map>
-#include <memory>
 
-#include "thread/job/impl/common.h"
 #include "../../../util/sanitizer.h"
-
-namespace fs = std::filesystem;
+#include "thread/job/impl/common.h"
 
 namespace kb::log
 {

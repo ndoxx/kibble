@@ -1,6 +1,6 @@
 #include "memory/allocator/linear_allocator.h"
 #include "assert/assert.h"
-#include "memory/config.h"
+#include "config.h"
 #include "memory/heap_area.h"
 #include "memory/util/alignment.h"
 
@@ -36,7 +36,7 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING
-    std::fill(current, current + padding, cfg::k_alignment_padding_mark);
+    std::fill(current, current + padding, k_alignment_padding_mark);
 #endif
 
     current_offset_ += padding + size;

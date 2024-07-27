@@ -1,7 +1,8 @@
 #pragma once
+#include "../util/sanitizer.h"
+
 #include <memory>
 #include <mutex>
-#include "../util/sanitizer.h"
 
 namespace kb::log
 {
@@ -27,7 +28,7 @@ public:
      * @brief Executed when the sink is attached to a channel
      *
      */
-    virtual void on_attach(const Channel&){};
+    virtual void on_attach(const Channel&) {};
 
     /**
      * @brief Treat the log entry

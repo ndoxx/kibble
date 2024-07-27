@@ -52,7 +52,9 @@ public:
     {
         // Return null if no more entry left
         if (next_ == nullptr)
+        {
             return nullptr;
+        }
 
         // Obtain one element from the head of the free list
         Freelist* head = next_;

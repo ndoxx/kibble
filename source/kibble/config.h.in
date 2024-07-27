@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
+// Self
 #define KIBBLE_NAME                     "@PROJECT_NAME@"
 #define KIBBLE_BUILD_TYPE               "@CMAKE_BUILD_TYPE@"
 #define KIBBLE_VERSION                  "@PROJECT_VERSION@"
@@ -9,9 +11,17 @@
 #define KIBBLE_VERSION_MINOR            @PROJECT_VERSION_MINOR@
 #define KIBBLE_VERSION_PATCH            @PROJECT_VERSION_PATCH@
 
+// Threading
 #define KIBBLE_JOBSYS_ATOMIC_POOL                                               @KB_JOB_ATOMIC_POOL@
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_THREADS       = @KB_JOB_MAX_THREADS@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_JOB_QUEUE_SIZE    = @KB_JOB_JOB_QUEUE_SIZE@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_STATS_QUEUE_SIZE  = @KB_JOB_STATS_QUEUE_SIZE@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_CHILD_JOBS    = @KB_JOB_MAX_CHILD@;
 [[maybe_unused]] static constexpr std::size_t KIBBLE_JOBSYS_MAX_PARENT_JOBS   = @KB_JOB_MAX_PARENT@;
+
+
+// Memory
+#define K_USE_MEM_AREA_MEMSET  @KB_MEM_AREA_MEMSET@
+#define K_USE_MEM_MARK_PADDING @KB_MEM_MARK_PADDING@
+[[maybe_unused]] static constexpr uint8_t k_area_memset_byte = 0x00;
+[[maybe_unused]] static constexpr uint8_t k_alignment_padding_mark = 0xd0;

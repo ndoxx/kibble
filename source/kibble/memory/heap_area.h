@@ -97,8 +97,8 @@ public:
      * The block is page-aligned so as to avoid false sharing if multiple threads share access to this area, this means
      * that a certain extent of the memory past the last head position will be padded. If the symbol
      * K_USE_MEM_MARK_PADDING is defined, the padded zone will be memset with a specific pattern defined as
-     * k_alignment_padding_mark in config.h. This padding pattern could potentially be checked back afterwards to ensure no
-     * allocation leaked past the block boundaries.
+     * k_alignment_padding_mark in config.h. This padding pattern could potentially be checked back afterwards to ensure
+     * no allocation leaked past the block boundaries.
      *
      * @param size size of the block to reserve
      * @param debug_name name of the block used for debugging purposes

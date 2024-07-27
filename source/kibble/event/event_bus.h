@@ -31,9 +31,7 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <numeric>
 #include <queue>
-#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -222,8 +220,12 @@ public:
     {
         // Iterate in reverse order, so the last subscribers execute first
         for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
+        {
             if (it->second(event))
+            {
                 break; // If handler returns true, event is not propagated further
+            }
+        }
     }
 
     /**
@@ -241,14 +243,20 @@ public:
         while (!queue_.empty())
         {
             for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
+            {
                 if (it->second(queue_.front()))
+                {
                     break;
+                }
+            }
 
             queue_.pop();
 
             // Timeout if the deadline was exceeded
             if (nanoClock::now() > deadline)
+            {
                 return false;
+            }
         }
 
         return true;
@@ -558,7 +566,9 @@ public:
     {
         auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())
+        {
             findit->second->drop();
+        }
     }
 
     /**
@@ -654,7 +664,9 @@ private:
     {
         auto& queue = event_queues_[kb::ctti::type_id<EventT>()];
         if (queue == nullptr)
+        {
             queue = std::make_unique<detail::EventQueue<EventT>>();
+        }
 
         return queue;
     }

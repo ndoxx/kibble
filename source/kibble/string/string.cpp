@@ -1,7 +1,7 @@
 #include "string/string.h"
 #include "hash/hash.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace kb
 {
@@ -100,7 +100,9 @@ std::string human_size(std::size_t bytes)
     if (bytes > 1024)
     {
         for (ii = 0; (bytes / 1024) > 0 && ii < k_max_suffix; ii++, bytes /= 1024)
+        {
             d_bytes = double(bytes) / 1024.0;
+        }
     }
 
     return fmt::format("{:.2f}{}", d_bytes, size_unit_suffix(ii));
@@ -110,7 +112,9 @@ void center(std::string& input, int size)
 {
     int diff = size - static_cast<int>(input.size());
     if (diff <= 0)
+    {
         return;
+    }
 
     size_t before = static_cast<size_t>(diff / 2);
     size_t after = static_cast<size_t>(before + size_t(diff) % 2);
@@ -135,9 +139,13 @@ std::string base64_encode(const char* data, size_t size)
         }
     }
     if (valb > -6)
+    {
         out.push_back(s_base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+    }
     while (out.size() % 4)
+    {
         out.push_back('=');
+    }
     return out;
 }
 
@@ -150,7 +158,9 @@ std::string base64_decode(const std::string data)
     for (char c : data)
     {
         if (s_base64_decode_vals[size_t(c)] == -1)
+        {
             break;
+        }
         val = (val << 6) + static_cast<unsigned int>(s_base64_decode_vals[size_t(c)]);
         valb += 6;
         if (valb >= 0)

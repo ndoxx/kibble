@@ -29,7 +29,7 @@
  *
  */
 
-#include <cstdint>
+#include <cstddef>
 #include <type_traits>
 
 namespace kb

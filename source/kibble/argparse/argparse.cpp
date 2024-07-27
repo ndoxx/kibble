@@ -200,7 +200,9 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                     }
                 }
                 else
+                {
                     throw UnknownArgumentException(arg);
+                }
             }
             // Single dash, multiple concatenated flags
             else if (!positional_candidate)
