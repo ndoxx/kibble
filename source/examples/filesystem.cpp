@@ -1,8 +1,8 @@
 #include "filesystem/filesystem.h"
 #include "filesystem/resource_pack.h"
-#include "logger2/formatters/vscode_terminal_formatter.h"
-#include "logger2/logger.h"
-#include "logger2/sinks/console_sink.h"
+#include "logger/formatters/vscode_terminal_formatter.h"
+#include "logger/logger.h"
+#include "logger/sinks/console_sink.h"
 #include "math/color_table.h"
 
 #include "fmt/std.h"

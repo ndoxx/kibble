@@ -2,7 +2,7 @@
 #include "assert/assert.h"
 #include "config.h"
 #include "fmt/core.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 #include "math/constexpr_math.h"
 #include "memory/allocator/atomic_pool_allocator.h"
 #include "memory/allocator/linear_allocator.h"

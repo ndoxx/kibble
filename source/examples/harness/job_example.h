@@ -5,7 +5,7 @@
 #endif
 
 #include "argparse/argparse.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 #include "memory/heap_area.h"
 #include "thread/job/job_system.h"
 #include "time/clock.h"

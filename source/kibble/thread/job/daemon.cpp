@@ -1,6 +1,6 @@
 #include "daemon.h"
 #include "../../assert/assert.h"
-#include "../../logger2/logger.h"
+#include "../../logger/logger.h"
 #include "../../time/instrumentation.h"
 #include "impl/common.h"
 #include "thread/job/impl/job.h"

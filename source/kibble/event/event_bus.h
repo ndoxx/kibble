@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "../ctti/ctti.h"
-#include "../logger2/logger.h"
+#include "../logger/logger.h"
 #include "../time/clock.h"
 #include "../util/delegate.h"
 

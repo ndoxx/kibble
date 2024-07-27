@@ -4,7 +4,7 @@
 #include <string>
 
 #include "../assert/assert.h"
-#include "../logger2/logger.h"
+#include "../logger/logger.h"
 #include "heap_area.h"
 #include "policy/policy.h"
 

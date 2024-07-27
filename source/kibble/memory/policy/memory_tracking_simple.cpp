@@ -1,5 +1,5 @@
 #include "memory/policy/memory_tracking_simple.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 #include "memory/heap_area.h"
 
 namespace kb::memory::policy

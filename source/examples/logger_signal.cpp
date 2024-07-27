@@ -1,8 +1,8 @@
 #include "argparse/argparse.h"
-#include "logger2/formatters/powerline_terminal_formatter.h"
-#include "logger2/formatters/vscode_terminal_formatter.h"
-#include "logger2/logger.h"
-#include "logger2/sinks/console_sink.h"
+#include "logger/formatters/powerline_terminal_formatter.h"
+#include "logger/formatters/vscode_terminal_formatter.h"
+#include "logger/logger.h"
+#include "logger/sinks/console_sink.h"
 #include "math/color_table.h"
 #include "memory/heap_area.h"
 #include "thread/job/job_system.h"
@@ -15,7 +15,9 @@ using namespace kb::log;
 void show_error_and_die(kb::ap::ArgParse& parser)
 {
     for (const auto& msg : parser.get_errors())
+    {
         std::cerr << msg << std::endl;
+    }
 
     std::cout << parser.usage() << std::endl;
     exit(0);
@@ -38,29 +40,35 @@ int main(int argc, char** argv)
         being called in the signal handler. That's because the sinks will
         end up making string allocations (among other things) that aren't
         signal-safe.
-        These warnings can be suppressed by creating a logger2.suppressions file
+        These warnings can be suppressed by creating a logger.suppressions file
         with "signal:*" for content, and call the program with
-        > TSAN_OPTIONS="suppressions=logger2.suppressions" path/to/bin/ex/logger2_signal
+        > TSAN_OPTIONS="suppressions=logger.suppressions" path/to/bin/ex/logger_signal
 
         This system works fine with std::raise(), but is utterly UB in any
         other case. Time will tell if this is a keeper...
     */
 
-    kb::ap::ArgParse parser("logger2_example", "0.1");
+    kb::ap::ArgParse parser("logger_example", "0.1");
     const auto& use_powerline = parser.add_variable<bool>(
         'p', "powerline", "Use a powerline-styled terminal formatter (needs a powerline-patched font)", false);
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser);
+    }
 
     // * Create shared objects for the logger
     std::shared_ptr<Formatter> console_formatter;
 
     if (use_powerline())
+    {
         console_formatter = std::make_shared<PowerlineTerminalFormatter>();
+    }
     else
+    {
         console_formatter = std::make_shared<VSCodeTerminalFormatter>();
+    }
 
     auto console_sink = std::make_shared<ConsoleSink>();
     console_sink->set_formatter(console_formatter);

@@ -1,5 +1,5 @@
 #include "memory/policy/memory_tracking_verbose.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 #include "memory/heap_area.h"
 #include "string/string.h"
 

@@ -157,11 +157,6 @@ This library is under heavy development, and the API is subject to change. Use a
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
-## Deprecated components
-
-- The old logger `logger/logger.h` was kept in this library, as many of my projects still use it. However, a faster and more customizable logger has been created, and is accessible through the `logger2/logger.h` header. All systems of this library now use the new logger.
-
-
 <!-- GETTING STARTED -->
 # Getting started
 
@@ -253,6 +248,10 @@ find_package(kibble 1.1.0 REQUIRED)
 ## ver 1.2.0
 
 - Completely removed TOML support and config utility class.
+
+## ver 1.2.1
+
+- Removed the old logger, `logger2` was renamed to `logger`
 
 
 <!-- CONTRIBUTING -->

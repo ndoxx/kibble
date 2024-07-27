@@ -4,8 +4,8 @@
 #define K_DEBUG // For verbose / debug to actually do something
 #endif
 
-#include "logger2/logger.h"
-#include "logger2/sink.h"
+#include "logger/logger.h"
+#include "logger/sink.h"
 #include "math/color_table.h"
 #include <catch2/catch_all.hpp>
 

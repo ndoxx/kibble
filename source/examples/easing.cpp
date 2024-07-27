@@ -1,5 +1,5 @@
 #include "cli/terminal.h"
-#include "logger/common.h"
+#include "math/color_table.h"
 #include "math/easings.h"
 #include "string/string.h"
 
@@ -12,10 +12,61 @@ namespace fs = std::filesystem;
 
 using namespace kb;
 
+struct ConsoleColorClear
+{
+    friend std::ostream& operator<<(std::ostream&, const ConsoleColorClear&);
+};
+
+template <bool FOREGROUND>
+struct ConsoleColor
+{
+    constexpr ConsoleColor() : color_{0xFFFFFF}
+    {
+    }
+
+    constexpr ConsoleColor(math::argb32_t argb) : color_(argb)
+    {
+    }
+
+    constexpr ConsoleColor(uint8_t R, uint8_t G, uint8_t B) : color_(math::pack_ARGB(R, G, B))
+    {
+    }
+
+    friend std::ostream& operator<<(std::ostream&, const ConsoleColor&);
+    math::argb32_t color_; /// Holds the color as a 32 bits argb value
+};
+
+std::ostream& operator<<(std::ostream& stream, const ConsoleColorClear&)
+{
+    stream << "\033[0m\033[1;38;2;255;255;255m";
+    return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const ConsoleColor<true>& o)
+{
+    stream << "\033[1;38;2;" << o.color_.r() << ';' << o.color_.g() << ';' << o.color_.b() << 'm';
+    return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const ConsoleColor<false>& o)
+{
+    stream << "\033[1;48;2;" << o.color_.r() << ';' << o.color_.g() << ';' << o.color_.b() << 'm';
+    return stream;
+}
+
+#define KF_ ConsoleColor<true>
+#define KB_ ConsoleColor<false>
+#define KC_                                                                                                            \
+    ConsoleColorClear                                                                                                  \
+    {                                                                                                                  \
+    }
+
 void clear_line(size_t count)
 {
     for (size_t ii = 0; ii < count; ++ii)
+    {
         std::cout << "\033[1A\033[K";
+    }
 }
 
 void print_bar(float weight, const std::string& name)
@@ -31,10 +82,14 @@ void print_bar(float weight, const std::string& name)
     std::cout << centered_name << std::endl;
     std::cout << KF_(col::white) << '[' << KF_(col::mediumturquoise);
     for (size_t ii = 0; ii < cursor; ++ii)
+    {
         std::cout << '=';
+    }
     std::cout << '>' << KF_(col::ndxorange);
     for (size_t ii = cursor + 1; ii < cols - 2; ++ii)
+    {
         std::cout << '-';
+    }
     std::cout << KF_(col::white) << ']' << std::endl;
 }
 

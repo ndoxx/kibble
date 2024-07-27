@@ -1,7 +1,7 @@
 #include "filesystem/filesystem.h"
 #include "assert/assert.h"
 #include "filesystem/resource_pack.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 #include "string/string.h"
 
 #include "fmt/std.h"

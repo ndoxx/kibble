@@ -6,7 +6,7 @@
 #include "string/string.h"
 
 #include "fmt/color.h"
-#include "logger2/logger.h"
+#include "logger/logger.h"
 
 namespace kb
 {

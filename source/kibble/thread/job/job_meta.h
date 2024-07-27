@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../logger2/channel.h"
+#include "../../logger/channel.h"
 #include <cstdint>
 #include <string>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../assert/assert.h"
-#include "../../logger2/channel.h"
+#include "../../logger/channel.h"
 #include "../../math/constexpr_math.h"
 
 #include <algorithm>
