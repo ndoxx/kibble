@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <cassert>
 #include <exception>
-#include <iomanip>
-#include <iostream>
 #include <regex>
+
+#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace kb
 {
@@ -25,9 +26,7 @@ struct InvalidOperandException : public ParsingException
 {
     InvalidOperandException(const std::string& argument, const std::string& value)
     {
-        std::stringstream ss;
-        ss << "Invalid operand: \"" << value << "\" for argument: " << argument;
-        message_.assign(ss.str());
+        message_.assign(fmt::format("Invalid operand: '{}' for argument: {}", value, argument));
     }
 };
 
@@ -35,9 +34,7 @@ struct UnknownArgumentException : public ParsingException
 {
     UnknownArgumentException(const std::string& argument)
     {
-        std::stringstream ss;
-        ss << "Unknown argument: " << argument;
-        message_.assign(ss.str());
+        message_.assign(fmt::format("Unknown argument: {}", argument));
     }
 };
 
@@ -45,9 +42,7 @@ struct SupernumeraryArgumentException : public ParsingException
 {
     SupernumeraryArgumentException(const std::string& argument)
     {
-        std::stringstream ss;
-        ss << "Supernumerary argument: " << argument;
-        message_.assign(ss.str());
+        message_.assign(fmt::format("Supernumerary argument: {}", argument));
     }
 };
 
@@ -55,9 +50,7 @@ struct MissingOperandException : public ParsingException
 {
     MissingOperandException(const std::string& argument)
     {
-        std::stringstream ss;
-        ss << "Missing operand after argument: " << argument;
-        message_.assign(ss.str());
+        message_.assign(fmt::format("Missing operand after argument: {}", argument));
     }
 };
 
@@ -85,21 +78,29 @@ ArgParse::ArgParse(const std::string& program_name, const std::string& ver_strin
     set_trigger('v', [this]() {
         output_(version());
         if (exit_on_special_command_)
+        {
             exit(0);
+        }
     });
     set_trigger('h', [this]() {
         output_(usage());
         if (exit_on_special_command_)
+        {
             exit(0);
+        }
     });
 }
 
 ArgParse::~ArgParse()
 {
     for (auto&& [key, parg] : arguments_)
+    {
         delete parg;
+    }
     for (auto* parg : positionals_)
+    {
         delete parg;
+    }
 }
 
 void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
@@ -152,12 +153,18 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             {
                 auto full_it = full_to_short_.find(arg.substr(2));
                 if (full_it != full_to_short_.end())
+                {
                     key = full_it->second;
+                }
                 else
+                {
                     throw UnknownArgumentException(arg);
+                }
             }
             if (single_short)
+            {
                 key = arg[1];
+            }
 
             // Single argument
             if (single_short || single_full)
@@ -165,7 +172,9 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                 // If there is a trigger associated, execute it immediately
                 auto trig_it = triggers_.find(key);
                 if (trig_it != triggers_.end())
+                {
                     trig_it->second();
+                }
 
                 auto opt_it = arguments_.find(key);
                 if (opt_it != arguments_.end())
@@ -175,7 +184,9 @@ bool ArgParse::parse(int argc, char** argv) noexcept
                     {
                         // If current token is the last one, operand is missing
                         if (ii == argc - 1)
+                        {
                             throw MissingOperandException(arg);
+                        }
 
                         try
                         {
@@ -195,13 +206,17 @@ bool ArgParse::parse(int argc, char** argv) noexcept
             else if (!positional_candidate)
             {
                 if (char unknown = try_set_flag_group(arg))
+                {
                     throw UnknownArgumentException(std::string("-") + unknown);
+                }
             }
             // No dash, must be a positional argument
             else
             {
                 if (!try_set_positional(current_positional, arg))
+                {
                     throw SupernumeraryArgumentException(arg);
+                }
             }
         }
     }
@@ -250,12 +265,18 @@ char ArgParse::try_set_flag_group(const std::string& group) noexcept
         if (flag_it != arguments_.end())
         {
             if (flag_it->second->underlying_type() == ArgType::BOOL)
+            {
                 flag_it->second->is_set = true;
+            }
             else
+            {
                 return group[ii];
+            }
         }
         else
+        {
             return group[ii];
+        }
         // TODO(ndx): Detect if a variable short name was concatenated
         // if so, provide a more precise exception for this specific case
     }
@@ -288,9 +309,7 @@ bool ArgParse::check_positional_requirements() noexcept
     {
         if (!parg->is_set)
         {
-            std::stringstream ss;
-            ss << "Missing required argument: " << parg->full_name << std::endl;
-            log_error(ss.str());
+            log_error(fmt::format("Missing required argument: {}", parg->full_name));
             return false;
         }
     }
@@ -304,13 +323,17 @@ bool ArgParse::check_exclusivity_constraints() noexcept
     // First, get the set of all active flags
     if (!check_intersection(get_active([](AbstractOption* parg) { return (parg->underlying_type() == ArgType::BOOL); }),
                             exclusive_flags_))
+    {
         return false;
+    }
 
     // * Check variables exclusivity constraints
     // First, get the set of all active variables
     if (!check_intersection(get_active([](AbstractOption* parg) { return (parg->underlying_type() != ArgType::BOOL); }),
                             exclusive_variables_))
+    {
         return false;
+    }
 
     return true;
 }
@@ -321,25 +344,26 @@ bool ArgParse::check_dependencies() noexcept
     auto active_set = get_active([](AbstractOption*) { return true; });
     std::set<char> required, difference;
     for (char key : active_set)
+    {
         if (char dep = arguments_.at(key)->dependency)
+        {
             required.insert(dep);
+        }
+    }
 
     std::set_difference(required.begin(), required.end(), active_set.begin(), active_set.end(),
                         std::inserter(difference, difference.begin()));
 
     if (difference.size() > 0)
     {
-        std::stringstream ss;
-        ss << "These arguments are required: ";
-        size_t count = 0;
-        for (char key : difference)
-        {
-            ss << "--" << arguments_.at(key)->full_name << " (-" << key << ')';
-            if (++count < difference.size())
-                ss << ", ";
-        }
-        ss << std::endl;
-        log_error(ss.str());
+        std::string formatted_message =
+            fmt::format("These arguments are required: {}",
+                        fmt::join(difference | std::views::transform([this](char key) {
+                                      return fmt::format("--{} (-{})", arguments_.at(key)->full_name, key);
+                                  }),
+                                  ", "));
+
+        log_error(formatted_message);
         return false;
     }
 
@@ -350,9 +374,12 @@ std::set<char> ArgParse::get_active(std::function<bool(AbstractOption*)> filter)
 {
     std::set<char> active_set;
     for (auto&& [key, parg] : arguments_)
-        if (filter(parg))
-            if (parg->is_set)
-                active_set.insert(key);
+    {
+        if (filter(parg) && parg->is_set)
+        {
+            active_set.insert(key);
+        }
+    }
 
     return active_set;
 }
@@ -369,17 +396,15 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
                               std::inserter(intersection, intersection.begin()));
         if (intersection.size() > 1)
         {
-            std::stringstream ss;
-            ss << "Incompatible arguments: ";
-            size_t count = 0;
-            for (char key : intersection)
-            {
-                ss << "--" << arguments_.at(key)->full_name << " (-" << key << ')';
-                if (++count < intersection.size())
-                    ss << ", ";
-            }
-            ss << std::endl;
-            log_error(ss.str());
+            std::string formatted_message =
+                fmt::format("Incompatible arguments: {}",
+                            fmt::join(intersection | std::views::transform([this](char key) {
+                                          return fmt::format("--{} (-{})", arguments_.at(key)->full_name, key);
+                                      }),
+                                      ", "));
+
+            log_error(formatted_message);
+
             return false;
         }
     }
@@ -405,9 +430,13 @@ void ArgParse::make_usage_string()
         if (parg->exclusive_sets.size() == 0)
         {
             if (parg->underlying_type() == ArgType::BOOL)
+            {
                 compat_flags.insert(key);
+            }
             else
+            {
                 compat_vars.insert(key);
+            }
         }
     }
 
@@ -417,138 +446,127 @@ void ArgParse::make_usage_string()
         compat_vars.erase(key);
     }
 
-    std::stringstream ss;
+    std::vector<std::string> parts;
 
     // Start usage string
-    ss << "Usage:" << std::endl;
-    ss << program_name_;
+    parts.push_back(fmt::format("Usage:\n{}", program_name_));
 
     // Display nonexclusive flags
-    if (compat_flags.size())
+    if (!compat_flags.empty())
     {
-        ss << " [-";
-        for (char key : compat_flags)
-            ss << key;
-        ss << ']';
+        parts.push_back(fmt::format("[-{}]", fmt::join(compat_flags, "")));
     }
 
     // Display exclusive flags
     for (const auto& ex_set : exclusive_flags_)
     {
-        size_t count = 0;
-        ss << " [";
-        for (char key : ex_set)
-        {
-            ss << '-' << key;
-            if (++count < ex_set.size())
-                ss << " | ";
-        }
-        ss << ']';
+        parts.push_back(fmt::format(
+            "[{}]",
+            fmt::join(ex_set | std::views::transform([](char key) { return fmt::format("-{}", key); }), " | ")));
     }
 
     // Display nonexclusive variables
     for (char key : compat_vars)
     {
         const auto* parg = arguments_.at(key);
-        ss << " [-" << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << ">]";
+        parts.push_back(fmt::format("[-{} <{}>]", parg->short_name, k_type_str.at(parg->underlying_type())));
     }
 
     // Display exclusive variables
     for (const auto& ex_set : exclusive_variables_)
     {
-        size_t count = 0;
-        ss << " [";
-        for (char key : ex_set)
-        {
-            const auto* parg = arguments_.at(key);
-            ss << '-' << parg->short_name << " <" << k_type_str.at(parg->underlying_type()) << '>';
-            if (++count < ex_set.size())
-            {
-                ss << " | ";
-            }
-        }
-        ss << ']';
+        parts.push_back(fmt::format("[{}]", fmt::join(ex_set | std::views::transform([this](char key) {
+                                                          const auto* parg = arguments_.at(key);
+                                                          return fmt::format("-{} <{}>", parg->short_name,
+                                                                             k_type_str.at(parg->underlying_type()));
+                                                      }),
+                                                      " | ")));
     }
 
     // Display arguments with dependencies
     for (auto&& [parg, preq] : args_with_deps)
     {
-        ss << " [-" << preq->short_name;
-        if (preq->underlying_type() != ArgType::BOOL)
-            ss << " <" << k_type_str.at(preq->underlying_type()) << '>';
-        ss << " [-" << parg->short_name;
-        if (parg->underlying_type() != ArgType::BOOL)
-            ss << " <" << k_type_str.at(parg->underlying_type()) << '>';
-        ss << "]]";
+        parts.push_back(fmt::format(
+            "[-{}{} [-{}{}]]", preq->short_name,
+            preq->underlying_type() != ArgType::BOOL ? fmt::format(" <{}>", k_type_str.at(preq->underlying_type()))
+                                                     : "",
+            parg->short_name,
+            parg->underlying_type() != ArgType::BOOL ? fmt::format(" <{}>", k_type_str.at(parg->underlying_type()))
+                                                     : ""));
     }
 
     // Display positional arguments
     for (const auto* parg : positionals_)
-        ss << ' ' << parg->full_name;
-    ss << std::endl;
+    {
+        parts.push_back(parg->full_name);
+    }
+
+    std::string usage = fmt::format("{}\n", fmt::join(parts, " "));
 
     // Show argument descriptions
-    if (positionals_.size())
-        ss << std::endl << "With:" << std::endl;
+    if (!positionals_.empty())
+    {
+        usage += "\nWith:\n";
+        for (const auto* parg : positionals_)
+        {
+            usage += parg->format_description(usage_padding_);
+        }
+    }
 
-    for (const auto* parg : positionals_)
-        parg->format_description(ss, usage_padding_);
-
-    ss << std::endl << "Options:" << std::endl;
+    usage += "\nOptions:\n";
 
     for (auto&& [key, parg] : arguments_)
+    {
         if (parg->underlying_type() == ArgType::BOOL)
-            parg->format_description(ss, usage_padding_);
+        {
+            usage += parg->format_description(usage_padding_);
+        }
+    }
 
     for (auto&& [key, parg] : arguments_)
+    {
         if (parg->underlying_type() != ArgType::BOOL)
-            parg->format_description(ss, usage_padding_);
+        {
+            usage += parg->format_description(usage_padding_);
+        }
+    }
 
-    usage_string_.assign(ss.str());
+    usage_string_.assign(usage);
 }
 
 void ArgParse::make_version_string()
 {
-    std::stringstream ss;
     std::string pg_upper = program_name_;
     std::transform(pg_upper.begin(), pg_upper.end(), pg_upper.begin(), ::toupper);
-    ss << pg_upper << " - version: " << ver_string_ << std::endl;
-    full_ver_string_.assign(ss.str());
+    full_ver_string_.assign(fmt::format("{} - version: {}", pg_upper, ver_string_));
 }
 
-void AbstractOption::format_description(std::ostream& stream, long max_pad) const
+std::string AbstractOption::format_description(long max_pad) const
 {
-    std::stringstream ss;
+    std::string option_str;
 
-    ss << "    ";
     if (short_name != 0)
     {
-        ss << '-' << short_name << ", ";
-        ss << "--" << full_name;
+        option_str = fmt::format("-{}, --{}", short_name, full_name);
     }
     else
     {
-        ss << full_name;
+        option_str = full_name;
     }
+
     if (underlying_type() != ArgType::BOOL)
-        ss << " <" << k_type_str.at(underlying_type()) << '>';
+    {
+        option_str += fmt::format(" <{}>", k_type_str.at(underlying_type()));
+    }
 
     if (dependency)
-        ss << " REQ: -" << dependency;
-
-    ss.seekg(0, std::ios::end);
-    long size = ss.tellg();
-    ss.seekg(0, std::ios::beg);
-
-    long padding = std::max(max_pad - size, 0l);
-
-    while (padding >= 0)
     {
-        ss << ' ';
-        --padding;
+        option_str += fmt::format(" REQ: -{}", dependency);
     }
 
-    stream << ss.str() << description << std::endl;
+    std::string padded_option = fmt::format("    {:<{}}", option_str, max_pad);
+
+    return fmt::format("{}{}\n", padded_option, description);
 }
 
 static std::vector<std::string> split(const std::string& input)
@@ -579,33 +597,13 @@ bool StringCast<bool>(const std::string&) noexcept(false)
 template <>
 int StringCast<int>(const std::string& operand) noexcept(false)
 {
-    // Hexadecimal?
-    if (operand[0] == '0' && operand[1] == 'x')
-    {
-        std::stringstream ss;
-        int value;
-        ss << std::hex << operand;
-        ss >> value;
-        return value;
-    }
-
-    return std::stoi(operand);
+    return std::stoi(operand, nullptr, 0);
 }
 
 template <>
 long StringCast<long>(const std::string& operand) noexcept(false)
 {
-    // Hexadecimal?
-    if (operand[0] == '0' && operand[1] == 'x')
-    {
-        std::stringstream ss;
-        long value;
-        ss << std::hex << operand;
-        ss >> value;
-        return value;
-    }
-
-    return std::stol(operand);
+    return std::stol(operand, nullptr, 0);
 }
 
 template <>
@@ -630,7 +628,7 @@ template <>
 std::vector<int> StringCast<std::vector<int>>(const std::string& operand) noexcept(false)
 {
     std::vector<int> result;
-    assign_list(operand, result, [](const std::string& s) -> int { return std::stoi(s); });
+    assign_list(operand, result, [](const std::string& s) -> int { return std::stoi(s, nullptr, 0); });
     return result;
 }
 
@@ -638,7 +636,7 @@ template <>
 std::vector<long> StringCast<std::vector<long>>(const std::string& operand) noexcept(false)
 {
     std::vector<long> result;
-    assign_list(operand, result, [](const std::string& s) -> long { return std::stol(s); });
+    assign_list(operand, result, [](const std::string& s) -> long { return std::stol(s, nullptr, 0); });
     return result;
 }
 

@@ -4,10 +4,8 @@
 #include "logger2/sinks/console_sink.h"
 #include "math/color_table.h"
 
-#include <exception>
 #include "fmt/color.h"
 #include "fmt/std.h"
-#include <regex>
 #include <string>
 
 using namespace kb;
@@ -165,8 +163,8 @@ int main(int argc, char** argv)
 
     // return p0(argc, argv, chan);
     // return p1(argc, argv, chan);
-    return p2(argc, argv, chan);
-    // return p3(argc, argv, chan);
+    // return p2(argc, argv, chan);
+    return p3(argc, argv, chan);
     // return p4(argc, argv, chan);
     // return p5(argc, argv, chan);
 }

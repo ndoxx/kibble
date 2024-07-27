@@ -12,10 +12,7 @@
 #pragma once
 
 #include <functional>
-#include <unordered_map>
-#include <ostream>
 #include <set>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -107,7 +104,7 @@ struct AbstractOption
      * Used by the usage string generator.
      * @param max_pad Maximum padding length between the option name and its description
      */
-    void format_description(std::ostream&, long max_pad) const;
+    std::string format_description(long max_pad) const;
 };
 
 /**

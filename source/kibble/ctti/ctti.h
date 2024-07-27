@@ -21,7 +21,6 @@
  */
 
 #include <array>
-#include <string>
 #include <string_view>
 #include <utility>
 
@@ -49,7 +48,7 @@ constexpr auto type_name_array()
     constexpr auto prefix = std::string_view{"[T = "};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
     constexpr auto prefix = std::string_view{"with T = "};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
