@@ -4,6 +4,7 @@
 #include <cassert>
 #include <exception>
 #include <regex>
+#include <ranges>
 
 #include "fmt/core.h"
 #include "fmt/format.h"
