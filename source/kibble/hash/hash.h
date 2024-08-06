@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <functional>
-#include <string>
+#include <string_view>
 
 namespace kb
 {
@@ -15,7 +15,7 @@ namespace hakz
  * @param x
  * @return constexpr uint32_t
  */
-constexpr uint32_t rev_hash_32(uint32_t x)
+[[nodiscard]] inline constexpr uint32_t rev_hash_32(uint32_t x)
 {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;
@@ -29,7 +29,7 @@ constexpr uint32_t rev_hash_32(uint32_t x)
  * @param x
  * @return constexpr uint32_t
  */
-constexpr uint32_t rev_unhash_32(uint32_t x)
+[[nodiscard]] inline constexpr uint32_t rev_unhash_32(uint32_t x)
 {
     x = ((x >> 16) ^ x) * 0x119de1f3;
     x = ((x >> 16) ^ x) * 0x119de1f3;
@@ -43,7 +43,7 @@ constexpr uint32_t rev_unhash_32(uint32_t x)
  * @param x
  * @return constexpr uint64_t
  */
-constexpr uint64_t rev_hash_64(uint64_t x)
+[[nodiscard]] inline constexpr uint64_t rev_hash_64(uint64_t x)
 {
     x = (x ^ (x >> 30)) * uint64_t(0xbf58476d1ce4e5b9);
     x = (x ^ (x >> 27)) * uint64_t(0x94d049bb133111eb);
@@ -57,7 +57,7 @@ constexpr uint64_t rev_hash_64(uint64_t x)
  * @param x
  * @return constexpr uint64_t
  */
-constexpr uint64_t rev_unhash_64(uint64_t x)
+[[nodiscard]] inline constexpr uint64_t rev_unhash_64(uint64_t x)
 {
     x = (x ^ (x >> 31) ^ (x >> 62)) * uint64_t(0x319642b2d24d8ec3);
     x = (x ^ (x >> 27) ^ (x >> 54)) * uint64_t(0x96de1b173f119089);
@@ -73,7 +73,7 @@ constexpr uint64_t rev_unhash_64(uint64_t x)
  * @param f
  * @return constexpr uint32_t
  */
-constexpr uint32_t epsilon_hash(float f)
+[[nodiscard]] inline constexpr uint32_t epsilon_hash(float f)
 {
     union // Used to reinterpret float mantissa as an unsigned integer...
     {
@@ -91,12 +91,10 @@ namespace kh
 {
 namespace detail
 {
-// These magic numbers are the binary expansions of an irrational number (the golden ratio)
-static constexpr uint64_t PHI_EXP_32 = 0x9E3779B9;         // 2^32/phi
-static constexpr uint64_t PHI_EXP_64 = 0x9E3779B97F4A7C15; // 2^64/phi
 inline void update_hash_seed_internal(size_t& seed, size_t next_value)
 {
-    seed ^= next_value + PHI_EXP_64 + (seed << 6) + (seed >> 2);
+    // Magic number is the binary expansions of an irrational number (2^64/phi)
+    seed ^= next_value + 0x9E3779B97F4A7C15 + (seed << 6) + (seed >> 2);
 }
 } // namespace detail
 
@@ -160,18 +158,23 @@ struct vec3_hash
 
 namespace detail
 {
-// FNV-1a constants
-static constexpr unsigned long long basis = 14695981039346656037ULL;
-static constexpr unsigned long long prime = 1099511628211ULL;
 
-// compile-time hash helper functions
-static constexpr unsigned long long hash_one(char c, const char* remain, unsigned long long value)
+struct FNVConstants
 {
-    return c == 0 ? value : hash_one(remain[0], remain + 1, (value ^ static_cast<unsigned long long>(c)) * prime);
-}
-static constexpr unsigned long long hash_one(std::string_view sv, size_t idx, unsigned long long value)
+    static constexpr uint64_t basis = 14695981039346656037ULL;
+    static constexpr uint64_t prime = 1099511628211ULL;
+};
+
+// compile-time FNV-1a
+[[nodiscard]] inline constexpr uint64_t hash_FNV(std::string_view sv)
 {
-    return idx == sv.size() ? value : hash_one(sv, idx + 1, (value ^ static_cast<unsigned long long>(sv[idx])) * prime);
+    uint64_t hash = FNVConstants::basis;
+    for (char c : sv)
+    {
+        hash ^= static_cast<uint64_t>(c);
+        hash *= FNVConstants::prime;
+    }
+    return hash;
 }
 
 inline void hash_combine([[maybe_unused]] std::size_t& seed)
@@ -202,20 +205,9 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)
     };                                                                                                                 \
     }
 
-using hash_t = unsigned long long;
+using hash_t = uint64_t;
 
 } // namespace kb
-
-/**
- * @brief Compile-time FNV-1a string hash
- *
- * @param str Input c-string
- * @return constexpr kb::hash_t
- */
-constexpr kb::hash_t H_(const char* str)
-{
-    return kb::detail::hash_one(str[0], str + 1, kb::detail::basis);
-}
 
 /**
  * @brief Compile-time FNV-1a string hash
@@ -223,20 +215,9 @@ constexpr kb::hash_t H_(const char* str)
  * @param sv Input string_view
  * @return constexpr kb::hash_t
  */
-constexpr kb::hash_t H_(std::string_view sv)
+[[nodiscard]] inline constexpr kb::hash_t H_(std::string_view sv)
 {
-    return kb::detail::hash_one(sv, 0, kb::detail::basis);
-}
-
-/**
- * @brief FNV-1a string hash
- *
- * @param str Input string
- * @return constexpr kb::hash_t
- */
-constexpr kb::hash_t H_(const std::string& str)
-{
-    return H_(str.c_str());
+    return kb::detail::hash_FNV(sv);
 }
 
 /**
@@ -244,9 +225,9 @@ constexpr kb::hash_t H_(const std::string& str)
  * The syntax "hello"_h is equivalent to calling H_("hello")
  *
  */
-constexpr kb::hash_t operator"" _h(const char* internstr, size_t)
+[[nodiscard]] inline constexpr kb::hash_t operator"" _h(const char* internstr, size_t)
 {
-    return H_(internstr);
+    return kb::detail::hash_FNV(internstr);
 }
 
 /**
@@ -256,9 +237,9 @@ constexpr kb::hash_t operator"" _h(const char* internstr, size_t)
  * @param second Second hash
  * @return kb::hash_t
  */
-inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second)
+[[nodiscard]] inline constexpr kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second)
 {
-    return (first ^ second) * kb::detail::prime;
+    return (first ^ second) * kb::detail::FNVConstants::prime;
 }
 
 /**
@@ -267,7 +248,7 @@ inline kb::hash_t HCOMBINE_(kb::hash_t first, kb::hash_t second)
  * @param hashes Vector containing string hashes
  * @return kb::hash_t
  */
-inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
+[[nodiscard]] inline kb::hash_t HCOMBINE_(const std::vector<kb::hash_t>& hashes)
 {
     kb::hash_t ret = hashes[0];
     for (size_t ii = 1; ii < hashes.size(); ++ii)

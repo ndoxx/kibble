@@ -170,7 +170,7 @@ std::set<hash_t> parse_kpakignore(const fs::path& filepath, const kb::log::Chann
         }
     }
     // Ignore the kpakignore file itself
-    result.insert(H_(filepath.stem()));
+    result.insert(H_(filepath.stem().c_str()));
     return result;
 }
 
@@ -208,7 +208,7 @@ bool PackFile::pack_directory(const fs::path& dir_path, const fs::path& archive_
             fs::path rel_path = fs::relative(entry.path(), dir_path);
 
             // Do we ignore this file?
-            hash_t key = H_(rel_path);
+            hash_t key = H_(rel_path.c_str());
             if (ignored.find(key) != ignored.end())
             {
                 continue;
