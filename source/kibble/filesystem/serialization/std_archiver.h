@@ -6,8 +6,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "filesystem/serialization/stream_serializer.h"
-#include "util/unordered_dense.h"
+#include "stream_serializer.h"
+#include "../../util/unordered_dense.h"
 
 namespace kb
 {

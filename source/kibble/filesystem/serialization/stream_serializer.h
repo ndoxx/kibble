@@ -2,7 +2,7 @@
 #include <istream>
 #include <ostream>
 
-#include "filesystem/serialization/archiver.h"
+#include "archiver.h"
 
 namespace kb
 {
