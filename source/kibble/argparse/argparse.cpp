@@ -8,6 +8,7 @@
 
 #include "fmt/core.h"
 #include "fmt/format.h"
+#include "fmt/ranges.h"
 
 namespace kb
 {

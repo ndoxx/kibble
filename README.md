@@ -85,6 +85,10 @@ This library is under heavy development, and the API is subject to change. Use a
     - The kpack utility can pack a directory easily, it can also be done programmatically
     - Safe file saving utility to avoid overwriting files with bad data
     - MD5 checksum computation
+* Serialization
+    - Stream serialization helpers
+    - Most `std` containers are supported
+    - Memory streams
 * Custom assertion
     - More helpful assert macro, user can debug break / continue / print stack trace / exit
     - Optional coupling with a logger channel
@@ -238,7 +242,7 @@ Then link your executable / library against the `kibble` target. That's it.
 During a system installation, Kibble also generates CMake config files so it can be found by CMake. Then all you need to do is this:
 
 ```cmake
-find_package(kibble 1.1.0 REQUIRED)
+find_package(kibble 1.2.2 REQUIRED)
 ```
 
 
