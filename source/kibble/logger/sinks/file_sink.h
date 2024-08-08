@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../../util/internal.h"
 #include "../sink.h"
+
+#include "fmt/os.h"
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -25,7 +26,7 @@ public:
      */
     FileSink(const fs::path& filepath);
 
-    ~FileSink() = default;
+    ~FileSink();
 
     void submit(const struct LogEntry&, const struct ChannelPresentation&) override;
 
@@ -33,10 +34,7 @@ public:
 
 private:
     fs::path filepath_;
-
-    struct Internal;
-    friend struct internal_deleter::Deleter<Internal>;
-    internal_ptr<Internal> internal_ = nullptr;
+    mutable fmt::ostream out_;
 };
 
 } // namespace kb::log
