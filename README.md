@@ -72,7 +72,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Extendable formatters
     - Extendable policy system for filtering / transforming log data
     - Output is formatted, color coded and easy to follow
-    - fmtlib-style syntax
+    - Formatting syntax inherited from fmtlib
     - Synchronous and asynchronous operation (both thread-safe)
     - Optional stack trace on error
 * Program argument parser
@@ -90,8 +90,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Most `std` containers are supported
     - Memory streams
 * Custom assertion
-    - More helpful assert macro, user can debug break / continue / print stack trace / exit
-    - Optional coupling with a logger channel
+    - Prints a stack trace and can debug break
     - Formatted assertion message strings
 * Profiling utility
     - Easily profile execution time
@@ -256,6 +255,10 @@ find_package(kibble 1.2.2 REQUIRED)
 ## ver 1.2.1
 
 - Removed the old logger, `logger2` was renamed to `logger`
+
+## ver 1.2.2
+
+- Added stream serialization helpers and memory streams
 
 
 <!-- CONTRIBUTING -->
