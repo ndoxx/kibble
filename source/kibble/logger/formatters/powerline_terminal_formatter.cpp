@@ -37,11 +37,11 @@ void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentat
     if (e.thread_id != 0xffffffff)
     {
         fmt::print("{}",
-                   fmt::styled(fmt::format(fmt::runtime("T{}\u250a{:6.f}"), e.thread_id, ts), fmt::bg(sev_color)));
+                   fmt::styled(fmt::format(fmt::runtime("T{}\u250a{:6.6f}"), e.thread_id, ts), fmt::bg(sev_color)));
     }
     else
     {
-        fmt::print("{}", fmt::styled(fmt::format(fmt::runtime("{:6.f}"), ts), fmt::bg(sev_color)));
+        fmt::print("{}", fmt::styled(fmt::format(fmt::runtime("{:6.6f}"), ts), fmt::bg(sev_color)));
     }
 
     if (e.uid_text.size() == 0)

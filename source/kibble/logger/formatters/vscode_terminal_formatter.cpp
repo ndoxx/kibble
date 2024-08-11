@@ -59,7 +59,7 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
     }
 
     // clang-format off
-    fmt::print(fmt::runtime("{:6.f} {} {} {}{}\n"),
+    fmt::print(fmt::runtime("{:6.6f} {} {} {}{}\n"),
         fmt::styled(ts, fmt::fg(fmt::color::dark_green)),
         fmt::styled(chan.tag, fmt::bg(to_rgb(chan.color)) | fmt::fg(fmt::color::white) | fmt::emphasis::bold),
         fmt::styled(k_icons[size_t(e.severity)], fmt::fg(k_text_color[size_t(e.severity)]) | fmt::emphasis::bold),

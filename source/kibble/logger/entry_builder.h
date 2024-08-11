@@ -2,8 +2,10 @@
 
 #include "channel.h"
 #include "entry.h"
-#include "fmt/core.h"
 #include "severity.h"
+
+#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace kb::log
 {
@@ -52,24 +54,46 @@ public:
         return *this;
     }
 
+    // Unformatted
     inline void msg(std::string_view sv)
     {
         log(sv);
     }
-
-    template <typename... ArgsT>
-    inline void msg(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
-    {
-        log(fmt::format(fstr, std::forward<ArgsT>(args)...));
-    }
-
     inline void verbose([[maybe_unused]] std::string_view sv)
     {
 #ifdef K_DEBUG
         level(Severity::Verbose).log(sv);
 #endif
     }
+    inline void debug([[maybe_unused]] std::string_view sv)
+    {
+#ifdef K_DEBUG
+        level(Severity::Debug).log(sv);
+#endif
+    }
+    inline void info(std::string_view sv)
+    {
+        level(Severity::Info).log(sv);
+    }
+    inline void warn(std::string_view sv)
+    {
+        level(Severity::Warn).log(sv);
+    }
+    inline void error(std::string_view sv)
+    {
+        level(Severity::Error).log(sv);
+    }
+    inline void fatal(std::string_view sv)
+    {
+        level(Severity::Fatal).log(sv);
+    }
 
+    // Compile-time
+    template <typename... ArgsT>
+    inline void msg(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
+    {
+        log(fmt::format(fstr, std::forward<ArgsT>(args)...));
+    }
     template <typename... ArgsT>
     inline void verbose([[maybe_unused]] fmt::format_string<ArgsT...> fstr, [[maybe_unused]] ArgsT&&... args)
     {
@@ -77,14 +101,6 @@ public:
         level(Severity::Verbose).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
 #endif
     }
-
-    inline void debug([[maybe_unused]] std::string_view sv)
-    {
-#ifdef K_DEBUG
-        level(Severity::Debug).log(sv);
-#endif
-    }
-
     template <typename... ArgsT>
     inline void debug([[maybe_unused]] fmt::format_string<ArgsT...> fstr, [[maybe_unused]] ArgsT&&... args)
     {
@@ -92,45 +108,21 @@ public:
         level(Severity::Debug).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
 #endif
     }
-
-    inline void info(std::string_view sv)
-    {
-        level(Severity::Info).log(sv);
-    }
-
     template <typename... ArgsT>
     inline void info(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Info).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
-
-    inline void warn(std::string_view sv)
-    {
-        level(Severity::Warn).log(sv);
-    }
-
     template <typename... ArgsT>
     inline void warn(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Warn).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
-
-    inline void error(std::string_view sv)
-    {
-        level(Severity::Error).log(sv);
-    }
-
     template <typename... ArgsT>
     inline void error(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {
         level(Severity::Error).log(fmt::format(fstr, std::forward<ArgsT>(args)...));
     }
-
-    inline void fatal(std::string_view sv)
-    {
-        level(Severity::Fatal).log(sv);
-    }
-
     template <typename... ArgsT>
     inline void fatal(fmt::format_string<ArgsT...> fstr, ArgsT&&... args)
     {

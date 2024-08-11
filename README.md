@@ -82,7 +82,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Handles regular files as well as files inside a resource pack
     - Directory / pack aliasing and universal paths
     - Can create and maintain a config directory located where the OS expects it
-    - The kpack utility can pack a directory easily, it can also be done programmatically
+    - The `kpak` utility can pack a directory easily, it can also be done programmatically
     - Safe file saving utility to avoid overwriting files with bad data
     - MD5 checksum computation
 * Serialization
@@ -259,6 +259,13 @@ find_package(kibble 1.2.2 REQUIRED)
 ## ver 1.2.2
 
 - Added stream serialization helpers and memory streams
+
+## ver 1.2.3
+
+- Refactored pack file system
+  - Stream serializer and archiver are used heavily
+  - `PackFile`s can be read from generic `std::istream`, in particular `InputMemoryStream`
+  - `kpak` utility can export a pack file to a binary array in a C++ header (useful for resource bundling)
 
 
 <!-- CONTRIBUTING -->

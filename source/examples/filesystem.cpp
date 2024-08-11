@@ -49,11 +49,19 @@ int main(int argc, char** argv)
     const auto& self_dir = filesystem.get_self_directory();
     filesystem.alias_directory(self_dir / "../../data", "data");
 
-    kfs::PackFile::pack_directory(filesystem.regular_path("data://iotest/resources"),
-                                  filesystem.regular_path("data://iotest/resources.kpak"), &chan_ios);
+    // Build pack file
+    {
+        kfs::PackFileBuilder builder;
+        builder.set_logger(&chan_ios);
+        builder.add_directory(filesystem.regular_path("data://iotest/resources"));
+        std::ofstream ofs(filesystem.regular_path("data://iotest/resources.kpak"));
+        builder.export_pack(ofs);
+    }
 
+    // Alias pack file
     filesystem.alias_directory(self_dir / "../../data/iotest/resources", "resources"); // Not required
-    filesystem.alias_packfile(filesystem.regular_path("data://iotest/resources.kpak"), "resources");
+    auto pifs = filesystem.get_input_stream("data://iotest/resources.kpak");
+    filesystem.alias_packfile(pifs, "resources");
 
     {
         auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");

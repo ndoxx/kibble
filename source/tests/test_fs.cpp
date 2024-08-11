@@ -78,7 +78,9 @@ public:
 
         std::iota(expected_data_1.begin(), expected_data_1.end(), 0);
         for (size_t ii = 0; ii < 256; ++ii)
+        {
             expected_data_2[ii] = char(255 - ii);
+        }
 
         expected_text_1 =
             R"(The BBC Micro could utilise the Teletext 7-bit character set, which had 128 box-drawing characters, 
@@ -115,12 +117,16 @@ public:
         ofs.close();
 
         // Pack the directory
-        kfs::PackFile::pack_directory(filesystem.regular_path("test://resources"),
-                                      filesystem.regular_path("test://resources.kpak"));
+        {
+            kfs::PackFileBuilder builder;
+            builder.add_directory(filesystem.regular_path("test://resources"));
+            std::ofstream pack_ofs(filesystem.regular_path("test://resources.kpak"));
+            builder.export_pack(pack_ofs);
+        }
 
         // Alias the resources directory AND the resource pack
         filesystem.alias_directory("/tmp/kibble_test/resources", "resources");
-        filesystem.alias_packfile(filesystem.regular_path("test://resources.kpak"), "resources");
+        filesystem.alias_packfile(filesystem.get_input_stream("test://resources.kpak"), "resources");
 
         fs::remove("/tmp/kibble_test/resources/only_in_pack.txt");
 
@@ -148,7 +154,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak
 {
     REQUIRE(fs::exists(filesystem.regular_path("test://resources.kpak")));
 
-    kfs::PackFile pack(filesystem.regular_path("test://resources.kpak"));
+    kfs::PackFile pack(filesystem.get_input_stream("test://resources.kpak"));
     std::ifstream ifs(filesystem.regular_path("test://resources.kpak"), std::ios::binary);
 
     {
@@ -181,7 +187,7 @@ TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, direct access", "[kpak
 
 TEST_CASE_METHOD(KpakFixture, "Retrieving data from pack, custom stream", "[kpak]")
 {
-    kfs::PackFile pack(filesystem.regular_path("test://resources.kpak"));
+    kfs::PackFile pack(filesystem.get_input_stream("test://resources.kpak"));
 
     {
         auto pstream = pack.get_input_stream("text_file.txt");

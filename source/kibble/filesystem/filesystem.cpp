@@ -4,8 +4,8 @@
 #include "logger/logger.h"
 #include "string/string.h"
 
-#include "fmt/std.h"
 #include <chrono>
+#include <fstream>
 #include <regex>
 
 #ifdef __linux__
@@ -30,7 +30,7 @@ std::time_t to_time_t(TP tp)
 
 struct FileSystem::UpathParsingResult
 {
-    const DirectoryAlias* alias_entry = nullptr;
+    const AliasEntry* alias_entry = nullptr;
     std::string path_component;
 };
 
@@ -38,17 +38,6 @@ FileSystem::FileSystem(const kb::log::Channel* log_channel) : log_channel_(log_c
 {
     // Locate binary
     init_self_path();
-}
-
-FileSystem::~FileSystem()
-{
-    for (auto&& [key, entry] : aliases_)
-    {
-        for (auto* packfile : entry.packfiles)
-        {
-            delete packfile;
-        }
-    }
 }
 
 bool FileSystem::setup_settings_directory(std::string vendor, std::string appname, std::string alias)
@@ -78,7 +67,7 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     }
     else
     {
-        app_settings_directory_ = home_directory / su::concat('.', vendor) / appname / "config";
+        app_settings_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "config";
     }
 #else
 #error setup_config_directory() not yet implemented for this platform.
@@ -91,14 +80,18 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
         {
             klog(log_channel_)
                 .uid("FileSystem")
-                .error("Failed to create config directory at:\n{}", app_settings_directory_);
+                .error("Failed to create config directory at:\n{}", app_settings_directory_.c_str());
             return false;
         }
-        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_settings_directory_);
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Created application directory at:\n{}", app_settings_directory_.c_str());
     }
     else
     {
-        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_settings_directory_);
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Detected application directory at:\n{}", app_settings_directory_.c_str());
     }
 
     // Alias the config directory
@@ -138,7 +131,7 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     }
     else
     {
-        app_data_directory_ = home_directory / su::concat('.', vendor) / appname / "appdata";
+        app_data_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "appdata";
     }
 #else
 #error setup_app_data_directory() not yet implemented for this platform.
@@ -151,14 +144,16 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
         {
             klog(log_channel_)
                 .uid("FileSystem")
-                .error("Failed to create application data directory at:\n{}", app_data_directory_);
+                .error("Failed to create application data directory at:\n{}", app_data_directory_.c_str());
             return false;
         }
-        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_);
+        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_.c_str());
     }
     else
     {
-        klog(log_channel_).uid("FileSystem").info("Detected application directory at:\n{}", app_data_directory_);
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Detected application directory at:\n{}", app_data_directory_.c_str());
     }
 
     // Alias the data directory
@@ -193,7 +188,7 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
     // Check if ~/.local/share/<vendor>/<appname> exists, if not, fallback to
     // ~/.<vendor>/<appname>/appdata
     auto candidate1 = home_directory / ".local/share" / vendor / appname;
-    auto candidate2 = home_directory / su::concat('.', vendor) / appname / "appdata";
+    auto candidate2 = home_directory / fmt::format(".{}", vendor) / appname / "appdata";
 
     if (fs::exists(candidate1))
     {
@@ -214,7 +209,7 @@ Searched the following paths:
     - {}
     - {}
 => Returning empty path.)",
-                   vendor, appname, candidate1, candidate2);
+                   vendor, appname, candidate1.c_str(), candidate2.c_str());
         return "";
     }
 
@@ -355,60 +350,52 @@ bool FileSystem::is_older(const std::string& unipath_1, const std::string& unipa
 bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& alias)
 {
     // Maybe the path was specified with proximate syntax (../) -> make it lexically normal and absolute
-    fs::path dir_path(fs::canonical(_dir_path));
+    fs::path dir_path(fs::weakly_canonical(_dir_path));
 
     if (!fs::exists(dir_path))
     {
         klog(log_channel_)
             .uid("FileSystem")
-            .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path);
+            .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path.c_str());
         return false;
     }
     K_ASSERT(fs::is_directory(dir_path), "Not a directory: {}", dir_path.string());
 
     hash_t alias_hash = H_(alias);
-    auto findit = aliases_.find(alias_hash);
-    if (findit != aliases_.end())
+
+    if (auto findit = aliases_.find(alias_hash); findit != aliases_.end())
     {
-        auto& entry = findit->second;
-        entry.alias = alias;
-        entry.base = dir_path;
-        klog(log_channel_).uid("FileSystem").debug("Overloaded directory alias:\n{}:// <=> {}", alias, dir_path);
+        findit->second.base = dir_path;
     }
     else
     {
-        klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path);
-        aliases_.insert({alias_hash, {alias, dir_path, {}}});
+        aliases_[alias_hash] = AliasEntry{.alias = alias, .base = dir_path, .pak = nullptr};
     }
+    klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path.c_str());
 
     return true;
 }
 
-bool FileSystem::alias_packfile(const fs::path& pack_path, const std::string& alias)
+bool FileSystem::alias_packfile(std::shared_ptr<std::istream> pack_stream, const std::string& alias)
 {
-    if (!fs::exists(pack_path))
+    if (pack_stream == nullptr || !(*pack_stream))
     {
-        klog(log_channel_).uid("FileSystem").error("Cannot add pack alias. File does not exist:\n{}", pack_path);
+        klog(log_channel_).uid("FileSystem").error("Cannot add pack alias. Invalid stream.");
         return false;
     }
-    K_ASSERT(fs::is_regular_file(pack_path), "Not a file: {}", pack_path.string());
 
     hash_t alias_hash = H_(alias);
-    auto findit = aliases_.find(alias_hash);
-    if (findit != aliases_.end())
+    if (auto findit = aliases_.find(alias_hash); findit != aliases_.end())
     {
-        auto& entry = findit->second;
-        entry.packfiles.push_back(new PackFile(pack_path));
+        findit->second.pak = std::make_unique<PackFile>(pack_stream);
     }
     else
     {
-        // By default, physical directory has the same (stem) name as the pack and is located in the
-        // same parent directory
-        // e.g. parent/resources.kpak <=> parent/resources
-        aliases_.insert({alias_hash, {alias, pack_path.parent_path() / pack_path.stem(), {new PackFile(pack_path)}}});
+        aliases_[alias_hash] = AliasEntry{.alias = alias, .base = "", .pak = std::make_unique<PackFile>(pack_stream)};
     }
 
-    klog(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}:// <=> {}", alias, pack_path);
+    klog(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}://", alias);
+
     return true;
 }
 
@@ -422,7 +409,14 @@ std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_h
     // Make path relative to the aliased directory
     const auto& alias_entry = get_alias_entry(base_alias_hash);
     auto rel_path = fs::relative(path, alias_entry.base);
-    return su::concat(alias_entry.alias, "://", rel_path.string());
+    return fmt::format("{}://{}", alias_entry.alias, rel_path.c_str());
+}
+
+const FileSystem::AliasEntry& FileSystem::get_alias_entry(hash_t alias_hash) const
+{
+    auto findit = aliases_.find(alias_hash);
+    K_ASSERT(findit != aliases_.end(), "Unknown alias: {}", alias_hash);
+    return findit->second;
 }
 
 FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::string& unipath) const
@@ -436,10 +430,9 @@ FileSystem::UpathParsingResult FileSystem::parse_universal_path(const std::strin
     {
         // Unalias
         hash_t alias_hash = H_(match[1].str());
-        auto findit = aliases_.find(alias_hash);
-        if (findit != aliases_.end())
+        if (auto dir_it = aliases_.find(alias_hash); dir_it != aliases_.end())
         {
-            result.alias_entry = &findit->second;
+            result.alias_entry = &dir_it->second;
             result.path_component = match[2].str();
         }
     }
@@ -469,16 +462,12 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
 
     auto result = parse_universal_path(unipath);
     // If a pack file is aliased at this name, try to find entry in pack
-    if (result.alias_entry)
+    if (result.alias_entry && result.alias_entry->pak != nullptr)
     {
-        for (const auto* ppack : result.alias_entry->packfiles)
+        if (auto pstream = result.alias_entry->pak->get_input_stream(H_(result.path_component)); pstream)
         {
-            auto findit = ppack->find(result.path_component);
-            if (findit != ppack->end())
-            {
-                klog(log_channel_).uid("FileSystem").verbose("source: pack");
-                return ppack->get_input_stream(findit->second);
-            }
+            klog(log_channel_).uid("FileSystem").verbose("source: pack");
+            return pstream;
         }
     }
 
@@ -486,7 +475,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
     auto filepath = to_regular_path(result);
 
     klog(log_channel_).uid("FileSystem").verbose("source: regular file");
-    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath);
+    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath.c_str());
 
     K_ASSERT(fs::exists(filepath), "File does not exist: {}", unipath);
     K_ASSERT(fs::is_regular_file(filepath), "Not a file: {}", unipath);

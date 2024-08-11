@@ -1,15 +1,11 @@
 #pragma once
-/* TODO:
- * - Handle OS-dep preferred user settings dir & other preferred dirs if any
- */
 
 #include <filesystem>
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
-#include "../assert/assert.h"
 #include "../hash/hash.h"
+#include "../util/unordered_dense.h"
 
 namespace fs = std::filesystem;
 
@@ -35,19 +31,18 @@ using IStreamPtr = std::shared_ptr<std::istream>;
  * - *Universal paths* are formatted strings that can be converted to regular paths. They can be either written in the
  * form of a regular path like `path/to/file` or include an alias using the syntax `alias://path/to/file`. In the latter
  * case, the alias can either reference a regular directory or the root of a pack file, and the rest of the path is read
- * relative to the aliased directory. Either way the file system will be able to find the targeted resource.
+ * relative to the aliased directory / pack. Either way the file system will be able to find the targeted resource.
  *
  * FEATURES:
  * - Transparent directory / resource pack aliasing
  * - Ability for an application to locate its own binary
- * - Configuration directory creation
+ * - Application settings directory creation
  *
  */
 class FileSystem
 {
 public:
     FileSystem(const kb::log::Channel* log_channel = nullptr);
-    ~FileSystem();
 
     /**
      * @brief Create a directory alias.
@@ -58,23 +53,23 @@ public:
      *
      * @param dir_path Path to the directory to alias
      * @param alias Alias name
-     * @return true if the directory exists and was aliased successfully
-     * @return false otherwise
+     * @return success
      */
     bool alias_directory(const fs::path& dir_path, const std::string& alias);
 
     /**
-     * @brief Alias the root of a resource pack file.
+     * @brief Alias a resource pack file.
      * It allows to treat a pack file as if it were a regular directory.
      * If a directory alias exists at this name, the file system will behave as if both hierarchies were merged
-     * together. Multiple packfiles can be grouped under the same alias. Last aliased pack has the lowest priority.
+     * together.
+     * Because we're using an input stream here, the pack "file" can very well be supplied from a
+     * memory buffer via an InputMemoryStream.
      *
-     * @param pack_path Path to the pack file
+     * @param pack_stream Input stream to packfile
      * @param alias Alias name
-     * @return true if the pack file exists and was aliased successfully
-     * @return false otherwise
+     * @return success
      */
-    bool alias_packfile(const fs::path& pack_path, const std::string& alias);
+    bool alias_packfile(std::shared_ptr<std::istream> pack_stream, const std::string& alias);
 
     /**
      * @brief Return an absolute lexically normal path to a file referenced by a universal path string
@@ -285,15 +280,15 @@ public:
 private:
     struct UpathParsingResult;
 
-    struct DirectoryAlias
+    struct AliasEntry
     {
         std::string alias;
         fs::path base;
-        std::vector<PackFile*> packfiles;
+        std::unique_ptr<PackFile> pak;
     };
 
     // Return alias entry at that name
-    inline const DirectoryAlias& get_alias_entry(hash_t alias_hash) const;
+    const AliasEntry& get_alias_entry(hash_t alias_hash) const;
     // Try to match an alias form in a universal path string, return an opaque type
     // containing the parsing results
     UpathParsingResult parse_universal_path(const std::string& unipath) const;
@@ -310,7 +305,7 @@ private:
     fs::path self_directory_;
     fs::path app_settings_directory_;
     fs::path app_data_directory_;
-    std::unordered_map<hash_t, DirectoryAlias> aliases_;
+    ankerl::unordered_dense::map<hash_t, AliasEntry> aliases_;
     const kb::log::Channel* log_channel_ = nullptr;
 };
 
@@ -340,13 +335,6 @@ inline std::string FileSystem::get_file_as_string(const std::string& unipath) co
 {
     auto pis = get_input_stream(unipath);
     return std::string((std::istreambuf_iterator<char>(*pis)), std::istreambuf_iterator<char>());
-}
-
-inline const FileSystem::DirectoryAlias& FileSystem::get_alias_entry(hash_t alias_hash) const
-{
-    auto findit = aliases_.find(alias_hash);
-    K_ASSERT(findit != aliases_.end(), "Unknown alias: {}", alias_hash);
-    return findit->second;
 }
 
 } // namespace kb::kfs
