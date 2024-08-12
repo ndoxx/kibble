@@ -16,7 +16,7 @@ PackFileStream::PackFileStreamBuf::int_type PackFileStream::PackFileStreamBuf::u
     if (gptr() == egptr())
     {
         std::streamsize bytes_to_read =
-            std::min(static_cast<std::streamsize>(buffer_.size()), size_ - (base_stream_.tellg() - start_));
+            std::min(std::streamsize(buffer_.size()), std::streamsize(size_ - (base_stream_.tellg() - start_)));
         if (bytes_to_read <= 0)
         {
             return traits_type::eof();
@@ -41,15 +41,15 @@ PackFileStream::PackFileStreamBuf::pos_type PackFileStream::PackFileStreamBuf::s
             new_pos = start_ + off;
             break;
         case std::ios_base::cur:
-            new_pos = base_stream_.tellg() - (egptr() - gptr()) + off;
+            new_pos = base_stream_.tellg() - std::streampos(egptr() - gptr()) + off;
             break;
         case std::ios_base::end:
-            new_pos = start_ + size_ + off;
+            new_pos = start_ + std::streampos(size_) + off;
             break;
         default:
             return pos_type(off_type(-1));
         }
-        if (new_pos < start_ || new_pos > start_ + size_)
+        if (new_pos < start_ || new_pos > start_ + std::streampos(size_))
         {
             return pos_type(off_type(-1));
         }

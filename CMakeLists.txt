@@ -21,6 +21,29 @@ if(KB_MASTER_PROJECT)
 	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/lib")
 	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/lib")
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${KB_SOURCE_DIR}/bin")
+
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		option(USE_LIBCXX "Use libc++ instead of libstdc++" OFF)
+
+		if(USE_LIBCXX)
+			message(STATUS "Using libc++")
+
+			# Clang will complain if we try to compile C sources with this option
+			add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
+			add_link_options(-stdlib=libc++)
+
+			# Check if we need to explicitly link against libc++abi
+			include(CheckCXXSourceCompiles)
+			check_cxx_source_compiles("
+				#include <cstdlib>
+				int main() { return 0; }
+			" LIBCXX_WORKS)
+
+			if(NOT LIBCXX_WORKS)
+				link_libraries(c++abi)
+			endif()
+		endif()
+	endif()
 endif()
 
 # if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
