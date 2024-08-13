@@ -6,6 +6,7 @@
 
 #include "../hash/hash.h"
 #include "../util/unordered_dense.h"
+#include "resource_pack.h"
 
 namespace fs = std::filesystem;
 
@@ -16,8 +17,6 @@ class Channel;
 
 namespace kb::kfs
 {
-
-class PackFile;
 
 using IStreamPtr = std::shared_ptr<std::istream>;
 
