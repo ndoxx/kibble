@@ -2,19 +2,19 @@ function(make_example_app project_name)
     set(NAME "ex_${project_name}")
 
     add_executable(${NAME}
-        "${CMAKE_CURRENT_SOURCE_DIR}/${project_name}.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/harness/job_example.cpp"
+        ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/harness/job_example.cpp
     )
     target_include_directories(${NAME}
         PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${KB_SOURCE_DIR}/source/kibble"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${KB_SOURCE_DIR}/source/kibble
     )
 
     set_target_properties(${NAME}
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ex"
-        OUTPUT_NAME "${project_name}"
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ex
+        OUTPUT_NAME ${project_name}
         EXCLUDE_FROM_ALL 1
     )
 
@@ -32,7 +32,7 @@ if(KB_TARGET_EXAMPLES)
     add_custom_target(examples)
 
     # Loop over all cpp files in the example directory
-    file(GLOB EXAMPLE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+    file(GLOB EXAMPLE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
     foreach(FILE ${EXAMPLE_SOURCES})
         # Extract file name without extension and use this to declare a new target

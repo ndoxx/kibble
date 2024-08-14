@@ -2,17 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Nuclear Test",
-            "type": "cppdbg",
+            "name": "LLDB",
+            "type": "lldb",
             "request": "launch",
-            "targetArchitecture": "x86",
-            "program": "${workspaceRoot}/bin/test/nuclear",
-            "miDebuggerPath": "gdb",
+            "program": "${workspaceRoot}/build/bin/Debug/test/nuclear",
             "args": [],
-            "stopAtEntry": false,
             "cwd": "${workspaceRoot}/build",
-            "externalConsole": true,
-            "preLaunchTask": "Make"
         }
     ]
 }

@@ -1,8 +1,5 @@
-bin/
-lib/
 build/
 data/
-doxygen/
 script/perf.sh
 script/perf_branch.sh
 script/perf_cache.sh
@@ -10,7 +7,6 @@ script/perf_stat.sh
 source/research/
 source/tests/nuclear.cpp
 source/vendor/tmp/
-kibble.sublime-workspace
 workspace.code-workspace
 NOTES.md
 .cache/

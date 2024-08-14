@@ -5,20 +5,20 @@ function(make_unit_test test_name)
     set(NAME "${test_name}")
 
     add_executable(${NAME}
-        "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp"
+        ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp
         catch_app.cpp
     )
 
     target_include_directories(${NAME}
         PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${KB_SOURCE_DIR}/source/kibble"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${KB_SOURCE_DIR}/source/kibble
     )
 
     set_target_properties(${NAME}
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
-        OUTPUT_NAME "${test_name}"
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test
+        OUTPUT_NAME ${test_name}
         EXCLUDE_FROM_ALL 1
     )
 
@@ -62,19 +62,19 @@ if(KB_TARGET_TESTS)
         set(NAME "${test_name}")
 
         add_executable(${NAME}
-            "${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp"
+            ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.cpp
         )
 
         target_include_directories(${NAME}
             PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}"
-            "${KB_SOURCE_DIR}/source/kibble"
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${KB_SOURCE_DIR}/source/kibble
         )
 
         set_target_properties(${NAME}
             PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test"
-            OUTPUT_NAME "${test_name}"
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test
+            OUTPUT_NAME ${test_name}
             EXCLUDE_FROM_ALL 1
         )
 
@@ -115,8 +115,8 @@ if(KB_TARGET_TESTS)
 
     target_include_directories(fuzz_tester
         PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${KB_SOURCE_DIR}/source/kibble"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${KB_SOURCE_DIR}/source/kibble
     )
 
     set_target_properties(fuzz_tester
@@ -159,13 +159,13 @@ if(KB_TARGET_TESTS)
 
     target_include_directories(nuclear
         PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${KB_SOURCE_DIR}/source/kibble"
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${KB_SOURCE_DIR}/source/kibble
     )
 
     target_include_directories(nuclear
         SYSTEM PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include"
+        ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include
     )
 
     set_target_properties(nuclear
