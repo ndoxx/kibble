@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../formatter.h"
+#include "kibble/logger/formatter.h"
 
 namespace kb::log
 {

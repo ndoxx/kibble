@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../sink.h"
+#include "kibble/logger/sink.h"
 
 #include "fmt/os.h"
 #include <filesystem>

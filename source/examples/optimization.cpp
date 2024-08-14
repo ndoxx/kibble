@@ -1,4 +1,4 @@
-#include "algorithm/optimization.h"
+#include "kibble/algorithm/optimization.h"
 #include "../tests/common/vec.h"
 
 #include <iostream>

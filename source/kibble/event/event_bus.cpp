@@ -1,4 +1,5 @@
-#include "event_bus.h"
+#include "kibble/event/event_bus.h"
+
 #include <numeric>
 
 namespace kb::event

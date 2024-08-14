@@ -1,10 +1,10 @@
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/logger.h"
-#include "logger/sinks/console_sink.h"
-#include "math/color_table.h"
-#include "net/tcp_acceptor.h"
-#include "net/tcp_connector.h"
-#include "net/tcp_stream.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/logger.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/math/color_table.h"
+#include "kibble/net/tcp_acceptor.h"
+#include "kibble/net/tcp_connector.h"
+#include "kibble/net/tcp_stream.h"
 
 #include <thread>
 

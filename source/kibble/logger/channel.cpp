@@ -1,6 +1,7 @@
-#include "channel.h"
-#include "entry.h"
-#include "thread/job/job_system.h"
+#include "kibble/logger/channel.h"
+#include "kibble/logger/entry.h"
+#include "kibble/thread/job/job_system.h"
+
 #include <csignal>
 
 namespace kb::log

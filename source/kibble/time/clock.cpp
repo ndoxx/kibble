@@ -1,4 +1,4 @@
-#include "clock.h"
+#include "kibble/time/clock.h"
 
 namespace kb
 {

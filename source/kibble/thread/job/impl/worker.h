@@ -1,6 +1,7 @@
 #pragma once
-#include "memory/util/alignment.h"
-#include "thread/job/impl/common.h"
+#include "kibble/memory/util/alignment.h"
+#include "kibble/thread/job/impl/common.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>

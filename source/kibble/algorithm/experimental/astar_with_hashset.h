@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../assert/assert.h"
-#include "../../logger/channel.h"
-#include "../../math/constexpr_math.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/channel.h"
+#include "kibble/math/constexpr_math.h"
 
 #include <algorithm>
 #include <concepts>

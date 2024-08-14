@@ -27,8 +27,8 @@
 #include <cmath>
 #include <vector>
 
-#include "../assert/assert.h"
-#include "constexpr_math.h"
+#include "kibble/assert/assert.h"
+#include "kibble/math/constexpr_math.h"
 
 namespace kb
 {

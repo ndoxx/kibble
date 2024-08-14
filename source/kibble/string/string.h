@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-#include "../hash/hash.h"
+#include "kibble//hash/hash.h"
 
 namespace kb
 {

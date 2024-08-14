@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../../../memory/util/alignment.h"
+#include "kibble/memory/util/alignment.h"
+
 #include <array>
 #include <atomic>
 #include <cstddef>

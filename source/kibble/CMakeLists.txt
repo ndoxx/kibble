@@ -19,27 +19,23 @@ option(KB_JOB_ATOMIC_POOL "Enable lock-free job pool in job system" ON)
 configure_file(config.h.in config.h)
 
 target_include_directories(kibble
-    PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_BINARY_DIR}"
     PUBLIC
-    "${KB_SOURCE_DIR}/source/vendor/fmt/include"
+    $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source>
+    $<INSTALL_INTERFACE:include>
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_include_directories(kibble
     SYSTEM PRIVATE
-    "${KB_SOURCE_DIR}/source/vendor"
-    "${KB_SOURCE_DIR}/source/vendor/tomlplusplus/include"
+    ${KB_SOURCE_DIR}/source/vendor
 )
 
 target_include_directories(kibble
     SYSTEM PUBLIC
-    "${KB_SOURCE_DIR}/source/vendor/atomic_queue/include"
-)
-
-set_target_properties(kibble
-    PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
+    $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/atomic_queue/include>
+    $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/fmt/include>
 )
 
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
@@ -103,7 +99,7 @@ set_target_properties(fmt
 # ------------------------------------------
 target_link_libraries(kibble
     PUBLIC
-    fmt
+    fmt::fmt
     PRIVATE
     project_options
     project_warnings
@@ -114,57 +110,50 @@ target_link_libraries(kibble
 
 # -- Install rules --
 if(KB_TARGET_INSTALL)
-    # Install library
-    install(
-        TARGETS kibble
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-    )
-
-    # Installation directories
     include(GNUInstallDirs)
-    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/kibble"
-        CACHE PATH "Location of header files")
-
-    # Install all API header files
-    file(GLOB_RECURSE H_LIB "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
-
-    foreach(file ${H_LIB})
-        get_filename_component(absolute_dir ${file} DIRECTORY)
-
-        # Get relative path
-        file(RELATIVE_PATH relative_dir ${CMAKE_CURRENT_SOURCE_DIR} ${absolute_dir})
-
-        # Check if directory is called "impl"
-        cmake_path(GET relative_dir STEM LAST_ONLY stem_dir)
-
-        # Install if not an impl directory
-        if(NOT stem_dir STREQUAL "impl")
-            install(FILES ${file} DESTINATION "${INCLUDE_INSTALL_DIR}/${relative_dir}")
-        endif()
-    endforeach()
-
-    # Generate and install package config files so kibble can be located with find_package()
     include(CMakePackageConfigHelpers)
 
+    # Install library
+    install(TARGETS kibble
+        EXPORT kibbleTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+    install(TARGETS project_options project_warnings EXPORT kibbleTargets)
+
+    # Install headers
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h"
+        PATTERN "impl" EXCLUDE
+    )
+
+    # Export targets
+    install(EXPORT kibbleTargets
+        FILE kibbleTargets.cmake
+        NAMESPACE kibble::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kibble
+    )
+
+    # Create and install package config files
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/kibble-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/kibble-config.cmake"
-        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/kibble"
-        PATH_VARS
-        INCLUDE_INSTALL_DIR
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kibble
+        PATH_VARS CMAKE_INSTALL_INCLUDEDIR
     )
 
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/kibble-config-version.cmake"
         VERSION ${KIBBLE_VERSION}
-        COMPATIBILITY AnyNewerVersion
+        COMPATIBILITY SameMajorVersion
     )
 
-    install(
-        FILES
+    install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/kibble-config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/kibble-config-version.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/kibble"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/kibble
     )
 endif()

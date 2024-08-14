@@ -4,11 +4,11 @@
 #define K_DEBUG
 #endif
 
-#include "argparse/argparse.h"
-#include "logger/logger.h"
-#include "memory/heap_area.h"
-#include "thread/job/job_system.h"
-#include "time/clock.h"
+#include "kibble/argparse/argparse.h"
+#include "kibble/logger/logger.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/thread/job/job_system.h"
+#include "kibble/time/clock.h"
 
 #include <algorithm>
 #include <cmath>

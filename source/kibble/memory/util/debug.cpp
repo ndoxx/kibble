@@ -1,5 +1,5 @@
-#include "debug.h"
-#include "../../string/string.h"
+#include "kibble/memory/util/debug.h"
+#include "kibble/string/string.h"
 
 #include "fmt/color.h"
 #include "fmt/core.h"

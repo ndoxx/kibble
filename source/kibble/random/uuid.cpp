@@ -1,5 +1,5 @@
-#include "random/uuid.h"
-#include "random/impl/endian.h"
+#include "kibble/random/uuid.h"
+#include "kibble/random/impl/endian.h"
 
 #include <emmintrin.h>
 #include <immintrin.h>

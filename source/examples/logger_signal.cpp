@@ -1,11 +1,11 @@
-#include "argparse/argparse.h"
-#include "logger/formatters/powerline_terminal_formatter.h"
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/logger.h"
-#include "logger/sinks/console_sink.h"
-#include "math/color_table.h"
-#include "memory/heap_area.h"
-#include "thread/job/job_system.h"
+#include "kibble/argparse/argparse.h"
+#include "kibble/logger/formatters/powerline_terminal_formatter.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/logger.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/math/color_table.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/thread/job/job_system.h"
 
 #include <csignal>
 #include <iostream>

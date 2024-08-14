@@ -1,8 +1,8 @@
 #pragma once
 
-#include "channel.h"
-#include "entry.h"
-#include "severity.h"
+#include "kibble/logger/channel.h"
+#include "kibble/logger/entry.h"
+#include "kibble/logger/severity.h"
 
 #include "fmt/core.h"
 #include "fmt/format.h"

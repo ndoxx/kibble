@@ -1,9 +1,9 @@
-#include "ctti/ctti.h"
+#include "kibble/ctti/ctti.h"
 
+#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <functional>
 
 using namespace kb;
 
@@ -17,7 +17,7 @@ struct Foo
 class Bar
 {
 public:
-    Bar(){};
+    Bar() {};
 };
 
 template <typename T>

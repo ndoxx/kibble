@@ -1,7 +1,7 @@
 #ifndef K_ENABLE_ASSERT
 #define K_ENABLE_ASSERT
 #endif
-#include "assert/assert.h"
+#include "kibble/assert/assert.h"
 
 #include "fmt/core.h"
 

@@ -1,12 +1,12 @@
-#include "memory/heap_area.h"
-#include "assert/assert.h"
+#include "kibble/memory/heap_area.h"
 #include "config.h"
-#include "memory/util/alignment.h"
-#include "memory/util/debug.h"
-#include "string/string.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/logger.h"
+#include "kibble/memory/util/alignment.h"
+#include "kibble/memory/util/debug.h"
+#include "kibble/string/string.h"
 
 #include "fmt/color.h"
-#include "logger/logger.h"
 
 namespace kb
 {

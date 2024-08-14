@@ -1,5 +1,5 @@
 #include "harness/job_example.h"
-#include "thread/job/daemon.h"
+#include "kibble/thread/job/daemon.h"
 
 using namespace kb;
 
@@ -67,7 +67,9 @@ int JobExampleImpl::impl(size_t nframes, size_t njobs, kb::th::JobSystem& js, co
 
         // Kill the first daemon manually after some time
         if (ii == nframes / 2)
+        {
             ds.kill(hnds[0]);
+        }
 
         // Wait on all jobs to finish
         js.wait();

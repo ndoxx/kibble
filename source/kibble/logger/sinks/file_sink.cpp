@@ -1,7 +1,7 @@
-#include "file_sink.h"
-#include "../channel.h"
-#include "../entry.h"
-#include "../severity.h"
+#include "kibble/logger/sinks/file_sink.h"
+#include "kibble/logger/channel.h"
+#include "kibble/logger/entry.h"
+#include "kibble/logger/severity.h"
 
 namespace kb::log
 {

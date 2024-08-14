@@ -1,8 +1,8 @@
-#include "filesystem/filesystem.h"
-#include "assert/assert.h"
-#include "filesystem/resource_pack.h"
-#include "logger/logger.h"
-#include "string/string.h"
+#include "kibble/filesystem/filesystem.h"
+#include "kibble/assert/assert.h"
+#include "kibble/filesystem/resource_pack.h"
+#include "kibble/logger/logger.h"
+#include "kibble/string/string.h"
 
 #include <chrono>
 #include <fstream>

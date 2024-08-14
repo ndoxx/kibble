@@ -24,7 +24,7 @@
 #include <string_view>
 #include <utility>
 
-#include "../hash/hash.h"
+#include "kibble/hash/hash.h"
 
 namespace kb
 {

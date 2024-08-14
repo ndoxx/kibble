@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../../memory/util/alignment.h"
-#include "../../time/clock.h"
-#include "job_system.h"
+#include "kibble/memory/util/alignment.h"
+#include "kibble/thread/job/job_system.h"
+#include "kibble/time/clock.h"
+#include "kibble/util/unordered_dense.h"
+
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 namespace kb
@@ -109,7 +110,7 @@ public:
 
 private:
     JobSystem& js_;
-    std::unordered_map<DaemonHandle, std::unique_ptr<Daemon>> daemons_;
+    ankerl::unordered_dense::map<DaemonHandle, std::unique_ptr<Daemon>> daemons_;
     std::vector<DaemonHandle> kill_list_;
     microClock clock_;
     DaemonHandle current_handle_ = 0;

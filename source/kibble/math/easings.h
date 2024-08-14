@@ -1,6 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <array>
 #include <cmath>
 #include <numbers>
 #include <type_traits>

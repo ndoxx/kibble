@@ -1,5 +1,6 @@
-#include "algorithm/optimization.h"
 #include "common/vec.h"
+#include "kibble/algorithm/optimization.h"
+
 #include <catch2/catch_all.hpp>
 
 namespace kb::opt

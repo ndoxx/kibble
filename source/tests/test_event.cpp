@@ -2,8 +2,9 @@
 #include <thread>
 #include <vector>
 
-#include "event/event_bus.h"
-#include "util/delegate.h"
+#include "kibble/event/event_bus.h"
+#include "kibble/util/delegate.h"
+
 #include <catch2/catch_all.hpp>
 
 using namespace kb;
@@ -553,7 +554,9 @@ protected:
 TEST_CASE_METHOD(PriorityFixture, "Last subscriber of equal (default) priority should handle events first", "[prio]")
 {
     for (size_t ii = 0; ii < N; ++ii)
+    {
         event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii]);
+    }
 
     event_bus.fire<PokeEvent>({});
 
@@ -563,7 +566,9 @@ TEST_CASE_METHOD(PriorityFixture, "Last subscriber of equal (default) priority s
 TEST_CASE_METHOD(PriorityFixture, "Priority test with two priorities", "[prio]")
 {
     for (size_t ii = 0; ii < N; ++ii)
+    {
         event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 2));
+    }
 
     event_bus.fire<PokeEvent>({});
 
@@ -574,7 +579,9 @@ TEST_CASE_METHOD(PriorityFixture, "Priority test with two priorities", "[prio]")
 TEST_CASE_METHOD(PriorityFixture, "Priority test with three priorities", "[prio]")
 {
     for (size_t ii = 0; ii < N; ++ii)
+    {
         event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 3));
+    }
 
     event_bus.fire<PokeEvent>({});
 
@@ -585,7 +592,9 @@ TEST_CASE_METHOD(PriorityFixture, "Priority test with three priorities", "[prio]
 TEST_CASE_METHOD(PriorityFixture, "Removing subscribers does not screw anything up", "[prio]")
 {
     for (size_t ii = 0; ii < N; ++ii)
+    {
         event_bus.subscribe<&IndexedPokeHandler::handle_poke>(handlers[ii], uint32_t(ii % 3));
+    }
 
     event_bus.unsubscribe<&IndexedPokeHandler::handle_poke>(handlers[7]);
     event_bus.unsubscribe<&IndexedPokeHandler::handle_poke>(handlers[6]);

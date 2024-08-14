@@ -1,5 +1,5 @@
-#include "math/catenary.h"
-#include "math/numeric.h"
+#include "kibble/math/catenary.h"
+#include "kibble/math/numeric.h"
 
 namespace kb
 {

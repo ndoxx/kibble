@@ -1,6 +1,6 @@
-#include "math/convolution.h"
-#include "assert/assert.h"
-#include "math/numeric.h"
+#include "kibble/math/convolution.h"
+#include "kibble/assert/assert.h"
+#include "kibble/math/numeric.h"
 
 #include <cmath>
 #include <functional>

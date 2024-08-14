@@ -2,38 +2,30 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake Debug",
+            "label": "CMake",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceRoot}/build"
             },
             "command": "cmake",
             "args": [
-                "-DCMAKE_BUILD_TYPE=Debug",
+                "-G",
+                "Ninja Multi-Config",
+                "-DCMAKE_BUILD_TYPE=${input:buildType}",
                 ".."
             ]
         },
         {
-            "label": "CMake Release",
+            "label": "Build",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceRoot}/build"
             },
-            "command": "cmake",
+            "command": "ninja",
             "args": [
-                "-DCMAKE_BUILD_TYPE=Release",
-                ".."
-            ]
-        },
-        {
-            "label": "Make",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceRoot}/build"
-            },
-            "command": "make",
-            "args": [
-                "-j4"
+                "-f",
+                "build-${input:buildType}.ninja",
+                "kibble"
             ],
             "problemMatcher": {
                 "owner": "cpp",
@@ -54,6 +46,20 @@
                 "kind": "build",
                 "isDefault": true
             }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "buildType",
+            "type": "pickString",
+            "description": "What is the build type?",
+            "options": [
+                "Debug",
+                "Release",
+                "RelWithDebInfo",
+                "MinSizeRel"
+            ],
+            "default": "Debug"
         }
     ]
 }

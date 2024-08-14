@@ -1,4 +1,5 @@
 {
+    "workspaceKeybindings.generic.enabled": true,
     "cmake.configureOnOpen": false,
     "files.associations": {
         "*.json.liquid": "json",

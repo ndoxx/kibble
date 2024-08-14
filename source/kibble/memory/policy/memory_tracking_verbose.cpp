@@ -1,7 +1,7 @@
-#include "memory/policy/memory_tracking_verbose.h"
-#include "logger/logger.h"
-#include "memory/heap_area.h"
-#include "string/string.h"
+#include "kibble/memory/policy/memory_tracking_verbose.h"
+#include "kibble/logger/logger.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/string/string.h"
 
 namespace kb::memory::policy
 {

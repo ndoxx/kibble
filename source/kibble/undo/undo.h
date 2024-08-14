@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../hash/hash.h"
+#include "kibble/hash/hash.h"
 
 namespace kb
 {

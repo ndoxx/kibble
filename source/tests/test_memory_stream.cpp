@@ -1,4 +1,5 @@
-#include "filesystem/stream/memory_stream.h"
+#include "kibble/filesystem/stream/memory_stream.h"
+
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("MemoryBuffer construction", "[MemoryBuffer]")

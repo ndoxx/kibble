@@ -1,6 +1,6 @@
 #pragma once
 
-#include "internal.h"
+#include "kibble/util/internal.h"
 
 namespace backward
 {

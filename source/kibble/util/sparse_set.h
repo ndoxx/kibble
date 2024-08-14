@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "../assert/assert.h"
+#include "kibble/assert/assert.h"
 
 namespace kb
 {

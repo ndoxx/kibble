@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../hash/hash.h"
-#include "../policy.h"
-#include <set>
+#include "kibble/hash/hash.h"
+#include "kibble/logger/policy.h"
+#include "kibble/util/unordered_dense.h"
 
 namespace kb::log
 {
@@ -22,7 +22,7 @@ public:
      *
      * @param enabled List of UID hashes to be put in the list
      */
-    UIDWhitelist(std::set<hash_t> enabled);
+    UIDWhitelist(ankerl::unordered_dense::set<hash_t> enabled);
 
     /**
      * @brief Add a uid to the list
@@ -66,7 +66,7 @@ public:
     bool transform_filter(struct LogEntry& entry) const override;
 
 private:
-    std::set<hash_t> enabled_;
+    ankerl::unordered_dense::set<hash_t> enabled_;
 };
 
 /**
@@ -84,7 +84,7 @@ public:
      *
      * @param enabled List of UID hashes to be put in the list
      */
-    UIDBlacklist(std::set<hash_t> enabled);
+    UIDBlacklist(ankerl::unordered_dense::set<hash_t> enabled);
 
     /**
      * @brief Add a uid to the list
@@ -128,7 +128,7 @@ public:
     bool transform_filter(struct LogEntry& entry) const override;
 
 private:
-    std::set<hash_t> disabled_;
+    ankerl::unordered_dense::set<hash_t> disabled_;
 };
 
 } // namespace kb::log

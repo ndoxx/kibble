@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "../../assert/assert.h"
-#include "policy.h"
+#include "kibble/assert/assert.h"
+#include "kibble/memory/policy/policy.h"
 
 namespace kb::memory::policy
 {

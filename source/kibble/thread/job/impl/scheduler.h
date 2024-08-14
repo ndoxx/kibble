@@ -1,7 +1,8 @@
 #pragma once
 
 #include "config.h"
-#include "memory/util/alignment.h"
+#include "kibble/memory/util/alignment.h"
+
 #include <array>
 
 namespace kb

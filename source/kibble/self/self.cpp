@@ -1,4 +1,4 @@
-#include "self/self.h"
+#include "kibble/self/self.h"
 #include "config.h"
 
 namespace kb

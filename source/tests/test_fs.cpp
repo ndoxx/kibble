@@ -1,17 +1,20 @@
-#include "filesystem/filesystem.h"
-#include "filesystem/resource_pack.h"
+#include "kibble/filesystem/filesystem.h"
+#include "kibble/filesystem/resource_pack.h"
+
 #include <catch2/catch_all.hpp>
 #include <fstream>
 #include <numeric>
 
 using namespace kb;
 
+constexpr std::string_view data_dir_relpath = "../../../../data";
+
 class PathFixture
 {
 public:
     PathFixture()
     {
-        filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data");
+        filesystem.alias_directory(filesystem.get_self_directory() / data_dir_relpath, "data");
     }
 
 protected:
@@ -20,13 +23,13 @@ protected:
 
 TEST_CASE_METHOD(PathFixture, "Getting self directory", "[path]")
 {
-    REQUIRE(fs::exists(filesystem.get_self_directory() / "../../data"));
+    REQUIRE(fs::exists(filesystem.get_self_directory() / data_dir_relpath));
 }
 
 TEST_CASE_METHOD(PathFixture, "Retrieving aliased directory", "[path]")
 {
     const auto& dir = filesystem.get_aliased_directory("data"_h);
-    REQUIRE(fs::equivalent(dir, filesystem.get_self_directory() / "../../data"));
+    REQUIRE(fs::equivalent(dir, filesystem.get_self_directory() / data_dir_relpath));
 }
 
 TEST_CASE_METHOD(PathFixture, "Retrieving file path using a universal path string", "[path]")
@@ -48,7 +51,7 @@ class ReadWriteFixture
 public:
     ReadWriteFixture() : data(256)
     {
-        filesystem.alias_directory(filesystem.get_self_directory() / "../../data", "data");
+        filesystem.alias_directory(filesystem.get_self_directory() / data_dir_relpath, "data");
         std::iota(data.begin(), data.end(), 0);
         std::ofstream ofs(filesystem.regular_path("data://iotest/data.dat"), std::ios::binary);
         ofs.write(reinterpret_cast<char*>(data.data()), long(data.size() * sizeof(char)));

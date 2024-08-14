@@ -1,6 +1,6 @@
 #pragma once
 
-#include "memory/allocator/tlsf/impl/common.h"
+#include "kibble/memory/allocator/tlsf/impl/common.h"
 
 namespace kb::memory::tlsf
 {

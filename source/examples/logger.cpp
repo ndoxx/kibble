@@ -1,23 +1,24 @@
 #ifndef K_DEBUG
 #define K_DEBUG
 #endif
-#include "logger/logger.h"
-#include "argparse/argparse.h"
-#include "logger/formatters/powerline_terminal_formatter.h"
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/policies/stack_trace_policy.h"
-#include "logger/policies/uid_filter.h"
-#include "logger/sinks/console_sink.h"
-#include "logger/sinks/file_sink.h"
-#include "memory/heap_area.h"
-#include "thread/job/job_system.h"
-#include "time/instrumentation.h"
+#include "kibble/logger/logger.h"
+#include "kibble/argparse/argparse.h"
+#include "kibble/logger/formatters/powerline_terminal_formatter.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/policies/stack_trace_policy.h"
+#include "kibble/logger/policies/uid_filter.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/logger/sinks/file_sink.h"
+#include "kibble/math/color.h"
+#include "kibble/math/color_table.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/thread/job/job_system.h"
+#include "kibble/time/instrumentation.h"
+#include "kibble/util/unordered_dense.h"
 
 #include "fmt/color.h"
 #include "fmt/core.h"
 #include "fmt/os.h"
-#include "math/color.h"
-#include "math/color_table.h"
 #include <iostream>
 
 using namespace kb::log;
@@ -175,7 +176,7 @@ int main(int argc, char** argv)
     // Also, it is possible to devise a policy to filter through such UIDs:
     // Only messages with a UID set to "ResourcePack" or "CatFile" or no UID at all will be logged
     // There's also a blacklist policy available
-    auto whitelist = std::make_shared<UIDWhitelist>(std::set{"ResourcePack"_h});
+    auto whitelist = std::make_shared<UIDWhitelist>(ankerl::unordered_dense::set<kb::hash_t>{"ResourcePack"_h});
     whitelist->add("CatFile"_h);
     chan_filesystem.attach_policy(whitelist);
     klog(chan_filesystem).info("General filesystem info are logged");

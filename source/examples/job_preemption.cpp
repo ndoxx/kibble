@@ -1,7 +1,8 @@
-#include "assert/assert.h"
+#include "harness/job_example.h"
+#include "kibble/assert/assert.h"
+
 #include "fmt/color.h"
 #include "fmt/core.h"
-#include "harness/job_example.h"
 #include <mutex>
 #include <unordered_set>
 

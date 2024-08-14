@@ -1,5 +1,6 @@
-#include "algorithm/astar.h"
-#include "fmt/format.h"
+#include "kibble/algorithm/astar.h"
+
+#include "fmt/core.h"
 #include <random>
 #include <set>
 
@@ -102,16 +103,24 @@ struct MapSearchState
         successors.reserve(4);
 
         if (is_walkable(x - 1, y) && !(parent && (*parent == MapSearchState{x - 1, y})))
+        {
             successors.push_back({x - 1, y});
+        }
 
         if (is_walkable(x, y - 1) && !(parent && (*parent == MapSearchState{x, y - 1})))
+        {
             successors.push_back({x, y - 1});
+        }
 
         if (is_walkable(x + 1, y) && !(parent && (*parent == MapSearchState{x + 1, y})))
+        {
             successors.push_back({x + 1, y});
+        }
 
         if (is_walkable(x, y + 1) && !(parent && (*parent == MapSearchState{x, y + 1})))
+        {
             successors.push_back({x, y + 1});
+        }
     }
 };
 
@@ -177,11 +186,17 @@ int main(int argc, char** argv)
                 char c = is_walkable(xx, yy) ? ' ' : '#';
 
                 if (in_path.contains({xx, yy}))
+                {
                     c = '.';
+                }
                 if (xx == start_x && yy == start_y)
+                {
                     c = 'S';
+                }
                 if (xx == goal_x && yy == goal_y)
+                {
                     c = 'G';
+                }
 
                 fmt::print("{} ", c);
             }

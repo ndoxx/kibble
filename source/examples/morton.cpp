@@ -1,4 +1,4 @@
-#include "math/morton_glm.h" // For the GLM wrappers
+#include "kibble/math/morton_glm.h" // For the GLM wrappers
 #include <glm/gtx/string_cast.hpp>
 
 #include "fmt/core.h"

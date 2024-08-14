@@ -1,5 +1,5 @@
-#include "random/uuid.h"
-#include "random/xor_shift.h"
+#include "kibble/random/uuid.h"
+#include "kibble/random/xor_shift.h"
 
 #include <iostream>
 

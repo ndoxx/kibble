@@ -1,4 +1,4 @@
-#include "entry_builder.h"
+#include "kibble/logger/entry_builder.h"
 
 namespace kb::log
 {

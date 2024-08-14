@@ -1,6 +1,6 @@
-#include "powerline_terminal_formatter.h"
-#include "../channel.h"
-#include "../entry.h"
+#include "kibble/logger/formatters/powerline_terminal_formatter.h"
+#include "kibble/logger/channel.h"
+#include "kibble/logger/entry.h"
 
 #include "fmt/color.h"
 #include "fmt/format.h"

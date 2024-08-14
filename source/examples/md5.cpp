@@ -1,5 +1,6 @@
-#include "filesystem/md5.h"
-#include "fmt/format.h"
+#include "kibble/filesystem/md5.h"
+
+#include "fmt/core.h"
 
 int main(int argc, char** argv)
 {
@@ -58,7 +59,9 @@ int main(int argc, char** argv)
     {
         std::string str;
         for (size_t ii = 0; ii < N; ++ii)
+        {
             str += "0123456789";
+        }
 
         kb::md5 md;
         md.process(str.data(), str.size());

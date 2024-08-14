@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../util/internal.h"
-#include "barrier_id.h"
-#include "job_meta.h"
-#include "promise_pool.h"
+#include "kibble/thread/job/barrier_id.h"
+#include "kibble/thread/job/job_meta.h"
+#include "kibble/thread/job/promise_pool.h"
+#include "kibble/util/internal.h"
+#include "kibble/util/unordered_dense.h"
 
 #include <future>
-#include <unordered_map>
 
 namespace kb::log
 {
@@ -296,7 +296,7 @@ private:
 
     size_t CPU_cores_count_{0};
     size_t threads_count_{0};
-    std::unordered_map<std::thread::id, tid_t> thread_ids_;
+    ankerl::unordered_dense::map<std::thread::id, tid_t> thread_ids_;
     Barrier* barriers_{nullptr};
     SharedState* shared_state_{nullptr};
     WorkerThread* workers_{nullptr};

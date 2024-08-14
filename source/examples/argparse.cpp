@@ -1,8 +1,8 @@
-#include "argparse/argparse.h"
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/logger.h"
-#include "logger/sinks/console_sink.h"
-#include "math/color_table.h"
+#include "kibble/argparse/argparse.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/logger.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/math/color_table.h"
 
 #include "fmt/color.h"
 #include "fmt/std.h"
@@ -14,7 +14,9 @@ using namespace kb::log;
 void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
     for (const auto& msg : parser.get_errors())
+    {
         klog(chan).warn(msg);
+    }
 
     klog(chan).raw().info(parser.usage());
     exit(0);
@@ -40,7 +42,9 @@ int p1(int argc, char** argv, const Channel& chan)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan);
+    }
 
     if (orange())
     {
@@ -69,7 +73,9 @@ int p2(int argc, char** argv, const Channel& chan)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan);
+    }
 
     auto fmtstr = fmt::format("The sum of {} and {} is {}", A(), B(), A() + B());
     if (orange())
@@ -108,7 +114,9 @@ int p3(int argc, char** argv, const Channel& chan)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan);
+    }
 
     return 0;
 }
@@ -128,7 +136,9 @@ int p4(int argc, char** argv, const Channel& chan)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan);
+    }
 
     if (mm.is_set)
     {
@@ -136,7 +146,9 @@ int p4(int argc, char** argv, const Channel& chan)
     }
 
     for (int v : l())
+    {
         klog(chan).info("v: {}", v);
+    }
 
     klog(chan).info("Done.");
     return 0;

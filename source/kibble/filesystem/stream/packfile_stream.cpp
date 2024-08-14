@@ -1,4 +1,4 @@
-#include "filesystem/stream/packfile_stream.h"
+#include "kibble/filesystem/stream/packfile_stream.h"
 
 namespace kb
 {

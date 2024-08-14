@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../memory/util/alignment.h"
+#include "kibble/memory/util/alignment.h"
 #include <atomic>
 
 namespace kb::th

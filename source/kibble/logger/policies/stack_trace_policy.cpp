@@ -1,5 +1,5 @@
-#include "stack_trace_policy.h"
-#include "../entry.h"
+#include "kibble/logger/policies/stack_trace_policy.h"
+#include "kibble/logger/entry.h"
 
 namespace kb::log
 {

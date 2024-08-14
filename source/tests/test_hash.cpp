@@ -1,4 +1,5 @@
-#include "hash/hash.h"
+#include "kibble/hash/hash.h"
+
 #include <catch2/catch_all.hpp>
 #include <cmath>
 

@@ -1,5 +1,5 @@
-#include "console_sink.h"
-#include "../formatter.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/logger/formatter.h"
 
 namespace kb::log
 {

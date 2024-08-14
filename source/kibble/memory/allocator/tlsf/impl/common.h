@@ -2,8 +2,8 @@
 
 #include <cstddef>
 
-#include "assert/assert.h"
-#include "memory/allocator/tlsf/impl/bit.h" // Leave this here
+#include "kibble/assert/assert.h"
+#include "kibble/memory/allocator/tlsf/impl/bit.h" // Leave this here
 
 using std::size_t;
 

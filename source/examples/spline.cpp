@@ -1,4 +1,4 @@
-#include "math/spline.h"
+#include "kibble/math/spline.h"
 
 #include <array>
 #include <cmath>

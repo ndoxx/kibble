@@ -1,4 +1,4 @@
-#include "math/color.h"
+#include "kibble/math/color.h"
 
 #include <cmath>
 #include <random>

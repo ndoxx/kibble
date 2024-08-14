@@ -1,5 +1,5 @@
 #pragma once
-#include "../util/sanitizer.h"
+#include "kibble/util/sanitizer.h"
 
 #include <memory>
 #include <mutex>
