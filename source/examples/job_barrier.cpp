@@ -1,5 +1,6 @@
-#include "fmt/color.h"
 #include "harness/job_example.h"
+
+#include "fmt/color.h"
 
 using namespace kb;
 

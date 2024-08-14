@@ -1,5 +1,5 @@
-#include "string/string.h"
-#include "hash/hash.h"
+#include "kibble/string/string.h"
+#include "kibble/hash/hash.h"
 
 #include "fmt/core.h"
 

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../../net/tcp_stream.h"
-#include "../sink.h"
+#include "kibble/logger/sink.h"
+#include "kibble/net/tcp_stream.h"
+
 #include <functional>
 #include <string>
 

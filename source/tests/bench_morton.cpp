@@ -1,8 +1,8 @@
 // #include "math/easings.h"
-#include "math/morton.h"
+#include "kibble/math/morton.h"
+
 #include <benchmark/benchmark.h>
 #include <random>
-
 
 static void BM_morton_encode_2d(benchmark::State& state)
 {

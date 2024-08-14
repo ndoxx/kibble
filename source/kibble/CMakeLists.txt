@@ -36,7 +36,6 @@ target_include_directories(kibble
     SYSTEM PUBLIC
     $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/atomic_queue/include>
     $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/fmt/include>
-    $<INSTALL_INTERFACE:include>
 )
 
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"

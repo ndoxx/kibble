@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "../util/free_list.h"
+#include "kibble/memory/util/free_list.h"
 
 namespace kb
 {

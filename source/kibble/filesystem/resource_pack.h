@@ -3,9 +3,9 @@
 #include <filesystem>
 #include <vector>
 
-#include "../hash/hash.h"
-#include "../util/unordered_dense.h"
-#include "serialization/archiver.h"
+#include "kibble/filesystem/serialization/archiver.h"
+#include "kibble/hash/hash.h"
+#include "kibble/util/unordered_dense.h"
 
 namespace fs = std::filesystem;
 

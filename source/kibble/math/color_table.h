@@ -1,6 +1,6 @@
 #pragma once
 
-#include "color.h"
+#include "kibble/math/color.h"
 
 namespace kb
 {

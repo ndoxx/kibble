@@ -1,6 +1,6 @@
-#include "filesystem/md5.h"
-#include "algorithm/endian.h"
-#include "assert/assert.h"
+#include "kibble/filesystem/md5.h"
+#include "kibble/algorithm/endian.h"
+#include "kibble/assert/assert.h"
 
 #include "fmt/core.h"
 #include <cstring>

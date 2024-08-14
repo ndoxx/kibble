@@ -1,6 +1,6 @@
-#include "net_sink.h"
-#include "../formatter.h"
-#include "net/tcp_connector.h"
+#include "kibble/logger/sinks/net_sink.h"
+#include "kibble/logger/formatter.h"
+#include "kibble/net/tcp_connector.h"
 
 namespace kb::log
 {

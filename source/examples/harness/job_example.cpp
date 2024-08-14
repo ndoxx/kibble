@@ -1,9 +1,9 @@
 #include "job_example.h"
 
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/sinks/console_sink.h"
-#include "math/color_table.h"
-#include "time/instrumentation.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/math/color_table.h"
+#include "kibble/time/instrumentation.h"
 
 #include <filesystem>
 #include <numeric>
@@ -16,7 +16,9 @@ std::pair<float, float> stats(const std::vector<long> durations)
     float mu = float(std::accumulate(durations.begin(), durations.end(), 0)) / float(durations.size());
     float variance = 0.f;
     for (long d : durations)
+    {
         variance += (float(d) - mu) * (float(d) - mu);
+    }
     variance /= float(durations.size());
     return {mu, std::sqrt(variance)};
 }
@@ -35,7 +37,9 @@ void show_statistics(kb::milliClock& clk, long serial_dur_ms, const kb::log::Cha
 void JobExample::show_error_and_die(kb::ap::ArgParse& parser, const kb::log::Channel& chan)
 {
     for (const auto& msg : parser.get_errors())
+    {
         klog(chan).warn(msg);
+    }
 
     klog(chan).raw().info(parser.usage());
     exit(0);
@@ -60,7 +64,9 @@ int JobExample::run(int argc, char** argv)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan_kibble);
+    }
 
     size_t nexp = std::min(size_t(ne()), 100ul);
     size_t njob = std::min(size_t(nj()), 500ul);

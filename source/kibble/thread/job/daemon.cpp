@@ -1,10 +1,10 @@
-#include "daemon.h"
-#include "../../assert/assert.h"
-#include "../../logger/logger.h"
-#include "../../time/instrumentation.h"
-#include "impl/common.h"
-#include "thread/job/impl/job.h"
-#include "thread/job/impl/worker.h"
+#include "kibble/thread/job/daemon.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/logger.h"
+#include "kibble/thread/job/impl/common.h"
+#include "kibble/time/instrumentation.h"
+#include "kibble/thread/job/impl/job.h"
+#include "kibble/thread/job/impl/worker.h"
 
 namespace kb
 {

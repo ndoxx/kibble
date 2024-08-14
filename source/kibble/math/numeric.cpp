@@ -1,4 +1,4 @@
-#include "math/numeric.h"
+#include "kibble/math/numeric.h"
 
 namespace kb
 {

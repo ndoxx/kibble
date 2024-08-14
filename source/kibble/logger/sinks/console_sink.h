@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../sink.h"
+#include "kibble/logger/sink.h"
 
 namespace kb::log
 {

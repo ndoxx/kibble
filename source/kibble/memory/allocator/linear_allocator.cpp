@@ -1,8 +1,8 @@
-#include "memory/allocator/linear_allocator.h"
-#include "assert/assert.h"
+#include "kibble/memory/allocator/linear_allocator.h"
 #include "config.h"
-#include "memory/heap_area.h"
-#include "memory/util/alignment.h"
+#include "kibble/assert/assert.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/util/alignment.h"
 
 namespace kb
 {

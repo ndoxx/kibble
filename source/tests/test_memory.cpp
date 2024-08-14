@@ -1,27 +1,20 @@
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include <cstdlib>
 #include <cstring>
-#include <functional>
-#include <iomanip>
-#include <iostream>
-#include <random>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
-#include "assert/assert.h"
-#include "memory/allocator/linear_allocator.h"
-#include "memory/allocator/pool_allocator.h"
-#include "memory/allocator/tlsf/impl/bit.h"
-#include "memory/allocator/tlsf_allocator.h"
-#include "memory/arena.h"
-#include "memory/heap_area.h"
-#include "memory/linear_buffer.h"
-#include "memory/policy/bounds_checking_simple.h"
-#include "memory/policy/memory_tracking_simple.h"
-#include "memory/policy/memory_tracking_verbose.h"
-#include "memory/util/literals.h"
-#include "string/string.h"
+#include "kibble/memory/allocator/linear_allocator.h"
+#include "kibble/memory/allocator/pool_allocator.h"
+#include "kibble/memory/allocator/tlsf/impl/bit.h"
+#include "kibble/memory/allocator/tlsf_allocator.h"
+#include "kibble/memory/arena.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/policy/bounds_checking_simple.h"
+#include "kibble/memory/policy/memory_tracking_simple.h"
+#include "kibble/memory/policy/memory_tracking_verbose.h"
+#include "kibble/memory/util/literals.h"
+#include "kibble/string/string.h"
 
 #include <catch2/catch_all.hpp>
 
@@ -48,7 +41,9 @@ struct NonPOD
         ++(*ctor_calls);
         data = new uint32_t[a];
         for (uint32_t ii = 0; ii < a; ++ii)
+        {
             data[ii] = b;
+        }
     }
 
     ~NonPOD()
@@ -234,7 +229,9 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default align
     NonPOD* non_pod_array = K_NEW_ARRAY(NonPOD[N], arena);
 
     for (size_t ii = 0; ii < N; ++ii)
+    {
         non_pod_array[ii].dtor_calls = &dtor_calls;
+    }
 
     // Check that returned address is correctly aligned
     REQUIRE(size_t(non_pod_array) % alignof(NonPOD) == 0);
@@ -256,7 +253,9 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[m
     NonPOD* non_pod_array = K_NEW_ARRAY_ALIGN(NonPOD[N], arena, 16);
 
     for (size_t ii = 0; ii < N; ++ii)
+    {
         non_pod_array[ii].dtor_calls = &dtor_calls;
+    }
 
     // Check that returned address is correctly 16 bytes aligned
     REQUIRE(size_t(non_pod_array) % 16 == 0);
@@ -374,10 +373,14 @@ public:
         auto consistency_report = arena.get_allocator().check_consistency();
 
         for (const auto& msg : pool_report.logs)
+        {
             fmt::println("Pool> {}", msg);
+        }
 
         for (const auto& msg : consistency_report.logs)
+        {
             fmt::println("Cntl> {}", msg);
+        }
 
         REQUIRE(pool_report.logs.empty());
         REQUIRE(consistency_report.logs.empty());
@@ -661,7 +664,9 @@ TEST_CASE_METHOD(TLSFArenaFixture, "non-POD array allocation / deallocation", "[
     constexpr size_t N = 16;
     NonPOD* non_pod_array = K_NEW_ARRAY(NonPOD[N], arena);
     for (size_t ii = 0; ii < N; ++ii)
+    {
         non_pod_array[ii].dtor_calls = &dtor_calls;
+    }
 
     check_integrity();
 

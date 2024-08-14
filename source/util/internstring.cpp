@@ -1,17 +1,16 @@
-#include "argparse/argparse.h"
-#include "filesystem/filesystem.h"
-#include "hash/hash.h"
-#include "logger/formatters/vscode_terminal_formatter.h"
-#include "logger/logger.h"
-#include "logger/sinks/console_sink.h"
-#include "math/color_table.h"
-#include "string/string.h"
+#include "kibble/argparse/argparse.h"
+#include "kibble/filesystem/filesystem.h"
+#include "kibble/hash/hash.h"
+#include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/logger/logger.h"
+#include "kibble/logger/sinks/console_sink.h"
+#include "kibble/math/color_table.h"
 
-#include <filesystem>
 #include "fmt/std.h"
+#include <filesystem>
 #include <iostream>
-#include <unordered_map>
 #include <regex>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
@@ -21,14 +20,16 @@ using namespace kb::log;
 void show_error_and_die(ap::ArgParse& parser, const Channel& chan)
 {
     for (const auto& msg : parser.get_errors())
+    {
         klog(chan).warn(msg);
+    }
 
     klog(chan).raw().info(parser.usage());
     exit(0);
 }
 
-void parse_entry(const fs::directory_entry&, const fs::path&, std::unordered_map<hash_t, std::string>&, kfs::FileSystem&,
-                 const kb::log::Channel&);
+void parse_entry(const fs::directory_entry&, const fs::path&, std::unordered_map<hash_t, std::string>&,
+                 kfs::FileSystem&, const kb::log::Channel&);
 int main(int argc, char** argv)
 {
     auto console_formatter = std::make_shared<VSCodeTerminalFormatter>();
@@ -46,7 +47,9 @@ int main(int argc, char** argv)
 
     bool success = parser.parse(argc, argv);
     if (!success)
+    {
         show_error_and_die(parser, chan_istr);
+    }
 
     fs::path dirpath(a_dirpath());
     dirpath = fs::canonical(dirpath);
@@ -62,9 +65,13 @@ int main(int argc, char** argv)
 
     fs::path outputdir;
     if (a_output.is_set)
+    {
         outputdir = fs::absolute(fs::path(a_output()));
+    }
     else
+    {
         outputdir = fs::current_path();
+    }
 
     if (!fs::exists(outputdir) || !fs::is_directory(outputdir))
     {
@@ -92,14 +99,20 @@ int main(int argc, char** argv)
         {
             fs::path subdirpath = dirpath / line;
             if (fs::exists(subdirpath) && fs::is_directory(subdirpath))
+            {
                 subdirs.push_back(subdirpath);
+            }
         }
     }
     else
     {
         for (const auto& entry : fs::directory_iterator(dirpath))
+        {
             if (entry.is_directory())
+            {
                 subdirs.push_back(entry.path());
+            }
+        }
     }
 
     // * Recurse
@@ -107,7 +120,9 @@ int main(int argc, char** argv)
     {
         klog(chan_istr).info("subdir  {}", subdir);
         for (const auto& entry : fs::recursive_directory_iterator(subdir))
+        {
             parse_entry(entry, subdir, registry, filesystem, chan_istr);
+        }
     }
 
     // * Serialize
@@ -116,7 +131,9 @@ int main(int argc, char** argv)
     if (out_txt.is_open())
     {
         for (auto&& [key, value] : registry)
+        {
             out_txt << key << " " << value << std::endl;
+        }
         out_txt.close();
     }
     else
@@ -163,11 +180,14 @@ void register_intern_string(const std::string& intern, std::unordered_map<hash_t
     }
 }
 
-void parse_entry(const fs::directory_entry& entry, const fs::path& base, std::unordered_map<hash_t, std::string>& registry,
-                 kfs::FileSystem& filesystem, const kb::log::Channel& log_channel)
+void parse_entry(const fs::directory_entry& entry, const fs::path& base,
+                 std::unordered_map<hash_t, std::string>& registry, kfs::FileSystem& filesystem,
+                 const kb::log::Channel& log_channel)
 {
     if (!entry.is_regular_file() || !filter(entry))
+    {
         return;
+    }
 
     klog(log_channel).info("reading {}", fs::relative(entry.path(), base));
 

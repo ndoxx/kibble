@@ -1,5 +1,5 @@
-#include "thread/sync.h"
-#include "thread/impl/intrin.h"
+#include "kibble/thread/sync.h"
+#include "kibble/thread/impl/intrin.h"
 
 namespace kb
 {

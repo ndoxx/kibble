@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../policy.h"
-#include "../severity.h"
+#include "kibble/logger/policy.h"
+#include "kibble/logger/severity.h"
 
 namespace kb::log
 {

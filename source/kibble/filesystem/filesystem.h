@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
-#include "../hash/hash.h"
-#include "../util/unordered_dense.h"
-#include "resource_pack.h"
+#include "kibble/hash/hash.h"
+#include "kibble/util/unordered_dense.h"
+#include "kibble/filesystem/resource_pack.h"
 
 namespace fs = std::filesystem;
 

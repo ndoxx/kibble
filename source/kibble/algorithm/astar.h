@@ -1,14 +1,15 @@
 #pragma once
 
-#include "../assert/assert.h"
-#include "../logger/channel.h"
-#include "../math/constexpr_math.h"
 #include <algorithm>
 #include <concepts>
 #include <cstring>
 #include <functional>
-#include <unordered_set>
 #include <vector>
+
+#include "kibble/assert/assert.h"
+#include "kibble/logger/channel.h"
+#include "kibble/math/constexpr_math.h"
+#include "kibble/util/unordered_dense.h"
 
 namespace kb
 {
@@ -600,7 +601,7 @@ private:
 
     std::vector<T> successors_;
     std::vector<Node*> open_set_;
-    std::unordered_set<Node*, NodeHash, NodeKeyEqual> closed_set_;
+    ankerl::unordered_dense::set<Node*, NodeHash, NodeKeyEqual> closed_set_;
 
     const log::Channel* log_channel_{nullptr};
 };

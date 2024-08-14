@@ -1,6 +1,6 @@
-#include "algorithm/astar.h"
-#include "fmt/format.h"
+#include "kibble/algorithm/astar.h"
 
+#include "fmt/core.h"
 #include <cmath>
 #include <numbers>
 #include <random>
@@ -101,8 +101,12 @@ struct NavSearchState
         const auto& neighbors = graph->vertices[vertex_id].neighbors;
 
         for (size_t ii = 0; ii < neighbors.size(); ++ii)
+        {
             if (neighbors[ii].to == successor.vertex_id)
+            {
                 return neighbors[ii].road_dist;
+            }
+        }
 
         return std::numeric_limits<float>::infinity();
     }
@@ -121,8 +125,12 @@ struct NavSearchState
 
         // Avoid returning the previous state (guide search)
         for (size_t ii = 0; ii < neighbors.size(); ++ii)
+        {
             if (parent == nullptr || (parent->vertex_id != neighbors[ii].to))
+            {
                 successors.push_back({graph, neighbors[ii].to});
+            }
+        }
     }
 };
 

@@ -1,16 +1,11 @@
-#include "random/simplex_noise.h"
-#include "random/noise_blender.h"
-#include "random/xor_shift.h"
+#include "kibble/random/simplex_noise.h"
+#include "kibble/random/noise_blender.h"
+#include "kibble/random/xor_shift.h"
 
-#include <array>
 #include <cmath>
 #include <fstream>
-#include <functional>
 #include <glm/glm.hpp>
-#include <limits>
-#include <random>
 #include <sstream>
-#include <vector>
 
 using namespace kb;
 

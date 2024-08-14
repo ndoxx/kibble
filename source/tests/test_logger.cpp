@@ -4,9 +4,10 @@
 #define K_DEBUG // For verbose / debug to actually do something
 #endif
 
-#include "logger/logger.h"
-#include "logger/sink.h"
-#include "math/color_table.h"
+#include "kibble/logger/logger.h"
+#include "kibble/logger/sink.h"
+#include "kibble/math/color_table.h"
+
 #include <catch2/catch_all.hpp>
 
 using namespace kb::log;

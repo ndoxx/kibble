@@ -1,6 +1,7 @@
 #pragma once
 
-#include "policy/policy.h"
+#include "kibble/memory/policy/policy.h"
+
 #include <type_traits>
 
 namespace kb

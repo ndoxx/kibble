@@ -1,9 +1,9 @@
-#include "filesystem/resource_pack.h"
-#include "assert/assert.h"
-#include "filesystem/serialization/std_archiver.h"
-#include "filesystem/serialization/stream_serializer.h"
-#include "filesystem/stream/packfile_stream.h"
-#include "logger/logger.h"
+#include "kibble/filesystem/resource_pack.h"
+#include "kibble/assert/assert.h"
+#include "kibble/filesystem/serialization/std_archiver.h"
+#include "kibble/filesystem/serialization/stream_serializer.h"
+#include "kibble/filesystem/stream/packfile_stream.h"
+#include "kibble/logger/logger.h"
 
 #include <fstream>
 

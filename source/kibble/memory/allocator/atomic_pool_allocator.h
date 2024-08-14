@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../../assert/assert.h"
-#include "../../math/constexpr_math.h"
-#include "../../util/sanitizer.h"
-#include "../heap_area.h"
-#include "../util/alignment.h"
 #include "config.h"
+#include "kibble/assert/assert.h"
+#include "kibble/math/constexpr_math.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/util/alignment.h"
+#include "kibble/util/sanitizer.h"
 
 #include "atomic_queue/atomic_queue.h"
 

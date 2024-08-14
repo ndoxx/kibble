@@ -1,6 +1,6 @@
-#include "memory/policy/memory_tracking_simple.h"
-#include "logger/logger.h"
-#include "memory/heap_area.h"
+#include "kibble/memory/policy/memory_tracking_simple.h"
+#include "kibble/logger/logger.h"
+#include "kibble/memory/heap_area.h"
 
 namespace kb::memory::policy
 {

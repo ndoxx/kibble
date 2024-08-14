@@ -1,4 +1,4 @@
-#include "filesystem/serialization/stream_serializer.h"
+#include "kibble/filesystem/serialization/stream_serializer.h"
 
 namespace kb
 {

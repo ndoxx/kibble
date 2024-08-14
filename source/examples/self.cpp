@@ -1,6 +1,6 @@
-#include "fmt/format.h"
-
 #include "self/self.h"
+
+#include "fmt/core.h"
 
 int main(int argc, char** argv)
 {

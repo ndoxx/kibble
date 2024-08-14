@@ -1,4 +1,4 @@
-#include "math/spline.h"
+#include "kibble/math/spline.h"
 
 namespace kb::math::detail
 {

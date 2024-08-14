@@ -1,9 +1,9 @@
-#include "thread/job/impl/monitor.h"
-#include "assert/assert.h"
-#include "logger/logger.h"
-#include "thread/job/impl/scheduler.h"
-#include "thread/job/impl/worker.h"
-#include "thread/job/job_system.h"
+#include "kibble/thread/job/impl/monitor.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/logger.h"
+#include "kibble/thread/job/impl/scheduler.h"
+#include "kibble/thread/job/impl/worker.h"
+#include "kibble/thread/job/job_system.h"
 
 namespace kb
 {

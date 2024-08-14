@@ -1,13 +1,13 @@
-#include "thread/job/impl/worker.h"
-#include "../../../util/sanitizer.h"
-#include "assert/assert.h"
-#include "thread/job/impl/barrier.h"
-#include "thread/job/impl/job.h"
-#include "thread/job/impl/job_graph.h"
-#include "thread/job/impl/monitor.h"
-#include "thread/job/job_system.h"
-#include "time/clock.h"
-#include "time/instrumentation.h"
+#include "kibble/thread/job/impl/worker.h"
+#include "kibble/assert/assert.h"
+#include "kibble/thread/job/impl/barrier.h"
+#include "kibble/thread/job/impl/job.h"
+#include "kibble/thread/job/impl/job_graph.h"
+#include "kibble/thread/job/impl/monitor.h"
+#include "kibble/thread/job/job_system.h"
+#include "kibble/time/clock.h"
+#include "kibble/time/instrumentation.h"
+#include "kibble/util/sanitizer.h"
 
 namespace kb::th
 {

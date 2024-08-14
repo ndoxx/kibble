@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "../../math/color.h"
+#include "kibble/math/color.h"
 
 namespace kb::memory::util
 {

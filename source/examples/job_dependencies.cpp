@@ -1,5 +1,5 @@
 #include "harness/job_example.h"
-#include "assert/assert.h"
+#include "kibble/assert/assert.h"
 
 using namespace kb;
 
@@ -55,7 +55,9 @@ int JobExampleImpl::impl(size_t nexp, size_t nloads, kb::th::JobSystem& js, cons
                 std::this_thread::sleep_for(std::chrono::milliseconds(load_time[ii]));
                 // Sometimes, loading will fail and an exception will be thrown
                 if (ii == nloads / 2)
+                {
                     throw std::runtime_error("(Fake) Runtime error!");
+                }
                 // For this trivial example we just produce a dummy integer.
                 return int(ii) * 2;
             });

@@ -1,5 +1,6 @@
-#include "random/simplex_noise.h"
-#include "math/constexpr_math.h"
+#include "kibble/random/simplex_noise.h"
+#include "kibble/math/constexpr_math.h"
+
 #include <random>
 #include <tuple>
 

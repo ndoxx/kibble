@@ -1,6 +1,6 @@
-#include "assert/assert.h"
-#include "util/debug_break.h"
-#include "util/stack_trace.h"
+#include "kibble/assert/assert.h"
+#include "kibble/util/debug_break.h"
+#include "kibble/util/stack_trace.h"
 
 #include "fmt/color.h"
 

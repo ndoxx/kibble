@@ -1,5 +1,6 @@
-#include "time/instrumentation.h"
+#include "kibble/time/instrumentation.h"
 #include "config.h"
+
 #include "fmt/core.h"
 #include "fmt/std.h"
 #include <fstream>

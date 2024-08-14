@@ -1,28 +1,28 @@
-#include "thread/job/job_system.h"
-#include "assert/assert.h"
+#include "kibble/thread/job/job_system.h"
 #include "config.h"
-#include "fmt/core.h"
-#include "logger/logger.h"
-#include "math/constexpr_math.h"
-#include "memory/allocator/atomic_pool_allocator.h"
-#include "memory/allocator/linear_allocator.h"
-#include "memory/allocator/pool_allocator.h"
-#include "memory/arena.h"
-#include "memory/heap_area.h"
-#include "memory/policy/thread_guard_multi_thread.h"
-#include "thread/job/impl/barrier.h"
-#include "thread/job/impl/job.h"
-#include "thread/job/impl/job_graph.h"
-#include "thread/job/impl/monitor.h"
-#include "thread/job/impl/scheduler.h"
-#include "thread/job/impl/worker.h"
-#include "time/instrumentation.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/logger.h"
+#include "kibble/math/constexpr_math.h"
+#include "kibble/memory/allocator/atomic_pool_allocator.h"
+#include "kibble/memory/allocator/linear_allocator.h"
+#include "kibble/memory/allocator/pool_allocator.h"
+#include "kibble/memory/arena.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/policy/thread_guard_multi_thread.h"
+#include "kibble/thread/job/impl/barrier.h"
+#include "kibble/thread/job/impl/job.h"
+#include "kibble/thread/job/impl/job_graph.h"
+#include "kibble/thread/job/impl/monitor.h"
+#include "kibble/thread/job/impl/scheduler.h"
+#include "kibble/thread/job/impl/worker.h"
+#include "kibble/time/instrumentation.h"
+#include "kibble/util/internal.h"
+#include "kibble/util/unordered_dense.h"
 
+#include "fmt/core.h"
 #include "fmt/std.h"
-#include "util/internal.h"
 #include <stack>
 #include <thread>
-#include <unordered_set>
 
 namespace kb
 {
@@ -447,7 +447,7 @@ void Task::schedule(barrier_t barrier_id)
     {
         // * Walk job graph
         // Job graphs are DAGs, so we can safely use depth-first search
-        std::unordered_set<Job*> marked;
+        ankerl::unordered_dense::set<Job*> marked;
         depth_first_walk(job_, [barrier_id, &marked](Job* job) {
             if (!marked.contains(job))
             {

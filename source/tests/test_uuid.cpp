@@ -1,4 +1,5 @@
-#include "random/uuid.h"
+#include "kibble/random/uuid.h"
+
 #include <catch2/catch_all.hpp>
 
 /**

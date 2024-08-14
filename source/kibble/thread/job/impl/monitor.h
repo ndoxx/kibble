@@ -2,8 +2,8 @@
 
 #include <array>
 
-#include "../../../util/sanitizer.h"
-#include "thread/job/impl/common.h"
+#include "kibble/util/sanitizer.h"
+#include "kibble/thread/job/impl/common.h"
 
 namespace kb::log
 {

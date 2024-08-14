@@ -1,6 +1,6 @@
-#include "filesystem/save_file.h"
-#include "random/uuid.h"
-#include "random/xor_shift.h"
+#include "kibble/filesystem/save_file.h"
+#include "kibble/random/uuid.h"
+#include "kibble/random/xor_shift.h"
 
 namespace kb::kfs
 {

@@ -1,4 +1,5 @@
-#include "algorithm/endian.h"
+#include "kibble/algorithm/endian.h"
+
 #include <iostream>
 
 using namespace kb;

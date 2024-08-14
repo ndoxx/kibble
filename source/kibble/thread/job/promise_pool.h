@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../util/sparse_set.h"
+#include "kibble/util/sparse_set.h"
 
 #include <mutex>
 

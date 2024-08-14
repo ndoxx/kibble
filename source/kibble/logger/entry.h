@@ -1,7 +1,8 @@
 #pragma once
-#include "../time/clock.h"
-#include "../util/stack_trace.h"
-#include "severity.h"
+#include "kibble/logger/severity.h"
+#include "kibble/time/clock.h"
+#include "kibble/util/stack_trace.h"
+
 #include <optional>
 #include <string>
 

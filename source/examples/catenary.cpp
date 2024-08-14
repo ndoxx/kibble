@@ -1,12 +1,9 @@
-#include "math/catenary.h"
+#include "kibble/math/catenary.h"
 
-#include <array>
 #include <cmath>
 #include <fstream>
-#include <functional>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <limits>
 #include <vector>
 
 using namespace kb;
@@ -60,7 +57,9 @@ int main(int argc, char** argv)
             float xx = (1.f - tt) * x1 + tt * x2;
             ofs << xx << ' ';
             for (size_t jj = 0; jj < ncats; ++jj)
+            {
                 ofs << cats[jj].value(xx) << ' ';
+            }
             ofs << std::endl;
         }
     }

@@ -1,6 +1,6 @@
-#include "random/xor_shift.h"
-#include "assert/assert.h"
-#include "string/string.h"
+#include "kibble/random/xor_shift.h"
+#include "kibble/assert/assert.h"
+#include "kibble/string/string.h"
 
 #include <chrono>
 

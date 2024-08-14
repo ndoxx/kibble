@@ -1,8 +1,9 @@
 #pragma once
-#include "../math/color.h"
-#include "policy.h"
-#include "severity.h"
-#include "sink.h"
+#include "kibble/logger/policy.h"
+#include "kibble/logger/severity.h"
+#include "kibble/logger/sink.h"
+#include "kibble/math/color.h"
+
 #include <memory>
 #include <mutex>
 #include <vector>

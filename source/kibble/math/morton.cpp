@@ -1,9 +1,9 @@
-#include "morton.h"
+#include "kibble/math/morton.h"
 
 #if defined(__BMI2__) || (defined(__AVX2__) && defined(_MSC_VER))
-#include "impl/morton_bmi.h"
+#include "kibble/math/impl/morton_bmi.h"
 #else
-#include "impl/morton_lut.h"
+#include "kibble/math/impl/morton_lut.h"
 #endif
 
 namespace kb::morton

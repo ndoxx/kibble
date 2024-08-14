@@ -1,5 +1,6 @@
-#include "tcp_acceptor.h"
-#include "tcp_stream.h"
+#include "kibble/net/tcp_acceptor.h"
+#include "kibble/net/tcp_stream.h"
+
 #include <arpa/inet.h>
 #include <cstring>
 #include <netdb.h>

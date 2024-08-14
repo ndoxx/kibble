@@ -3,8 +3,8 @@
 #include <cmath>
 #include <random>
 
-#include "random/simplex_noise.h"
-#include "random/xor_shift.h"
+#include "kibble/random/simplex_noise.h"
+#include "kibble/random/xor_shift.h"
 
 using namespace kb;
 

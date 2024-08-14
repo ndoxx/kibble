@@ -1,9 +1,9 @@
-#include "memory/allocator/tlsf_allocator.h"
-#include "memory/allocator/tlsf/impl/block.h"
-#include "memory/allocator/tlsf/impl/control.h"
+#include "kibble/memory/allocator/tlsf_allocator.h"
 #include "config.h"
-#include "memory/heap_area.h"
-#include "memory/util/alignment.h"
+#include "kibble/memory/allocator/tlsf/impl/block.h"
+#include "kibble/memory/allocator/tlsf/impl/control.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/util/alignment.h"
 
 #include "fmt/format.h"
 #include <cstddef>
@@ -42,7 +42,9 @@ size_t adjust_request_size(size_t size, size_t alignment)
 
         // Aligned sized must not exceed block_size_max or we'll go out of bounds on sl_bitmap
         if (aligned < k_block_size_max)
+        {
             adjusted = std::max(aligned, k_block_size_min);
+        }
     }
     return adjusted;
 }
@@ -167,45 +169,65 @@ TLSFAllocator::IntegrityReport TLSFAllocator::check_consistency() const
 
             // Check that first- and second-level lists agree
             if (!fl_map && sl_map)
+            {
                 report.logs.push_back(fmt::format("[{}][{}]: second-level map must be null", ii, jj));
+            }
             if (!sl_map)
             {
                 if (block != &control_->null_block)
+                {
                     report.logs.push_back(fmt::format("[{}][{}]: block list must be null", ii, jj));
+                }
 
                 continue;
             }
 
             // Check that there is at least one free block
             if (!sl_list)
+            {
                 report.logs.push_back(fmt::format("[{}][{}]: no free blocks in second-level map", ii, jj));
+            }
             if (block == &control_->null_block)
+            {
                 report.logs.push_back(fmt::format("[{}][{}]: block should not be null", ii, jj));
+            }
 
             while (block != &control_->null_block)
             {
                 if (!block->is_free())
+                {
                     report.logs.push_back(
                         fmt::format("[{}][{}] @{:016x} : block should be free", ii, jj, size_t(block)));
+                }
                 if (block->is_prev_free())
+                {
                     report.logs.push_back(
                         fmt::format("[{}][{}] @{:016x} : blocks should have coalesced", ii, jj, size_t(block)));
+                }
                 if (block->get_next()->is_free())
+                {
                     report.logs.push_back(fmt::format("[{}][{}] @{:016x} : blocks should have coalesced", ii, jj,
                                                       size_t(block->get_next())));
+                }
                 if (!block->get_next()->is_prev_free())
+                {
                     report.logs.push_back(
                         fmt::format("[{}][{}] @{:016x} : block should be free", ii, jj, size_t(block->get_next())));
+                }
                 if (block->block_size() < k_block_size_min)
+                {
                     report.logs.push_back(fmt::format("[{}][{}] @{:016x} : block is too small", ii, jj, size_t(block)));
+                }
 
                 int fli, sli;
                 mapping_insert(block->block_size(), fli, sli);
 
                 if (fli != ii || sli != jj)
+                {
                     report.logs.push_back(
                         fmt::format("[{}][{}] @{:016x} block size indexed in wrong list (fli={}, sli={})", ii, jj,
                                     size_t(block), fli, sli));
+                }
 
                 block = block->next_free;
             }

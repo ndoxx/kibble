@@ -1,14 +1,11 @@
-#include "cli/terminal.h"
-#include "math/color_table.h"
-#include "math/easings.h"
-#include "string/string.h"
+#include "kibble/cli/terminal.h"
+#include "kibble/math/color_table.h"
+#include "kibble/math/easings.h"
+#include "kibble/string/string.h"
 
 #include <chrono>
 #include <iostream>
-#include <random>
 #include <thread>
-
-namespace fs = std::filesystem;
 
 using namespace kb;
 

@@ -35,10 +35,10 @@
 #include <type_traits>
 #include <vector>
 
-#include "../ctti/ctti.h"
-#include "../logger/logger.h"
-#include "../time/clock.h"
-#include "../util/delegate.h"
+#include "kibble/ctti/ctti.h"
+#include "kibble/logger/logger.h"
+#include "kibble/time/clock.h"
+#include "kibble/util/delegate.h"
 
 namespace kb::log
 {

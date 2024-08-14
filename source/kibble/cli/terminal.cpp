@@ -1,4 +1,4 @@
-#include "cli/terminal.h"
+#include "kibble/cli/terminal.h"
 
 #ifdef __linux__
 #include <sys/ioctl.h>

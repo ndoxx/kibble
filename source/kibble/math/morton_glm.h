@@ -1,6 +1,7 @@
 #pragma once
 
-#include "morton.h"
+#include "kibble/math/morton.h"
+
 #include <glm/glm.hpp>
 #include <type_traits>
 

@@ -1,7 +1,7 @@
-#include "undo/undo.h"
+#include "kibble/undo/undo.h"
+
 #include <catch2/catch_all.hpp>
 #include <iostream>
-#include <numeric>
 
 struct GameObject
 {
@@ -216,11 +216,15 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head before its current position shou
 TEST_CASE_METHOD(UndoRedoFixture, "setting head after its current position should redo iteratively", "[sethead]")
 {
     for (size_t ii = 0; ii < 4; ++ii)
+    {
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii + 1);
+    }
 
     auto state_1 = snap();
     for (size_t ii = 0; ii < 4; ++ii)
+    {
         undo_stack_.undo();
+    }
 
     undo_stack_.set_head(4);
     auto state_2 = snap();
@@ -232,11 +236,15 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting head after its current position shoul
 TEST_CASE_METHOD(UndoRedoFixture, "setting head after count should only set it to count", "[sethead]")
 {
     for (size_t ii = 0; ii < 4; ++ii)
+    {
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii + 1);
+    }
 
     auto state_1 = snap();
     for (size_t ii = 0; ii < 4; ++ii)
+    {
         undo_stack_.undo();
+    }
 
     undo_stack_.set_head(42);
     auto state_2 = snap();
@@ -289,7 +297,9 @@ TEST_CASE_METHOD(UndoRedoFixture, "pushing a command in a full stack should pop 
 
     // Can only roll back so far
     for (size_t ii = 0; ii < undo_limit + 1; ++ii)
+    {
         undo_stack_.undo();
+    }
     auto state_4 = snap();
 
     REQUIRE(state_4.go_state == state_1.go_state);
@@ -306,7 +316,9 @@ TEST_CASE_METHOD(UndoRedoFixture, "setting the undo limit on a non empty stack s
 TEST_CASE_METHOD(UndoRedoFixture, "clearing stack should reset head and count to 0", "[clear]")
 {
     for (size_t ii = 0; ii < 8; ++ii)
+    {
         undo_stack_.push<GOMoveUndoCommand>(&go_, ii);
+    }
 
     undo_stack_.clear();
     REQUIRE(undo_stack_.head() == 0);
@@ -501,7 +513,9 @@ public:
     {
         increment_ += static_cast<const RotateCommand&>(cmd).increment_;
         if (std::fabs(increment_) < EPSILON)
+        {
             set_obsolete();
+        }
         return true;
     }
 
@@ -896,7 +910,9 @@ public:
         // reindex
         names_.clear();
         for (size_t ii = 0; ii < bufs_.size(); ++ii)
+        {
             names_.insert({bufs_[ii].name, ii});
+        }
     }
 
 protected:

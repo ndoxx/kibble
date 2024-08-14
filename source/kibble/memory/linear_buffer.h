@@ -3,10 +3,10 @@
 #include <cstring>
 #include <string>
 
-#include "../assert/assert.h"
-#include "../logger/logger.h"
-#include "heap_area.h"
-#include "policy/policy.h"
+#include "kibble/assert/assert.h"
+#include "kibble/logger/logger.h"
+#include "kibble/memory/heap_area.h"
+#include "kibble/memory/policy/policy.h"
 
 namespace kb::memory
 {

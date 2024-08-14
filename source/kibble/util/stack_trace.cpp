@@ -1,4 +1,5 @@
-#include "stack_trace.h"
+#include "kibble/util/stack_trace.h"
+
 #include "backward-cpp/backward.hpp"
 #include <sstream>
 

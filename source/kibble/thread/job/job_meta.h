@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../../logger/channel.h"
+#include "kibble/logger/channel.h"
+
 #include <cstdint>
 #include <string>
 
