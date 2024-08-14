@@ -6,6 +6,7 @@
   </a>
 
 <h3 align="center">Kibble::Changelog</h3>
+</div>
 
 
 # ver 1.2.4
