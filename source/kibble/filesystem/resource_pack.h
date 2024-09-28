@@ -111,7 +111,7 @@ public:
      *
      * @param filepath Path to the pack file
      */
-    PackFile(std::shared_ptr<std::istream> stream);
+    PackFile(std::unique_ptr<std::istream> stream);
 
     /**
      * @brief Get an input stream pointer to a file.
@@ -119,19 +119,19 @@ public:
      * @param path Relative path of the file inside the pack
      * @return Input stream pointer, nullptr if not found
      */
-    std::shared_ptr<std::istream> get_input_stream(kb::hash_t key) const;
+    std::unique_ptr<std::istream> get_input_stream(kb::hash_t key) const;
 
     // clang-format off
     inline auto begin() const { return pak_.index.begin(); }
     inline auto end() const   { return pak_.index.end(); }
-    inline std::shared_ptr<std::istream> get_input_stream(std::string_view sv) const { return get_input_stream(H_(sv)); };
+    inline std::unique_ptr<std::istream> get_input_stream(std::string_view sv) const { return get_input_stream(H_(sv)); };
     inline const auto& get_entry(kb::hash_t key) const { return pak_.index.at(key); }
     inline const auto& get_entry(std::string_view sv) const { return pak_.index.at(H_(sv)); }
     // clang-format on
 
 private:
     PackFileIndex pak_;
-    std::shared_ptr<std::istream> base_stream_;
+    std::unique_ptr<std::istream> base_stream_;
 };
 
 } // namespace kb::kfs

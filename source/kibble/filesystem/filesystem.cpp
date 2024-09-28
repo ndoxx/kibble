@@ -376,7 +376,7 @@ bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& a
     return true;
 }
 
-bool FileSystem::alias_packfile(std::shared_ptr<std::istream> pack_stream, const std::string& alias)
+bool FileSystem::alias_packfile(IStreamPtr pack_stream, const std::string& alias)
 {
     if (pack_stream == nullptr || !(*pack_stream))
     {
@@ -387,11 +387,12 @@ bool FileSystem::alias_packfile(std::shared_ptr<std::istream> pack_stream, const
     hash_t alias_hash = H_(alias);
     if (auto findit = aliases_.find(alias_hash); findit != aliases_.end())
     {
-        findit->second.pak = std::make_unique<PackFile>(pack_stream);
+        findit->second.pak = std::make_unique<PackFile>(std::move(pack_stream));
     }
     else
     {
-        aliases_[alias_hash] = AliasEntry{.alias = alias, .base = "", .pak = std::make_unique<PackFile>(pack_stream)};
+        aliases_[alias_hash] =
+            AliasEntry{.alias = alias, .base = "", .pak = std::make_unique<PackFile>(std::move(pack_stream))};
     }
 
     klog(log_channel_).uid("FileSystem").debug("Added pack alias:\n{}://", alias);
@@ -486,7 +487,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
         mode |= std::ios::binary;
     }
 
-    std::shared_ptr<std::ifstream> pifs(new std::ifstream(filepath, mode));
+    std::unique_ptr<std::ifstream> pifs = std::make_unique<std::ifstream>(filepath, mode);
     K_ASSERT(pifs->is_open(), "Unable to open input file: {}", filepath.string());
     return pifs;
 }

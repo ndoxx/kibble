@@ -47,7 +47,8 @@ int main(int argc, char** argv)
     // klog(chan).info("Third party app data directory:\n{}", filesystem.get_app_data_directory("vendor", "appname"));
 
     const auto& self_dir = filesystem.get_self_directory();
-    filesystem.alias_directory(self_dir / "../../data", "data");
+    klog(chan).info("Self directory:     {}", self_dir);
+    filesystem.alias_directory(self_dir / "../../../../data", "data");
 
     // Build pack file
     {
@@ -59,9 +60,9 @@ int main(int argc, char** argv)
     }
 
     // Alias pack file
-    filesystem.alias_directory(self_dir / "../../data/iotest/resources", "resources"); // Not required
+    filesystem.alias_directory(self_dir / "../../../../data/iotest/resources", "resources");
     auto pifs = filesystem.get_input_stream("data://iotest/resources.kpak");
-    filesystem.alias_packfile(pifs, "resources");
+    filesystem.alias_packfile(std::move(pifs), "resources");
 
     {
         auto retrieved = filesystem.get_file_as_string("resources://text_file.txt");

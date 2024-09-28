@@ -144,18 +144,18 @@ size_t PackFileBuilder::export_size_bytes() const
     return sizeof(Header) + map_size + blob_size;
 }
 
-PackFile::PackFile(std::shared_ptr<std::istream> stream) : base_stream_(stream)
+PackFile::PackFile(std::unique_ptr<std::istream> stream) : base_stream_(std::move(stream))
 {
     kb::StreamDeserializer des(*base_stream_);
     [[maybe_unused]] bool success = des.read(pak_);
     K_ASSERT(success, "Failed to read pack file from stream.");
 }
 
-std::shared_ptr<std::istream> PackFile::get_input_stream(kb::hash_t key) const
+std::unique_ptr<std::istream> PackFile::get_input_stream(kb::hash_t key) const
 {
     if (auto findit = pak_.index.find(key); findit != pak_.index.end())
     {
-        return std::make_shared<PackFileStream>(*base_stream_, findit->second.offset, findit->second.size);
+        return std::make_unique<PackFileStream>(*base_stream_, findit->second.offset, findit->second.size);
     }
     return nullptr;
 }

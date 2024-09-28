@@ -18,7 +18,7 @@ class Channel;
 namespace kb::kfs
 {
 
-using IStreamPtr = std::shared_ptr<std::istream>;
+using IStreamPtr = std::unique_ptr<std::istream>;
 
 /**
  * @brief This class provides powerful and varied file interaction capabilities thanks to a variety of concepts like
@@ -68,7 +68,7 @@ public:
      * @param alias Alias name
      * @return success
      */
-    bool alias_packfile(std::shared_ptr<std::istream> pack_stream, const std::string& alias);
+    bool alias_packfile(IStreamPtr pack_stream, const std::string& alias);
 
     /**
      * @brief Return an absolute lexically normal path to a file referenced by a universal path string
@@ -253,7 +253,7 @@ public:
      *
      * @param unipath Universal path to a file
      * @param binary if true, the stream will be in binary mode
-     * @return IStreamPtr A shared pointer to an input stream
+     * @return IStreamPtr A unique pointer to an input stream
      */
     IStreamPtr get_input_stream(const std::string& unipath, bool binary = true) const;
 
