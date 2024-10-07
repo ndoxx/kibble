@@ -240,6 +240,31 @@ inline hash_t h_concat(Args&&... args)
     return H_(concat(std::forward<Args>(args)...));
 }
 
+/**
+ * @brief Replace contiguous substrings of a repeated character by a single occurrence
+ *
+ * @param input in/out string
+ * @param target target character
+ */
+void collapse(std::string& input, char target);
+
+/**
+ * @brief Copy a string to a fixed size char array
+ *
+ * @tparam N array size
+ * @param src source string
+ * @param dst destination fixed-size char array
+ * @return the number of truncated characters (0 == everything went fine)
+ */
+template <unsigned int N>
+static inline size_t copy_to_char_array(const std::string& src, char (&dst)[N])
+{
+    size_t str_size = std::min(src.size(), sizeof(dst) - 1);
+    strncpy(dst, src.c_str(), str_size);
+    dst[str_size] = '\0';
+    return src.size() - str_size;
+}
+
 namespace rx
 {
 /**

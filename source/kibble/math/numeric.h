@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -68,6 +70,34 @@ template <typename FloatT = float>
 inline void exponential_moving_average(FloatT& accumulator, FloatT new_value, FloatT alpha)
 {
     accumulator = (alpha * new_value) + (FloatT(1) - alpha) * accumulator;
+}
+
+/**
+ * @brief Calculate a moving maximum that decays over time
+ *
+ * @note The value computed by this function will often be slightly lower than the actual hard maximum in the dataset
+ *
+ * @tparam FloatT
+ * @param current_max A reference to the current maximum value, which will be updated
+ * @param new_value The new value to consider
+ * @param delta_time The time elapsed since the last update
+ * @param half_life The half-life for the decay, which determines how quickly the maximum decreases over time
+ * @param smoothing_factor Determines how quickly current_max approaches the hard maximum (0 = no smoothing, more
+ * responsive, more jittery, 1 = max smoothing, less responsive)
+ * @return requires
+ */
+template <typename FloatT = float>
+    requires std::floating_point<FloatT>
+void moving_maximum(FloatT& current_max, FloatT new_value, FloatT delta_time, FloatT half_life, FloatT smoothing_factor)
+{
+    // Decay the current maximum based on time elapsed since last update
+    FloatT decay_rate = std::log(FloatT(2)) / half_life;
+    current_max *= std::exp(-decay_rate * delta_time);
+    // Calculate the potential new maximum
+    FloatT potential_max = std::max(current_max, new_value);
+    // Apply smoothing between the current max and the potential new max
+    smoothing_factor = std::clamp(smoothing_factor, 0.f, 0.95f);
+    current_max = current_max + (FloatT(1) - smoothing_factor) * (potential_max - current_max);
 }
 
 } // namespace math

@@ -172,5 +172,27 @@ std::string base64_decode(const std::string data)
     return out;
 }
 
+void collapse(std::string& input, char target)
+{
+    // Use iterators to track read and write positions
+    auto read = input.begin();
+    auto write = input.begin();
+
+    // Loop through characters
+    for (char c : input)
+    {
+        // If not a repeated underscore, copy and advance both iterators
+        if (c != '_' || (read != input.begin() && *(read - 1) != target))
+        {
+            *write = c;
+            ++write;
+        }
+        ++read;
+    }
+
+    // Truncate the string to the write position
+    input = std::string(input.begin(), write);
+}
+
 } // namespace su
 } // namespace kb
