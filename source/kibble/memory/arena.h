@@ -121,6 +121,11 @@ public:
         const size_t user_offset = k_front_overhead + offset;
 
         uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, user_offset));
+        if (begin == nullptr)
+        {
+            // Following operations may write to null if we don't return now.
+            return nullptr;
+        }
 
         uint8_t* current = begin;
 

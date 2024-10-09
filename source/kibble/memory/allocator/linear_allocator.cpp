@@ -29,8 +29,8 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     // Out of memory
     if (current + padding + size > end_)
     {
-        K_FAIL("[LinearAllocator] Out of memory!\n  -> padded size: {}, exceeded by: {}", padding + size,
-               (std::size_t(current) + padding + size) - std::size_t(end_));
+        K_ASSERT(false, "[LinearAllocator] Out of memory!\n  -> padded size: {}, exceeded by: {}", padding + size,
+                 (std::size_t(current) + padding + size) - std::size_t(end_));
         return nullptr;
     }
 

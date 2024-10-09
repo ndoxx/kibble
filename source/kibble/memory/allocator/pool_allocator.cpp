@@ -24,10 +24,16 @@ PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t de
 void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t alignment, std::size_t offset)
 {
     uint8_t* next = static_cast<uint8_t*>(free_list_.acquire());
+
+    if (next == nullptr)
+    {
+        K_ASSERT(false, "[PoolAllocator] Out of memory!\n  -> max nodes: {}", max_nodes_);
+        return nullptr;
+    }
+
     // We want the user pointer (at next+offset) to be aligned.
     // Check if alignment is required. If so, find the next aligned memory address.
     std::size_t padding = alignment_padding(next + offset, alignment);
-
     K_ASSERT(padding + size <= node_size_,
              "[PoolAllocator] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
              "-> node size: {}\n  -> data size: {}\n  -> offset: {}\n  -> alignment: {}\n  -> padding: {}",
