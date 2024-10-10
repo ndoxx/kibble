@@ -36,12 +36,10 @@ public:
      */
     virtual void submit(const LogEntry&, const ChannelPresentation&) = 0;
 
-    virtual void flush() const
-    {
-    }
+    virtual void flush() const {};
 
     /**
-     * @brief Mutex-synchronize submission
+     * @brief Mutex-synchronized submission
      *
      * @param e
      * @param p

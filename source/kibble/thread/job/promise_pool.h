@@ -18,7 +18,6 @@ private:
 public:
     T* allocate()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         if (handles_.size() >= PoolSize)
         {
             throw std::bad_alloc();
@@ -29,9 +28,13 @@ public:
 
     void deallocate(T* ptr)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         uint32_t index = uint32_t(reinterpret_cast<char*>(ptr) - memory_) / sizeof(T);
         handles_.release(index);
+    }
+
+    inline auto& mutex()
+    {
+        return mutex_;
     }
 };
 
@@ -56,6 +59,7 @@ public:
 
     T* allocate(std::size_t n)
     {
+        std::lock_guard<std::mutex> lock(pool().mutex());
         if (n != 1)
         {
             throw std::bad_alloc();
@@ -65,6 +69,7 @@ public:
 
     void deallocate(T* p, std::size_t n)
     {
+        std::lock_guard<std::mutex> lock(pool().mutex());
         if (n != 1)
         {
             return;

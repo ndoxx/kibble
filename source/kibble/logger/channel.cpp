@@ -69,7 +69,8 @@ void Channel::submit(LogEntry&& entry) const
     {
         for (auto& psink : sinks_)
         {
-            psink->submit_lock(entry, presentation_);
+            // psink->submit_lock(entry, presentation_);
+            psink->submit(entry, presentation_);
         }
     }
     else
