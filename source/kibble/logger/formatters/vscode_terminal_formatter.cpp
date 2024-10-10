@@ -48,7 +48,9 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
 {
     if (e.raw_text)
     {
-        return fmt::print("{}\n", e.message);
+        fmt::print("{}\n", e.message);
+        std::fflush(stdout);
+        return;
     }
 
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
@@ -85,6 +87,8 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
     {
         fmt::print("{}", e.stack_trace->format());
     }
+
+    std::fflush(stdout);
 }
 
 } // namespace kb::log
