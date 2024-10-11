@@ -34,12 +34,17 @@ struct L1_ALIGN SharedState
 {
     /// Number of tasks left
     L1_ALIGN std::atomic<uint64_t> pending{0};
-    /// Flag to signal workers when they should stop and join
-    L1_ALIGN std::atomic<bool> running{true};
     /// To wake worker threads
     L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle
     L1_ALIGN std::mutex wake_mutex;
+};
+
+enum class WorkerTerminationStatus : uint32_t
+{
+    Normal = 0,
+    Forceful,
+    Failed
 };
 
 class JobSystem;
@@ -93,7 +98,7 @@ public:
      * @brief Join this worker's thread.
      *
      */
-    void join();
+    WorkerTerminationStatus terminate_and_join(std::chrono::seconds timeout = std::chrono::seconds(1));
 
     /**
      * @brief The Scheduler calls this function to enqueue a job in one of the queues.
@@ -188,6 +193,11 @@ public:
         return activity_;
     }
 
+    /**
+     * @internal
+     * @brief Panic mode: perform all essential jobs in the private queue
+     *
+     */
     void panic();
 
 private:
@@ -257,6 +267,7 @@ private:
     JobSystem* js_{nullptr};
     SharedState* ss_;
     std::atomic<State> state_;
+    std::atomic<bool> should_terminate_{false};
     std::thread thread_;
 
     WorkerActivity activity_;

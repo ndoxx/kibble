@@ -198,18 +198,33 @@ void JobSystem::shutdown()
     klog(log_channel_).uid("JobSystem").debug("Waiting for jobs to finish.");
     wait();
 
-    // Notify all threads they are going to die
-    shared_state_->running.store(false, std::memory_order_release);
-    shared_state_->cv_wake.notify_all();
+    std::vector<WorkerTerminationStatus> termination_status(threads_count_);
     for (size_t idx = 0; idx < threads_count_; ++idx)
     {
-        workers_[idx].join();
+        termination_status[idx] = workers_[idx].terminate_and_join();
     }
 
     // We just killed all threads, including the logger thread
     // So we must go back to sync mode
     kb::log::Channel::set_async(nullptr);
-    klog(log_channel_).uid("JobSystem").debug("All threads have joined.");
+
+    // Worker #0 is the foreground (main) thread, its termination status is always Normal
+    for (size_t idx = 1; idx < termination_status.size(); ++idx)
+    {
+        WorkerTerminationStatus status = termination_status[idx];
+        if (status == WorkerTerminationStatus::Normal)
+        {
+            klog(log_channel_).uid("JobSystem").info("Worker #{} joined gracefully.", idx);
+        }
+        else if (status == WorkerTerminationStatus::Forceful)
+        {
+            klog(log_channel_).uid("JobSystem").warn("Worker #{} was forcefully terminated.", idx);
+        }
+        else
+        {
+            klog(log_channel_).uid("JobSystem").error("Worker #{} failed to join.", idx);
+        }
+    }
 
 #ifdef KB_JOB_SYSTEM_PROFILING
     // Log worker statistics
@@ -383,11 +398,9 @@ void JobSystem::abort()
     // Join all workers as fast as possible
     try
     {
-        shared_state_->running.store(false, std::memory_order_release);
-        shared_state_->cv_wake.notify_all();
         for (size_t idx = 0; idx < threads_count_; ++idx)
         {
-            workers_[idx].join();
+            workers_[idx].terminate_and_join();
         }
     }
     catch (const std::exception&)

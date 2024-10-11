@@ -9,6 +9,12 @@
 #include "kibble/time/instrumentation.h"
 #include "kibble/util/sanitizer.h"
 
+#ifdef _WIN32
+#include <processthreadsapi.h>
+#else
+#include <pthread.h>
+#endif
+
 namespace kb::th
 {
 
@@ -38,12 +44,58 @@ void WorkerThread::spawn(JobSystem* js, SharedState* ss, const WorkerProperties&
     }
 }
 
-void WorkerThread::join()
+WorkerTerminationStatus WorkerThread::terminate_and_join(std::chrono::seconds timeout)
 {
-    if (is_background())
+    if (!is_background())
     {
-        thread_.join();
+        // Nothing to do for foreground thread
+        return WorkerTerminationStatus::Normal;
     }
+
+    should_terminate_.store(true, std::memory_order_release);
+
+    // Try to acquire the wake_mutex
+    {
+        std::unique_lock<std::mutex> lock(ss_->wake_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+        {
+            // If we got the lock, we can notify directly
+            ss_->cv_wake.notify_all();
+        }
+        // If we didn't get the lock, the worker might be stuck inside the critical section
+    }
+
+    // Wait for the thread to join or timeout
+    auto start = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start < timeout)
+    {
+        if (state_.load(std::memory_order_acquire) == State::Stopping)
+        {
+            thread_.join();
+            return WorkerTerminationStatus::Normal;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Forceful termination
+#ifdef _WIN32
+    if (TerminateThread(thread_.native_handle(), 0))
+    {
+        return WorkerTerminationStatus::Forceful;
+    }
+#else
+    if (pthread_cancel(thread_.native_handle()) == 0)
+    {
+        void* res;
+        int s = pthread_join(thread_.native_handle(), &res);
+        if (s == 0 && res == PTHREAD_CANCELED)
+        {
+            return WorkerTerminationStatus::Forceful;
+        }
+    }
+#endif
+
+    return WorkerTerminationStatus::Failed;
 }
 
 void WorkerThread::submit(Job* job, bool stealable)
@@ -57,7 +109,7 @@ void WorkerThread::run()
 {
     K_ASSERT(is_background(), "run() should not be called in the main thread.");
 
-    while (ss_->running.load(std::memory_order_acquire))
+    while (!should_terminate_.load(std::memory_order_acquire))
     {
         state_.store(State::Running, std::memory_order_release);
 
@@ -85,7 +137,7 @@ void WorkerThread::run()
             This avoids another deadlock on exit.
         */
         ss_->cv_wake.wait(lock,
-                          [this]() { return had_pending_jobs() || !ss_->running.load(std::memory_order_acquire); });
+                          [this]() { return had_pending_jobs() || should_terminate_.load(std::memory_order_acquire); });
 
 #ifdef KB_JOB_SYSTEM_PROFILING
         activity_.idle_time_us += clk.get_elapsed_time().count();
