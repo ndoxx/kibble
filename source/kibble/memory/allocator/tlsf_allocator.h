@@ -22,8 +22,10 @@ class HeapArea;
  * For the theory, see:
  * https://www.researchgate.net/publication/4080369_TLSF_A_new_dynamic_memory_allocator_for_real-time_systems
  *
- * This is an experimental port of the C implementation by Matthew Conte, see:
+ * This is a port of the C implementation by Matthew Conte, see:
  * https://github.com/mattconte/tlsf
+ *
+ * Although I'd still consider it experimental, it is currently in use and running well in my game engine.
  *
  * Original code is released under BSD license.
  * Changes are:
@@ -32,10 +34,7 @@ class HeapArea;
  *      - The implementation is split into multiple files
  *      - The interface fits my memory arena requirements
  *      - Only one pool allowed
- *
- * @todo This is still experimental and incomplete:
- *      - Implement correct alignment strategy
- *      - Implement reallocate
+ *      - Aligned allocation was redesigned to align the user pointer
  *
  */
 class TLSFAllocator
@@ -51,11 +50,11 @@ public:
     TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t pool_size);
 
     /**
-     * @brief Allocate an 8B-aligned block of memory of a given size.
+     * @brief Allocate a block of memory of a given size, with arbitrary >= 8B alignment.
      *
      * @param size Minimum size to allocate
-     * @param alignment UNUSED FOR NOW
-     * @param offset UNUSED FOR NOW
+     * @param alignment Alignment constraint, such that `(returned_pointer + offset) % alignment == 0`
+     * @param offset Offset to the user pointer
      * @return void* Pointer to the beginning of the block
      */
     void* allocate(std::size_t size, std::size_t alignment, std::size_t offset);
@@ -64,13 +63,13 @@ public:
      * @brief Try to extend memory block in place if possible, reallocate a bigger block elsewhere and copy data if not
      * possible.
      *
-     * @note Passing 0 in the size argument is equivalent to calling deallocate()
      * @note Passing a null pointer is equivalent to calling allocate()
+     * @note Passing 0 in the size argument is equivalent to calling deallocate()
      *
-     * @param ptr
-     * @param size
-     * @param alignment
-     * @param offset
+     * @param ptr Existing user pointer or nullptr
+     * @param size Minimum size to allocate
+     * @param alignment Alignment constraint, such that `(returned_pointer + offset) % alignment == 0`
+     * @param offset Offset to the user pointer
      * @return void*
      */
     void* reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset);
@@ -118,8 +117,8 @@ private:
      * @internal
      * @brief Helper function to initialize a pool after the control structure
      *
-     * @param begin
-     * @param size
+     * @param begin Pool begin address, after control structure
+     * @param size Pool size in bytes
      */
     void create_pool(void* begin, std::size_t size);
 
@@ -129,11 +128,9 @@ private:
      *
      * This is called by allocate() when required alignment is greater than base alignment.
      *
-     * @todo Take offset into account
-     *
-     * @param size
-     * @param alignment
-     * @param offset
+     * @param size Minimum size to allocate
+     * @param alignment Alignment constraint, such that `(returned_pointer + offset) % alignment == 0`
+     * @param offset Offset to the user pointer
      * @return void*
      */
     void* allocate_aligned(std::size_t size, std::size_t alignment, std::size_t offset);

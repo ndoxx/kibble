@@ -127,27 +127,27 @@ public:
             return nullptr;
         }
 
-        uint8_t* current = begin;
+        uint8_t* base_ptr = begin;
 
         // Put front sentinel for overwrite detection
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
         {
-            bounds_checker_.put_sentinel_front(current);
-            current += policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT;
+            bounds_checker_.put_sentinel_front(base_ptr);
+            base_ptr += policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT;
         }
 
         // Save allocation size
-        *(reinterpret_cast<SizeType*>(current)) = static_cast<SizeType>(decorated_size);
-        current += sizeof(SizeType);
+        *(reinterpret_cast<SizeType*>(base_ptr)) = static_cast<SizeType>(decorated_size);
+        base_ptr += sizeof(SizeType);
 
         // More bookkeeping
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
         {
-            memory_tagger_.tag_allocation(current, size);
+            memory_tagger_.tag_allocation(base_ptr, size);
         }
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
         {
-            bounds_checker_.put_sentinel_back(current + size);
+            bounds_checker_.put_sentinel_back(base_ptr + size);
         }
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
         {
@@ -160,7 +160,7 @@ public:
             thread_guard_.leave();
         }
 
-        return current;
+        return base_ptr;
     }
 
     /**

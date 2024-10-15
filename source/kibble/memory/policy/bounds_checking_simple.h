@@ -18,9 +18,10 @@ namespace kb::memory::policy
 class SimpleBoundsChecking
 {
 public:
-    static constexpr size_t k_sentinel_size = 8;
-    static constexpr size_t k_sentinel_front = 0xf0f0f0f0f0f0f0f0;
-    static constexpr size_t k_sentinel_back = 0x0f0f0f0f0f0f0f0f;
+    using sentinel_t = size_t;
+    static constexpr size_t k_sentinel_size = sizeof(sentinel_t);
+    static constexpr sentinel_t k_sentinel_front = 0xf0f0f0f0f0f0f0f0;
+    static constexpr sentinel_t k_sentinel_back = 0x0f0f0f0f0f0f0f0f;
 
     /**
      * @brief Write a 4-bytes front sentinel starting at ptr
@@ -49,7 +50,7 @@ public:
      */
     inline void check_sentinel_front(uint8_t* ptr) const
     {
-        K_CHECK(*reinterpret_cast<size_t*>(ptr) == k_sentinel_front, "Memory overwrite detected (front) at: 0x{:016x}",
+        K_CHECK(*reinterpret_cast<sentinel_t*>(ptr) == k_sentinel_front, "Memory overwrite detected (front) at: 0x{:016x}",
                 reinterpret_cast<size_t>(ptr));
     }
 
@@ -60,7 +61,7 @@ public:
      */
     inline void check_sentinel_back(uint8_t* ptr) const
     {
-        K_CHECK(*reinterpret_cast<size_t*>(ptr) == 0x0f0f0f0f0f0f0f0f, "Memory overwrite detected (back) at: 0x{:016x}",
+        K_CHECK(*reinterpret_cast<sentinel_t*>(ptr) == k_sentinel_back, "Memory overwrite detected (back) at: 0x{:016x}",
                 reinterpret_cast<size_t>(ptr));
     }
 };
