@@ -67,7 +67,7 @@ public:
      *
      * @return void*
      */
-    inline void* begin()
+    inline void* begin() const
     {
         return begin_;
     }
@@ -77,7 +77,7 @@ public:
      *
      * @return void*
      */
-    inline void* end()
+    inline void* end() const
     {
         return begin_ + size_ + 1;
     }
@@ -132,6 +132,13 @@ public:
     {
         return items_;
     }
+
+    // clang-format off
+    /// @brief Get total size in bytes
+    inline size_t total_size() const{ return size_; }
+    /// @brief Get remaining size in bytes
+    inline size_t free_size() const{ return static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_); }
+    // clang-format on
 
     /**
      * @brief Fill this whole area with a specified byte value.

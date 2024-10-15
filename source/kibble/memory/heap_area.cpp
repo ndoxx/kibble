@@ -106,8 +106,7 @@ Padding:   {}
 Remaining: {}
 Address:   {:#x})",
             (debug_name ? debug_name : "ANON"), su::human_size(size), su::human_size(padding),
-            su::human_size(static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_)),
-            reinterpret_cast<uint64_t>(head_ + padding));
+            su::human_size(free_size()), reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;
 }
