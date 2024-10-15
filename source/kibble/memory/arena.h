@@ -118,36 +118,35 @@ public:
 
         // Compute size after decoration and allocate
         const size_t decorated_size = k_allocation_overhead + size;
-        const size_t user_offset = k_front_overhead + offset;
+        offset += k_front_overhead;
 
-        uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, user_offset));
+        uint8_t* begin = static_cast<uint8_t*>(allocator_.allocate(decorated_size, alignment, offset));
         if (begin == nullptr)
         {
             // Following operations may write to null if we don't return now.
             return nullptr;
         }
 
-        uint8_t* base_ptr = begin;
-
         // Put front sentinel for overwrite detection
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
         {
-            bounds_checker_.put_sentinel_front(base_ptr);
-            base_ptr += policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT;
+            bounds_checker_.put_sentinel_front(begin);
         }
 
         // Save allocation size
-        *(reinterpret_cast<SizeType*>(base_ptr)) = static_cast<SizeType>(decorated_size);
-        base_ptr += sizeof(SizeType);
+        *(reinterpret_cast<SizeType*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT)) =
+            static_cast<SizeType>(decorated_size);
+
+        uint8_t* user_ptr = begin + k_front_overhead;
 
         // More bookkeeping
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
         {
-            memory_tagger_.tag_allocation(base_ptr, size);
+            memory_tagger_.tag_allocation(user_ptr, size);
         }
         if constexpr (policy::is_active_bounds_checking_policy<BoundsCheckerT>)
         {
-            bounds_checker_.put_sentinel_back(base_ptr + size);
+            bounds_checker_.put_sentinel_back(user_ptr + size);
         }
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
         {
@@ -160,7 +159,7 @@ public:
             thread_guard_.leave();
         }
 
-        return base_ptr;
+        return user_ptr;
     }
 
     /**

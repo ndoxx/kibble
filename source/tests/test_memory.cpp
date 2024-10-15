@@ -31,6 +31,13 @@ struct POD
     // 7 bytes padding here for alignment of struct
 };
 
+void set_POD(POD* pod)
+{
+    pod->a = 0x01234567;
+    pod->b = 0x0123456789abcdef;
+    pod->c = 0x01;
+}
+
 struct NonPOD
 {
     NonPOD() = default;
@@ -468,6 +475,8 @@ TEST_CASE_METHOD(TLSFArenaFixture, "multiple allocations / deallocations", "[mem
 {
     uint32_t* some_int = K_NEW(uint32_t, arena);
     POD* some_pod = K_NEW(POD, arena);
+    *some_int = 0x42424242;
+    set_POD(some_pod);
     check_integrity();
 
     // display_pool();

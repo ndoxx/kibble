@@ -13,7 +13,7 @@ namespace memory
 PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t max_nodes,
                              std::size_t user_size, std::size_t max_alignment)
 {
-    node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size), int32_t(max_alignment));
+    node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size + max_alignment), int32_t(max_alignment));
     max_nodes_ = max_nodes;
     auto range = area.require_block(node_size_ * max_nodes_, debug_name);
     begin_ = static_cast<uint8_t*>(range.first);
