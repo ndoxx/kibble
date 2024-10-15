@@ -10,6 +10,7 @@ namespace memory
 {
 
 class HeapArea;
+class MemoryArenaBase;
 
 /**
  * @brief Used to allocate nodes of a fixed size.
@@ -28,14 +29,14 @@ public:
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
-     * @param debug_name name of this allocator, for debug purposes
+     * @param arena arena base pointer
      * @param area reference to the memory resource the allocator will reserve a block from
-     * @param decoration_size size of additional data at the beginning of each node
+     * @param decoration_size allocation overhead
      * @param max_nodes maximum amount of nodes in the memory pool
      * @param user_size maximum size of object allocated by the user
      * @param max_alignment maximum alignment requirement
      */
-    PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t max_nodes,
+    PoolAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size, std::size_t max_nodes,
                   std::size_t user_size, std::size_t max_alignment);
 
     /**
@@ -116,9 +117,17 @@ public:
     {
     }
 
+    // clang-format off
+    /// @brief Get total size in bytes
+    inline size_t total_size() const{ return static_cast<size_t>(end() - begin()); }
+    /// @brief Get used size in bytes
+    inline size_t used_size() const{ return node_count_ * node_size_; }
+    // clang-format on
+
 private:
-    std::size_t node_size_;
-    std::size_t max_nodes_;
+    size_t node_size_{0};
+    size_t max_nodes_{0};
+    size_t node_count_{0};
     uint8_t* begin_;
     uint8_t* end_;
     Freelist free_list_;

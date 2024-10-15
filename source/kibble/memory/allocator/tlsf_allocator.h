@@ -14,6 +14,7 @@ struct Control;
 }
 
 class HeapArea;
+class MemoryArenaBase;
 
 /**
  * @brief Two-Level Segregated Fit memory allocator.
@@ -43,11 +44,12 @@ public:
     /**
      * @brief Reserve a block on a HeapArea and use it for TLSF allocation.
      *
+     * @param arena arena base pointer
      * @param area reference to the memory resource the allocator will reserve a block from
-     * @param debug_name name of this allocator, for debug purposes
+     * @param decoration_size allocation overhead
      * @param pool_size size of the allocation pool
      */
-    TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t pool_size);
+    TLSFAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size, std::size_t pool_size);
 
     /**
      * @brief Allocate a block of memory of a given size, with arbitrary >= 8B alignment.
@@ -82,6 +84,14 @@ public:
     void deallocate(void* ptr);
 
     // * Debug
+
+    // clang-format off
+    /// @brief Get total size in bytes
+    inline size_t total_size() const{ return pool_size_; }
+    /// @brief Get used size in bytes
+    inline size_t used_size() const{ return used_size_; }
+    // clang-format on
+
     /// @brief Use this type of functor to visit each block in the pool
     using PoolWalker = std::function<void(void*, size_t, bool)>;
 
@@ -138,6 +148,8 @@ private:
 private:
     tlsf::Control* control_{nullptr};
     void* pool_{nullptr};
+    const size_t pool_size_{0};
+    size_t used_size_{0};
 };
 
 } // namespace kb::memory

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "kibble/assert/assert.h"
 #include "kibble/math/constexpr_math.h"
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/heap_area.h"
 #include "kibble/memory/util/alignment.h"
 
@@ -10,12 +11,12 @@ namespace kb
 namespace memory
 {
 
-PoolAllocator::PoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t max_nodes,
-                             std::size_t user_size, std::size_t max_alignment)
+PoolAllocator::PoolAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size,
+                             std::size_t max_nodes, std::size_t user_size, std::size_t max_alignment)
 {
     node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size + max_alignment), int32_t(max_alignment));
     max_nodes_ = max_nodes;
-    auto range = area.require_block(node_size_ * max_nodes_, debug_name);
+    auto range = area.require_slab(node_size_ * max_nodes_, arena);
     begin_ = static_cast<uint8_t*>(range.first);
     end_ = begin_ + max_nodes_ * node_size_;
     free_list_.init(begin_, node_size_, max_nodes_, 0, 0);
@@ -44,6 +45,7 @@ void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
     std::fill(next, next + padding, k_alignment_padding_mark);
 #endif
 
+    ++node_count_;
     return next + padding;
 }
 
@@ -53,6 +55,7 @@ void PoolAllocator::deallocate(void* ptr)
     size_t offset = size_t(static_cast<uint8_t*>(ptr) - begin_); // Distance in bytes to beginning of the block
     size_t padding = offset % node_size_;                        // Distance in bytes to beginning of the node = padding
 
+    --node_count_;
     free_list_.release(static_cast<uint8_t*>(ptr) - padding);
 }
 

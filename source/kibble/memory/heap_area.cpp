@@ -2,6 +2,7 @@
 #include "config.h"
 #include "kibble/assert/assert.h"
 #include "kibble/logger/logger.h"
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/util/alignment.h"
 #include "kibble/memory/util/debug.h"
 #include "kibble/string/string.h"
@@ -78,7 +79,7 @@ void HeapArea::debug_hex_dump(size_t size)
     memory::util::hex_dump(begin_, size, "HEX DUMP");
 }
 
-std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_name)
+std::pair<void*, void*> HeapArea::require_slab(size_t size, const MemoryArenaBase* arena_base)
 {
     // Align returned block to avoid false sharing if multiple threads access this area
     size_t padding = alignment_padding(head_, k_cache_line_size);
@@ -94,7 +95,11 @@ std::pair<void*, void*> HeapArea::require_block(size_t size, const char* debug_n
 
     head_ += size + padding;
 
-    items_.push_back({debug_name ? debug_name : "block", ptr_range.first, ptr_range.second, size + padding});
+    items_.push_back({.name = (arena_base->name_ ? arena_base->name_ : "arena"),
+                      .begin = ptr_range.first,
+                      .end = ptr_range.second,
+                      .size = size + padding,
+                      .arena_base = arena_base});
 
     klog(log_channel_)
         .uid("HeapArea")
@@ -105,7 +110,44 @@ Size:      {}
 Padding:   {}
 Remaining: {}
 Address:   {:#x})",
-            (debug_name ? debug_name : "ANON"), su::human_size(size), su::human_size(padding),
+            (arena_base->name_ ? arena_base->name_ : "<Arena>"), su::human_size(size), su::human_size(padding),
+            su::human_size(free_size()), reinterpret_cast<uint64_t>(head_ + padding));
+
+    return ptr_range;
+}
+
+std::pair<void*, void*> HeapArea::require_slab(size_t size, const char* debug_name)
+{
+    // Align returned block to avoid false sharing if multiple threads access this area
+    size_t padding = alignment_padding(head_, k_cache_line_size);
+    K_ASSERT(head_ + size + padding < end(), "[HeapArea] Out of memory!\n  -> Required: {}, available: {}",
+             size + padding, size_);
+
+    // Mark padding area
+#ifdef K_USE_MEM_MARK_PADDING
+    std::fill(head_, head_ + padding, k_alignment_padding_mark);
+#endif
+
+    std::pair<void*, void*> ptr_range = {head_ + padding, head_ + padding + size + 1};
+
+    head_ += size + padding;
+
+    items_.push_back({.name = (debug_name ? debug_name : "slab"),
+                      .begin = ptr_range.first,
+                      .end = ptr_range.second,
+                      .size = size + padding,
+                      .arena_base = nullptr});
+
+    klog(log_channel_)
+        .uid("HeapArea")
+        .debug(
+            R"(allocated aligned block:
+Name:      {}
+Size:      {}
+Padding:   {}
+Remaining: {}
+Address:   {:#x})",
+            (debug_name ? debug_name : "<Slab>"), su::human_size(size), su::human_size(padding),
             su::human_size(free_size()), reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;

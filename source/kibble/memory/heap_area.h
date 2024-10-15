@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
 namespace kb::log
@@ -12,24 +11,28 @@ class Channel;
 namespace kb::memory
 {
 
+class MemoryArenaBase;
+
 namespace debug
 {
 
 /**
- * @brief Describe a block inside a heap area.
+ * @brief Describe a slab inside a heap area.
  * For debug purposes, to visualize the current state of a HeapArea.
  *
  */
-struct AreaItem
+struct SlabDescriptor
 {
-    /// debug name of the block
-    std::string name;
-    /// pointer to the beginning of the block
-    void* begin = nullptr;
-    /// pointer past the end of the block
-    void* end = nullptr;
-    /// size of the block
-    std::size_t size = 0;
+    /// @brief debug name of the slab
+    const char* name;
+    /// @brief pointer to the beginning of the slab
+    void* begin{nullptr};
+    /// @brief pointer past the end of the slab
+    void* end{nullptr};
+    /// @brief size of the slab
+    std::size_t size{0};
+    /// @brief pointer to arena (as thin base)
+    const MemoryArenaBase* arena_base{nullptr};
 };
 
 } // namespace debug
@@ -101,10 +104,19 @@ public:
      * no allocation leaked past the block boundaries.
      *
      * @param size size of the block to reserve
-     * @param debug_name name of the block used for debugging purposes
+     * @param arena_base arena pointer
      * @return range of pointers marking the bounds of the reserved block
      */
-    std::pair<void*, void*> require_block(size_t size, const char* debug_name = nullptr);
+    std::pair<void*, void*> require_slab(size_t size, const MemoryArenaBase* arena_base);
+
+    /**
+     * @brief Same as previous require_slab() overload, but for non-arena purposes
+     *
+     * @param size
+     * @param debug_name name of the block used for debugging purposes
+     * @return std::pair<void*, void*>
+     */
+    std::pair<void*, void*> require_slab(size_t size, const char* debug_name = nullptr);
 
     /**
      * @brief Show the content of the area using the logger.
@@ -128,7 +140,7 @@ public:
      *
      * @return a vector containing small debug::AreaItem structs describing each block
      */
-    inline const std::vector<debug::AreaItem>& get_block_descriptions() const
+    inline const std::vector<debug::SlabDescriptor>& get_block_descriptions() const
     {
         return items_;
     }
@@ -137,7 +149,9 @@ public:
     /// @brief Get total size in bytes
     inline size_t total_size() const{ return size_; }
     /// @brief Get remaining size in bytes
-    inline size_t free_size() const{ return static_cast<uint64_t>(static_cast<uint8_t*>(end()) - head_); }
+    inline size_t free_size() const{ return static_cast<size_t>(static_cast<uint8_t*>(end()) - head_); }
+    /// @brief Get used size in bytes
+    inline size_t used_size() const{ return static_cast<size_t>(head_ - static_cast<uint8_t*>(begin())); }
     // clang-format on
 
     /**
@@ -160,7 +174,7 @@ private:
     uint8_t* begin_;
     uint8_t* head_;
 
-    std::vector<debug::AreaItem> items_; // for debug
+    std::vector<debug::SlabDescriptor> items_; // for debug
     const kb::log::Channel* log_channel_ = nullptr;
 };
 

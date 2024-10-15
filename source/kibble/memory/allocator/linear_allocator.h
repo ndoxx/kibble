@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace kb
 {
@@ -9,6 +9,7 @@ namespace memory
 {
 
 class HeapArea;
+class MemoryArenaBase;
 /**
  * @brief Used to allocate chunks of arbitrary sizes one after the other.
  * This is intended to be used when elements of various sizes need to be allocated very frequently and all deallocated
@@ -25,11 +26,12 @@ public:
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for linear allocation.
      *
+     * @param arena arena base pointer
      * @param area reference to the memory resource the allocator will reserve a block from
+     * @param decoration_size allocation overhead
      * @param size size of the block to reserve
-     * @param debug_name name of this allocator, for debug purposes
      */
-    LinearAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t size);
+    LinearAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size, std::size_t size);
 
     /**
      * @brief Return a pointer to the beginning of the block.
@@ -105,13 +107,20 @@ public:
      */
     inline void reset()
     {
-        current_offset_ = 0;
+        head_ = 0;
     }
+
+    // clang-format off
+    /// @brief Get total size in bytes
+    inline size_t total_size() const{ return static_cast<size_t>(end() - begin()); }
+    /// @brief Get used size in bytes
+    inline size_t used_size() const{ return head_; }
+    // clang-format on
 
 private:
     uint8_t* begin_;
     uint8_t* end_;
-    uint32_t current_offset_;
+    uint32_t head_;
 };
 
 } // namespace memory

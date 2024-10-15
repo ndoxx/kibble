@@ -71,24 +71,9 @@ size_t parse_size(const std::string& input, char delimiter)
     return size;
 }
 
-constexpr std::string_view size_unit_suffix(int exponent)
-{
-    switch (exponent)
-    {
-    case 0:
-        return "B";
-    case 1:
-        return "kB";
-    case 2:
-        return "MB";
-    case 3:
-        return "GB";
-    case 4:
-        return "TB";
-    default:
-        return "??";
-    }
-}
+constexpr const char* k_size_unit_suffix[] = {
+    "B", "kB", "MB", "GB", "TB", "??",
+};
 
 constexpr int k_max_suffix = 4;
 
@@ -105,7 +90,7 @@ std::string human_size(std::size_t bytes)
         }
     }
 
-    return fmt::format("{:.2f}{}", d_bytes, size_unit_suffix(ii));
+    return fmt::format("{:.2f}{}", d_bytes, k_size_unit_suffix[ii]);
 }
 
 void center(std::string& input, int size)

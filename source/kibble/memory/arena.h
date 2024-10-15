@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/policy/policy.h"
 
 #include <type_traits>
@@ -29,7 +30,7 @@ class HeapArea;
 template <typename AllocatorT, typename ThreadPolicyT = policy::SingleThread,
           typename BoundsCheckerT = policy::NoBoundsChecking, typename MemoryTaggerT = policy::NoMemoryTagging,
           typename MemoryTrackerT = policy::NoMemoryTracking>
-class MemoryArena
+class MemoryArena : public MemoryArenaBase
 {
 public:
     // NOTE(ndx): Bookkeeping data size should be a multiple of 8B to simplify
@@ -54,12 +55,12 @@ public:
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    MemoryArena(const char* debug_name, HeapArea& area, ArgsT&&... args)
-        : allocator_(debug_name, area, k_allocation_overhead, std::forward<ArgsT>(args)...)
+    MemoryArena(const char* name, HeapArea& area, ArgsT&&... args)
+        : MemoryArenaBase(name), allocator_(this, area, k_allocation_overhead, std::forward<ArgsT>(args)...)
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)
         {
-            memory_tracker_.init(debug_name, area);
+            memory_tracker_.init(name, area);
         }
     }
 
@@ -71,21 +72,25 @@ public:
         }
     }
 
-    /**
-     * @brief Get the allocator
-     *
-     * @return AllocatorT&
-     */
+    /// @brief Get total size in bytes
+    size_t total_size() const override
+    {
+        return allocator_.total_size();
+    }
+
+    /// @brief Get used size in bytes
+    size_t used_size() const override
+    {
+        return allocator_.used_size();
+    }
+
+    /// @brief Get the allocator
     inline AllocatorT& get_allocator()
     {
         return allocator_;
     }
 
-    /**
-     * @brief Get the allocator as a const reference
-     *
-     * @return const AllocatorT&
-     */
+    /// @brief Get the allocator as a const reference
     inline const AllocatorT& get_allocator() const
     {
         return allocator_;

@@ -29,7 +29,9 @@ BlockHeader* Control::search_suitable_block(int32_t& fli, int32_t& sli)
         const int32_t fl_map = fl_bitmap & (~0 << (fli + 1));
         // No free blocks available, out of memory
         if (!fl_map)
+        {
             return nullptr;
+        }
 
         fli = ffs(fl_map);
         sl_map = sl_bitmap[fli];
@@ -61,7 +63,9 @@ void Control::remove_free_block(BlockHeader* block, int32_t fli, int32_t sli)
 
             // If the second bitmap is now empty, clear the fl bitmap
             if (!sl_bitmap[fli])
+            {
                 fl_bitmap &= ~(1 << fli);
+            }
         }
     }
 }
@@ -203,7 +207,9 @@ BlockHeader* Control::locate_free_block(size_t size)
             it's always in range.
         */
         if (fli < int32_t(k_fl_index_count))
+        {
             block = search_suitable_block(fli, sli);
+        }
     }
 
     if (block)

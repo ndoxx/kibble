@@ -6,6 +6,7 @@
 #include "kibble/memory/heap_area.h"
 #include "kibble/memory/util/alignment.h"
 #include "kibble/util/sanitizer.h"
+#include "kibble/memory/arena_base.h"
 
 #include "atomic_queue/atomic_queue.h"
 
@@ -36,17 +37,17 @@ public:
     /**
      * @brief Reserve a block of a given size on a HeapArea and use it for pool allocation.
      *
+     * @param arena arena base pointer
      * @param area reference to the memory resource the allocator will reserve a block from
-     * @param decoration_size size of additional data at the beginning of each node
+     * @param decoration_size allocation overhead
      * @param user_size maximum size of object allocated by the user
      * @param max_alignment maximum alignment requirement
-     * @param debug_name name of this allocator, for debug purposes
      */
-    AtomicPoolAllocator(const char* debug_name, HeapArea& area, uint32_t decoration_size, std::size_t user_size,
+    AtomicPoolAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size, std::size_t user_size,
                         std::size_t max_alignment)
     {
         node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size), int32_t(max_alignment));
-        auto range = area.require_block(node_size_ * MAX_NODES, debug_name);
+        auto range = area.require_slab(node_size_ * MAX_NODES, arena);
         begin_ = static_cast<uint8_t*>(range.first);
         end_ = begin_ + MAX_NODES * node_size_;
 
@@ -135,7 +136,7 @@ public:
 #ifdef K_USE_MEM_MARK_PADDING
         std::fill(next, next + padding, k_alignment_padding_mark);
 #endif
-
+        ++node_count_;
         return next + padding;
     }
 
@@ -151,6 +152,7 @@ public:
         size_t offset = size_t(static_cast<uint8_t*>(ptr) - begin_); // Distance in bytes to beginning of the block
         size_t padding = offset % node_size_; // Distance in bytes to beginning of the node = padding
 
+        --node_count_;
         ANNOTATE_HAPPENS_BEFORE(&free_queue_); // Avoid false positives with TSan
         free_queue_.push(static_cast<uint8_t*>(ptr) - padding);
     }
@@ -163,8 +165,16 @@ public:
     {
     }
 
+    // clang-format off
+    /// @brief Get total size in bytes
+    inline size_t total_size() const{ return static_cast<size_t>(end() - begin()); }
+    /// @brief Get used size in bytes
+    inline size_t used_size() const{ return node_count_ * node_size_; }
+    // clang-format on
+
 private:
-    std::size_t node_size_;
+    size_t node_size_{0};
+    size_t node_count_{0};
     uint8_t* begin_;
     uint8_t* end_;
     atomic_queue::AtomicQueue<uint8_t*, MAX_NODES, nullptr, true, true, false, false> free_queue_;

@@ -1,6 +1,7 @@
 #include "kibble/memory/allocator/linear_allocator.h"
 #include "config.h"
 #include "kibble/assert/assert.h"
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/heap_area.h"
 #include "kibble/memory/util/alignment.h"
 
@@ -9,18 +10,18 @@ namespace kb
 namespace memory
 {
 
-LinearAllocator::LinearAllocator(const char* debug_name, HeapArea& area, uint32_t, std::size_t size)
+LinearAllocator::LinearAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t, std::size_t size)
 {
-    std::pair<void*, void*> range = area.require_block(size, debug_name);
+    std::pair<void*, void*> range = area.require_slab(size, arena);
 
     begin_ = static_cast<uint8_t*>(range.first);
     end_ = static_cast<uint8_t*>(range.second);
-    current_offset_ = 0;
+    head_ = 0;
 }
 
 void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::size_t offset)
 {
-    uint8_t* current = begin_ + current_offset_;
+    uint8_t* current = begin_ + head_;
 
     // We want the user pointer (at current+offset) to be aligned.
     // Check if alignment is required. If so, find the next aligned memory address.
@@ -39,7 +40,7 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     std::fill(current, current + padding, k_alignment_padding_mark);
 #endif
 
-    current_offset_ += padding + size;
+    head_ += padding + size;
     return current + padding;
 }
 

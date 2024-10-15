@@ -50,7 +50,7 @@ public:
      */
     inline void init(kb::memory::HeapArea& area, std::size_t size, const char* debug_name)
     {
-        std::pair<void*, void*> range = area.require_block(size, debug_name);
+        std::pair<void*, void*> range = area.require_slab(size, debug_name);
         begin_ = static_cast<uint8_t*>(range.first);
         end_ = static_cast<uint8_t*>(range.second);
         head_ = begin_;

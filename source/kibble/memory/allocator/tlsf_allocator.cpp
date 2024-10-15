@@ -2,6 +2,7 @@
 #include "config.h"
 #include "kibble/memory/allocator/tlsf/impl/block.h"
 #include "kibble/memory/allocator/tlsf/impl/control.h"
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/heap_area.h"
 #include "kibble/memory/util/alignment.h"
 
@@ -49,11 +50,12 @@ size_t adjust_request_size(size_t size, size_t alignment)
     return adjusted;
 }
 
-TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, size_t pool_size)
+TLSFAllocator::TLSFAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t, size_t pool_size)
+    : pool_size_(pool_size)
 {
     // We want to reserve enough memory for the control structure, the pool, and some leeway for its 8B alignment
-    size_t mem_size = sizeof(Control) + alignof(long long) + pool_size;
-    std::pair<void*, void*> range = area.require_block(mem_size, debug_name);
+    size_t mem_size = sizeof(Control) + alignof(long long) + pool_size_;
+    std::pair<void*, void*> range = area.require_slab(mem_size, arena);
 
     // We know that the first pointer starts at the beginning of a cache line, so it's a fortiori 8B aligned
     // Construct control structure in-place
@@ -71,7 +73,7 @@ TLSFAllocator::TLSFAllocator(const char* debug_name, HeapArea& area, uint32_t, s
 #endif
 
     // Create pool
-    create_pool(pool_begin, pool_size);
+    create_pool(pool_begin, pool_size_);
 }
 
 void TLSFAllocator::create_pool(void* pool, std::size_t size)
@@ -250,7 +252,9 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
     // Adjust size for alignment and prepare block
     const size_t adjust = adjust_request_size(size, k_align_size);
     BlockHeader* block = control_->locate_free_block(adjust);
-    return control_->prepare_used(block, adjust);
+    void* ptr = control_->prepare_used(block, adjust);
+    used_size_ += block->block_size();
+    return ptr;
 }
 
 void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, std::size_t user_offset)
@@ -306,7 +310,9 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
         }
 
         // Adjust the block size to include the user_offset
-        return control_->prepare_used(block, adjust);
+        void* ret = control_->prepare_used(block, adjust);
+        used_size_ += block->block_size();
+        return ret;
     }
 
     // Could not locate free block
@@ -358,6 +364,7 @@ void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignme
 
             // Trim resulting block and return original pointer
             control_->trim_used(block, adjust);
+            used_size_ += block->block_size() - cursize;
             return ptr;
         }
     }
@@ -370,6 +377,7 @@ void TLSFAllocator::deallocate(void* ptr)
         BlockHeader* block = BlockHeader::from_void_ptr(ptr);
         K_ASSERT(!block->is_free(), "block already marked as free");
 
+        used_size_ -= block->block_size();
         block->mark_as_free();
         block = control_->merge_prev(block);
         block = control_->merge_next(block);
