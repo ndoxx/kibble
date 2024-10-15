@@ -241,14 +241,11 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
 {
     // No need to worry about alignment smaller than k_align_size (allocations abide by a stricter alignment constraint)
 
-    // TMP: disallow higher alignment for now
-    (void)user_offset;
-    (void)alignment;
-    K_ASSERT(alignment <= k_align_size, "higher custom alignment is not implemented yet");
-
     // Custom higher alignment is handled by a special function
-    // if (alignment > k_align_size)
-    //     return allocate_aligned(size, alignment, user_offset);
+    if (alignment > k_align_size)
+    {
+        return allocate_aligned(size, alignment, user_offset);
+    }
 
     // Adjust size for alignment and prepare block
     const size_t adjust = adjust_request_size(size, k_align_size);
@@ -258,11 +255,14 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
 
 void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, std::size_t user_offset)
 {
-    // NOTE(ndx): original implementation tries to align the block, but we
-    // want to align the user pointer instead.
-    // TODO(ndx): modify this function to align the user pointer.
-    (void)user_offset;
+    K_ASSERT(user_offset <= alignment, "user offset bigger than alignment during aligned allocation");
 
+    /*
+        NOTE(ndx): original implementation tries to align the block, but we
+        want to align the user pointer instead.
+    */
+
+    // Calculate adjusted size
     const size_t adjust = adjust_request_size(size, k_align_size);
 
     /*
@@ -273,21 +273,21 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
         the prev_phys_block field is not valid, and we can't simply adjust
         the size of that block.
     */
+
+    // Calculate the size needed to ensure proper alignment of the user pointer
     const size_t min_gap = sizeof(BlockHeader);
     const size_t size_with_gap = adjust_request_size(adjust + alignment + min_gap, alignment);
 
-    /*
-        If alignment is less than or equals base alignment, we're done.
-        If we requested 0 bytes, return null, as allocate(0) does.
-    */
-    const size_t aligned_size = (adjust && alignment > k_align_size) ? size_with_gap : adjust;
+    // If alignment is base alignment and no user_offset, we can use the simple case
+    const size_t aligned_size = (adjust && (alignment > k_align_size || user_offset)) ? size_with_gap : adjust;
     BlockHeader* block = control_->locate_free_block(aligned_size);
 
     if (block)
     {
         void* ptr = block->to_void_ptr();
-        void* aligned = align_ptr(ptr, alignment);
-        size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr));
+        // Align the user base pointer
+        void* aligned = align_ptr(reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + user_offset), alignment);
+        size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr)) - user_offset;
 
         // If gap size is too small, offset to next aligned boundary
         if (gap && gap < min_gap)
@@ -295,9 +295,8 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
             const size_t gap_remain = min_gap - gap;
             const size_t offset = std::max(gap_remain, alignment);
             const void* next_aligned = reinterpret_cast<void*>(std::ptrdiff_t(aligned) + std::ptrdiff_t(offset));
-
             aligned = align_ptr(next_aligned, alignment);
-            gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr));
+            gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr)) - user_offset;
         }
 
         if (gap)
@@ -305,15 +304,19 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
             K_ASSERT(gap >= min_gap, "gap size is too small: Minimum: {}, got: {}", min_gap, gap);
             block = control_->trim_free_leading(block, gap);
         }
+
+        // Adjust the block size to include the user_offset
+        return control_->prepare_used(block, adjust);
     }
 
-    return control_->prepare_used(block, adjust);
+    // Could not locate free block
+    return nullptr;
 }
 
 void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignment, std::size_t offset)
 {
     // Zero size means free
-    if (size == 0 && ptr == nullptr)
+    if (size == 0 && ptr != nullptr)
     {
         deallocate(ptr);
         return nullptr;

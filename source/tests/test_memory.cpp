@@ -31,6 +31,13 @@ struct POD
     // 7 bytes padding here for alignment of struct
 };
 
+void set_POD(POD* pod)
+{
+    pod->a = 0x01234567;
+    pod->b = 0x0123456789abcdef;
+    pod->c = 0x01;
+}
+
 struct NonPOD
 {
     NonPOD() = default;
@@ -107,7 +114,7 @@ protected:
     size_t dtor_calls = 0;
 };
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD default alignment", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD default alignment", "[mem][lin]")
 {
     POD* some_pod = K_NEW(POD, arena);
     some_pod->a = 0x42424242;
@@ -122,7 +129,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD default alignment", "[m
     K_DELETE(some_pod, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem][lin]")
 {
     POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
     some_pod->a = 0x42424242;
@@ -137,7 +144,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD aligned", "[mem]")
     K_DELETE(some_pod, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[mem][lin]")
 {
     for (uint32_t ALIGNMENT = 8; ALIGNMENT <= 128; ALIGNMENT *= 2)
     {
@@ -150,7 +157,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple alignments test", "[me
     }
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array default alignment", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array default alignment", "[mem][lin]")
 {
     const uint32_t N = 10;
 
@@ -170,7 +177,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array default alignment
     K_DELETE_ARRAY(pod_array, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem][lin]")
 {
     const uint32_t N = 10;
 
@@ -190,7 +197,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new POD array aligned", "[mem]"
     K_DELETE_ARRAY(pod_array, arena);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD default alignment", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD default alignment", "[mem][lin]")
 {
     NonPOD* some_non_pod = K_NEW(NonPOD, arena)(&ctor_calls, &dtor_calls, 10, 8);
 
@@ -206,7 +213,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD default alignment",
     REQUIRE(dtor_calls == 1);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem][lin]")
 {
     NonPOD* some_non_pod = K_NEW_ALIGN(NonPOD, arena, 32)(&ctor_calls, &dtor_calls, 10, 8);
 
@@ -222,7 +229,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD aligned", "[mem]")
     REQUIRE(dtor_calls == 1);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default alignment", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default alignment", "[mem][lin]")
 {
     const uint32_t N = 4;
 
@@ -246,7 +253,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array default align
     REQUIRE(dtor_calls == N);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[mem][lin]")
 {
     const uint32_t N = 4;
 
@@ -270,7 +277,7 @@ TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: new non-POD array aligned", "[m
     REQUIRE(dtor_calls == N);
 }
 
-TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem]")
+TEST_CASE_METHOD(LinArenaFixture, "Linear Arena: multiple allocations", "[mem][lin]")
 {
     for (int ii = 0; ii < 10; ++ii)
     {
@@ -317,7 +324,7 @@ protected:
     PoolArena arena;
 };
 
-TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD default alignment", "[mem]")
+TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD default alignment", "[mem][pool]")
 {
     POD* some_pod = K_NEW(POD, arena);
     some_pod->a = 0x42424242;
@@ -332,7 +339,7 @@ TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD default alignment
     K_DELETE(some_pod, arena);
 }
 
-TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD custom alignment", "[mem]")
+TEST_CASE_METHOD(PoolArenaFixture, "Pool Arena: new/delete POD custom alignment", "[mem][pool]")
 {
     POD* some_pod = K_NEW_ALIGN(POD, arena, 16);
     some_pod->a = 0x42424242;
@@ -444,12 +451,12 @@ TEST_CASE("fls", "[mem]")
     REQUIRE(memory::tlsf::fls_size_t(0xffffffffffffffff) == 63);
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "loadless integrity check", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "loadless integrity check", "[mem][tlsf]")
 {
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem][tlsf]")
 {
     POD* some_pod = K_NEW(POD, arena);
     check_integrity();
@@ -464,10 +471,12 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD allocation / deallocation", "[mem
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "multiple allocations / deallocations", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "multiple allocations / deallocations", "[mem][tlsf]")
 {
     uint32_t* some_int = K_NEW(uint32_t, arena);
     POD* some_pod = K_NEW(POD, arena);
+    *some_int = 0x42424242;
+    set_POD(some_pod);
     check_integrity();
 
     // display_pool();
@@ -482,7 +491,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "multiple allocations / deallocations", "[mem
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[mem][tlsf]")
 {
     POD* p1 = K_NEW(POD, arena);
     POD* p2 = K_NEW(POD, arena);
@@ -506,8 +515,59 @@ TEST_CASE_METHOD(TLSFArenaFixture, "multiple POD allocation / deallocation", "[m
     });
 }
 
-/*
-TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "fragmentation and defragmentation", "[mem][tlsf]")
+{
+    std::vector<POD*> ptrs;
+    constexpr size_t k_num_allocs = 10;
+
+    // Allocate
+    for (size_t ii = 0; ii < k_num_allocs; ++ii)
+    {
+        ptrs.push_back(K_NEW(POD, arena));
+    }
+    check_integrity();
+
+    // Free every other allocation
+    for (size_t ii = 0; ii < k_num_allocs; ii += 2)
+    {
+        K_DELETE(ptrs[ii], arena);
+        ptrs[ii] = nullptr;
+    }
+    check_integrity();
+
+    // Allocate again with larger size
+    struct LargePOD
+    {
+        POD data[2];
+    };
+
+    for (size_t ii = 0; ii < k_num_allocs; ii += 2)
+    {
+        LargePOD* ptr = K_NEW(LargePOD, arena);
+        REQUIRE(ptr != nullptr);
+        ptrs[ii] = reinterpret_cast<POD*>(ptr);
+    }
+    check_integrity();
+
+    // Free everything
+    for (size_t ii = 0; ii < ptrs.size(); ++ii)
+    {
+        if (ptrs[ii])
+        {
+            if (ii % 2 == 0)
+            {
+                K_DELETE(reinterpret_cast<LargePOD*>(ptrs[ii]), arena);
+            }
+            else
+            {
+                K_DELETE(ptrs[ii], arena);
+            }
+        }
+    }
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation", "[mem][tlsf][align]")
 {
     constexpr size_t k_align = 64;
     POD* some_pod = K_NEW_ALIGN(POD, arena, k_align);
@@ -522,10 +582,8 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation
     K_DELETE(some_pod, arena);
     check_integrity();
 }
-*/
 
-/*
-TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation, small gap", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation, small gap", "[mem][tlsf][align]")
 {
     // This creates a small gap condition in the pool
     [[maybe_unused]] uint32_t* p1 = K_NEW(uint32_t, arena);
@@ -549,9 +607,126 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single POD aligned allocation / deallocation
     K_DELETE(some_pod, arena);
     check_integrity();
 }
-*/
 
-TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "multiple aligned allocations with different alignments", "[mem][tlsf][align]")
+{
+    constexpr size_t k_align_16 = 16;
+    constexpr size_t k_align_32 = 32;
+    constexpr size_t k_align_64 = 64;
+    constexpr size_t k_align_128 = 128;
+
+    POD* pod_16 = K_NEW_ALIGN(POD, arena, k_align_16);
+    POD* pod_32 = K_NEW_ALIGN(POD, arena, k_align_32);
+    POD* pod_64 = K_NEW_ALIGN(POD, arena, k_align_64);
+    POD* pod_128 = K_NEW_ALIGN(POD, arena, k_align_128);
+
+    check_integrity();
+    check_allocations({{pod_16, sizeof(POD), k_offset_single},
+                       {pod_32, sizeof(POD), k_offset_single},
+                       {pod_64, sizeof(POD), k_offset_single},
+                       {pod_128, sizeof(POD), k_offset_single}});
+
+    REQUIRE(reinterpret_cast<std::uintptr_t>(pod_16) % k_align_16 == 0);
+    REQUIRE(reinterpret_cast<std::uintptr_t>(pod_32) % k_align_32 == 0);
+    REQUIRE(reinterpret_cast<std::uintptr_t>(pod_64) % k_align_64 == 0);
+    REQUIRE(reinterpret_cast<std::uintptr_t>(pod_128) % k_align_128 == 0);
+
+    K_DELETE(pod_16, arena);
+    K_DELETE(pod_32, arena);
+    K_DELETE(pod_64, arena);
+    K_DELETE(pod_128, arena);
+
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "aligned allocations with odd sizes", "[mem][tlsf][align]")
+{
+    constexpr size_t k_align = 64;
+    constexpr size_t k_size_1 = 17;  // Prime number
+    constexpr size_t k_size_2 = 101; // Another prime number
+
+    struct OddSized1
+    {
+        char data[k_size_1];
+    };
+    struct OddSized2
+    {
+        char data[k_size_2];
+    };
+
+    OddSized1* odd_1 = K_NEW_ALIGN(OddSized1, arena, k_align);
+    OddSized2* odd_2 = K_NEW_ALIGN(OddSized2, arena, k_align);
+
+    check_integrity();
+    check_allocations({{odd_1, sizeof(OddSized1), k_offset_single}, {odd_2, sizeof(OddSized2), k_offset_single}});
+
+    REQUIRE(reinterpret_cast<std::uintptr_t>(odd_1) % k_align == 0);
+    REQUIRE(reinterpret_cast<std::uintptr_t>(odd_2) % k_align == 0);
+
+    K_DELETE(odd_1, arena);
+    K_DELETE(odd_2, arena);
+
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "aligned array allocation", "[mem][tlsf][align]")
+{
+    constexpr size_t k_align = 128;
+    constexpr size_t k_count = 10;
+
+    POD* pod_array = K_NEW_ARRAY_ALIGN(POD[k_count], arena, k_align);
+    check_integrity();
+    check_allocations({{pod_array, k_count * sizeof(POD), k_offset_single}});
+
+    REQUIRE(reinterpret_cast<std::uintptr_t>(pod_array) % k_align == 0);
+
+    K_DELETE_ARRAY(pod_array, arena);
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "mixed allocations and deallocations", "[mem][tlsf][align]")
+{
+    std::vector<std::pair<void*, size_t>> allocations;
+    constexpr size_t k_num_ops = 10;
+    constexpr size_t k_max_size = 128;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> size_dis(1, k_max_size);
+    std::uniform_int_distribution<size_t> align_dis(0, 7); // 2^0 to 2^7 alignments
+
+    for (size_t ii = 0; ii < k_num_ops; ++ii)
+    {
+        if (allocations.empty() || gen() % 2 == 0)
+        {
+            // Allocate
+            size_t size = size_dis(gen);
+            size_t align = size_t{1} << align_dis(gen); // Ensure alignment is a power of 2
+            void* ptr = arena.allocate(size, align, 0, __FILE__, __LINE__);
+            REQUIRE(ptr != nullptr);
+            REQUIRE(reinterpret_cast<std::uintptr_t>(ptr) % align == 0);
+            allocations.push_back({ptr, size});
+        }
+        else
+        {
+            // Deallocate
+            size_t index = gen() % allocations.size();
+            arena.deallocate(allocations[index].first, nullptr, 0);
+            allocations.erase(allocations.begin() + long(index));
+        }
+
+        check_integrity();
+    }
+
+    // Clean up remaining allocations
+    for (const auto& alloc : allocations)
+    {
+        arena.deallocate(alloc.first, nullptr, 0);
+    }
+    check_integrity();
+}
+
+TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem][tlsf]")
 {
     constexpr size_t N = 16;
     POD* pod_array = K_NEW_ARRAY(POD[N], arena);
@@ -564,7 +739,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "POD array allocation / deallocation", "[mem]
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is free", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is free", "[mem][tlsf]")
 {
     auto& allocator = arena.get_allocator();
 
@@ -603,7 +778,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is free
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is used", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is used", "[mem][tlsf]")
 {
     auto& allocator = arena.get_allocator();
 
@@ -644,7 +819,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "byte array reallocation - next block is used
     check_integrity();
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "single non-POD allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "single non-POD allocation / deallocation", "[mem][tlsf]")
 {
     NonPOD* some_non_pod = K_NEW(NonPOD, arena)(&ctor_calls, &dtor_calls, 10, 8);
     check_integrity();
@@ -659,7 +834,7 @@ TEST_CASE_METHOD(TLSFArenaFixture, "single non-POD allocation / deallocation", "
     REQUIRE(dtor_calls == 1);
 }
 
-TEST_CASE_METHOD(TLSFArenaFixture, "non-POD array allocation / deallocation", "[mem]")
+TEST_CASE_METHOD(TLSFArenaFixture, "non-POD array allocation / deallocation", "[mem][tlsf]")
 {
     constexpr size_t N = 16;
     NonPOD* non_pod_array = K_NEW_ARRAY(NonPOD[N], arena);
