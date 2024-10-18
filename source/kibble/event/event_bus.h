@@ -34,6 +34,7 @@
 #include <queue>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
 #include "kibble/ctti/ctti.h"
 #include "kibble/logger/logger.h"
