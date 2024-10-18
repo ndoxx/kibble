@@ -244,16 +244,31 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
     // No need to worry about alignment smaller than k_align_size (allocations abide by a stricter alignment constraint)
 
     // Custom higher alignment is handled by a special function
+    void* ptr = nullptr;
     if (alignment > k_align_size)
     {
-        return allocate_aligned(size, alignment, user_offset);
+        ptr = allocate_aligned(size, alignment, user_offset);
+    }
+    else
+    {
+        // Adjust size for alignment and prepare block
+        const size_t adjust = adjust_request_size(size, k_align_size);
+        BlockHeader* block = control_->locate_free_block(adjust);
+        ptr = control_->prepare_used(block, adjust);
+        if (ptr != nullptr)
+        {
+            used_size_ += block->block_size();
+        }
     }
 
-    // Adjust size for alignment and prepare block
-    const size_t adjust = adjust_request_size(size, k_align_size);
-    BlockHeader* block = control_->locate_free_block(adjust);
-    void* ptr = control_->prepare_used(block, adjust);
-    used_size_ += block->block_size();
+    // Out of memory
+    if (ptr == nullptr)
+    {
+        K_ASSERT(false,
+                 "[TLSFAllocator] Out of memory!\n  -> requested size: {}\n    -> alignment: {}\n    -> remaining: {}",
+                 size, alignment, total_size() - used_size());
+    }
+
     return ptr;
 }
 
