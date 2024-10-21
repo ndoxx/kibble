@@ -134,7 +134,7 @@ std::string base64_encode(const char* data, size_t size)
     return out;
 }
 
-std::string base64_decode(const std::string data)
+std::string base64_decode(const std::string& data)
 {
     std::string out;
 

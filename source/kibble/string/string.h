@@ -199,7 +199,7 @@ std::string base64_encode(const char* data, size_t size);
  * @param data
  * @return std::string
  */
-inline std::string base64_encode(const std::string data)
+inline std::string base64_encode(const std::string& data)
 {
     return base64_encode(data.data(), data.size());
 }
@@ -210,7 +210,7 @@ inline std::string base64_encode(const std::string data)
  * @param data
  * @return std::string
  */
-std::string base64_decode(const std::string data);
+std::string base64_decode(const std::string& data);
 
 /**
  * @brief Concatenate multiple arguments of different types into a string.
