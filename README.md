@@ -202,9 +202,9 @@ To build the examples and tests, make sure you are in the `build` directory.
   ```sh
    make examples
   ```
-* To build the unit tests:
+* Similarly, to build the unit tests:
   ```sh
-   make test_kibble
+   make tests
   ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
