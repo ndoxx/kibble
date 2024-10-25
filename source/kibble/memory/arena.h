@@ -3,6 +3,7 @@
 #include "kibble/memory/arena_base.h"
 #include "kibble/memory/policy/policy.h"
 
+#include <cstring>
 #include <type_traits>
 
 namespace kb
@@ -139,8 +140,8 @@ public:
         }
 
         // Save allocation size
-        *(reinterpret_cast<SizeType*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT)) =
-            static_cast<SizeType>(decorated_size);
+        std::memcpy(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT, &decorated_size,
+                    sizeof(decorated_size));
 
         uint8_t* user_ptr = begin + k_front_overhead;
 
@@ -191,8 +192,9 @@ public:
             bounds_checker_.check_sentinel_front(begin);
         }
 
-        const SizeType decorated_size =
-            *(reinterpret_cast<SizeType*>(begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT));
+        SizeType decorated_size = 0;
+        std::memcpy(&decorated_size, begin + policy::BoundsCheckerSentinelSize<BoundsCheckerT>::FRONT,
+                    sizeof(decorated_size));
 
         // Check that everything went ok
         if constexpr (policy::is_active_memory_tagging_policy<MemoryTaggerT>)
