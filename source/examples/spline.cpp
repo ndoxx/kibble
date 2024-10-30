@@ -32,11 +32,21 @@ void export_bezier(size_t nsamples, const std::string& filename)
 namespace kb::math
 {
 template <>
-struct PointDistance<glm::vec2>
+struct PointTraits<glm::vec2>
 {
     static inline float distance(const glm::vec2& p0, const glm::vec2& p1)
     {
         return glm::distance(p0, p1);
+    }
+
+    static inline glm::vec2 lerp(const glm::vec2& p0, const glm::vec2& p1, float tt)
+    {
+        return glm::mix(p0, p1, tt);
+    }
+
+    static inline glm::vec2 null()
+    {
+        return {0.f, 0.f};
     }
 };
 } // namespace kb::math

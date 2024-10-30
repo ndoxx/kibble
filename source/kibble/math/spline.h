@@ -23,6 +23,7 @@
  *
  */
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <vector>
@@ -36,25 +37,31 @@ namespace math
 {
 
 /**
- * @brief This template needs to be specialized for the HermiteSpline's underlying types.
+ * @brief This template needs to be specialized for the spline's underlying types.
  *
  * @tparam T Point type
  */
 template <typename T>
-struct PointDistance
+struct PointTraits
 {
-    /**
-     * @brief Return the distance between two points
-     *
-     * @param p0
-     * @param p1
-     * @return float
-     */
+    /// @brief Return the distance between two points
     static inline float distance(const T& p0, const T& p1)
     {
         (void)p0;
         (void)p1;
         return 0.f;
+    }
+
+    /// @brief Return an interpolated value between two points
+    static inline T lerp(const T& p0, const T& p1, float tt)
+    {
+        return std::lerp(p0, p1, tt);
+    }
+
+    /// @brief Return the null value for a point of type T
+    static inline T null()
+    {
+        return T(0);
     }
 };
 
@@ -83,22 +90,6 @@ constexpr auto k_fac = gen_factorial<k_max_fac>();
 
 /**
  * @internal
- * @brief Basic linear interpolation utility
- *
- * @tparam T Point type
- * @param a first value
- * @param b second value
- * @param alpha interpolation parameter
- * @return T
- */
-template <typename T>
-inline T lerp(const T& a, const T& b, float alpha)
-{
-    return (1.f - alpha) * a + alpha * b;
-}
-
-/**
- * @internal
  * @brief Evaluate the n-th order derivative of a Bezier curve specified by a list of coefficients at a given parameter
  * value.
  *
@@ -112,7 +103,7 @@ inline T lerp(const T& a, const T& b, float alpha)
 template <size_t DIFF_ORDER, typename T, typename VecT>
 T bezier_evaluate(float tt, const VecT& coeffs)
 {
-    T sum(0);
+    T sum = PointTraits<T>::null();
     float tpow = 1.f;
     for (size_t ii = 0; ii < coeffs.size() - DIFF_ORDER; ++ii)
     {
@@ -150,7 +141,7 @@ void bezier_coefficients(const VecT& control, VecT& coeff)
         // Product from m=0 to j-1 of (n-m)
         prod *= (jj > 0) ? nn - jj : 1;
 
-        T sum(0);
+        T sum = PointTraits<T>::null();
         for (int ii = 0; ii <= jj; ++ii)
         {
             int comb = (prod * parity(ii + jj)) / (k_fac[size_t(ii)] * k_fac[size_t(jj - ii)]);
@@ -231,7 +222,7 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, S
         std::array<T, SIZE - LEVEL - 1> lerps;
         for (size_t ii = 0; ii < points.size() - 1; ++ii)
         {
-            lerps[ii] = lerp(points[ii], points[ii + 1], param);
+            lerps[ii] = PointTraits<T>::lerp(points[ii], points[ii + 1], param);
         }
 
         deCasteljauSplit<T, SIZE, LEVEL + 1>(lerps, left, right, param);
@@ -425,12 +416,12 @@ private:
     std::pair<float, float> length_estimate() const
     {
         // Shortest path is from first control point to the last one
-        float min_length = PointDistance<T>::distance(control_.front(), control_.back());
+        float min_length = PointTraits<T>::distance(control_.front(), control_.back());
         // Longest path is the one that goes through all points in order
         float max_length = 0.f;
         for (size_t ii = 0; ii < control_.size() - 1; ++ii)
         {
-            max_length += PointDistance<T>::distance(control_[ii], control_[ii + 1]);
+            max_length += PointTraits<T>::distance(control_[ii], control_[ii + 1]);
         }
         return {0.5f * (max_length + min_length), 0.5f * (max_length - min_length)};
     }
@@ -494,15 +485,15 @@ public:
      * @param start_tangent tangent at the first control point
      * @param end_tangent tangent at the last control point
      */
-    HermiteSpline(const std::vector<T>& control_points, float tension = 0.f, const T& start_tangent = T(0),
-                  const T& end_tangent = T(0))
+    HermiteSpline(const std::vector<T>& control_points, float tension = 0.f,
+                  const T& start_tangent = PointTraits<T>::null(), const T& end_tangent = PointTraits<T>::null())
         : control_(control_points)
     {
         K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points. Got: {}",
                  control_.size());
 
         // Compute tangents (formula for a generic cardinal spline)
-        std::vector<T> tangents(control_.size(), T(0));
+        std::vector<T> tangents(control_.size(), PointTraits<T>::null());
         tangents[0] = start_tangent;
         for (size_t ii = 1; ii < tangents.size() - 1; ++ii)
         {
@@ -511,7 +502,7 @@ public:
         tangents[control_.size() - 1] = end_tangent;
 
         // Each spline segment is a cubic Bezier spline
-        segment_.clear();
+        segment_.reserve(control_.size() - 1);
         for (size_t ii = 0; ii < control_.size() - 1; ++ii)
         {
             segment_.emplace_back(std::array{control_[ii], control_[ii] + tangents[ii] / 3.f,
@@ -523,7 +514,7 @@ public:
      * @brief Default to an empty Hermite spline.
      *
      */
-    HermiteSpline() : HermiteSpline({T(0), T(0)})
+    HermiteSpline() : HermiteSpline({PointTraits<T>::null(), PointTraits<T>::null()})
     {
     }
 
@@ -645,12 +636,13 @@ public:
      *
      */
     UniformHermiteSpline(const std::vector<T>& control_points, size_t max_lookup = 64, float tension = 0.f,
-                         const T& start_tangent = T(0), const T& end_tangent = T(0))
+                         const T& start_tangent = PointTraits<T>::null(), const T& end_tangent = PointTraits<T>::null())
         : HermiteSpline<T>(control_points, tension, start_tangent, end_tangent)
     {
         calculate_lookup_iterative(max_lookup);
     }
-    UniformHermiteSpline() : UniformHermiteSpline({T(0), T(0)})
+
+    UniformHermiteSpline() : UniformHermiteSpline({PointTraits<T>::null(), PointTraits<T>::null()})
     {
     }
 
@@ -712,7 +704,7 @@ private:
         {
             float tt = float(ii) / float(max_iter - 1);
             T point = HermiteSpline<T>::value(tt);
-            arclen += PointDistance<T>::distance(point, prev);
+            arclen += PointTraits<T>::distance(point, prev);
             arc_length[ii] = arclen;
             prev = point;
         }
