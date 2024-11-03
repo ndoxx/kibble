@@ -1,5 +1,6 @@
 #include "kibble/math/color.h"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
