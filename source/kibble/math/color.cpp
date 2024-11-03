@@ -167,9 +167,9 @@ ColorRGBA ColorCIELab::to_rgba() const
     float G = -0.9689f * X + 1.8758f * Y + 0.0415f * Z;
     float B = 0.0557f * X - 0.2040f * Y + 1.0570f * Z;
 
-    R = R > 0.0031308f ? 1.055f * pow(R, 1.f / 2.4f) - 0.055f : 12.92f * R;
-    G = G > 0.0031308f ? 1.055f * pow(G, 1.f / 2.4f) - 0.055f : 12.92f * G;
-    B = B > 0.0031308f ? 1.055f * pow(B, 1.f / 2.4f) - 0.055f : 12.92f * B;
+    R = R > 0.0031308f ? 1.055f * std::pow(R, 1.f / 2.4f) - 0.055f : 12.92f * R;
+    G = G > 0.0031308f ? 1.055f * std::pow(G, 1.f / 2.4f) - 0.055f : 12.92f * G;
+    B = B > 0.0031308f ? 1.055f * std::pow(B, 1.f / 2.4f) - 0.055f : 12.92f * B;
 
     return ColorRGBA{R, G, B, 1.f};
 }
