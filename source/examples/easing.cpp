@@ -25,7 +25,7 @@ struct ConsoleColor
     {
     }
 
-    constexpr ConsoleColor(uint8_t R, uint8_t G, uint8_t B) : color_(math::pack_ARGB(R, G, B))
+    constexpr ConsoleColor(uint8_t R, uint8_t G, uint8_t B) : color_(math::argb32_t::pack(R, G, B))
     {
     }
 
@@ -98,10 +98,10 @@ void print_colored_rect(float weight, const std::string& name)
     std::string centered_name(su::concat('[', name, ']'));
     su::center(centered_name, int(cols));
 
-    auto color = math::ColorRGBA(weight, 0.f, 1.f - weight);
+    auto color = math::ColorRGBA{weight, 0.f, 1.f - weight, 1.f};
 
     clear_line(1);
-    std::cout << KB_(math::pack_ARGB(color));
+    std::cout << KB_(color.to_argb32());
     std::cout << centered_name << std::endl;
 }
 
