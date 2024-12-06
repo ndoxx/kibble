@@ -11,7 +11,7 @@ using namespace kb;
 
 void export_bezier(size_t nsamples, const std::string& filename)
 {
-    math::FixedBezierSpline bez(
+    math::BezierSegment bez(
         std::array<glm::vec2, 5>{glm::vec2{0.f, 0.f}, {0.5f, 2.f}, {2.5f, 2.5f}, {3.f, 0.5f}, {1.f, 1.f}});
 
     std::ofstream ofs(filename);
@@ -53,7 +53,7 @@ struct PointTraits<glm::vec2>
 
 void export_cspline(size_t nsamples, const std::string& filename)
 {
-    math::HermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
+    math::CardinalSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 0.f);
     std::cout << "Spline length is: " << spl.length(0.01f) << std::endl;
 
     std::ofstream ofs(filename);
@@ -73,7 +73,7 @@ void export_cspline(size_t nsamples, const std::string& filename)
 
 void export_ucspline(size_t nsamples, const std::string& filename)
 {
-    math::UniformHermiteSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 64, 0.f);
+    math::ArclenCardinalSpline<glm::vec2> spl({{0.f, 0.f}, {0.5f, 5.f}, {5.2f, 5.5f}, {4.f, 4.8f}}, 64, 0.f);
     std::cout << "Spline length is: " << spl.length(0.01f) << std::endl;
 
     std::ofstream ofs(filename);

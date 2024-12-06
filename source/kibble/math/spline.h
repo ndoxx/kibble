@@ -7,11 +7,11 @@
  * Spline classes are parameterized by a point type (could be a 2D/3D vector or anything else
  * that is vector-like) and do not depend explicitly on some math library types.
  * Points however must define the usual operations (add/subtract, scalar multiply/divide),
- * and the PointDistance struct must be specialized if HermiteSpline is to be used.
+ * and the PointDistance struct must be specialized if CardinalSpline is to be used.
  *
- * At the moment, I only implemented a fixed-size (compile-time) Bezier spline, and
- * a cubic Hermite spline that uses cubic Bezier spline segments. Also, there is the
- * UniformHermiteSpline that is an arc-length reparameterization of a basic HermitSpline.
+ * At the moment, I only implemented a fixed-size (compile-time) Bezier spline segment, and
+ * a cardinal Hermite spline that uses cubic Bezier segments. Also, there is the
+ * ArclenCardinalSpline that is an arc-length reparameterization of a basic CardinalSpline.
  * This allows uniform percent length sampling along the curve.
  * Points cannot be edited / added / moved dynamically for now.
  *
@@ -280,7 +280,7 @@ inline T deCasteljau(float tt, const std::vector<T>& points)
  * @tparam SIZE number of control points
  */
 template <typename T, size_t SIZE>
-class FixedBezierSpline
+class BezierSegment
 {
 public:
     /**
@@ -288,7 +288,7 @@ public:
      *
      * @param control_points the list of control points
      */
-    FixedBezierSpline(std::array<T, SIZE>&& control_points) : control_(std::move(control_points))
+    BezierSegment(std::array<T, SIZE>&& control_points) : control_(std::move(control_points))
     {
         detail::bezier_coefficients<T>(control_, coeff_);
     }
@@ -397,12 +397,12 @@ public:
      * @param tt split point, 0.5 to split in the middle
      * @return the left and right splits
      */
-    inline std::pair<FixedBezierSpline, FixedBezierSpline> split(float tt) const
+    inline std::pair<BezierSegment, BezierSegment> split(float tt) const
     {
         std::array<T, SIZE> left;
         std::array<T, SIZE> right;
         detail::deCasteljauSplit<T, SIZE, 0>(control_, left, right, tt);
-        return {FixedBezierSpline(std::move(left)), FixedBezierSpline(std::move(right))};
+        return {BezierSegment(std::move(left)), BezierSegment(std::move(right))};
     }
 
 private:
@@ -440,7 +440,7 @@ private:
      * @param max_error Maximum allowable error for the length computation
      * @return float
      */
-    static float length(const FixedBezierSpline& spline, float max_error)
+    static float length(const BezierSegment& spline, float max_error)
     {
         // While the length estimation error is too big, split the curve and add
         // the length of the two subdivisions
@@ -459,16 +459,16 @@ private:
 };
 
 /**
- * @brief A cubic Hermite spline whose segments are expressed as cubic Bezier splines.
+ * @brief A cardinal cubic Hermite spline whose segments are expressed as cubic Bezier splines.
  * A cubic Hermite spline always passes through its control points. Each spline segment (between two control points) is
- * modeled by a FixedBezierSpline of size 4. The 4 points of each segment are comprised of the two ends and two
+ * modeled by a BezierSegment of size 4. The 4 points of each segment are comprised of the two ends and two
  * additional control points that constrain the tangents at both ends. A size of 4 means that each segment is of order
  * 3, hence the name *cubic* Hermite spline. The tangents are computed thanks to a formula for generic cardinal splines.
  *
  * @tparam T Point type
  */
 template <typename T>
-class HermiteSpline
+class CardinalSpline
 {
 public:
     static constexpr size_t k_min_control_points = 1;
@@ -485,8 +485,8 @@ public:
      * @param start_tangent tangent at the first control point
      * @param end_tangent tangent at the last control point
      */
-    HermiteSpline(const std::vector<T>& control_points, float tension = 0.f,
-                  const T& start_tangent = PointTraits<T>::null(), const T& end_tangent = PointTraits<T>::null())
+    CardinalSpline(const std::vector<T>& control_points, float tension = 0.f,
+                   const T& start_tangent = PointTraits<T>::null(), const T& end_tangent = PointTraits<T>::null())
         : control_(control_points)
     {
         K_ASSERT(control_.size() > k_min_control_points, "There must be at least 2 control points. Got: {}",
@@ -514,7 +514,7 @@ public:
      * @brief Default to an empty Hermite spline.
      *
      */
-    HermiteSpline() : HermiteSpline({PointTraits<T>::null(), PointTraits<T>::null()})
+    CardinalSpline() : CardinalSpline({PointTraits<T>::null(), PointTraits<T>::null()})
     {
     }
 
@@ -603,19 +603,19 @@ protected:
 
 protected:
     std::vector<T> control_;
-    std::vector<FixedBezierSpline<T, 4>> segment_;
+    std::vector<BezierSegment<T, 4>> segment_;
 };
 
 /**
- * @brief Arc-length parameterized Hermite spline.
- * This Hermite spline class is a cubic Hermite spline with the additional property that it can be uniformly percent
- * length sampled. It is better to use this type of spline in anything procedurally generated, so the geometry segments
- * of the final object do not appear to change length non-linearly as the interpolation parameter progresses.
+ * @brief Arc-length parameterized cardinal Hermite spline.
+ * This ArclenCardinalSpline class is a cardinal Hermite spline with the additional property that it can be uniformly
+ * percent length sampled. It is better to use this type of spline in anything procedurally generated, so the geometry
+ * segments of the final object do not appear to change length non-linearly as the interpolation parameter progresses.
  *
  * @tparam T point type
  */
 template <typename T>
-class UniformHermiteSpline : public HermiteSpline<T>
+class ArclenCardinalSpline : public CardinalSpline<T>
 {
 public:
     /**
@@ -623,7 +623,7 @@ public:
      * There is no closed form formula for the arc-length reparameterization of any spline of order greater than 2, due
      * to the presence of elliptic integrals. The best we can do is to sample a length estimation function along the
      * curve and numerically invert it using a table. The only parameter that is not directly inherited from
-     * HermiteSpline is the size of this arc-length table.
+     * CardinalSpline is the size of this arc-length table.
      *
      * @param control_points list of control points
      * @param max_lookup size of the arc-length table
@@ -635,14 +635,14 @@ public:
      * @param end_tangent tangent at the last control point
      *
      */
-    UniformHermiteSpline(const std::vector<T>& control_points, size_t max_lookup = 64, float tension = 0.f,
+    ArclenCardinalSpline(const std::vector<T>& control_points, size_t max_lookup = 64, float tension = 0.f,
                          const T& start_tangent = PointTraits<T>::null(), const T& end_tangent = PointTraits<T>::null())
-        : HermiteSpline<T>(control_points, tension, start_tangent, end_tangent)
+        : CardinalSpline<T>(control_points, tension, start_tangent, end_tangent)
     {
         calculate_lookup_iterative(max_lookup);
     }
 
-    UniformHermiteSpline() : UniformHermiteSpline({PointTraits<T>::null(), PointTraits<T>::null()})
+    ArclenCardinalSpline() : ArclenCardinalSpline({PointTraits<T>::null(), PointTraits<T>::null()})
     {
     }
 
@@ -656,7 +656,7 @@ public:
      */
     inline T value(float uu) const
     {
-        return HermiteSpline<T>::value(arclen_remap(uu));
+        return CardinalSpline<T>::value(arclen_remap(uu));
     }
 
     /**
@@ -668,7 +668,7 @@ public:
      */
     inline T prime(float uu) const
     {
-        return HermiteSpline<T>::prime(arclen_remap(uu));
+        return CardinalSpline<T>::prime(arclen_remap(uu));
     }
 
     /**
@@ -680,11 +680,11 @@ public:
      */
     inline T second(float uu) const
     {
-        return HermiteSpline<T>::second(arclen_remap(uu));
+        return CardinalSpline<T>::second(arclen_remap(uu));
     }
 
 protected:
-    using HermiteSpline<T>::control_;
+    using CardinalSpline<T>::control_;
 
 private:
     /**
@@ -703,7 +703,7 @@ private:
         for (size_t ii = 0; ii < max_iter; ++ii)
         {
             float tt = float(ii) / float(max_iter - 1);
-            T point = HermiteSpline<T>::value(tt);
+            T point = CardinalSpline<T>::value(tt);
             arclen += PointTraits<T>::distance(point, prev);
             arc_length[ii] = arclen;
             prev = point;
