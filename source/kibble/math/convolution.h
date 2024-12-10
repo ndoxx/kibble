@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace kb
 {
@@ -37,9 +38,21 @@ struct SeparableGaussianKernel
      */
     void init(uint32_t size, float sigma);
 
+    /// @brief Get complete coefficient array
+    std::vector<float> unfold() const;
+
     float weights[k_max_kernel_coefficients]; /// First half of the kernel weights, including central element
     uint32_t half_size;                       /// Half size of the kernel
 };
+
+/**
+ * @brief Perform 1D convolution with a full kernel
+ *
+ * @param input Input vector to be convolved
+ * @param kernel Full convolution kernel (can be obtained from SeparableGaussianKernel::unfold())
+ * @return std::vector<float> Convolved output vector
+ */
+std::vector<float> convolve_1D(const std::vector<float>& input, const std::vector<float>& kernel);
 
 } // namespace math
 } // namespace kb

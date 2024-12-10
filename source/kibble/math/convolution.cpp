@@ -53,5 +53,61 @@ void SeparableGaussianKernel::init(uint32_t size, float _sigma)
     }
 }
 
+std::vector<float> SeparableGaussianKernel::unfold() const
+{
+    // Total kernel size
+    std::vector<float> full_kernel(2 * half_size + 1);
+    // Central coefficient (at the middle of the array)
+    full_kernel[half_size] = weights[0];
+
+    // Unfold symmetric coefficients
+    for (uint32_t ii = 1; ii <= half_size; ++ii)
+    {
+        full_kernel[half_size - ii] = weights[ii];
+        full_kernel[half_size + ii] = weights[ii];
+    }
+
+    return full_kernel;
+}
+
+std::vector<float> convolve_1D(const std::vector<float>& input, const std::vector<float>& kernel)
+{
+    // Sanity check
+    K_ASSERT(!input.empty(), "Input cannot be empty");
+    K_ASSERT(!kernel.empty(), "Kernel cannot be empty");
+    K_ASSERT(kernel.size() % 2 == 1, "Kernel must be of odd size");
+
+    // Output vector will have the same size as input
+    std::vector<float> output(input.size());
+    int32_t half_size = int32_t(kernel.size() / 2);
+
+    // Iterate through each output sample
+    for (size_t ii = 0; ii < input.size(); ++ii)
+    {
+        float sum = 0.0f;
+
+        // Apply kernel around current sample
+        for (int32_t kk = -half_size; kk <= half_size; ++kk)
+        {
+            int32_t in_idx = static_cast<int32_t>(ii) + kk;
+            int32_t ker_idx = kk + half_size;
+
+            // Mirror at boundaries
+            in_idx = std::abs(in_idx);
+
+            if (in_idx >= int32_t(input.size()))
+            {
+                in_idx = 2 * int32_t(input.size() - 1) - in_idx;
+            }
+
+            sum += input[size_t(in_idx)] * kernel[size_t(ker_idx)];
+        }
+
+        output[ii] = sum;
+    }
+
+    return output;
+}
+
 } // namespace math
 } // namespace kb
