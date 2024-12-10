@@ -44,25 +44,14 @@ namespace math
 template <typename T>
 struct PointTraits
 {
-    /// @brief Return the distance between two points
-    static inline float distance(const T& p0, const T& p1)
-    {
-        (void)p0;
-        (void)p1;
-        return 0.f;
-    }
+    // Return the distance between two points
+    // static inline float distance(const T& p0, const T& p1);
 
-    /// @brief Return an interpolated value between two points
-    static inline T lerp(const T& p0, const T& p1, float tt)
-    {
-        return std::lerp(p0, p1, tt);
-    }
+    // Return an interpolated value between two points
+    // static inline T lerp(const T& p0, const T& p1, float tt);
 
-    /// @brief Return the null value for a point of type T
-    static inline T null()
-    {
-        return T(0);
-    }
+    // Return the null value for a point of type T
+    // static inline T null();
 };
 
 namespace detail
@@ -235,25 +224,25 @@ void deCasteljauSplit(const std::array<T, SIZE - LEVEL>& points, std::array<T, S
  * The lower_bound argument sets the initial lower bound, it allows to skip a portion of the array where we already know
  * we won't find the target.
  *
- * @param target target arc-length to find the index of
+ * @param s_target target arc-length to find the index of
  * @param arc_length input arc-length table
  * @param lower_bound initial lower bound
  * @return size_t index of the target arc-length
  */
-size_t arclen_binary_search(float target, const std::vector<float>& arc_length, size_t lower_bound = 0);
+size_t arclen_binary_search(float s_target, const std::vector<float>& arc_length, size_t lower_bound = 0);
 
 /**
  * @internal
  * @brief Return value and index of the largest arc length value smaller than target.
- * The last_index argument is transmitted to the binary search function as an initial lower bound so as to avoid useless
- * iterations.
+ * The lower_bound argument is transmitted to the binary search function as an initial lower bound so as to avoid
+ * useless iterations.
  *
- * @param tt parameter value
+ * @param uu target arc length fraction
  * @param arc_length arc-length table
- * @param last_index last index obtained through iterated calls to this function
+ * @param lower_bound initial index in search
  * @return a pair containing the arc-length value and table index
  */
-std::pair<float, size_t> arclen_remap(float tt, const std::vector<float>& arc_length, size_t last_index = 0);
+std::pair<float, size_t> arclen_inverse(float uu, const std::vector<float>& arc_length, size_t lower_bound = 0);
 
 } // namespace detail
 
@@ -444,10 +433,10 @@ private:
     {
         // While the length estimation error is too big, split the curve and add
         // the length of the two subdivisions
-        auto&& [len, error] = spline.length_estimate();
+        auto [len, error] = spline.length_estimate();
         if (error > max_error)
         {
-            auto&& [s0, s1] = spline.split(0.5f);
+            auto [s0, s1] = spline.split(0.5f);
             return length(s0, max_error) + length(s1, max_error);
         }
         return len;
@@ -651,7 +640,7 @@ public:
      * @brief Return the arc-length parameterized value.
      * @warning This is a NON-VIRTUAL override
      *
-     * @param uu percent length parameter value, between 0 and 1
+     * @param uu arc length fraction, between 0 and 1
      * @return T spline value at that parameter value
      */
     inline T value(float uu) const
@@ -663,7 +652,7 @@ public:
      * @brief Return arc-length parameterized first derivative.
      * @warning This is a NON-VIRTUAL override
      *
-     * @param uu percent length parameter value, between 0 and 1
+     * @param uu arc length fraction, between 0 and 1
      * @return T spline value at that parameter value
      */
     inline T prime(float uu) const
@@ -675,7 +664,7 @@ public:
      * @brief Return arc-length parameterized second derivative.
      * @warning This is a NON-VIRTUAL override
      *
-     * @param uu percent length parameter value, between 0 and 1
+     * @param uu arc length fraction, between 0 and 1
      * @return T spline value at that parameter value
      */
     inline T second(float uu) const
@@ -700,6 +689,7 @@ private:
         arc_length.resize(max_iter);
         float arclen = 0.f;
         T prev = control_[0];
+
         for (size_t ii = 0; ii < max_iter; ++ii)
         {
             float tt = float(ii) / float(max_iter - 1);
@@ -715,10 +705,11 @@ private:
         for (size_t ii = 0; ii < max_iter; ++ii)
         {
             float uu = float(ii) / float(max_iter - 1);
-            // Because the length array is monotonically increasing, we know we won't find our target
-            // before the last_index, then we can cut down costs by providing last_index to the remap func.
-            auto&& [param, idx] = detail::arclen_remap(uu, arc_length, last_index);
-            arc_length_inverse_[ii] = param;
+            // Because the length array is monotonically increasing (prefix sum), we know we won't find our target
+            // before the last_index, then we can cut down costs by providing last_index as a lower bound for binary
+            // search.
+            auto [tt, idx] = detail::arclen_inverse(uu, arc_length, last_index);
+            arc_length_inverse_[ii] = tt;
             last_index = idx;
         }
     }
@@ -726,20 +717,22 @@ private:
     /**
      * @brief Estimate a parameter value such that uu represents the length fraction along the curve.
      *
-     * @param uu length fraction parameter
+     * @param uu arc length fraction
      * @return float parameter value
      */
     float arclen_remap(float uu) const
     {
         // Sample the lookup table
-        uu = std::clamp(uu, 0.f, std::nexttoward(1.f, -1));
-        size_t idx = size_t(std::floor(float(arc_length_inverse_.size() - 1) * uu));
-        if (idx == arc_length_inverse_.size() - 1)
+        uu = std::max(uu, 0.f);
+        if (uu >= 1.f)
         {
-            return arc_length_inverse_.back();
+            return 1.f; // arc_length_inverse_.back() is exactly 1
         }
-        float alpha = float(arc_length_inverse_.size() - 1) * uu - float(idx);
-        return std::lerp(arc_length_inverse_[idx], arc_length_inverse_[idx + 1], alpha);
+
+        size_t max_idx = arc_length_inverse_.size() - 1;
+        size_t idx = size_t(std::floor(float(max_idx) * uu));
+        float frac = float(max_idx) * uu - float(idx);
+        return std::lerp(arc_length_inverse_[idx], arc_length_inverse_[idx + 1], frac);
     }
 
 private:
