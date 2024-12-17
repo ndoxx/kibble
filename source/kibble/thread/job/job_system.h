@@ -124,6 +124,14 @@ public:
     void destroy_barrier(barrier_t id);
 
     /**
+     * @brief Non-blockingly check if all tasks grouped under a barrier have been processed
+     *
+     * @param id Barrier ID
+     * @return true if all tasks in the group have been processed, false otherwise
+     */
+    bool barrier_reached(barrier_t id) const;
+
+    /**
      * @brief Create a task
      *
      * @tparam FuncT type of the function to execute
@@ -148,7 +156,6 @@ public:
         using PromiseType = std::promise<ResultType>;
         using AllocPromiseType =
             std::allocator_traits<PromiseAllocator<PromiseType>>::template rebind_alloc<PromiseType>;
-
         auto promise = std::allocate_shared<PromiseType>(AllocPromiseType{});
         std::shared_future<ResultType> future = promise->get_future();
 
@@ -331,8 +338,23 @@ public:
      *
      * @note Trying to schedule a child task will assert, only schedule topmost parent tasks.
      *
+     * @param barrier_id Optional barrier, to group with other tasks
      */
     void schedule(barrier_t barrier_id = k_no_barrier);
+
+    /**
+     * @brief Schedule job execution, but let it escape global wait().
+     * The number of pending jobs will NOT be increased, the job will be dispatched and all worker threads will be
+     * awakened.
+     * To wait for a detached task, either use barrier synchronization, wait on the future or use the task's
+     * wait function.
+     *
+     * @note Trying to detach a task with dependents OR dependencies will assert, only detach single jobs.
+     * @warning Experimental.
+     *
+     * @param barrier_id Optional barrier, to group with other tasks
+     */
+    void detach(barrier_t barrier_id = k_no_barrier);
 
     /**
      * @brief Try to execute the job on this thread.

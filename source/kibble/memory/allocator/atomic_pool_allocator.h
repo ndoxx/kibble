@@ -3,10 +3,10 @@
 #include "config.h"
 #include "kibble/assert/assert.h"
 #include "kibble/math/constexpr_math.h"
+#include "kibble/memory/arena_base.h"
 #include "kibble/memory/heap_area.h"
 #include "kibble/memory/util/alignment.h"
 #include "kibble/util/sanitizer.h"
-#include "kibble/memory/arena_base.h"
 
 #include "atomic_queue/atomic_queue.h"
 
@@ -136,7 +136,7 @@ public:
 #ifdef K_USE_MEM_MARK_PADDING
         std::fill(next, next + padding, k_alignment_padding_mark);
 #endif
-        ++node_count_;
+        node_count_.fetch_add(1);
         return next + padding;
     }
 
@@ -152,7 +152,7 @@ public:
         size_t offset = size_t(static_cast<uint8_t*>(ptr) - begin_); // Distance in bytes to beginning of the block
         size_t padding = offset % node_size_; // Distance in bytes to beginning of the node = padding
 
-        --node_count_;
+        node_count_.fetch_sub(1);
         ANNOTATE_HAPPENS_BEFORE(&free_queue_); // Avoid false positives with TSan
         free_queue_.push(static_cast<uint8_t*>(ptr) - padding);
     }
@@ -169,12 +169,12 @@ public:
     /// @brief Get total size in bytes
     inline size_t total_size() const{ return static_cast<size_t>(end() - begin()); }
     /// @brief Get used size in bytes
-    inline size_t used_size() const{ return node_count_ * node_size_; }
+    inline size_t used_size() const{ return node_count_.load() * node_size_; }
     // clang-format on
 
 private:
+    std::atomic<size_t> node_count_{0};
     size_t node_size_{0};
-    size_t node_count_{0};
     uint8_t* begin_;
     uint8_t* end_;
     atomic_queue::AtomicQueue<uint8_t*, MAX_NODES, nullptr, true, true, false, false> free_queue_;

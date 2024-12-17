@@ -34,6 +34,8 @@ struct L1_ALIGN SharedState
 {
     /// Number of tasks left
     L1_ALIGN std::atomic<uint64_t> pending{0};
+    /// Number of scheduled detached tasks
+    L1_ALIGN std::atomic<uint64_t> detached_count{0};
     /// To wake worker threads
     L1_ALIGN std::condition_variable cv_wake;
     /// Workers wait on this one when they're idle

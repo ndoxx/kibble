@@ -220,7 +220,14 @@ void WorkerThread::process(Job* job)
         js_->release_job(job);
     }
 
-    ss_->pending.fetch_sub(1, std::memory_order_release);
+    if (job->is_detached.load())
+    {
+        ss_->detached_count.fetch_sub(1, std::memory_order_release);
+    }
+    else
+    {
+        ss_->pending.fetch_sub(1, std::memory_order_release);
+    }
 }
 
 void WorkerThread::schedule_children(Job* job)
@@ -231,8 +238,8 @@ void WorkerThread::schedule_children(Job* job)
 
         /*
             If two parents finish at the same time, they could potentially schedule the
-            same children at the same time. The mark_scheduled() call makes sure that only
-            one parent will get to schedule the children jobs.
+            same children at the same time. try_schedule() uses an atomic exchange operation
+            to make sure that only one parent will succeed.
         */
         if (child->is_ready() && js_->try_schedule(child, 0))
         {

@@ -197,6 +197,8 @@ void JobSystem::shutdown()
     klog(log_channel_).uid("JobSystem").info("Shutting down.");
     klog(log_channel_).uid("JobSystem").debug("Waiting for jobs to finish.");
     wait();
+    // Also wait for detached tasks
+    wait_until([this]() { return shared_state_->detached_count.load(std::memory_order_acquire) > 0; });
 
     std::vector<WorkerTerminationStatus> termination_status(threads_count_);
     for (size_t idx = 0; idx < threads_count_; ++idx)
@@ -267,9 +269,15 @@ void JobSystem::destroy_barrier(barrier_t id)
     K_ASSERT(expected, "Tried to destroy unused barrier.");
 }
 
+bool JobSystem::barrier_reached(barrier_t id) const
+{
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds: {} / {}", id, config_.max_barriers);
+    return barriers_[id].finished();
+}
+
 Barrier& JobSystem::get_barrier(barrier_t id)
 {
-    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds.");
+    K_ASSERT(id < config_.max_barriers, "Barrier index out of bounds: {} / {}", id, config_.max_barriers);
     return barriers_[id];
 }
 
@@ -278,8 +286,9 @@ Job* JobSystem::create_job(std::function<void()>&& kernel, JobMetadata&& meta)
     JS_PROFILE_FUNCTION(instrumentor_, this_thread_id());
 
     Job* job = K_NEW(Job, internal_->job_pool);
-    job->kernel = std::move(kernel);
     job->meta = std::move(meta);
+    job->kernel = std::move(kernel);
+    // Default ctor is called, so other properties are reset
     return job;
 }
 
@@ -482,7 +491,31 @@ void Task::schedule(barrier_t barrier_id)
     }
 
     // * Schedule parent
-    js_->try_schedule(job_, num_jobs);
+    [[maybe_unused]] bool scheduled = js_->try_schedule(job_, num_jobs);
+    K_ASSERT(scheduled, "Failed to schedule task.");
+}
+
+void Task::detach(barrier_t barrier_id)
+{
+    JS_PROFILE_FUNCTION(js_->instrumentor_, js_->this_thread_id());
+
+    // * Sanity check
+    K_ASSERT(job_->in_count() == 0, "Tried to detach a child task.");
+    K_ASSERT(job_->out_count() == 0, "Tried to detach a parent task.");
+
+    // * Barrier setup
+    job_->barrier_id = barrier_id;
+    if (barrier_id != k_no_barrier)
+    {
+        js_->get_barrier(job_->barrier_id).add_dependencies(1);
+    }
+
+    // * Scheduling
+    // num_jobs == 0 => pending will not be increased
+    job_->is_detached.store(true);
+    js_->shared_state_->detached_count.fetch_add(1);
+    [[maybe_unused]] bool scheduled = js_->try_schedule(job_, 0);
+    K_ASSERT(scheduled, "Failed to detach task.");
 }
 
 bool Task::try_preempt_and_execute()

@@ -182,7 +182,7 @@ private:
     /// Dependent objects
     L1_ALIGN std::array<T, MAX_OUT> out_objects_;
     /// Number of pending dependencies
-    L1_ALIGN std::atomic<size_t> pending_in_ = 0;
+    L1_ALIGN std::atomic<size_t> pending_in_{0};
     /// State of the node
     L1_ALIGN std::atomic<JobState> state_{JobState::Idle};
 };

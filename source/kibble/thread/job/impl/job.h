@@ -19,11 +19,14 @@ struct L1_ALIGN Job : public ProcessNode<Job*, KIBBLE_JOBSYS_MAX_PARENT_JOBS, KI
     /// Job metadata
     JobMetadata meta;
     /// The function to execute
-    std::function<void(void)> kernel = []() {};
+    std::function<void(void)> kernel{[]() {}};
     /// If true, job will not be returned to the pool once finished
-    bool keep_alive = false;
+    bool keep_alive{false};
     /// Barrier ID for this job and its dependents
     barrier_t barrier_id{k_no_barrier};
+    /// If true, job will not decrease pending count once processed
+    // NOTE(ndx): TSAN won't shut up about it if I don't make it atomic
+    std::atomic<bool> is_detached{false};
 };
 
 } // namespace kb::th
