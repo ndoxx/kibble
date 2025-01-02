@@ -3,6 +3,7 @@
 #include "kibble/util/stack_trace.h"
 
 #include "fmt/color.h"
+#include <stdexcept>
 
 namespace detail
 {
@@ -13,6 +14,14 @@ void k_assert_impl(const char* condition, std::string_view message, const char* 
                condition, message, function, file, line, kb::StackTrace(K_ASSERT_STACK_TRACE_SKIP).format());
 
     debug_break__();
+}
+
+void k_assert_except_impl(const char* condition, std::string_view message, const char* file, int line,
+                          const char* function)
+{
+    throw std::runtime_error(
+        fmt::format("Assertion failed: {}\n  -> {}\n  -> in {} at {}:{}", condition, message, function, file, line)
+            .c_str());
 }
 
 } // namespace detail
