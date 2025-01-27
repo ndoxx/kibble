@@ -2,19 +2,20 @@
 #include "kibble/assert/assert.h"
 #include "kibble/filesystem/resource_pack.h"
 #include "kibble/logger/logger.h"
+#include "kibble/platform/platform.h"
 #include "kibble/string/string.h"
 
 #include <chrono>
 #include <fstream>
 #include <regex>
 
-#ifdef __linux__
+#ifdef K_PLATFORM_LINUX
 #include <climits>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
-#elif _WIN32
-
+#else
+#error Unsupported platform
 #endif
 
 namespace kb::kfs
@@ -46,7 +47,7 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef __linux__
+#ifdef K_PLATFORM_LINUX
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -110,7 +111,7 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef __linux__
+#ifdef K_PLATFORM_LINUX
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -172,7 +173,7 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef __linux__
+#ifdef K_PLATFORM_LINUX
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -495,7 +496,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
 void FileSystem::init_self_path()
 {
     fs::path self_path;
-#ifdef __linux__
+#ifdef K_PLATFORM_LINUX
     char buff[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
     K_ASSERT(len != -1, "Cannot read self path using readlink. Buf len: {}", len);
