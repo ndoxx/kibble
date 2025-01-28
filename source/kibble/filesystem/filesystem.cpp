@@ -9,11 +9,14 @@
 #include <fstream>
 #include <regex>
 
-#ifdef K_PLATFORM_LINUX
+#if defined(K_PLATFORM_LINUX)
 #include <climits>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
+#elif defined(K_PLATFORM_WINDOWS)
+#include <cstdlib> // For _wdupenv_s
+#include <windows.h>
 #else
 #error Unsupported platform
 #endif
@@ -47,7 +50,8 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef K_PLATFORM_LINUX
+#if defined(K_PLATFORM_LINUX)
+
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -70,6 +74,28 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     {
         app_settings_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "config";
     }
+
+#elif defined(K_PLATFORM_WINDOWS)
+
+    // Locate the LocalAppData directory
+    wchar_t* buff;
+    size_t sz;
+    if (_wdupenv_s(&buff, &sz, "LOCALAPPDATA") != 0 || buff == nullptr)
+    {
+        klog(log_channel_).uid("FileSystem").error("Failed to locate LocalAppData directory.");
+        return false;
+    }
+
+    fs::path local_app_data_directory = fs::canonical(buff);
+    free(buff);
+
+    K_ASSERT(fs::exists(local_app_data_directory),
+             "LocalAppData directory does not exist, that should not be possible!\n  -> {}",
+             local_app_data_directory.string());
+
+    // Create the vendor/appname directory under AppData/Local
+    app_settings_directory_ = local_app_data_directory / vendor / appname;
+
 #else
 #error setup_config_directory() not yet implemented for this platform.
 #endif
@@ -111,7 +137,8 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef K_PLATFORM_LINUX
+#if defined(K_PLATFORM_LINUX)
+
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -134,6 +161,27 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     {
         app_data_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "appdata";
     }
+
+#elif defined(K_PLATFORM_WINDOWS)
+
+    // Locate the AppData directory
+    wchar_t* buff;
+    size_t sz;
+    if (_wdupenv_s(&buff, &sz, "APPDATA") != 0 || buff == nullptr)
+    {
+        klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
+        return false;
+    }
+
+    fs::path appdata_directory = fs::canonical(buff);
+    free(buff);
+
+    K_ASSERT(fs::exists(appdata_directory), "AppData directory does not exist, that should not be possible!\n  -> {}",
+             appdata_directory.string());
+
+    // Create the vendor/appname directory under AppData/Roaming
+    app_data_directory_ = appdata_directory / vendor / appname;
+
 #else
 #error setup_app_data_directory() not yet implemented for this platform.
 #endif
@@ -173,7 +221,8 @@ fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appn
     su::strip_spaces(vendor);
     su::strip_spaces(appname);
 
-#ifdef K_PLATFORM_LINUX
+#if defined(K_PLATFORM_LINUX)
+
     // * Locate home directory
     // First, check the HOME environment variable, and if not set, fallback to getpwuid()
     const char* homebuf;
@@ -211,6 +260,44 @@ Searched the following paths:
     - {}
 => Returning empty path.)",
                    vendor, appname, candidate1.c_str(), candidate2.c_str());
+        return "";
+    }
+
+#elif defined(K_PLATFORM_WINDOWS)
+
+    // Locate the LocalAppData directory
+    wchar_t* buff;
+    size_t sz;
+    if (_wdupenv_s(&buff, &sz, "APPDATA") != 0 || buff == nullptr)
+    {
+        klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
+        return "";
+    }
+
+    fs::path app_data_directory = fs::canonical(buff);
+    free(buff);
+
+    K_ASSERT(fs::exists(app_data_directory), "AppData directory does not exist, that should not be possible!\n  -> {}",
+             app_data_directory.string());
+
+    // Check if the vendor/appname directory exists under AppData/Roaming
+    auto candidate = app_data_directory / vendor / appname;
+
+    if (fs::exists(candidate))
+    {
+        return candidate;
+    }
+    else
+    {
+        klog(log_channel_)
+            .uid("FileSystem")
+            .error(R"(Application data directory does not exist for:
+Vendor:   {}
+App name: {}
+Searched the following path:
+    - {}
+=> Returning empty path.)",
+                   vendor, appname, candidate.c_str());
         return "";
     }
 
@@ -496,7 +583,8 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
 void FileSystem::init_self_path()
 {
     fs::path self_path;
-#ifdef K_PLATFORM_LINUX
+#if defined(K_PLATFORM_LINUX)
+
     char buff[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff) - 1);
     K_ASSERT(len != -1, "Cannot read self path using readlink. Buf len: {}", len);
@@ -506,6 +594,16 @@ void FileSystem::init_self_path()
         buff[len] = '\0';
     }
     self_path = fs::path(buff);
+
+#elif defined(K_PLATFORM_WINDOWS)
+
+    wchar_t buff[MAX_PATH];
+    if (GetModuleFileNameW(NULL, buff, MAX_PATH) == 0)
+    {
+        K_ASSERT(false, "Cannot read self path using GetModuleFileNameW.");
+    }
+    self_path = fs::path(buff);
+
 #else
 #error init_self_path() not yet implemented for this platform.
 #endif

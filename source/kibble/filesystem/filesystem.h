@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
+#include "kibble/filesystem/resource_pack.h"
 #include "kibble/hash/hash.h"
 #include "kibble/util/unordered_dense.h"
-#include "kibble/filesystem/resource_pack.h"
 
 namespace fs = std::filesystem;
 
@@ -127,10 +127,12 @@ public:
      * The config directory will be aliased by "config", unless the third parameter is set.
      * Whitespace characters will be stripped from the two first arguments.
      * If the configuration directory already exists, only the aliasing is performed.
-     * Under linux systems, this function will try to create the config directory like so:\n
+     * Under Linux systems, this function will try to create the config directory like so:\n
      * `~/.config/<vendor>/<appname>`\n
      * If this is not applicable, it will fall back to this form:\n
      * `~/.<vendor>/<appname>/config`
+     * Under Windows systems, the settings directory will be located at\n
+     * `C:\Users\{username}\AppData\Local\<vendor>\<appname>`
      *
      * @param vendor The vendor name will be used as a parent directory for the configuration directory of this
      * application. Thus multiple applications can be grouped under the same vendor name
@@ -146,10 +148,12 @@ public:
      * This directory will be aliased "appdata", unless the third parameter is set.
      * Whitespace characters will be stripped from the two first arguments.
      * If the directory already exists, only the aliasing is performed.
-     * Under linux systems, this function will try to create the data directory like so:\n
+     * Under Linux systems, this function will try to create the data directory like so:\n
      * `~/.local/share/<vendor>/<appname>`\n
      * If this is not applicable, it will fall back to this form:\n
      * `~/.<vendor>/<appname>/appdata`
+     * Under Windows systems, the data directory will be located at:\n
+     * `C:\Users\{username}\AppData\Roaming\<vendor>\<appname>`
      *
      * @param vendor The vendor name will be used as a parent directory for the data directory of this
      * application. Thus multiple applications can be grouped under the same vendor name
