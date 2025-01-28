@@ -1,5 +1,6 @@
 #include "kibble/thread/job/impl/worker.h"
 #include "kibble/assert/assert.h"
+#include "kibble/platform/platform.h"
 #include "kibble/thread/job/impl/barrier.h"
 #include "kibble/thread/job/impl/job.h"
 #include "kibble/thread/job/impl/job_graph.h"
@@ -9,10 +10,10 @@
 #include "kibble/time/instrumentation.h"
 #include "kibble/util/sanitizer.h"
 
-#ifdef _WIN32
-#include <processthreadsapi.h>
-#else
+#if defined(K_PLATFORM_LINUX)
 #include <pthread.h>
+#elif defined(K_PLATFORM_WINDOWS)
+#include <processthreadsapi.h>
 #endif
 
 namespace kb::th
@@ -78,12 +79,7 @@ WorkerTerminationStatus WorkerThread::terminate_and_join(std::chrono::seconds ti
     }
 
     // Forceful termination
-#ifdef _WIN32
-    if (TerminateThread(thread_.native_handle(), 0))
-    {
-        return WorkerTerminationStatus::Forceful;
-    }
-#else
+#if defined(K_PLATFORM_LINUX)
     if (pthread_cancel(thread_.native_handle()) == 0)
     {
         void* res;
@@ -92,6 +88,11 @@ WorkerTerminationStatus WorkerThread::terminate_and_join(std::chrono::seconds ti
         {
             return WorkerTerminationStatus::Forceful;
         }
+    }
+#elif defined(K_PLATFORM_WINDOWS)
+    if (TerminateThread(thread_.native_handle(), 0))
+    {
+        return WorkerTerminationStatus::Forceful;
     }
 #endif
 
