@@ -41,11 +41,11 @@ float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, f
 float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint32_t subdivisions)
 {
     // * Simpson's rule is more accurate if we subdivide the interval of integration
-    float h = float(ub - lb) / float(subdivisions), // width of subdivisions
-        sum_odd = 0.0f,                             // sum of odd subinterval contributions
-        sum_even = 0.0f,                            // sum of even subinterval contributions
-        y0 = f(lb),                                 // f value at lower bound
-        yn = f(ub);                                 // f value at upper bound
+    float h = (ub - lb) / float(subdivisions), // width of subdivisions
+        sum_odd = 0.0f,                        // sum of odd subinterval contributions
+        sum_even = 0.0f,                       // sum of even subinterval contributions
+        y0 = f(lb),                            // f value at lower bound
+        yn = f(ub);                            // f value at upper bound
 
     // loop to evaluate intermediary sums
     for (uint32_t ii = 1; ii < subdivisions; ++ii)

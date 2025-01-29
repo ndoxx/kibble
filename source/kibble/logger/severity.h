@@ -28,6 +28,8 @@ constexpr std::string_view to_str(Severity severity)
         case Severity::Verbose: return "Verbose";
     }
     // clang-format on
+
+    return "<Unknown>";
 }
 
 } // namespace kb::log

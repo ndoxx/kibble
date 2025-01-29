@@ -89,7 +89,7 @@ void md5::process(const void* input, size_t length)
     if (head_ + length < k_block_size)
     {
         std::memcpy(buffer_.data() + head_, input, length);
-        head_ += length;
+        head_ += uint32_t(length);
         return;
     }
 
@@ -137,7 +137,7 @@ void md5::finish()
     int32_t pad = int32_t(k_block_size - 2 * sizeof(uint32_t) - head_);
     if (pad <= 0)
     {
-        pad += k_block_size;
+        pad += int32_t(k_block_size);
     }
 
     buffer_[head_] = 0x80;

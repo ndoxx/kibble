@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <set>
 #include <string>
@@ -62,9 +63,27 @@ namespace detail
 template <typename T>
 T StringCast(const std::string&) noexcept(false);
 
-// Template variable to associate types to type tags
+// Template to associate types to type tags
 template <typename T>
-static constexpr ArgType k_underlying_type = ArgType::NONE;
+struct ToArgType
+{
+    static constexpr ArgType type = ArgType::NONE;
+};
+
+// clang-format off
+template <> struct ToArgType<bool>                     { static constexpr ArgType type = ArgType::BOOL; };
+template <> struct ToArgType<int>                      { static constexpr ArgType type = ArgType::INT; };
+template <> struct ToArgType<long>                     { static constexpr ArgType type = ArgType::LONG; };
+template <> struct ToArgType<float>                    { static constexpr ArgType type = ArgType::FLOAT; };
+template <> struct ToArgType<double>                   { static constexpr ArgType type = ArgType::DOUBLE; };
+template <> struct ToArgType<std::string>              { static constexpr ArgType type = ArgType::STRING; };
+template <> struct ToArgType<std::vector<int>>         { static constexpr ArgType type = ArgType::VEC_INT; };
+template <> struct ToArgType<std::vector<long>>        { static constexpr ArgType type = ArgType::VEC_LONG; };
+template <> struct ToArgType<std::vector<float>>       { static constexpr ArgType type = ArgType::VEC_FLOAT; };
+template <> struct ToArgType<std::vector<double>>      { static constexpr ArgType type = ArgType::VEC_DOUBLE; };
+template <> struct ToArgType<std::vector<std::string>> { static constexpr ArgType type = ArgType::VEC_STRING; };
+// clang-format on
+
 } // namespace detail
 
 /**
@@ -134,7 +153,7 @@ struct Option : public AbstractOption
      */
     ArgType underlying_type() const override
     {
-        return detail::k_underlying_type<T>;
+        return detail::ToArgType<T>::type;
     }
 
     /**
@@ -448,29 +467,6 @@ private:
 
 namespace detail
 {
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<bool> = ArgType::BOOL;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<int> = ArgType::INT;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<long> = ArgType::LONG;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<float> = ArgType::FLOAT;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<double> = ArgType::DOUBLE;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::string> = ArgType::STRING;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<int>> = ArgType::VEC_INT;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<long>> = ArgType::VEC_LONG;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<float>> = ArgType::VEC_FLOAT;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<double>> = ArgType::VEC_DOUBLE;
-template <>
-[[maybe_unused]] static constexpr ArgType k_underlying_type<std::vector<std::string>> = ArgType::VEC_STRING;
-
 template <>
 bool StringCast<bool>(const std::string&) noexcept(false);
 template <>

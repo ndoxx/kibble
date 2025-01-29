@@ -40,7 +40,7 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     std::fill(current, current + padding, k_alignment_padding_mark);
 #endif
 
-    head_ += padding + size;
+    head_ += uint32_t(padding + size);
     return current + padding;
 }
 

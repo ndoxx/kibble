@@ -2,10 +2,12 @@
 #include "kibble/memory/util/alignment.h"
 #include "kibble/thread/job/impl/common.h"
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 namespace kb::th
 {

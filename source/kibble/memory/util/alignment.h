@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <new>
 
@@ -7,12 +8,12 @@ namespace kb::memory
 {
 
 // Size of a cache line -> controlling alignment prevents false sharing
-#ifdef __cpp_lib_hardware_interference_size
-constexpr size_t k_cache_line_size = std::hardware_destructive_interference_size;
-#else
+// #ifdef __cpp_lib_hardware_interference_size
+// constexpr size_t k_cache_line_size = std::hardware_destructive_interference_size;
+// #else
 // 64 bytes on x86-64 │ L1_CACHE_BYTES │ L1_CACHE_SHIFT │ __cacheline_aligned │ ...
-constexpr size_t k_cache_line_size = 64;
-#endif
+constexpr std::size_t k_cache_line_size = 64;
+// #endif
 
 /**
  * @brief Calculate an alignment padding.

@@ -1,4 +1,5 @@
 #include "kibble/filesystem/stream/packfile_stream.h"
+#include "kibble/platform/platform.h"
 
 namespace kb
 {
@@ -15,8 +16,13 @@ PackFileStream::PackFileStreamBuf::int_type PackFileStream::PackFileStreamBuf::u
 {
     if (gptr() == egptr())
     {
+#if defined(K_COMPILER_CLANG)
         std::streamsize bytes_to_read =
             std::min(std::streamsize(buffer_.size()), std::streamsize(size_ - (base_stream_.tellg() - start_)));
+#else
+        std::streamsize bytes_to_read =
+            std::min(std::streamsize(buffer_.size()), (size_ - (std::streamsize(base_stream_.tellg()) - start_)));
+#endif
         if (bytes_to_read <= 0)
         {
             return traits_type::eof();

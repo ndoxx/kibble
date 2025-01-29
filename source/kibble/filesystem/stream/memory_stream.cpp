@@ -60,7 +60,7 @@ MemoryBuffer::pos_type MemoryBuffer::seekpos(pos_type pos, std::ios_base::openmo
 
 std::streamsize MemoryBuffer::xsgetn(char* s, std::streamsize n)
 {
-    std::streamsize avail = std::min(n, std::streamsize(egptr() - gptr()));
+    std::streamsize avail = std::min(n, egptr() - gptr());
     if (avail > 0)
     {
         std::memcpy(s, gptr(), size_t(avail));
@@ -71,7 +71,7 @@ std::streamsize MemoryBuffer::xsgetn(char* s, std::streamsize n)
 
 std::streamsize MemoryBuffer::xsputn(const char* s, std::streamsize n)
 {
-    std::streamsize avail = std::min(n, std::streamsize(epptr() - pptr()));
+    std::streamsize avail = std::min(n, epptr() - pptr());
     if (avail > 0)
     {
         std::memcpy(pptr(), s, size_t(avail));

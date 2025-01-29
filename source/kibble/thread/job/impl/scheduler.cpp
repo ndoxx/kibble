@@ -33,7 +33,7 @@ void Scheduler::dispatch(Job* job)
 
     // Use TID hint strictly when balance is false, otherwise make sure that the TID produced is never lower than the
     // hint
-    uint32_t tid = tid_hint + (balance * rr) % (uint32_t(js_.get_threads_count()) - tid_hint);
+    uint32_t tid = tid_hint + uint32_t(balance * rr) % (uint32_t(js_.get_threads_count()) - tid_hint);
     // Advance round robin if balance is true
     rr = balance ? (rr + 1) % js_.get_threads_count() : rr;
     // Submit job to the appropriate queue

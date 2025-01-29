@@ -123,7 +123,7 @@ bool PackFileBuilder::add_directory(const fs::path& dir_path)
 bool PackFileBuilder::export_pack(std::ostream& stream)
 {
     // Update offsets
-    size_t initial_offset = export_size_bytes() - data_.size();
+    uint32_t initial_offset = uint32_t(export_size_bytes() - data_.size());
 
     for (auto& kvp : pak_.index)
     {

@@ -17,7 +17,7 @@ TCPStream::TCPStream(int fd, void* address_in) : fd_(fd)
 {
     sockaddr_in* address = static_cast<sockaddr_in*>(address_in);
     char ip[50];
-    inet_ntop(PF_INET, static_cast<in_addr_t*>(&(address->sin_addr.s_addr)), ip, sizeof(ip) - 1);
+    inet_ntop(PF_INET, &address->sin_addr.s_addr, ip, sizeof(ip) - 1);
     peer_ip_ = ip;
     peer_port_ = ntohs(address->sin_port);
 }

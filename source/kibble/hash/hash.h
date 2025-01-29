@@ -45,8 +45,8 @@ namespace hakz
  */
 [[nodiscard]] inline constexpr uint64_t rev_hash_64(uint64_t x)
 {
-    x = (x ^ (x >> 30)) * uint64_t(0xbf58476d1ce4e5b9);
-    x = (x ^ (x >> 27)) * uint64_t(0x94d049bb133111eb);
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
     x = x ^ (x >> 31);
     return x;
 }
@@ -59,8 +59,8 @@ namespace hakz
  */
 [[nodiscard]] inline constexpr uint64_t rev_unhash_64(uint64_t x)
 {
-    x = (x ^ (x >> 31) ^ (x >> 62)) * uint64_t(0x319642b2d24d8ec3);
-    x = (x ^ (x >> 27) ^ (x >> 54)) * uint64_t(0x96de1b173f119089);
+    x = (x ^ (x >> 31) ^ (x >> 62)) * 0x319642b2d24d8ec3;
+    x = (x ^ (x >> 27) ^ (x >> 54)) * 0x96de1b173f119089;
     x = x ^ (x >> 30) ^ (x >> 60);
     return x;
 }
