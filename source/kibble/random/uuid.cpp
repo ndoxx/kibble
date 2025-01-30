@@ -70,7 +70,7 @@ inline __m128i stom128i(const char* mem)
     __m256i x = betole256(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(mem)));
     x = _mm256_shuffle_epi8(x, dash_shuffle);
     x = _mm256_insert_epi16(x, static_cast<short>(betole16(*reinterpret_cast<const uint16_t*>(mem + 16))), 7);
-    x = _mm256_insert_epi32(x, betole32(*reinterpret_cast<const uint32_t*>(mem + 32)), 7);
+    x = _mm256_insert_epi32(x, static_cast<int>(betole32(*reinterpret_cast<const uint32_t*>(mem + 32))), 7);
 
     // Build a mask to apply a different offset to alphas and digits
     const __m256i sub = _mm256_set1_epi8(0x2F);

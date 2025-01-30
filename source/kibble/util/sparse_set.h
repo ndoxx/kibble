@@ -562,7 +562,7 @@ private:
     Array sparse; // Map of elements to dense set indices
     Array guard;  // Auto-incremented when index reused
 
-    size_t size_ = 0; // Element count
+    size_t size_{0}; // Element count
 
 public:
     using iterator = typename Array::const_iterator;
@@ -576,7 +576,7 @@ public:
      * All numbers within bounds are available.
      *
      */
-    SecureSparsePool() : size_(0)
+    SecureSparsePool()
     {
         clear();
     }
