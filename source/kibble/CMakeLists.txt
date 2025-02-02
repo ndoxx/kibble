@@ -103,10 +103,16 @@ target_link_libraries(kibble
     PRIVATE
     project_options
     project_warnings
-    pthread
-    atomic
-    stdc++fs
 )
+
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_link_libraries(kibble
+        PRIVATE
+        pthread
+        atomic
+        stdc++fs
+    )
+endif()
 
 # -- Install rules --
 if(KB_TARGET_INSTALL)
