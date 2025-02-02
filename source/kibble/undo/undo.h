@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "kibble/hash/hash.h"
+#include "kibble/platform/types.h"
 
 namespace kb
 {

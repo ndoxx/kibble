@@ -33,7 +33,7 @@ bool PackFileBuilder::check_ignore(const fs::path& dir_path)
     std::ifstream ifs(ignore_path);
     if (!ifs)
     {
-        klog(log_channel_).uid("kpakIgnore").error("Problem opening kpakignore file: {}", ignore_path.c_str());
+        klog(log_channel_).uid("kpakIgnore").error("Problem opening kpakignore file: {}", ignore_path.string());
         return false;
     }
 
@@ -68,11 +68,11 @@ bool PackFileBuilder::add_file(const fs::path& src, const fs::path& dst)
         return false;
     }
 
-    hash_t key = H_(dst.c_str());
+    hash_t key = H_(dst.string().c_str());
 
     if (pak_.index.contains(key))
     {
-        klog(log_channel_).uid("kpak").warn("Skipping duplicate entry: {}", dst.c_str());
+        klog(log_channel_).uid("kpak").warn("Skipping duplicate entry: {}", dst.string());
         return false;
     }
 
@@ -83,7 +83,7 @@ bool PackFileBuilder::add_file(const fs::path& src, const fs::path& dst)
         return false;
     }
 
-    klog(log_channel_).uid("kpak").info("Adding file: {}", dst.c_str());
+    klog(log_channel_).uid("kpak").info("Adding file: {}", dst.string());
 
     uint32_t size = uint32_t(ifs.tellg());
     ifs.seekg(0);
@@ -103,7 +103,7 @@ bool PackFileBuilder::add_directory(const fs::path& dir_path)
         return false;
     }
 
-    klog(log_channel_).uid("kpak").info("Adding directory: {}", dir_path.c_str());
+    klog(log_channel_).uid("kpak").info("Adding directory: {}", dir_path.string());
 
     // Check for ignore list
     check_ignore(dir_path);
@@ -111,7 +111,7 @@ bool PackFileBuilder::add_directory(const fs::path& dir_path)
     for (auto& entry : fs::recursive_directory_iterator(dir_path))
     {
         fs::path rel_path = fs::relative(entry.path(), dir_path);
-        if (!ignore_.contains(H_(rel_path.c_str())))
+        if (!ignore_.contains(H_(rel_path.string().c_str())))
         {
             add_file(entry.path(), rel_path);
         }

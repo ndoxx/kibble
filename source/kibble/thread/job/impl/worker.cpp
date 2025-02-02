@@ -13,7 +13,14 @@
 #if defined(K_PLATFORM_LINUX)
 #include <pthread.h>
 #elif defined(K_PLATFORM_WINDOWS)
-#include <processthreadsapi.h>
+#if defined(K_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#endif
+#include <windows.h>
+#if defined(K_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
 #endif
 
 namespace kb::th

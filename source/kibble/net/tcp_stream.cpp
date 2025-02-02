@@ -1,5 +1,7 @@
 #include "kibble/net/tcp_stream.h"
 
+#if defined(K_PLATFORM_LINUX)
+
 #include <arpa/inet.h>
 #include <iostream>
 #include <netinet/in.h>
@@ -59,3 +61,5 @@ void TCPStream::receive(std::string& msg)
 
 } // namespace net
 } // namespace kb
+
+#endif

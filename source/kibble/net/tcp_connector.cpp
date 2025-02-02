@@ -1,6 +1,8 @@
 #include "kibble/net/tcp_connector.h"
 #include "kibble/net/tcp_stream.h"
 
+#if defined(K_PLATFORM_LINUX)
+
 #include <arpa/inet.h>
 #include <cstring>
 #include <netdb.h>
@@ -54,3 +56,5 @@ TCPStream* TCPConnector::connect(const std::string& server, uint16_t port)
 
 } // namespace net
 } // namespace kb
+
+#endif

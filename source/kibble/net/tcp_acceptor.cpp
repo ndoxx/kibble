@@ -1,6 +1,8 @@
 #include "kibble/net/tcp_acceptor.h"
 #include "kibble/net/tcp_stream.h"
 
+#if defined(K_PLATFORM_LINUX)
+
 #include <arpa/inet.h>
 #include <cstring>
 #include <netdb.h>
@@ -94,3 +96,5 @@ TCPStream* TCPAcceptor::accept()
 
 } // namespace net
 } // namespace kb
+
+#endif

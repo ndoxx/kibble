@@ -3,6 +3,7 @@
 #include "kibble/logger/entry.h"
 
 #include "fmt/format.h"
+#include <array>
 
 namespace kb::log
 {

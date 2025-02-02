@@ -246,7 +246,7 @@ public:
      */
     inline std::string extension(const std::string& unipath) const
     {
-        return regular_path(unipath).extension();
+        return regular_path(unipath).extension().string();
     }
 
     /**

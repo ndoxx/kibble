@@ -3,6 +3,7 @@
 #include <ostream>
 
 #include "kibble/filesystem/serialization/archiver.h"
+#include "kibble/platform/types.h"
 
 namespace kb
 {

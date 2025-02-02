@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <functional>
+#include <numbers>
 
 namespace kb
 {
@@ -11,11 +12,12 @@ namespace math
 {
 
 constexpr uint32_t k_simpson_subdivisions = 6;
+constexpr float k_pi = std::numbers::pi_v<float>;
 
 static float gaussian_distribution(float x, float mu, float sigma)
 {
     float d = x - mu;
-    float n = 1.0f / (std::sqrt(2.0f * float(M_PI)) * sigma);
+    float n = 1.0f / (std::sqrt(2.0f * k_pi) * sigma);
     return std::exp(-d * d / (2 * sigma * sigma)) * n;
 };
 

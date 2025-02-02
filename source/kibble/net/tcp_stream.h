@@ -1,5 +1,9 @@
 #pragma once
 
+#include "kibble/platform/platform.h"
+
+#if defined(K_PLATFORM_LINUX)
+
 #include <cstdint>
 #include <string>
 
@@ -96,3 +100,5 @@ private:
 
 } // namespace net
 } // namespace kb
+
+#endif

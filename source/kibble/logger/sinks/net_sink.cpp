@@ -2,6 +2,8 @@
 #include "kibble/logger/formatter.h"
 #include "kibble/net/tcp_connector.h"
 
+#if defined(K_PLATFORM_LINUX)
+
 namespace kb::log
 {
 NetSink::~NetSink()
@@ -33,3 +35,5 @@ bool NetSink::connect(const std::string& server, uint16_t port)
 }
 
 } // namespace kb::log
+
+#endif

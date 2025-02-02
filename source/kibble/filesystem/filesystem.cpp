@@ -16,7 +16,14 @@
 #include <unistd.h>
 #elif defined(K_PLATFORM_WINDOWS)
 #include <cstdlib> // For _wdupenv_s
+#if defined(K_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#endif
 #include <windows.h>
+#if defined(K_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
 #else
 #error Unsupported platform
 #endif
@@ -80,7 +87,7 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
     // Locate the LocalAppData directory
     wchar_t* buff;
     size_t sz;
-    if (_wdupenv_s(&buff, &sz, "LOCALAPPDATA") != 0 || buff == nullptr)
+    if (_wdupenv_s(&buff, &sz, L"LOCALAPPDATA") != 0 || buff == nullptr)
     {
         klog(log_channel_).uid("FileSystem").error("Failed to locate LocalAppData directory.");
         return false;
@@ -107,18 +114,18 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
         {
             klog(log_channel_)
                 .uid("FileSystem")
-                .error("Failed to create config directory at:\n{}", app_settings_directory_.c_str());
+                .error("Failed to create config directory at:\n{}", app_settings_directory_.string());
             return false;
         }
         klog(log_channel_)
             .uid("FileSystem")
-            .info("Created application directory at:\n{}", app_settings_directory_.c_str());
+            .info("Created application directory at:\n{}", app_settings_directory_.string());
     }
     else
     {
         klog(log_channel_)
             .uid("FileSystem")
-            .info("Detected application directory at:\n{}", app_settings_directory_.c_str());
+            .info("Detected application directory at:\n{}", app_settings_directory_.string());
     }
 
     // Alias the config directory
@@ -167,7 +174,7 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
     // Locate the AppData directory
     wchar_t* buff;
     size_t sz;
-    if (_wdupenv_s(&buff, &sz, "APPDATA") != 0 || buff == nullptr)
+    if (_wdupenv_s(&buff, &sz, L"APPDATA") != 0 || buff == nullptr)
     {
         klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
         return false;
@@ -193,16 +200,18 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
         {
             klog(log_channel_)
                 .uid("FileSystem")
-                .error("Failed to create application data directory at:\n{}", app_data_directory_.c_str());
+                .error("Failed to create application data directory at:\n{}", app_data_directory_.string());
             return false;
         }
-        klog(log_channel_).uid("FileSystem").info("Created application directory at:\n{}", app_data_directory_.c_str());
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Created application directory at:\n{}", app_data_directory_.string());
     }
     else
     {
         klog(log_channel_)
             .uid("FileSystem")
-            .info("Detected application directory at:\n{}", app_data_directory_.c_str());
+            .info("Detected application directory at:\n{}", app_data_directory_.string());
     }
 
     // Alias the data directory
@@ -259,7 +268,7 @@ Searched the following paths:
     - {}
     - {}
 => Returning empty path.)",
-                   vendor, appname, candidate1.c_str(), candidate2.c_str());
+                   vendor, appname, candidate1.string(), candidate2.string());
         return "";
     }
 
@@ -268,7 +277,7 @@ Searched the following paths:
     // Locate the LocalAppData directory
     wchar_t* buff;
     size_t sz;
-    if (_wdupenv_s(&buff, &sz, "APPDATA") != 0 || buff == nullptr)
+    if (_wdupenv_s(&buff, &sz, L"APPDATA") != 0 || buff == nullptr)
     {
         klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
         return "";
@@ -297,7 +306,7 @@ App name: {}
 Searched the following path:
     - {}
 => Returning empty path.)",
-                   vendor, appname, candidate.c_str());
+                   vendor, appname, candidate.string());
         return "";
     }
 
@@ -444,7 +453,7 @@ bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& a
     {
         klog(log_channel_)
             .uid("FileSystem")
-            .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path.c_str());
+            .error("Cannot add directory alias. Directory does not exist:\n{}", dir_path.string());
         return false;
     }
     K_ASSERT(fs::is_directory(dir_path), "Not a directory: {}", dir_path.string());
@@ -459,7 +468,7 @@ bool FileSystem::alias_directory(const fs::path& _dir_path, const std::string& a
     {
         aliases_[alias_hash] = AliasEntry{.alias = alias, .base = dir_path, .pak = nullptr};
     }
-    klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path.c_str());
+    klog(log_channel_).uid("FileSystem").debug("Added directory alias:\n{}:// <=> {}", alias, dir_path.string());
 
     return true;
 }
@@ -498,7 +507,7 @@ std::string FileSystem::make_universal(const fs::path& path, hash_t base_alias_h
     // Make path relative to the aliased directory
     const auto& alias_entry = get_alias_entry(base_alias_hash);
     auto rel_path = fs::relative(path, alias_entry.base);
-    return fmt::format("{}://{}", alias_entry.alias, rel_path.c_str());
+    return fmt::format("{}://{}", alias_entry.alias, rel_path.string());
 }
 
 const FileSystem::AliasEntry& FileSystem::get_alias_entry(hash_t alias_hash) const
@@ -564,7 +573,7 @@ IStreamPtr FileSystem::get_input_stream(const std::string& unipath, bool binary)
     auto filepath = to_regular_path(result);
 
     klog(log_channel_).uid("FileSystem").verbose("source: regular file");
-    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath.c_str());
+    klog(log_channel_).uid("FileSystem").verbose("path:   {}", filepath.string());
 
     K_ASSERT(fs::exists(filepath), "File does not exist: {}", unipath);
     K_ASSERT(fs::is_regular_file(filepath), "Not a file: {}", unipath);

@@ -2,6 +2,9 @@
 
 #include "kibble/logger/sink.h"
 #include "kibble/net/tcp_stream.h"
+#include "kibble/platform/platform.h"
+
+#if defined(K_PLATFORM_LINUX)
 
 #include <functional>
 #include <string>
@@ -66,3 +69,5 @@ private:
 };
 
 } // namespace kb::log
+
+#endif
