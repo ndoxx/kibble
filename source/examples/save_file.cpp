@@ -1,4 +1,5 @@
 #include "kibble/filesystem/save_file.h"
+#include "kibble/platform/types.h"
 
 #include <iostream>
 #include <vector>

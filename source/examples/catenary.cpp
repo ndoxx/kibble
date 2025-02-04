@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <fstream>
-#include <glm/glm.hpp>
 #include <iostream>
 #include <vector>
 
@@ -84,9 +83,13 @@ int main(int argc, char** argv)
             float tt = float(ii) / float(nsamples - 1);
             float rt = cats[ncats - 1].arclen_remap(tt);
             float der = cats[ncats - 1].prime(rt);
-            glm::vec2 tangent{1.f, der};
-            tangent = 0.3f * glm::normalize(tangent);
-            ofs << rt << ' ' << cats[ncats - 1].value(rt) << ' ' << tangent.x << ' ' << tangent.y << std::endl;
+
+            float tangent_x = 1.f;
+            float tangent_y = der;
+            float norm = std::sqrt(tangent_x * tangent_x + tangent_y * tangent_y);
+            tangent_x = 0.3f * tangent_x / norm;
+            tangent_y = 0.3f * tangent_y / norm;
+            ofs << rt << ' ' << cats[ncats - 1].value(rt) << ' ' << tangent_x << ' ' << tangent_y << std::endl;
         }
     }
     return 0;

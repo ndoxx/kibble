@@ -24,6 +24,7 @@ int main(int argc, char** argv)
     Channel chan_server(Severity::Verbose, "server", "srv", kb::col::darkred);
     chan_server.attach_sink(console_sink);
 
+#if defined(K_PLATFORM_LINUX)
     // Start a TCP server on a new thread. This could as well be in another application on the same machine, or in a
     // remote machine in Zimbabwe, it does not matter.
     std::thread server([&chan_server]() {
@@ -86,5 +87,12 @@ int main(int argc, char** argv)
 
     // Cleanup
     delete c_stream;
+
+#else
+
+    klog(chan_server).error("Socket implementation only exists for Linux");
+
+#endif
+
     return 0;
 }

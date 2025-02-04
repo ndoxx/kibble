@@ -107,7 +107,7 @@ target_link_libraries(kibble
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_link_libraries(kibble
-        PRIVATE
+        PUBLIC
         pthread
         atomic
         stdc++fs

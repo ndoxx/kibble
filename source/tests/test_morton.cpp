@@ -1,9 +1,12 @@
 #include "kibble/algorithm/msb_search.h"
-#define USE_GLM
+
+#ifdef USE_GLM
 #include "kibble/math/morton_glm.h"
+#else
+#include "kibble/math/morton.h"
+#endif
 
 #include <catch2/catch_all.hpp>
-#include <glm/glm.hpp>
 #include <numeric>
 #include <random>
 
@@ -302,6 +305,7 @@ TEST_CASE("Decoding, 3D, 64b")
     REQUIRE(pass);
 }
 
+#ifdef USE_GLM
 TEST_CASE("Encoding, 3D GLM vector, 64b")
 {
     std::random_device dev;
@@ -342,6 +346,7 @@ TEST_CASE("Decoding, 3D GLM vector, 64b")
 
     REQUIRE(pass);
 }
+#endif
 
 TEST_CASE("MSB search 32b", "[msb]")
 {
@@ -360,7 +365,7 @@ TEST_CASE("MSB search 64b", "[msb]")
     std::iota(std::begin(int_seq), std::end(int_seq), 0);
 
     std::array<size_t, 64> ans;
-    std::generate(std::begin(ans), std::end(ans), [ii = 0]() mutable { return kb::msb_search<uint64_t>(1ul << ii++); });
+    std::generate(std::begin(ans), std::end(ans), [ii = 0ull]() mutable { return kb::msb_search<uint64_t>(1ull << ii++); });
 
     REQUIRE(ans == int_seq);
 }

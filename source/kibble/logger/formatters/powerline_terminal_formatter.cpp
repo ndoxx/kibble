@@ -1,4 +1,5 @@
 #include "kibble/logger/formatters/powerline_terminal_formatter.h"
+#include "kibble/cli/terminal.h"
 #include "kibble/logger/channel.h"
 #include "kibble/logger/entry.h"
 
@@ -21,6 +22,12 @@ constexpr std::array<fmt::color, 6> k_severity_color = {
 inline auto to_rgb(kb::math::argb32_t color)
 {
     return fmt::rgb{uint8_t(color.r()), uint8_t(color.g()), uint8_t(color.b())};
+}
+
+PowerlineTerminalFormatter::PowerlineTerminalFormatter()
+{
+    // This formatter uses ANSI codes, which are not processed by default on Windows
+    cli::enable_terminal_ANSI_support();
 }
 
 void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentation& p)

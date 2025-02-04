@@ -44,5 +44,17 @@ std::pair<uint32_t, uint32_t> get_terminal_size()
 #endif
 }
 
+void enable_terminal_ANSI_support()
+{
+#if defined(K_PLATFORM_WINDOWS)
+    // Enable ANSI escape codes
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+    GetConsoleMode(hOut, &dwMode);
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hOut, dwMode);
+#endif
+}
+
 } // namespace cli
 } // namespace kb

@@ -1,4 +1,5 @@
 #include "kibble/logger/formatters/vscode_terminal_formatter.h"
+#include "kibble/cli/terminal.h"
 #include "kibble/logger/channel.h"
 #include "kibble/logger/entry.h"
 
@@ -42,6 +43,12 @@ inline std::string format_uid(const std::string& input)
     {
         return fmt::format("[{}] ", fmt::styled(input, fmt::emphasis::italic));
     }
+}
+
+VSCodeTerminalFormatter::VSCodeTerminalFormatter()
+{
+    // This formatter uses ANSI codes, which are not processed by default on Windows
+    cli::enable_terminal_ANSI_support();
 }
 
 void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation& chan)

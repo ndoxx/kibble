@@ -1,5 +1,9 @@
+#ifdef USE_GLM
 #include "kibble/math/morton_glm.h" // For the GLM wrappers
 #include <glm/gtx/string_cast.hpp>
+#else
+#include "kibble/math/morton.h"
+#endif
 
 #include "fmt/core.h"
 
@@ -34,6 +38,7 @@ int main(int argc, char** argv)
         }
     }
 
+#ifdef USE_GLM
     // * GLM wrappers
     // All integral glm vectors of dimension 2 and 3 are supported
     fmt::println("{}", morton::encode(glm::i32vec2{48, 231}));
@@ -46,6 +51,7 @@ int main(int argc, char** argv)
     fmt::println("{}", glm::to_string(morton::decode<glm::i64vec3>(5871762ul)));
 
     // morton::encode(glm::vec2{48, 231}); // Does not compile, glm::vec2::value_type (float) is not integral
+#endif
 
     return 0;
 }

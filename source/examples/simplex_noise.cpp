@@ -4,7 +4,6 @@
 
 #include <cmath>
 #include <fstream>
-#include <glm/glm.hpp>
 #include <sstream>
 
 using namespace kb;

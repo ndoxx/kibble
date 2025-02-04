@@ -1,6 +1,7 @@
 #include "common/utils.hpp"
 #include "kibble/argparse/argparse.h"
 
+#include "fmt/core.h"
 #include <catch2/catch_all.hpp>
 
 using namespace kb;
@@ -225,15 +226,25 @@ TEST_CASE_METHOD(VarFixture, "Variable <int> argument, hexadecimal repr", "[var]
     REQUIRE(var() == 0x22);
 }
 
-TEST_CASE_METHOD(VarFixture, "Variable <long> argument, hexadecimal repr", "[var]")
+TEST_CASE_METHOD(VarFixture, "Variable <long long> argument, hexadecimal repr", "[var]")
 {
-    const auto& var = parser.add_variable<long>('o', "offset", "Offset of the captain", 0x10);
+    const auto& var =
+        parser.add_variable<long long>('o', "offset", "Offset of the captain", static_cast<long long>(0x10));
 
-    bool success = Parse(parser, "program -o 0xff45289c4565");
+    bool success = Parse(parser, "program -o 0xff45289c4567");
+
+    if (!success)
+    {
+        auto errors = parser.get_errors();
+        for (const std::string& err : errors)
+        {
+            fmt::println("error: {}", err);
+        }
+    }
 
     REQUIRE(success);
     REQUIRE(var.is_set);
-    REQUIRE(var() == 0xff45289c4565);
+    REQUIRE(var() == static_cast<long long>(0xff45289c4567));
 }
 
 TEST_CASE_METHOD(VarFixture, "Variable <float> argument, valid input", "[var]")

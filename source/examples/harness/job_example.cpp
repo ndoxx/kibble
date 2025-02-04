@@ -68,8 +68,8 @@ int JobExample::run(int argc, char** argv)
         show_error_and_die(parser, chan_kibble);
     }
 
-    size_t nexp = std::min(size_t(ne()), 100ul);
-    size_t njob = std::min(size_t(nj()), 500ul);
+    size_t nexp = std::min(size_t(ne()), size_t(100));
+    size_t njob = std::min(size_t(nj()), size_t(500));
 
     // First, we create a scheme to configure the job system
     using namespace std::literals::string_literals;

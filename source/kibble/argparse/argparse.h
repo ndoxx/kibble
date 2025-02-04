@@ -46,12 +46,12 @@ enum class ArgType : uint8_t
     NONE,
     BOOL,
     INT,
-    LONG,
+    LONG_LONG,
     FLOAT,
     DOUBLE,
     STRING,
     VEC_INT,
-    VEC_LONG,
+    VEC_LONG_LONG,
     VEC_FLOAT,
     VEC_DOUBLE,
     VEC_STRING
@@ -73,12 +73,12 @@ struct ToArgType
 // clang-format off
 template <> struct ToArgType<bool>                     { static constexpr ArgType type = ArgType::BOOL; };
 template <> struct ToArgType<int>                      { static constexpr ArgType type = ArgType::INT; };
-template <> struct ToArgType<long>                     { static constexpr ArgType type = ArgType::LONG; };
+template <> struct ToArgType<long long>                { static constexpr ArgType type = ArgType::LONG_LONG; };
 template <> struct ToArgType<float>                    { static constexpr ArgType type = ArgType::FLOAT; };
 template <> struct ToArgType<double>                   { static constexpr ArgType type = ArgType::DOUBLE; };
 template <> struct ToArgType<std::string>              { static constexpr ArgType type = ArgType::STRING; };
 template <> struct ToArgType<std::vector<int>>         { static constexpr ArgType type = ArgType::VEC_INT; };
-template <> struct ToArgType<std::vector<long>>        { static constexpr ArgType type = ArgType::VEC_LONG; };
+template <> struct ToArgType<std::vector<long long>>   { static constexpr ArgType type = ArgType::VEC_LONG_LONG; };
 template <> struct ToArgType<std::vector<float>>       { static constexpr ArgType type = ArgType::VEC_FLOAT; };
 template <> struct ToArgType<std::vector<double>>      { static constexpr ArgType type = ArgType::VEC_DOUBLE; };
 template <> struct ToArgType<std::vector<std::string>> { static constexpr ArgType type = ArgType::VEC_STRING; };
@@ -282,7 +282,7 @@ public:
      * @brief Add a T-valued option that expects an operand on its right.
      * The operand must be convertible to the type T or the parser will fail with an error.
      *
-     * @tparam T Underlying type of the variable. It can be an int, a long, a float, a double or a string
+     * @tparam T Underlying type of the variable. It can be an int, a long long, a float, a double or a string
      * @param short_name One-letter single-dash short form of this variable
      * @param full_name Multiple-letters double-dash full form of this variable
      * @param description Short text that describes what this variable does
@@ -472,7 +472,7 @@ bool StringCast<bool>(const std::string&) noexcept(false);
 template <>
 int StringCast<int>(const std::string&) noexcept(false);
 template <>
-long StringCast<long>(const std::string&) noexcept(false);
+long long StringCast<long long>(const std::string&) noexcept(false);
 template <>
 float StringCast<float>(const std::string&) noexcept(false);
 template <>
@@ -482,7 +482,7 @@ std::string StringCast<std::string>(const std::string&) noexcept(false);
 template <>
 std::vector<int> StringCast<std::vector<int>>(const std::string&) noexcept(false);
 template <>
-std::vector<long> StringCast<std::vector<long>>(const std::string&) noexcept(false);
+std::vector<long long> StringCast<std::vector<long long>>(const std::string&) noexcept(false);
 template <>
 std::vector<float> StringCast<std::vector<float>>(const std::string&) noexcept(false);
 template <>

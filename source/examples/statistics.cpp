@@ -1,7 +1,6 @@
 #include "kibble/math/statistics.h"
 
 #include <cmath>
-#include <glm/glm.hpp>
 #include <iostream>
 #include <vector>
 

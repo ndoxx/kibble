@@ -12,7 +12,6 @@ target_link_libraries(kpak
     PRIVATE
     project_options
     project_warnings
-    stdc++fs
     kibble
 )
 
@@ -31,7 +30,6 @@ target_link_libraries(internstring
     PRIVATE
     project_options
     project_warnings
-    stdc++fs
     kibble
 )
 
@@ -50,6 +48,5 @@ target_link_libraries(kmd5
     PRIVATE
     project_options
     project_warnings
-    stdc++fs
     kibble
 )

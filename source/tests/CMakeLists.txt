@@ -27,15 +27,13 @@ function(make_unit_test test_name)
         project_options
         project_warnings
         Catch2
-        pthread
-        stdc++fs
         kibble
     )
 endfunction()
 
 if(KB_TARGET_TESTS)
     # Global "tests" target to build all unit tests
-    add_custom_target(tests)
+    add_custom_target(kibble_tests)
 
     # For all cpp file beginning by "test_" generate a unit test target
     file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -49,12 +47,12 @@ if(KB_TARGET_TESTS)
 
             # Add dependency to the group target tests,
             # then we can do "make tests" to build all of them
-            add_dependencies(tests "${TEST_NAME}")
+            add_dependencies(kibble_tests "${TEST_NAME}")
             message(STATUS "Added unit test: ${TEST_NAME}")
         endif()
     endforeach()
 
-    message(STATUS "All unit tests can be built at once with 'make tests'")
+    message(STATUS "All unit tests can be built at once with target 'kibble_tests'")
 
     # -------- BENCHMARKING -------- #
     # Function to generate a bench target
@@ -81,15 +79,13 @@ if(KB_TARGET_TESTS)
         target_link_libraries(${NAME}
             PRIVATE
             project_options
-            stdc++fs
             kibble
             benchmark
-            pthread
         )
     endfunction()
 
     # Global "bench" target to build all benchmarks
-    add_custom_target(bench)
+    add_custom_target(kibble_bench)
 
     # For all cpp file beginning by "test_" generate a unit test target
     file(GLOB BENCH_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -103,12 +99,12 @@ if(KB_TARGET_TESTS)
 
             # Add dependency to the group target bench,
             # then we can do "make bench" to build all of them
-            add_dependencies(bench "${BENCH_NAME}")
+            add_dependencies(kibble_bench "${BENCH_NAME}")
             message(STATUS "Added benchmark: ${BENCH_NAME}")
         endif()
     endforeach()
 
-    message(STATUS "All benchmarks can be built at once with 'make bench'")
+    message(STATUS "All benchmarks can be built at once with target 'kibble_bench'")
 
     # -------- FUZZ TESTING -------- #
     add_executable(fuzz_tester fuzz_tester.cpp)
@@ -145,42 +141,4 @@ if(KB_TARGET_TESTS)
     # )
 
     # add_test(NAME fuzz_tester_run COMMAND fuzz_tester -max_total_time=${FUZZ_RUNTIME})
-
-    # -------- NUCLEAR TEST -------- #
-    set(SRC_NUCLEAR
-        nuclear.cpp
-    )
-
-    set_source_files_properties("nuclear.cpp"
-        PROPERTIES COMPILE_FLAGS "-mbmi -mlzcnt"
-    )
-
-    add_executable(nuclear ${SRC_NUCLEAR})
-
-    target_include_directories(nuclear
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${KB_SOURCE_DIR}/source/kibble
-    )
-
-    target_include_directories(nuclear
-        SYSTEM PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/atomic_queue/include
-    )
-
-    set_target_properties(nuclear
-        PROPERTIES
-        EXCLUDE_FROM_ALL 1
-    )
-
-    target_link_libraries(nuclear
-        PRIVATE
-        project_options
-        project_warnings
-        pthread
-        stdc++fs
-        X11
-        fmt
-        kibble
-    )
 endif()

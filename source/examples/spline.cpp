@@ -3,12 +3,16 @@
 #include <array>
 #include <cmath>
 #include <fstream>
-#include <glm/glm.hpp>
 #include <iostream>
 #include <vector>
 
+#ifdef USE_GLM
+#include <glm/glm.hpp>
+#endif
+
 using namespace kb;
 
+#ifdef USE_GLM
 void export_bezier(size_t nsamples, const std::string& filename)
 {
     math::BezierSegment bez(
@@ -103,3 +107,17 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+#else
+
+int main(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+
+    fmt::println("This example needs GLM");
+
+    return 0;
+}
+
+#endif

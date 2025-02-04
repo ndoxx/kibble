@@ -12,6 +12,7 @@ namespace kb::log
 class PowerlineTerminalFormatter : public Formatter
 {
 public:
+    PowerlineTerminalFormatter();
     ~PowerlineTerminalFormatter() = default;
 
     void print(const LogEntry&, const ChannelPresentation&) override;

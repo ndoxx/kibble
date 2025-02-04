@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <exception>
-#include <regex>
 #include <ranges>
+#include <regex>
 
 #include "fmt/core.h"
 #include "fmt/format.h"
@@ -60,12 +60,12 @@ const std::unordered_map<ArgType, std::string> k_type_str = {
     {ArgType::NONE, "NONE"},
     {ArgType::BOOL, "bool"},
     {ArgType::INT, "int"},
-    {ArgType::LONG, "long"},
+    {ArgType::LONG_LONG, "long_long"},
     {ArgType::FLOAT, "float"},
     {ArgType::DOUBLE, "double"},
     {ArgType::STRING, "string"},
     {ArgType::VEC_INT, "int,..."},
-    {ArgType::VEC_LONG, "long,..."},
+    {ArgType::VEC_LONG_LONG, "long_long,..."},
     {ArgType::VEC_FLOAT, "float,..."},
     {ArgType::VEC_DOUBLE, "double,..."},
     {ArgType::VEC_STRING, "string,..."},
@@ -605,9 +605,9 @@ int StringCast<int>(const std::string& operand) noexcept(false)
 }
 
 template <>
-long StringCast<long>(const std::string& operand) noexcept(false)
+long long StringCast<long long>(const std::string& operand) noexcept(false)
 {
-    return std::stol(operand, nullptr, 0);
+    return std::stoll(operand, nullptr, 0);
 }
 
 template <>
@@ -637,10 +637,10 @@ std::vector<int> StringCast<std::vector<int>>(const std::string& operand) noexce
 }
 
 template <>
-std::vector<long> StringCast<std::vector<long>>(const std::string& operand) noexcept(false)
+std::vector<long long> StringCast<std::vector<long long>>(const std::string& operand) noexcept(false)
 {
-    std::vector<long> result;
-    assign_list(operand, result, [](const std::string& s) -> long { return std::stol(s, nullptr, 0); });
+    std::vector<long long> result;
+    assign_list(operand, result, [](const std::string& s) -> long long { return std::stol(s, nullptr, 0); });
     return result;
 }
 

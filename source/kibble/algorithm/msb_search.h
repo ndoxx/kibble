@@ -17,6 +17,7 @@
  */
 
 #include <cstdint>
+#include <cstddef>
 
 namespace kb
 {

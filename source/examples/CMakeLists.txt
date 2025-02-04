@@ -22,14 +22,12 @@ function(make_example_app project_name)
         PRIVATE
         project_options
         project_warnings
-        pthread
-        stdc++fs
         kibble
     )
 endfunction()
 
 if(KB_TARGET_EXAMPLES)
-    add_custom_target(examples)
+    add_custom_target(kibble_examples)
 
     # Loop over all cpp files in the example directory
     file(GLOB EXAMPLE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
@@ -41,9 +39,9 @@ if(KB_TARGET_EXAMPLES)
 
         # Add dependency to the group target examples,
         # then we can do "make examples" to build all of them
-        add_dependencies(examples "ex_${EX_NAME}")
+        add_dependencies(kibble_examples "ex_${EX_NAME}")
         message(STATUS "Added example: ${EX_NAME}")
     endforeach()
 
-    message(STATUS "All examples can be built at once with 'make examples'")
+    message(STATUS "All examples can be built at once with target 'kibble_examples'")
 endif()
