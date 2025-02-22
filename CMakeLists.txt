@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(kibble VERSION 1.2.4 DESCRIPTION "lib kibble" LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
+project(kibble VERSION 1.2.5 DESCRIPTION "lib kibble" LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(KIBBLE_VERSION ${PROJECT_VERSION})
 
@@ -77,7 +77,7 @@ if(NOT TARGET project_options)
 	add_library(project_options INTERFACE)
 endif()
 
-target_compile_features(project_options INTERFACE cxx_std_20)
+target_compile_features(project_options INTERFACE cxx_std_23)
 enable_sanitizers(project_options)
 
 set(DOCS_INPUT
