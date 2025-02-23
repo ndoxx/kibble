@@ -41,10 +41,10 @@ inline void m128itos(__m128i x, char* mem)
 
     // Add dashes between blocks as specified in RFC-4122
     // 8-4-4-4-12
-    const __m256i dash_shuffle = _mm256_set_epi32(0x0b0a0908, 0x07060504, int(0x80030201), 0x00808080, 0x0d0c800b,
-                                                  0x0a090880, 0x07060504, 0x03020100);
+    const __m256i dash_shuffle = _mm256_set_epi32(0x0b0a0908L, 0x07060504L, 0x80030201L, 0x00808080L, 0x0d0c800bL,
+                                                  0x0a090880L, 0x07060504L, 0x03020100L);
     const __m256i dash =
-        _mm256_set_epi64x(0x0000000000000000ull, 0x2d000000002d0000ull, 0x00002d000000002d, 0x0000000000000000ull);
+        _mm256_set_epi64x(0x0000000000000000LL, 0x2d000000002d0000LL, 0x00002d000000002dLL, 0x0000000000000000LL);
 
     __m256i resd = _mm256_shuffle_epi8(res, dash_shuffle);
     resd = _mm256_or_si256(resd, dash);
@@ -64,8 +64,8 @@ inline void m128itos(__m128i x, char* mem)
 inline __m128i stom128i(const char* mem)
 {
     // Remove dashes and pack hex ascii bytes in a 256-bits int
-    const __m256i dash_shuffle = _mm256_set_epi32(int(0x80808080), 0x0f0e0d0c, 0x0b0a0908, 0x06050403, int(0x80800f0e),
-                                                  0x0c0b0a09, 0x07060504, 0x03020100);
+    const __m256i dash_shuffle = _mm256_set_epi32(0x80808080L, 0x0f0e0d0cL, 0x0b0a0908L, 0x06050403L, 0x80800f0eL,
+                                                  0x0c0b0a09L, 0x07060504L, 0x03020100L);
 
     __m256i x = betole256(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(mem)));
     x = _mm256_shuffle_epi8(x, dash_shuffle);
@@ -77,10 +77,10 @@ inline __m128i stom128i(const char* mem)
     const __m256i mask = _mm256_set1_epi8(0x20);
     const __m256i alpha_offset = _mm256_set1_epi8(0x28);
     const __m256i digits_offset = _mm256_set1_epi8(0x01);
-    const __m256i unweave = _mm256_set_epi32(0x0f0d0b09, 0x0e0c0a08, 0x07050301, 0x06040200, 0x0f0d0b09, 0x0e0c0a08,
-                                             0x07050301, 0x06040200);
-    const __m256i shift = _mm256_set_epi32(0x00000000, 0x00000004, 0x00000000, 0x00000004, 0x00000000, 0x00000004,
-                                           0x00000000, 0x00000004);
+    const __m256i unweave = _mm256_set_epi32(0x0f0d0b09L, 0x0e0c0a08L, 0x07050301L, 0x06040200L, 0x0f0d0b09L,
+                                             0x0e0c0a08L, 0x07050301L, 0x06040200L);
+    const __m256i shift = _mm256_set_epi32(0x00000000L, 0x00000004L, 0x00000000L, 0x00000004L, 0x00000000L, 0x00000004L,
+                                           0x00000000L, 0x00000004L);
 
     // Translate ascii bytes to their value
     // i.e. 0x3132333435363738 -> 0x0102030405060708
@@ -149,10 +149,10 @@ UUID UUID::from_str_factory(const char* raw)
 }
 
 // These masks are used to set the UUID version to 4 and variant to 1
-constexpr auto k_u_and_mask = 0xFFFFFFFFFFFFFF3Full;
-constexpr auto k_l_and_mask = 0xFF0FFFFFFFFFFFFFull;
-constexpr auto k_u_or_mask = 0x0000000000000080ull;
-constexpr auto k_l_or_mask = 0x0040000000000000ull;
+constexpr unsigned long long k_u_and_mask = 0xFFFFFFFFFFFFFF3FULL;
+constexpr unsigned long long k_l_and_mask = 0xFF0FFFFFFFFFFFFFULL;
+constexpr unsigned long long k_u_or_mask = 0x0000000000000080ULL;
+constexpr unsigned long long k_l_or_mask = 0x0040000000000000ULL;
 
 UUID UUID::from_upper_lower(uint64_t upper, uint64_t lower)
 {
