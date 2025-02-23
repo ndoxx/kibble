@@ -93,7 +93,7 @@ int main(int argc, char** argv)
     if (fs::exists(manifest_path))
     {
         klog(chan_istr).info("Detected manifest.");
-        auto istr = filesystem.get_input_stream(manifest_path);
+        auto istr = filesystem.get_input_stream(manifest_path.string());
         std::string line;
         while (std::getline(*istr, line))
         {
@@ -192,7 +192,7 @@ void parse_entry(const fs::directory_entry& entry, const fs::path& base,
     klog(log_channel).info("reading {}", fs::relative(entry.path(), base));
 
     // Get file as string
-    auto source = filesystem.get_file_as_string(entry.path());
+    auto source = filesystem.get_file_as_string(entry.path().string());
 
     // Match hash tags in source
     {

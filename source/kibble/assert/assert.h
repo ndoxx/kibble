@@ -2,6 +2,8 @@
 
 #include "fmt/format.h"
 
+#include "kibble/platform/macros.h"
+
 #ifndef K_ASSERT_STACK_TRACE_SKIP
 #define K_ASSERT_STACK_TRACE_SKIP 0
 #endif
