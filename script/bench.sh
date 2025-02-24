@@ -1,16 +1,20 @@
 #!/bin/sh
-
 # Use this script to execute benchmarks instead of running them directly
 # This disables CPU scaling, which improves the benchmarks precision
-# Just pass the benchmark name (without the bench_ prefix) as argument
+# Pass the benchmark name (without the bench_ prefix) as the first argument
+# Optionally pass the build type (Debug or Release) as the second argument
 
-if [ "$#" -ne 1 ] || ! [ -n "$1" ]; then
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || ! [ -n "$1" ]; then
     echo "Usage:"
-    echo "bench.sh <benchmark_name>"
+    echo "bench.sh <benchmark_name> [build_type]"
+    echo "build_type can be Debug (default) or Release"
     exit 1
 fi
 
-cmd=../bin/test/bench_$1
+benchmark_name=$1
+build_type=${2:-Debug}  # Default to Debug if not specified
+
+cmd="bin/${build_type}/test/bench_${benchmark_name}"
 
 if test -f "$cmd"; then
     # Disable CPU scaling for more precise benchmarking
@@ -18,5 +22,6 @@ if test -f "$cmd"; then
     $cmd
     sudo cpupower frequency-set --governor powersave
 else
-    echo "file bench_$1 does not exist"
+    echo "File $cmd does not exist"
+    echo "Make sure you've built the benchmark for the ${build_type} configuration"
 fi
