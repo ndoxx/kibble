@@ -108,3 +108,11 @@ TEST_CASE("Comparisons")
     REQUIRE(uuid < uuid5);
     REQUIRE_FALSE(uuid > uuid5);
 }
+
+TEST_CASE("HashTest")
+{
+    UUIDv4::UUID uuid = UUIDv4::UUID::from_str_factory("00120034-0056-0078-0012-003400560078");
+    UUIDv4::UUID uuid2 = UUIDv4::UUID(uuid);
+
+    REQUIRE(uuid.hash() == uuid2.hash());
+}
