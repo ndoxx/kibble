@@ -46,7 +46,7 @@ set(AVX2_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_avx2.cpp
 )
 set(BMI2_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/math/impl/morton_bmi2.cpp
 )
 
 set_source_files_properties(${SSE2_FILES}
@@ -55,14 +55,9 @@ set_source_files_properties(${SSE2_FILES}
 set_source_files_properties(${AVX2_FILES}
     PROPERTIES COMPILE_FLAGS -mavx2
 )
-
-option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
-
-if(KB_MORTON_INTRIN)
-    set_source_files_properties(${BMI2_FILES}
-        PROPERTIES COMPILE_FLAGS -mbmi2
-    )
-endif()
+set_source_files_properties(${BMI2_FILES}
+    PROPERTIES COMPILE_FLAGS -mbmi2
+)
 
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 
