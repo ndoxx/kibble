@@ -7,12 +7,10 @@
 #include <cstring>
 #include <vector>
 
-#if defined(K_PLATFORM_WINDOWS)
+#if defined(K_COMPILER_MSVC)
 #include <intrin.h>
-#elif defined(K_PLATFORM_LINUX)
-#include <cpuid.h>
 #else
-#error "Unsupported platform"
+#include <cpuid.h>
 #endif
 
 namespace kb
@@ -22,9 +20,9 @@ const CPUInfo::Internal CPUInfo::CPU_;
 
 inline void cpuidex(int cpu_info[4], int function_id, int subfunction_id)
 {
-#if defined(K_PLATFORM_WINDOWS)
+#if defined(K_COMPILER_MSVC)
     __cpuidex(cpu_info, function_id, subfunction_id);
-#elif defined(K_PLATFORM_LINUX)
+#else
     __cpuid_count(function_id, subfunction_id, cpu_info[0], cpu_info[1], cpu_info[2], cpu_info[3]);
 #endif
 }
@@ -32,9 +30,9 @@ inline void cpuidex(int cpu_info[4], int function_id, int subfunction_id)
 // Simple CPUID without subfunction
 inline void cpuid(int cpu_info[4], int function_id)
 {
-#if defined(K_PLATFORM_WINDOWS)
+#if defined(K_COMPILER_MSVC)
     __cpuid(cpu_info, function_id);
-#elif defined(K_PLATFORM_LINUX)
+#else
     __cpuid(function_id, cpu_info[0], cpu_info[1], cpu_info[2], cpu_info[3]);
 #endif
 }
