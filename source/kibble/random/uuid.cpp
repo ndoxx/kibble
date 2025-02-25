@@ -130,18 +130,8 @@ bool operator==(const UUID& lhs, const UUID& rhs)
 
     __m128i neq = _mm_xor_si128(x, y);
 
-#if 0
     // SSE4.1
     return _mm_test_all_zeros(neq, neq);
-#else
-    // SSE2
-    // Check if neq is all zeros by comparing it with zeros
-    __m128i zero = _mm_setzero_si128();
-    __m128i cmp = _mm_cmpeq_epi32(neq, zero);
-
-    // Check if all bits in cmp are 1 (which means all 32-bit chunks in neq were zero)
-    return _mm_movemask_epi8(cmp) == 0xFFFF;
-#endif
 }
 
 bool operator<(const UUID& lhs, const UUID& rhs)

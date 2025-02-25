@@ -38,26 +38,26 @@ target_include_directories(kibble
     $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/fmt/include>
 )
 
-set(SSE2_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_sse2.cpp
-)
-set(AVX2_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_avx2.cpp
-)
-set(BMI2_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/math/impl/morton_bmi2.cpp
-)
+if(NOT MSVC)
+    set(KB_AVX2_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_avx2.cpp
+    )
+    set(KB_BMI2_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/math/impl/morton_bmi2.cpp
+    )
 
-set_source_files_properties(${SSE2_FILES}
-    PROPERTIES COMPILE_FLAGS -msse2
-)
-set_source_files_properties(${AVX2_FILES}
-    PROPERTIES COMPILE_FLAGS -mavx2
-)
-set_source_files_properties(${BMI2_FILES}
-    PROPERTIES COMPILE_FLAGS -mbmi2
-)
+    set_source_files_properties(${KB_AVX2_FILES}
+        PROPERTIES COMPILE_FLAGS -mavx2
+    )
+    set_source_files_properties(${KB_BMI2_FILES}
+        PROPERTIES COMPILE_FLAGS -mbmi2
+    )
+
+    # Baseline: SSE4.2, SSSE3, POPCNT
+    target_compile_options(kibble PRIVATE
+        -msse4.2 -mssse3 -mpopcnt
+    )
+endif()
 
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 
