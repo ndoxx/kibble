@@ -225,7 +225,6 @@ Kibble can be setup as a subproject easily with CMake and git. Add Kibble as a s
 ```cmake
 set(KB_AREA_MEMORY_INITIALIZATION ON CACHE BOOL "" FORCE)
 set(KB_JOB_SYSTEM_PROFILING ON CACHE BOOL "" FORCE)
-set(KB_MORTON_INTRIN ON CACHE BOOL "" FORCE)
 add_subdirectory("${CMAKE_SOURCE_DIR}/source/vendor/kibble" "external/kibble")
 
 set_target_properties(kibble

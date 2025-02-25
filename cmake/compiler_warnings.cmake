@@ -46,7 +46,9 @@ function(set_project_warnings project_name)
                 /w14906 # string literal cast to 'LPWSTR'
                 /w14928 # illegal copy-initialization; more than one user-defined
 
-                # conversion has been implicitly applied
+                # Disable warnings from external headers
+                /external:W0
+                /external:anglebrackets
         )
 
         set(CLANG_WARNINGS

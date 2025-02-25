@@ -47,7 +47,6 @@ if(KB_MASTER_PROJECT)
 	endif()
 endif()
 
-# set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${KB_SOURCE_DIR}/cmake/")
 include(standard_settings)
 include(compiler_warnings) # Hardcore warnings
@@ -75,6 +74,17 @@ set_project_warnings(project_warnings)
 
 if(NOT TARGET project_options)
 	add_library(project_options INTERFACE)
+
+	if(MSVC)
+		target_compile_options(project_options INTERFACE
+
+			# Standard compliant preprocessor
+			/Zc:preprocessor
+
+			# Some TUs will exceed the default max section numbers
+			/bigobj
+		)
+	endif()
 endif()
 
 target_compile_features(project_options INTERFACE cxx_std_23)

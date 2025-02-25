@@ -38,17 +38,26 @@ target_include_directories(kibble
     $<BUILD_INTERFACE:${KB_SOURCE_DIR}/source/vendor/fmt/include>
 )
 
-set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp"
-    PROPERTIES COMPILE_FLAGS -mavx2
+set(SSE2_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/random/uuid.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_sse2.cpp
+)
+set(AVX2_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/random/impl/uuid_avx2.cpp
+)
+set(BMI2_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/math/impl/morton_bmi2.cpp
 )
 
-option(KB_MORTON_INTRIN "Use the BMI2 instruction set for Morton encoding" ON)
-
-if(KB_MORTON_INTRIN)
-    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/math/morton.cpp"
-        PROPERTIES COMPILE_FLAGS -mbmi2
-    )
-endif()
+set_source_files_properties(${SSE2_FILES}
+    PROPERTIES COMPILE_FLAGS -msse2
+)
+set_source_files_properties(${AVX2_FILES}
+    PROPERTIES COMPILE_FLAGS -mavx2
+)
+set_source_files_properties(${BMI2_FILES}
+    PROPERTIES COMPILE_FLAGS -mbmi2
+)
 
 option(KB_JOB_SYSTEM_PROFILING "Gather worker idle/active time" ON)
 
