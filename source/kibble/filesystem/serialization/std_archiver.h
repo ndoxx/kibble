@@ -79,12 +79,19 @@ struct Archiver<std::vector<T>>
             return false;
         }
 
-        // Serialize each element
-        for (const auto& item : object)
+        if constexpr (is_trivially_serializable_v<T>)
         {
-            if (!ser.write(item))
+            return ser.write_blob(object.data(), object.size() * sizeof(T));
+        }
+        else
+        {
+            // Serialize each element
+            for (const auto& item : object)
             {
-                return false;
+                if (!ser.write(item))
+                {
+                    return false;
+                }
             }
         }
 
@@ -101,12 +108,19 @@ struct Archiver<std::vector<T>>
         }
         object.resize(size);
 
-        // Deserialize each element
-        for (auto& item : object)
+        if constexpr (is_trivially_serializable_v<T>)
         {
-            if (!des.read(item))
+            return des.read_blob(object.data(), object.size() * sizeof(T));
+        }
+        else
+        {
+            // Deserialize each element
+            for (auto& item : object)
             {
-                return false;
+                if (!des.read(item))
+                {
+                    return false;
+                }
             }
         }
 
@@ -117,27 +131,21 @@ struct Archiver<std::vector<T>>
 template <typename T, std::size_t N>
 struct Archiver<std::array<T, N>>
 {
-    /*
-        NOTE(ndx): Enable this specialization only for non-trivially serializable types.
-        This avoids an infinite recursion loop, because std::array<T,N> is trivially serializable
-        if T is trivially serializable
-    */
-    template <typename U = T>
-    static constexpr bool enable_specialization = !is_trivially_serializable_v<std::array<U, N>>;
-};
-
-// Specialization for arrays of non-trivially serializable types
-template <typename T, std::size_t N>
-    requires(!is_trivially_serializable_v<T>)
-struct Archiver<std::array<T, N>>
-{
     static bool write(const std::array<T, N>& object, StreamSerializer& ser)
     {
-        for (const auto& item : object)
+        if constexpr (is_trivially_serializable_v<T>)
         {
-            if (!ser.write(item))
+            return ser.write_blob(object.data(), object.size() * sizeof(T));
+        }
+        else
+        {
+            // Serialize each element
+            for (const auto& item : object)
             {
-                return false;
+                if (!ser.write(item))
+                {
+                    return false;
+                }
             }
         }
 
@@ -146,11 +154,19 @@ struct Archiver<std::array<T, N>>
 
     static bool read(std::array<T, N>& object, StreamDeserializer& des)
     {
-        for (auto& item : object)
+        if constexpr (is_trivially_serializable_v<T>)
         {
-            if (!des.read(item))
+            return des.read_blob(object.data(), object.size() * sizeof(T));
+        }
+        else
+        {
+            // Deserialize each element
+            for (auto& item : object)
             {
-                return false;
+                if (!des.read(item))
+                {
+                    return false;
+                }
             }
         }
 

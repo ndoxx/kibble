@@ -34,11 +34,13 @@ concept Deserializable = requires(T& object, StreamDeserializer& des) {
     { Archiver<T>::read(object, des) } -> std::same_as<bool>;
 };
 
-template <typename T, template <typename> typename... Ps>
-using satisfies_all = std::conjunction<Ps<T>...>;
+template <class T>
+struct is_trivially_serializable
+    : std::integral_constant<bool, std::is_arithmetic<T>::value || std::is_scoped_enum<T>::value>
+{
+};
 
-template <typename T>
-constexpr bool is_trivially_serializable_v =
-    satisfies_all<T, std::is_standard_layout, std::is_trivially_copyable>::value;
+template <class T>
+constexpr bool is_trivially_serializable_v = is_trivially_serializable<T>::value;
 
 } // namespace kb

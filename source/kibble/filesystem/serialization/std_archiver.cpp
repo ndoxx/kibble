@@ -7,7 +7,20 @@ bool Archiver<std::string>::write(const std::string& object, StreamSerializer& s
 {
     // Write size first, then data
     size_t size = object.size();
-    return ser.write(size) && ser.write_blob(object.data(), size);
+
+    // First write the size
+    if (!ser.write(size))
+    {
+        return false;
+    }
+
+    // Then write the raw bytes of the string (if size > 0)
+    if (size > 0)
+    {
+        return ser.write_blob(object.data(), size);
+    }
+
+    return true;
 }
 
 bool Archiver<std::string>::read(std::string& object, StreamDeserializer& des)
@@ -18,7 +31,18 @@ bool Archiver<std::string>::read(std::string& object, StreamDeserializer& des)
     {
         return false;
     }
+
+    // Handle empty strings properly
+    if (size == 0)
+    {
+        object.clear();
+        return true;
+    }
+
+    // Resize the string to the expected size
     object.resize(size);
+
+    // Read the raw bytes into the string
     return des.read_blob(object.data(), size);
 }
 

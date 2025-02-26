@@ -21,6 +21,58 @@ struct Header
     uint16_t version_minor; // Version minor number
 };
 
+}
+
+namespace kb
+{
+
+template <>
+struct Archiver<kb::kfs::Header>
+{
+    static bool write(const kb::kfs::Header& object, StreamSerializer& ser)
+    {
+        // clang-format off
+        return ser.write(object.magic) &&
+               ser.write(object.version_major) &&
+               ser.write(object.version_minor);
+        // clang-format on
+    }
+
+    static bool read(kb::kfs::Header& object, StreamDeserializer& des)
+    {
+        // clang-format off
+        return des.read(object.magic) &&
+               des.read(object.version_major) &&
+               des.read(object.version_minor);
+        // clang-format on
+    }
+};
+
+template <>
+struct Archiver<kb::kfs::PackFileIndex::Entry>
+{
+    static bool write(const kb::kfs::PackFileIndex::Entry& object, StreamSerializer& ser)
+    {
+        // clang-format off
+        return ser.write(object.offset) &&
+               ser.write(object.size);
+        // clang-format on
+    }
+
+    static bool read(kb::kfs::PackFileIndex::Entry& object, StreamDeserializer& des)
+    {
+        // clang-format off
+        return des.read(object.offset) &&
+               des.read(object.size);
+        // clang-format on
+    }
+};
+
+}
+
+namespace kb::kfs
+{
+
 bool PackFileBuilder::check_ignore(const fs::path& dir_path)
 {
     fs::path ignore_path = dir_path / "kpakignore";

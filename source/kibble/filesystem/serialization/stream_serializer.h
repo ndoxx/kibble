@@ -38,23 +38,24 @@ public:
     template <typename T>
     inline bool write(const T& object)
     {
-        // For objects with a custom archiver (higher priority)
         if constexpr (Serializable<T>)
         {
+            // For objects with a custom archiver (highest priority)
             return Archiver<T>::write(object, *this);
         }
-        // Default serializer for POD data
         else if constexpr (is_trivially_serializable_v<T>)
         {
-            stream_.write(reinterpret_cast<const char*>(&object), sizeof(T));
+            // Only automatically serialize arithmetic and scoped enum types
+            stream_.write(detail::opaque_cast(object), sizeof(T));
             return stream_.good();
         }
         else
         {
-            static_assert(false, "Type cannot be serialized");
+            // Require explicit serialization for any other type
+            static_assert(Serializable<T> || is_trivially_serializable_v<T>,
+                          "Type cannot be automatically serialized, define a custom Archiver<T> specialization.");
+            return false;
         }
-
-        return false;
     }
 
     inline bool write_blob(const void* buffer, size_t size)
@@ -97,23 +98,24 @@ public:
     template <typename T>
     inline bool read(T& object)
     {
-        // For objects with a custom archiver (higher priority)
         if constexpr (Deserializable<T>)
         {
+            // For objects with a custom archiver (highest priority)
             return Archiver<T>::read(object, *this);
         }
-        // Default deserializer for POD data
         else if constexpr (is_trivially_serializable_v<T>)
         {
-            stream_.read(reinterpret_cast<char*>(&object), sizeof(T));
+            // Only automatically deserialize arithmetic and scoped enum types
+            stream_.read(detail::opaque_cast(object), sizeof(T));
             return stream_.good();
         }
         else
         {
-            static_assert(false, "Type cannot be deserialized");
+            // Require explicit serialization for any other type
+            static_assert(Deserializable<T> || is_trivially_serializable_v<T>,
+                          "Type cannot be automatically deserialized, define a custom Archiver<T> specialization.");
+            return false;
         }
-
-        return false;
     }
 
     inline bool read_blob(void* buffer, size_t size)
