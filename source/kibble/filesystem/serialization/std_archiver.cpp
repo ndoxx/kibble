@@ -6,7 +6,7 @@ namespace kb
 bool Archiver<std::string>::write(const std::string& object, StreamSerializer& ser)
 {
     // Write size first, then data
-    size_t size = object.size();
+    uint64_t size = object.size();
 
     // First write the size
     if (!ser.write(size))
@@ -26,7 +26,7 @@ bool Archiver<std::string>::write(const std::string& object, StreamSerializer& s
 bool Archiver<std::string>::read(std::string& object, StreamDeserializer& des)
 {
     // Read size, then data
-    size_t size;
+    uint64_t size;
     if (!des.read(size))
     {
         return false;
@@ -48,7 +48,7 @@ bool Archiver<std::string>::read(std::string& object, StreamDeserializer& des)
 
 bool Archiver<std::filesystem::path>::write(const std::filesystem::path& object, StreamSerializer& ser)
 {
-    return ser.write(object.string());
+    return ser.write(object.generic_string());
 }
 
 bool Archiver<std::filesystem::path>::read(std::filesystem::path& object, StreamDeserializer& des)
@@ -56,7 +56,7 @@ bool Archiver<std::filesystem::path>::read(std::filesystem::path& object, Stream
     std::string path_str;
     if (des.read(path_str))
     {
-        object = path_str;
+        object = std::filesystem::path(path_str);
         return true;
     }
     return false;

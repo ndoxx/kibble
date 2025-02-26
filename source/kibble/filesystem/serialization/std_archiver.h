@@ -73,7 +73,7 @@ struct Archiver<std::vector<T>>
     static bool write(const std::vector<T>& object, StreamSerializer& ser)
     {
         // Write the size of the vector
-        size_t size = object.size();
+        uint64_t size = object.size();
         if (!ser.write(size))
         {
             return false;
@@ -101,7 +101,7 @@ struct Archiver<std::vector<T>>
     static bool read(std::vector<T>& object, StreamDeserializer& des)
     {
         // Read the size of the vector
-        size_t size;
+        uint64_t size;
         if (!des.read(size))
         {
             return false;
@@ -181,7 +181,7 @@ struct MapArchiver
     static bool write(const Map<K, V, Args...>& object, StreamSerializer& ser)
     {
         // Write the size of the map
-        size_t size = object.size();
+        uint64_t size = object.size();
         if (!ser.write(size))
         {
             return false;
@@ -202,7 +202,7 @@ struct MapArchiver
     static bool read(Map<K, V, Args...>& object, StreamDeserializer& des)
     {
         // Read the size of the map
-        size_t size;
+        uint64_t size;
         if (!des.read(size))
         {
             return false;
@@ -218,7 +218,7 @@ struct MapArchiver
         }
 
         // Deserialize each key-value pair
-        for (size_t i = 0; i < size; ++i)
+        for (uint64_t ii = 0; ii < size; ++ii)
         {
             K key;
             V value;
@@ -253,7 +253,7 @@ struct SetArchiver
     static bool write(const Set<T, Args...>& object, StreamSerializer& ser)
     {
         // Write the size of the set
-        size_t size = object.size();
+        uint64_t size = object.size();
         if (!ser.write(size))
         {
             return false;
@@ -274,7 +274,7 @@ struct SetArchiver
     static bool read(Set<T, Args...>& object, StreamDeserializer& des)
     {
         // Read the size of the set
-        size_t size;
+        uint64_t size;
         if (!des.read(size))
         {
             return false;
@@ -290,7 +290,7 @@ struct SetArchiver
         }
 
         // Deserialize each element
-        for (size_t i = 0; i < size; ++i)
+        for (uint64_t ii = 0; ii < size; ++ii)
         {
             T item;
             if (!des.read(item))
