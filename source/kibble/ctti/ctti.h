@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "kibble/hash/hash.h"
+#include "kibble/platform/platform.h"
 
 namespace kb
 {
@@ -44,15 +45,15 @@ constexpr auto substring_as_array(std::string_view str, std::index_sequence<Idxs
 template <typename T>
 constexpr auto type_name_array()
 {
-#if defined(__clang__)
+#if defined(K_COMPILER_CLANG)
     constexpr auto prefix = std::string_view{"[T = "};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
-#elif defined(__GNUC__) && !defined(__clang__)
+#elif defined(K_COMPILER_GCC)
     constexpr auto prefix = std::string_view{"with T = "};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
-#elif defined(_MSC_VER)
+#elif defined(K_COMPILER_MSVC)
     constexpr auto prefix = std::string_view{"type_name_array<"};
     constexpr auto suffix = std::string_view{">(void)"};
     constexpr auto function = std::string_view{__FUNCSIG__};
@@ -72,6 +73,40 @@ constexpr auto type_name_array()
     return detail::substring_as_array(name, std::make_index_sequence<name.size()>{});
 }
 
+/**
+ * @internal
+ * @brief Normalize a type name by removing platform-specific prefixes like "struct " or "class ".
+ *
+ * @param name The type name string view to normalize
+ * @return std::string_view Normalized type name
+ */
+constexpr std::string_view normalize_type_name(std::string_view name)
+{
+    // Check for and remove "struct " prefix
+    constexpr std::string_view struct_prefix = "struct ";
+    if (name.size() > struct_prefix.size() && name.substr(0, struct_prefix.size()) == struct_prefix)
+    {
+        return name.substr(struct_prefix.size());
+    }
+
+    // Check for and remove "class " prefix
+    constexpr std::string_view class_prefix = "class ";
+    if (name.size() > class_prefix.size() && name.substr(0, class_prefix.size()) == class_prefix)
+    {
+        return name.substr(class_prefix.size());
+    }
+
+    // Check for and remove "union " prefix
+    constexpr std::string_view union_prefix = "union ";
+    if (name.size() > union_prefix.size() && name.substr(0, union_prefix.size()) == union_prefix)
+    {
+        return name.substr(union_prefix.size());
+    }
+
+    // If no prefix found, return the original name
+    return name;
+}
+
 // Helper struct to hold a type name array with static lifetime
 template <typename T>
 struct type_name_holder
@@ -81,7 +116,7 @@ struct type_name_holder
 } // namespace detail
 
 /**
- * @brief Get the name of a type T at compile-time.
+ * @brief Get the name of a type T at compile-time, normalized across platforms.
  *
  * @tparam T The type to be reflected
  * @return std::string_view
@@ -90,7 +125,11 @@ template <typename T>
 constexpr auto type_name() -> std::string_view
 {
     constexpr auto& value = detail::type_name_holder<T>::value;
+#if defined(K_COMPILER_MSVC)
+    return detail::normalize_type_name(std::string_view{value.data(), value.size()});
+#else
     return std::string_view{value.data(), value.size()};
+#endif
 }
 
 /**
