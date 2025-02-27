@@ -8,21 +8,6 @@
 namespace kb
 {
 
-namespace detail
-{
-template <typename T, typename = std::enable_if_t<std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>>>
-inline char* opaque_cast(T& in)
-{
-    return reinterpret_cast<char*>(&in);
-}
-
-template <typename T, typename = std::enable_if_t<std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>>>
-inline const char* opaque_cast(const T& in)
-{
-    return reinterpret_cast<const char*>(&in);
-}
-} // namespace detail
-
 /**
  * @brief Basic generic stream serializer
  *
@@ -46,7 +31,7 @@ public:
         else if constexpr (is_trivially_serializable_v<T>)
         {
             // Only automatically serialize arithmetic and scoped enum types
-            stream_.write(detail::opaque_cast(object), sizeof(T));
+            stream_.write(reinterpret_cast<const char*>(&object), sizeof(T));
             return stream_.good();
         }
         else
@@ -106,7 +91,7 @@ public:
         else if constexpr (is_trivially_serializable_v<T>)
         {
             // Only automatically deserialize arithmetic and scoped enum types
-            stream_.read(detail::opaque_cast(object), sizeof(T));
+            stream_.read(reinterpret_cast<char*>(&object), sizeof(T));
             return stream_.good();
         }
         else
