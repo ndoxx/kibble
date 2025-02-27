@@ -27,6 +27,7 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <map>
@@ -34,7 +35,6 @@
 #include <queue>
 #include <type_traits>
 #include <vector>
-#include <algorithm>
 
 #include "kibble/ctti/ctti.h"
 #include "kibble/logger/logger.h"
@@ -151,6 +151,15 @@ public:
     bool unsubscribe()
     {
         auto target = EventDelegate<EventT>::template create<Function>();
+
+        // If we're currently iterating, queue for later removal
+        // This circumvents iterator invalidation in process() when an event handler unsubscribes itself
+        if (delegates_locked_)
+        {
+            pending_removal_.push_back(target);
+            return true;
+        }
+
         auto findit =
             std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
         if (findit != delegates_.end())
@@ -177,6 +186,15 @@ public:
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
     {
         auto target = EventDelegate<EventT>::template create<MemberFunction>(instance);
+
+        // If we're currently iterating, queue for later removal
+        // This circumvents iterator invalidation in process() when an event handler unsubscribes itself
+        if (delegates_locked_)
+        {
+            pending_removal_.push_back(target);
+            return true;
+        }
+
         auto findit =
             std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
         if (findit != delegates_.end())
@@ -217,16 +235,23 @@ public:
      *
      * @param event
      */
-    void fire(const EventT& event) const
+    void fire(const EventT& event)
     {
+        // Prevent iterator invalidation
+        lock_delegates();
+
         // Iterate in reverse order, so the last subscribers execute first
         for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
         {
             if (it->second(event))
             {
-                break; // If handler returns true, event is not propagated further
+                // If handler returns true, event is not propagated further
+                break;
             }
         }
+
+        unlock_delegates();
+        process_pending_removals();
     }
 
     /**
@@ -241,12 +266,16 @@ public:
      */
     bool process(TimePoint deadline) override final
     {
+        // Prevent iterator invalidation
+        lock_delegates();
+
         while (!queue_.empty())
         {
             for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
             {
                 if (it->second(queue_.front()))
                 {
+                    // If handler returns true, event is not propagated further
                     break;
                 }
             }
@@ -256,10 +285,14 @@ public:
             // Timeout if the deadline was exceeded
             if (nanoClock::now() > deadline)
             {
+                unlock_delegates();
+                process_pending_removals();
                 return false;
             }
         }
 
+        unlock_delegates();
+        process_pending_removals();
         return true;
     }
 
@@ -309,12 +342,47 @@ private:
                   [](const PriorityDelegate& pd1, const PriorityDelegate& pd2) { return pd1.first < pd2.first; });
     }
 
+    /**
+     * @internal
+     * @brief Perform the actual removal of delegates
+     *
+     */
+    void process_pending_removals()
+    {
+        if (pending_removal_.empty())
+        {
+            return;
+        }
+
+        for (const auto& delegate : pending_removal_)
+        {
+            auto findit = std::find_if(delegates_.begin(), delegates_.end(),
+                                       [&delegate](const auto& p) { return p.second == delegate; });
+            if (findit != delegates_.end())
+            {
+                delegates_.erase(findit);
+            }
+        }
+
+        pending_removal_.clear();
+    }
+
+    // clang-format off
+    /// @internal @brief Let the unsubscribe function know that it can't mutate the delegate list
+    inline void lock_delegates()   { delegates_locked_ = true; }
+    /// @internal @brief Allow the unsubscribe function to mutate the delegate list directly
+    inline void unlock_delegates() { delegates_locked_ = false; }
+    // clang-format on
+
 private:
     using PriorityDelegate = std::pair<uint32_t, EventDelegate<EventT>>;
+    using RemovalList = std::vector<EventDelegate<EventT>>;
     using DelegateList = std::vector<PriorityDelegate>;
     using Queue = std::queue<EventT>;
     DelegateList delegates_;
+    RemovalList pending_removal_;
     Queue queue_;
+    bool delegates_locked_{false};
 };
 
 /**
