@@ -31,8 +31,9 @@ void m128itos(__m128i x, char* mem)
 
     // Add dashes between blocks as specified in RFC-4122
     // 8-4-4-4-12
-    const __m256i dash_shuffle = _mm256_set_epi32(0x0b0a0908L, 0x07060504L, 0x80030201L, 0x00808080L, 0x0d0c800bL,
-                                                  0x0a090880L, 0x07060504L, 0x03020100L);
+    const __m256i dash_shuffle =
+        _mm256_set_epi32(int32_t(0x0b0a0908L), int32_t(0x07060504L), int32_t(0x80030201L), int32_t(0x00808080L),
+                         int32_t(0x0d0c800bL), int32_t(0x0a090880L), int32_t(0x07060504L), int32_t(0x03020100L));
     const __m256i dash =
         _mm256_set_epi64x(0x0000000000000000LL, 0x2d000000002d0000LL, 0x00002d000000002dLL, 0x0000000000000000LL);
 
@@ -47,8 +48,9 @@ void m128itos(__m128i x, char* mem)
 __m128i stom128i(const char* mem)
 {
     // Remove dashes and pack hex ascii bytes in a 256-bits int
-    const __m256i dash_shuffle = _mm256_set_epi32(0x80808080L, 0x0f0e0d0cL, 0x0b0a0908L, 0x06050403L, 0x80800f0eL,
-                                                  0x0c0b0a09L, 0x07060504L, 0x03020100L);
+    const __m256i dash_shuffle =
+        _mm256_set_epi32(int32_t(0x80808080L), int32_t(0x0f0e0d0cL), int32_t(0x0b0a0908L), int32_t(0x06050403L),
+                         int32_t(0x80800f0eL), int32_t(0x0c0b0a09L), int32_t(0x07060504L), int32_t(0x03020100L));
 
     __m256i x = betole256(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(mem)));
     x = _mm256_shuffle_epi8(x, dash_shuffle);
@@ -60,10 +62,12 @@ __m128i stom128i(const char* mem)
     const __m256i mask = _mm256_set1_epi8(0x20);
     const __m256i alpha_offset = _mm256_set1_epi8(0x28);
     const __m256i digits_offset = _mm256_set1_epi8(0x01);
-    const __m256i unweave = _mm256_set_epi32(0x0f0d0b09L, 0x0e0c0a08L, 0x07050301L, 0x06040200L, 0x0f0d0b09L,
-                                             0x0e0c0a08L, 0x07050301L, 0x06040200L);
-    const __m256i shift = _mm256_set_epi32(0x00000000L, 0x00000004L, 0x00000000L, 0x00000004L, 0x00000000L, 0x00000004L,
-                                           0x00000000L, 0x00000004L);
+    const __m256i unweave =
+        _mm256_set_epi32(int32_t(0x0f0d0b09L), int32_t(0x0e0c0a08L), int32_t(0x07050301L), int32_t(0x06040200L),
+                         int32_t(0x0f0d0b09L), int32_t(0x0e0c0a08L), int32_t(0x07050301L), int32_t(0x06040200L));
+    const __m256i shift =
+        _mm256_set_epi32(int32_t(0x00000000L), int32_t(0x00000004L), int32_t(0x00000000L), int32_t(0x00000004L),
+                         int32_t(0x00000000L), int32_t(0x00000004L), int32_t(0x00000000L), int32_t(0x00000004L));
 
     // Translate ascii bytes to their value
     // i.e. 0x3132333435363738 -> 0x0102030405060708

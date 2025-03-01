@@ -1,5 +1,6 @@
 #include "kibble/util/stack_trace.h"
 
+// #define BACKWARD_HAS_BFD 1
 #include "backward-cpp/backward.hpp"
 #include <sstream>
 
@@ -33,10 +34,13 @@ std::string StackTrace::format() const
 {
     std::ostringstream oss;
     backward::Printer printer;
-    // printer.object = true;
-    // printer.color_mode = backward::ColorMode::always;
-    // printer.address = true;
-    // printer.snippet = true;
+    printer.object = true;
+    printer.color_mode = backward::ColorMode::always;
+    printer.address = true;
+    printer.snippet = true;
+    printer.inliner_context_size = 5;
+    printer.trace_context_size = 7;
+    printer.reverse = true;
     printer.print(*ptrace_, oss);
 
     return oss.str();

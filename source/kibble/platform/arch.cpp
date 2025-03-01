@@ -83,7 +83,7 @@ CPUInfo::Internal::Internal()
     }
 
     // Get highest extended function ID
-    cpuid(cpui.data(), 0x80000000L);
+    cpuid(cpui.data(), int32_t(0x80000000L));
     unsigned int n_ex_ids = static_cast<unsigned int>(cpui[0]);
 
     char brand[0x40];

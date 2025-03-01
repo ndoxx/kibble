@@ -102,6 +102,11 @@ set_target_properties(fmt
     POSITION_INDEPENDENT_CODE ON
 )
 
+# ~~~~~~ backward-cpp ~~~~~~
+add_subdirectory("${KB_SOURCE_DIR}/source/vendor/backward-cpp" "external/backward-cpp")
+set_source_files_properties("${KB_SOURCE_DIR}/source/vendor/backward-cpp/backward.cpp" PROPERTIES COMPILE_FLAGS -w)
+set_source_files_properties("${KB_SOURCE_DIR}/source/vendor/backward-cpp/backward.hpp" PROPERTIES COMPILE_FLAGS -w)
+
 # ------------------------------------------
 target_link_libraries(kibble
     PUBLIC
@@ -109,6 +114,7 @@ target_link_libraries(kibble
     PRIVATE
     project_options
     project_warnings
+    Backward::Interface
 )
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
