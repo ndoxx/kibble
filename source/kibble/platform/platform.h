@@ -56,8 +56,11 @@
 // Compiler
 #if defined(__clang__)
 #define K_COMPILER_CLANG
+#define K_COMPILER_NAME "clang"
 #elif defined(__GNUC__) || defined(__GNUG__)
 #define K_COMPILER_GCC
+#define K_COMPILER_NAME "gcc"
 #elif defined(_MSC_VER)
 #define K_COMPILER_MSVC
+#define K_COMPILER_NAME "msvc"
 #endif
