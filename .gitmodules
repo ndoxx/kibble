@@ -1,9 +1,9 @@
 [submodule "source/vendor/atomic_queue"]
 	path = source/vendor/atomic_queue
 	url = https://github.com/max0x7ba/atomic_queue.git
-[submodule "source/vendor/backward-cpp"]
-	path = source/vendor/backward-cpp
-	url = https://github.com/bombela/backward-cpp.git
 [submodule "source/vendor/fmt"]
 	path = source/vendor/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "source/vendor/cpptrace"]
+	path = source/vendor/cpptrace
+	url = https://github.com/jeremy-rifkin/cpptrace.git

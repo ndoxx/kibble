@@ -83,7 +83,7 @@ void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentat
     // print stack trace
     if (e.stack_trace.has_value())
     {
-        fmt::print("{}", e.stack_trace->format());
+        fmt::print("{}\n", e.stack_trace->format());
     }
 
     std::fflush(stdout);

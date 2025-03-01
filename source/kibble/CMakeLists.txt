@@ -30,6 +30,7 @@ target_include_directories(kibble
 target_include_directories(kibble
     SYSTEM PRIVATE
     ${KB_SOURCE_DIR}/source/vendor
+    ${KB_SOURCE_DIR}/source/vendor/cpptrace/include
 )
 
 target_include_directories(kibble
@@ -102,10 +103,8 @@ set_target_properties(fmt
     POSITION_INDEPENDENT_CODE ON
 )
 
-# ~~~~~~ backward-cpp ~~~~~~
-add_subdirectory("${KB_SOURCE_DIR}/source/vendor/backward-cpp" "external/backward-cpp")
-set_source_files_properties("${KB_SOURCE_DIR}/source/vendor/backward-cpp/backward.cpp" PROPERTIES COMPILE_FLAGS -w)
-set_source_files_properties("${KB_SOURCE_DIR}/source/vendor/backward-cpp/backward.hpp" PROPERTIES COMPILE_FLAGS -w)
+# ~~~~~~ cpptrace ~~~~~~
+add_subdirectory("${KB_SOURCE_DIR}/source/vendor/cpptrace" "external/cpptrace")
 
 # ------------------------------------------
 target_link_libraries(kibble
@@ -114,7 +113,7 @@ target_link_libraries(kibble
     PRIVATE
     project_options
     project_warnings
-    Backward::Interface
+    cpptrace::cpptrace
 )
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")

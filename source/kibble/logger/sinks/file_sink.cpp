@@ -34,7 +34,7 @@ void FileSink::submit(const LogEntry& e, const ChannelPresentation& p)
     // print stack trace
     if (e.stack_trace.has_value())
     {
-        out_.print("{}", e.stack_trace->format());
+        out_.print("{}\n", e.stack_trace->format());
     }
 }
 

@@ -3,9 +3,9 @@
 #include <memory>
 #include <string>
 
-namespace backward
+namespace cpptrace
 {
-class StackTrace;
+struct raw_trace;
 }
 
 namespace kb
@@ -19,10 +19,10 @@ public:
     StackTrace(const StackTrace&);
     StackTrace& operator=(const StackTrace&);
 
-    std::string format() const;
+    std::string format(bool color = true) const;
 
 private:
-    std::unique_ptr<backward::StackTrace> ptrace_;
+    std::unique_ptr<cpptrace::raw_trace> ptrace_;
     size_t skip_ = 0;
 };
 

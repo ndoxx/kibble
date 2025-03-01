@@ -1,7 +1,6 @@
 #include "kibble/util/stack_trace.h"
 
-// #define BACKWARD_HAS_BFD 1
-#include "backward-cpp/backward.hpp"
+#include "cpptrace/cpptrace.hpp"
 #include <sstream>
 
 namespace kb
@@ -9,13 +8,10 @@ namespace kb
 
 StackTrace::StackTrace(size_t skip) : skip_(skip)
 {
-    // [[maybe_unused]] backward::TraceResolver unused__; // see https://github.com/bombela/backward-cpp/issues/206
-    ptrace_ = std::make_unique<backward::StackTrace>();
-    ptrace_->load_here(64);
-    ptrace_->skip_n_firsts(skip_);
+    ptrace_ = std::make_unique<cpptrace::raw_trace>(cpptrace::generate_raw_trace(skip_));
 }
 
-StackTrace::StackTrace(const StackTrace& other) : ptrace_(std::make_unique<backward::StackTrace>(*other.ptrace_))
+StackTrace::StackTrace(const StackTrace& other) : ptrace_(std::make_unique<cpptrace::raw_trace>(*other.ptrace_))
 {
 }
 
@@ -26,24 +22,13 @@ StackTrace::~StackTrace()
 
 StackTrace& StackTrace::operator=(const StackTrace& other)
 {
-    ptrace_ = std::make_unique<backward::StackTrace>(*other.ptrace_);
+    ptrace_ = std::make_unique<cpptrace::raw_trace>(*other.ptrace_);
     return *this;
 }
 
-std::string StackTrace::format() const
+std::string StackTrace::format(bool color) const
 {
-    std::ostringstream oss;
-    backward::Printer printer;
-    printer.object = true;
-    printer.color_mode = backward::ColorMode::always;
-    printer.address = true;
-    printer.snippet = true;
-    printer.inliner_context_size = 5;
-    printer.trace_context_size = 7;
-    printer.reverse = true;
-    printer.print(*ptrace_, oss);
-
-    return oss.str();
+    return ptrace_->resolve().to_string(color);
 }
 
 } // namespace kb
