@@ -26,7 +26,7 @@ namespace math
  * @param max_iter Maximum number of iterations
  * @return std::pair<float, float> root approximation and error
  */
-std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime, float xx, float epsilon,
+std::pair<float, float> newton_raphson(const std::function<float(float)>& f_over_fprime, float xx, float epsilon,
                                        size_t max_iter);
 
 /**
@@ -41,7 +41,8 @@ std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime
  * @param alpha Common ratio of the step size geometric progression
  * @return float A very crude approximation of the root, but a usable initial guess for the Newton-Raphson algorithm
  */
-float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, float start_step, float alpha = 2.f);
+float nr_initial_guess_iterative(const std::function<float(float)>& f, float start_x, float start_step,
+                                 float alpha = 2.f);
 
 /**
  * @brief Integrate a function f between lb and ub using a specified number of subdivisions.
@@ -55,7 +56,7 @@ float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, f
  * @param subdivisions Number of subdivisions
  * @return float
  */
-float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint32_t subdivisions);
+float integrate_simpson(const std::function<float(float)>& f, float lb, float ub, uint32_t subdivisions);
 
 /**
  * @brief Performs exponential moving average thanks to an IIR

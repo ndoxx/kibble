@@ -22,7 +22,11 @@ StackTrace::~StackTrace()
 
 StackTrace& StackTrace::operator=(const StackTrace& other)
 {
-    ptrace_ = std::make_unique<cpptrace::raw_trace>(*other.ptrace_);
+    // Handle self-assignment problem
+    if (this != &other)
+    {
+        ptrace_ = std::make_unique<cpptrace::raw_trace>(*other.ptrace_);
+    }
     return *this;
 }
 

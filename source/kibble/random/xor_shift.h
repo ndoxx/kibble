@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <ostream>
 
 namespace kb
 {
@@ -79,12 +78,13 @@ public:
          */
         constexpr Seed& operator=(const Seed& rhs)
         {
-            state_[0] = rhs.state_[0];
-            state_[1] = rhs.state_[1];
+            if (this != &rhs)
+            {
+                state_[0] = rhs.state_[0];
+                state_[1] = rhs.state_[1];
+            }
             return *this;
         }
-
-        friend std::ostream& operator<<(std::ostream& stream, Seed rhs);
     };
 
     /**
@@ -116,7 +116,7 @@ public:
      *
      * @param seed
      */
-    inline void seed(Seed seed)
+    inline void seed(const Seed& seed)
     {
         seed_ = seed;
     }

@@ -341,7 +341,7 @@ bool JobSystem::is_busy() const
 // and in WorkerThread::execute() I do this after the fetch_sub:
 //      ss_.cv_wait.notify_one();
 // But it deadlocks (lost wakeups?)
-void JobSystem::wait_until(std::function<bool()> condition)
+void JobSystem::wait_until(const std::function<bool()>& condition)
 {
     // Do some work to assist other threads
 #ifdef KB_JOB_SYSTEM_PROFILING
@@ -412,7 +412,7 @@ void JobSystem::abort()
             workers_[idx].terminate_and_join();
         }
     }
-    catch (const std::exception&)
+    catch (...)
     {
     }
 
@@ -429,10 +429,10 @@ void JobSystem::abort()
 
     klog(log_channel_).uid("JobSystem").info("Shutting down.");
 
-    exit(0);
+    exit(1);
 }
 
-void depth_first_walk(Job* job, std::function<bool(Job*)> visit)
+void depth_first_walk(Job* job, const std::function<bool(Job*)>& visit)
 {
     std::stack<Job*> stack;
     stack.push(job);

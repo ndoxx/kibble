@@ -9,8 +9,8 @@ namespace kb::UUIDv4::impl::sse2
 {
 
 // Helper macros, these are not defined in SSE2
-#define mm_cmpge_epi8__(a, b) _mm_or_si128(_mm_cmpgt_epi8(a, b), _mm_cmpeq_epi8(a, b))
-#define mm_cmple_epi8__(a, b) _mm_or_si128(_mm_cmplt_epi8(a, b), _mm_cmpeq_epi8(a, b))
+#define mm_cmpge_epi8(a, b) _mm_or_si128(_mm_cmpgt_epi8(a, b), _mm_cmpeq_epi8(a, b))
+#define mm_cmple_epi8(a, b) _mm_or_si128(_mm_cmplt_epi8(a, b), _mm_cmpeq_epi8(a, b))
 
 /**
  * @brief Converts a 128-bits unsigned int to an UUIDv4 string representation.
@@ -109,13 +109,13 @@ __m128i stom128i(const char* mem)
         __m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(hex_only + ii * 16));
 
         // Check character ranges and convert
-        __m128i is_digit = _mm_and_si128(mm_cmpge_epi8__(chunk, ascii_zero), mm_cmple_epi8__(chunk, ascii_nine));
+        __m128i is_digit = _mm_and_si128(mm_cmpge_epi8(chunk, ascii_zero), mm_cmple_epi8(chunk, ascii_nine));
         __m128i val_digit = _mm_sub_epi8(chunk, ascii_zero);
 
-        __m128i is_lower = _mm_and_si128(mm_cmpge_epi8__(chunk, ascii_a), mm_cmple_epi8__(chunk, ascii_f));
+        __m128i is_lower = _mm_and_si128(mm_cmpge_epi8(chunk, ascii_a), mm_cmple_epi8(chunk, ascii_f));
         __m128i val_lower = _mm_add_epi8(_mm_sub_epi8(chunk, ascii_a), _mm_set1_epi8(10));
 
-        __m128i is_upper = _mm_and_si128(mm_cmpge_epi8__(chunk, ascii_A), mm_cmple_epi8__(chunk, ascii_F));
+        __m128i is_upper = _mm_and_si128(mm_cmpge_epi8(chunk, ascii_A), mm_cmple_epi8(chunk, ascii_F));
         __m128i val_upper = _mm_add_epi8(_mm_sub_epi8(chunk, ascii_A), _mm_set1_epi8(10));
 
         // Combine results based on which range the character falls in

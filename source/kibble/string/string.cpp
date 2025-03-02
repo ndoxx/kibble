@@ -40,7 +40,7 @@ std::vector<std::string> tokenize(const std::string& str, char delimiter)
 }
 
 // Tokenize an input string and call a visitor for each token
-void tokenize(const std::string& str, char delimiter, std::function<void(const std::string&)> visit)
+void tokenize(const std::string& str, char delimiter, const std::function<void(const std::string&)>& visit)
 {
     std::stringstream ss(str);
 
@@ -142,11 +142,12 @@ std::string base64_decode(const std::string& data)
     int valb = -8;
     for (char c : data)
     {
-        if (s_base64_decode_vals[size_t(c)] == -1)
+        size_t idx = size_t(static_cast<unsigned char>(c)); // cert-str34-c
+        if (s_base64_decode_vals[idx] == -1)
         {
             break;
         }
-        val = (val << 6) + static_cast<unsigned int>(s_base64_decode_vals[size_t(c)]);
+        val = (val << 6) + static_cast<unsigned int>(s_base64_decode_vals[idx]);
         valb += 6;
         if (valb >= 0)
         {

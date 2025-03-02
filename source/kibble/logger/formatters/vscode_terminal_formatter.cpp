@@ -56,7 +56,7 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
     if (e.raw_text)
     {
         fmt::print("{}\n", e.message);
-        std::fflush(stdout);
+        (void)std::fflush(stdout);
         return;
     }
 
@@ -95,7 +95,7 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
         fmt::print("{}\n", e.stack_trace->format());
     }
 
-    std::fflush(stdout);
+    (void)std::fflush(stdout);
 }
 
 } // namespace kb::log

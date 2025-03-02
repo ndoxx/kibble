@@ -106,7 +106,7 @@ void TLSFAllocator::create_pool(void* pool, std::size_t size)
     pool_ = pool;
 }
 
-void TLSFAllocator::walk_pool(PoolWalker walk) const
+void TLSFAllocator::walk_pool(const PoolWalker& walk) const
 {
     BlockHeader* block = BlockHeader::offset_to_block(pool_, -std::ptrdiff_t(BlockHeader::k_block_header_overhead));
 
@@ -305,7 +305,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
     {
         void* ptr = block->to_void_ptr();
         // Align the user base pointer
-        void* aligned = align_ptr(reinterpret_cast<void*>(reinterpret_cast<char*>(ptr) + user_offset), alignment);
+        void* aligned = align_ptr(static_cast<void*>(static_cast<char*>(ptr) + user_offset), alignment);
         size_t gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr)) - user_offset;
 
         // If gap size is too small, offset to next aligned boundary
@@ -313,7 +313,7 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
         {
             const size_t gap_remain = min_gap - gap;
             const size_t offset = std::max(gap_remain, alignment);
-            const void* next_aligned = reinterpret_cast<void*>(std::ptrdiff_t(aligned) + std::ptrdiff_t(offset));
+            const void* next_aligned = static_cast<const char*>(aligned) + offset;
             aligned = align_ptr(next_aligned, alignment);
             gap = size_t(std::ptrdiff_t(aligned) - std::ptrdiff_t(ptr)) - user_offset;
         }

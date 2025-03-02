@@ -106,7 +106,7 @@ public:
      *
      * @param walk Visitor object
      */
-    void walk_pool(PoolWalker walk) const;
+    void walk_pool(const PoolWalker& walk) const;
 
     /**
      * @brief Check pool integrity

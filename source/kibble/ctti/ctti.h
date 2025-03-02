@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "kibble/hash/hash.h"
+#include "kibble/platform/macros.h"
 #include "kibble/platform/platform.h"
 
 namespace kb
@@ -45,18 +46,16 @@ constexpr auto substring_as_array(std::string_view str, std::index_sequence<Idxs
 template <typename T>
 constexpr auto type_name_array()
 {
+    constexpr std::string_view function{KB_PRETTY_FUNCTION};
 #if defined(K_COMPILER_CLANG)
-    constexpr auto prefix = std::string_view{"[T = "};
-    constexpr auto suffix = std::string_view{"]"};
-    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    constexpr std::string_view prefix{"[T = "};
+    constexpr std::string_view suffix{"]"};
 #elif defined(K_COMPILER_GCC)
-    constexpr auto prefix = std::string_view{"with T = "};
-    constexpr auto suffix = std::string_view{"]"};
-    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    constexpr std::string_view prefix{"with T = "};
+    constexpr std::string_view suffix{"]"};
 #elif defined(K_COMPILER_MSVC)
-    constexpr auto prefix = std::string_view{"type_name_array<"};
-    constexpr auto suffix = std::string_view{">(void)"};
-    constexpr auto function = std::string_view{__FUNCSIG__};
+    constexpr std::string_view prefix{"type_name_array<"};
+    constexpr std::string_view suffix{">(void)"};
 #else
 #error Unsupported compiler
 #endif

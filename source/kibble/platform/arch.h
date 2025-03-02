@@ -84,7 +84,7 @@ private:
     class Internal
     {
     public:
-        Internal();
+        Internal() noexcept;
 
         std::string vendor_;
         std::string brand_;

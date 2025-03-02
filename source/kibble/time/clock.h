@@ -68,7 +68,8 @@ private:
 class TimeBase
 {
 public:
-    using HRCTimePoint = std::chrono::high_resolution_clock::time_point;
+    // We use a steady_clock that is guaranteed to be monotonic
+    using TimePoint = std::chrono::steady_clock::time_point;
     using TimeStamp = std::chrono::duration<long, std::ratio<1, 1000000000>>;
 
     /**
@@ -79,7 +80,7 @@ public:
      */
     static inline void start()
     {
-        s_start_time = std::chrono::high_resolution_clock::now();
+        s_start_time = std::chrono::steady_clock::now();
     }
 
     /**
@@ -88,7 +89,7 @@ public:
      *
      * @param time_point new time point
      */
-    static inline void sync(HRCTimePoint time_point)
+    static inline void sync(TimePoint time_point)
     {
         s_start_time = time_point;
     }
@@ -98,7 +99,7 @@ public:
      *
      * @return HRCTimePoint
      */
-    static inline HRCTimePoint get_start_time()
+    static inline TimePoint get_start_time()
     {
         return s_start_time;
     }
@@ -110,11 +111,11 @@ public:
      */
     static inline TimeStamp timestamp()
     {
-        return std::chrono::high_resolution_clock::now() - s_start_time;
+        return std::chrono::steady_clock::now() - s_start_time;
     }
 
 private:
-    static HRCTimePoint s_start_time;
+    static TimePoint s_start_time;
 };
 
 using nanoClock = Clock<std::chrono::nanoseconds>;

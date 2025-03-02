@@ -48,12 +48,6 @@ XorShiftEngine::Seed::Seed(uint64_t seed)
     state_[1] = uint32_t((tmp >> 32));
 }
 
-std::ostream& operator<<(std::ostream& stream, XorShiftEngine::Seed rhs)
-{
-    stream << "[" << rhs.state_[0] << "," << rhs.state_[1] << "]";
-    return stream;
-}
-
 XorShiftEngine::XorShiftEngine()
 {
     seed();

@@ -37,7 +37,7 @@ inline void cpuid(int cpu_info[4], int function_id)
 #endif
 }
 
-CPUInfo::Internal::Internal()
+CPUInfo::Internal::Internal() noexcept
     : is_intel_{false}, is_AMD_{false}, f_1_ECX_{0}, f_1_EDX_{0}, f_7_EBX_{0}, f_7_ECX_{0}, f_81_ECX_{0}, f_81_EDX_{0}
 {
     std::array<int, 4> cpui;

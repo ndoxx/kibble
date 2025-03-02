@@ -178,7 +178,7 @@ public:
      *
      * @param condition predicate that will keep the function busy till it evaluates to false
      */
-    void wait_until(std::function<bool()> condition);
+    void wait_until(const std::function<bool()>& condition);
 
     /**
      * @brief Hold execution on this thread until all jobs are processed or the input predicate returns false.

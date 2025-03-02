@@ -54,7 +54,7 @@ void TCPStream::receive(std::string& msg)
         }
         else
         {
-            std::cerr << "TCPStream receive error." << std::endl;
+            std::cerr << "TCPStream receive error.\n";
         }
     } while (nbytes == k_max_buf_len);
 }

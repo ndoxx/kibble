@@ -30,11 +30,11 @@ Channel::Channel(Severity level, const std::string& full_name, const std::string
 void Channel::attach_sink(std::shared_ptr<Sink> psink)
 {
     std::lock_guard<std::mutex> lock(sink_mutex_);
-    sinks_.push_back(psink);
+    sinks_.push_back(std::move(psink));
     sinks_.back()->on_attach(*this);
 }
 
-void Channel::detach_sink(std::shared_ptr<Sink> psink)
+void Channel::detach_sink(const std::shared_ptr<Sink>& psink)
 {
     std::lock_guard<std::mutex> lock(sink_mutex_);
     sinks_.erase(std::remove(sinks_.begin(), sinks_.end(), psink), sinks_.end());
@@ -42,7 +42,7 @@ void Channel::detach_sink(std::shared_ptr<Sink> psink)
 
 void Channel::attach_policy(std::shared_ptr<Policy> ppolicy)
 {
-    policies_.push_back(ppolicy);
+    policies_.push_back(std::move(ppolicy));
 }
 
 void Channel::submit(LogEntry&& entry) const
@@ -78,7 +78,7 @@ void Channel::submit(LogEntry&& entry) const
         // Set thread id
         entry.thread_id = s_js_->this_thread_id();
         th::JobMetadata meta(th::force_worker(s_worker_), "Log");
-        meta.essential__ = true;
+        meta.essential_ = true;
         // Schedule logging task. Log entry is moved.
         auto&& [task, future] = s_js_->create_task(std::move(meta), [this, entry = std::move(entry)]() {
             std::lock_guard<std::mutex> lock(sink_mutex_);
@@ -102,7 +102,7 @@ void Channel::submit(LogEntry&& entry) const
             psink->flush();
         }
 
-        exit(0);
+        exit(1);
     }
 }
 
@@ -127,12 +127,12 @@ void Channel::set_async(th::JobSystem* js, uint32_t worker)
         static bool s_signal_handler_configured = false;
         if (s_js_ && !s_signal_handler_configured)
         {
-            std::signal(SIGABRT, panic_handler);
-            std::signal(SIGFPE, panic_handler);
-            std::signal(SIGILL, panic_handler);
-            std::signal(SIGINT, panic_handler);
-            std::signal(SIGSEGV, panic_handler);
-            std::signal(SIGTERM, panic_handler);
+            (void)std::signal(SIGABRT, panic_handler);
+            (void)std::signal(SIGFPE, panic_handler);
+            (void)std::signal(SIGILL, panic_handler);
+            (void)std::signal(SIGINT, panic_handler);
+            (void)std::signal(SIGSEGV, panic_handler);
+            (void)std::signal(SIGTERM, panic_handler);
 
             g_panic_handler = [](int) { s_js_->abort(); };
             s_signal_handler_configured = true;

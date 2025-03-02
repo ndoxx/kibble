@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "kibble/assert/assert.h"
 #include "kibble/memory/allocator/tlsf/impl/bit.h" // Leave this here

@@ -34,7 +34,7 @@ void MonochromeTerminalFormatter::print(const LogEntry& e, const ChannelPresenta
     if (e.raw_text)
     {
         fmt::print("{}\n", e.message);
-        std::fflush(stdout);
+        (void)std::fflush(stdout);
         return;
     }
 
@@ -72,7 +72,7 @@ void MonochromeTerminalFormatter::print(const LogEntry& e, const ChannelPresenta
         fmt::print("{}\n", e.stack_trace->format(false));
     }
 
-    std::fflush(stdout);
+    (void)std::fflush(stdout);
 }
 
 } // namespace kb::log

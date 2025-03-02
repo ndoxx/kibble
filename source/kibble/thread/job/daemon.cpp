@@ -2,9 +2,9 @@
 #include "kibble/assert/assert.h"
 #include "kibble/logger/logger.h"
 #include "kibble/thread/job/impl/common.h"
-#include "kibble/time/instrumentation.h"
 #include "kibble/thread/job/impl/job.h"
 #include "kibble/thread/job/impl/worker.h"
+#include "kibble/time/instrumentation.h"
 
 namespace kb
 {
@@ -38,7 +38,8 @@ DaemonScheduler::~DaemonScheduler()
     }
 }
 
-DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingData&& scheduling_data, JobMetadata&& meta)
+DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, const SchedulingData& scheduling_data,
+                                     JobMetadata&& meta)
 {
     JS_PROFILE_FUNCTION(js_.get_instrumentation_session(), 0);
 
@@ -46,7 +47,7 @@ DaemonHandle DaemonScheduler::create(std::function<bool()> kernel, SchedulingDat
     K_ASSERT(inserted, "Could not insert new daemon");
 
     auto& daemon = *it->second;
-    daemon.scheduling_data = std::move(scheduling_data);
+    daemon.scheduling_data = scheduling_data;
     daemon.job = js_.create_job(
         [this, &daemon, kernel = std::move(kernel)]() {
             bool self_terminate = false;

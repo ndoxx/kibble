@@ -58,7 +58,7 @@ public:
      *
      * @param psink
      */
-    void detach_sink(std::shared_ptr<Sink> psink);
+    void detach_sink(const std::shared_ptr<Sink>& psink);
 
     /**
      * @brief Add a policy to this channel

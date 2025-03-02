@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <utility>
 
 namespace kb
 {
@@ -335,7 +336,7 @@ std::string_view UndoGroup::undo_text() const
 void UndoGroup::on_head_change(std::function<void(size_t)> func)
 {
     // Set functor and propagate to all stacks
-    on_head_change_ = func;
+    on_head_change_ = std::move(func);
     for (auto&& [name, stack] : stacks_)
     {
         stack.on_head_change(on_head_change_);
@@ -344,7 +345,7 @@ void UndoGroup::on_head_change(std::function<void(size_t)> func)
 
 void UndoGroup::on_clean_change(std::function<void(bool)> func)
 {
-    on_clean_change_ = func;
+    on_clean_change_ = std::move(func);
     for (auto&& [name, stack] : stacks_)
     {
         stack.on_clean_change(on_clean_change_);
@@ -353,7 +354,7 @@ void UndoGroup::on_clean_change(std::function<void(bool)> func)
 
 void UndoGroup::on_can_undo_change(std::function<void(bool)> func)
 {
-    on_can_undo_change_ = func;
+    on_can_undo_change_ = std::move(func);
     for (auto&& [name, stack] : stacks_)
     {
         stack.on_can_undo_change(on_can_undo_change_);
@@ -362,7 +363,7 @@ void UndoGroup::on_can_undo_change(std::function<void(bool)> func)
 
 void UndoGroup::on_can_redo_change(std::function<void(bool)> func)
 {
-    on_can_redo_change_ = func;
+    on_can_redo_change_ = std::move(func);
     for (auto&& [name, stack] : stacks_)
     {
         stack.on_can_redo_change(on_can_redo_change_);

@@ -134,7 +134,7 @@ std::vector<std::string> tokenize(const std::string& str, char delimiter = ',');
  * @param delimiter
  * @param visit
  */
-void tokenize(const std::string& str, char delimiter, std::function<void(const std::string&)> visit);
+void tokenize(const std::string& str, char delimiter, const std::function<void(const std::string&)>& visit);
 
 /**
  * @brief Convert a size string to a number.

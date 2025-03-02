@@ -13,10 +13,10 @@
 
 #include <cstdint>
 #include <functional>
-#include <set>
 #include <string>
-#include <unordered_map>
 #include <vector>
+
+#include "kibble/util/unordered_dense.h"
 
 /*
  * TODO:
@@ -43,7 +43,7 @@ struct InvalidOperandException;
  */
 enum class ArgType : uint8_t
 {
-    NONE,
+    NONE = 0,
     BOOL,
     INT,
     LONG_LONG,
@@ -103,7 +103,7 @@ struct AbstractOption
     /// Small text describing what the option does
     std::string description;
     /// Compatibility requirements for this option
-    std::set<size_t> exclusive_sets;
+    ankerl::unordered_dense::set<size_t> exclusive_sets;
 
     virtual ~AbstractOption() = default;
 
@@ -368,7 +368,7 @@ public:
      *
      * @param exclusive_set Set of short-form options to set as mutually exclusive
      */
-    void set_flags_exclusive(const std::set<char>& exclusive_set);
+    void set_flags_exclusive(const ankerl::unordered_dense::set<char>& exclusive_set);
 
     /**
      * @brief Set all the variables in the input set to be mutually exclusive.
@@ -377,7 +377,7 @@ public:
      *
      * @param exclusive_set Set of short-form options to set as mutually exclusive
      */
-    void set_variables_exclusive(const std::set<char>& exclusive_set);
+    void set_variables_exclusive(const ankerl::unordered_dense::set<char>& exclusive_set);
 
     /**
      * @brief Specify that the first command requires the second one to be present during parsing.
@@ -425,10 +425,11 @@ private:
     bool check_dependencies() noexcept;
 
     // Compute the intersection of the active set with all exclusive sets, in order to check for exclusivity constraints
-    bool check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept;
+    bool check_intersection(const ankerl::unordered_dense::set<char>& active,
+                            const std::vector<ankerl::unordered_dense::set<char>>& exclusives) noexcept;
 
     // Get the set of all set options that pass the input filter
-    std::set<char> get_active(std::function<bool(AbstractOption*)>) const noexcept;
+    ankerl::unordered_dense::set<char> get_active(const std::function<bool(AbstractOption*)>&) const noexcept;
 
     // Check if two options are compatible, meaning they don't share an exclusive set
     bool compatible(char, char) const;
@@ -450,12 +451,12 @@ private:
     std::string program_name_;
     std::string usage_string_;
     std::string full_ver_string_;
-    std::unordered_map<char, AbstractOption*> arguments_;
-    std::unordered_map<char, std::function<void()>> triggers_;
+    ankerl::unordered_dense::map<char, AbstractOption*> arguments_;
+    ankerl::unordered_dense::map<char, std::function<void()>> triggers_;
+    ankerl::unordered_dense::map<std::string, char> full_to_short_;
     std::vector<AbstractOption*> positionals_;
-    std::vector<std::set<char>> exclusive_flags_;
-    std::vector<std::set<char>> exclusive_variables_;
-    std::unordered_map<std::string, char> full_to_short_;
+    std::vector<ankerl::unordered_dense::set<char>> exclusive_flags_;
+    std::vector<ankerl::unordered_dense::set<char>> exclusive_variables_;
     std::vector<std::string> error_log_;
     std::function<void(const std::string&)> output_ = [](const std::string&) {};
 

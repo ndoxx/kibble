@@ -56,19 +56,19 @@ struct MissingOperandException : public ParsingException
     }
 };
 
-const std::unordered_map<ArgType, std::string> k_type_str = {
-    {ArgType::NONE, "NONE"},
-    {ArgType::BOOL, "bool"},
-    {ArgType::INT, "int"},
-    {ArgType::LONG_LONG, "long_long"},
-    {ArgType::FLOAT, "float"},
-    {ArgType::DOUBLE, "double"},
-    {ArgType::STRING, "string"},
-    {ArgType::VEC_INT, "int,..."},
-    {ArgType::VEC_LONG_LONG, "long_long,..."},
-    {ArgType::VEC_FLOAT, "float,..."},
-    {ArgType::VEC_DOUBLE, "double,..."},
-    {ArgType::VEC_STRING, "string,..."},
+constexpr std::array<std::string_view, 12> k_type_str = {
+    "NONE",          // NONE
+    "bool",          // BOOL
+    "int",           // INT
+    "long_long",     // LONG_LONG
+    "float",         // FLOAT
+    "double",        // DOUBLE
+    "string",        // STRING
+    "int,...",       // VEC_INT
+    "long_long,...", // VEC_LONG_LONG
+    "float,...",     // VEC_FLOAT
+    "double,...",    // VEC_DOUBLE
+    "string,...",    // VEC_STRING
 };
 
 ArgParse::ArgParse(const std::string& program_name, const std::string& ver_string)
@@ -105,7 +105,7 @@ ArgParse::~ArgParse()
     }
 }
 
-void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
+void ArgParse::set_flags_exclusive(const ankerl::unordered_dense::set<char>& exclusive_set)
 {
     for (char key : exclusive_set)
     {
@@ -118,7 +118,7 @@ void ArgParse::set_flags_exclusive(const std::set<char>& exclusive_set)
     exclusive_flags_.push_back(exclusive_set);
 }
 
-void ArgParse::set_variables_exclusive(const std::set<char>& exclusive_set)
+void ArgParse::set_variables_exclusive(const ankerl::unordered_dense::set<char>& exclusive_set)
 {
     for (char key : exclusive_set)
     {
@@ -254,7 +254,7 @@ bool ArgParse::compatible(char A, char B) const
     // If these two arguments have an exclusive set in common, they are not compatible
     const auto* arg_A = arguments_.at(A);
     const auto* arg_B = arguments_.at(B);
-    std::set<char> intersection;
+    ankerl::unordered_dense::set<char> intersection;
 
     std::set_intersection(arg_A->exclusive_sets.begin(), arg_A->exclusive_sets.end(), arg_B->exclusive_sets.begin(),
                           arg_B->exclusive_sets.end(), std::inserter(intersection, intersection.begin()));
@@ -346,7 +346,7 @@ bool ArgParse::check_dependencies() noexcept
 {
     // All dependencies of all arguments in the active set must be in the active set
     auto active_set = get_active([](AbstractOption*) { return true; });
-    std::set<char> required, difference;
+    ankerl::unordered_dense::set<char> required, difference;
     for (char key : active_set)
     {
         if (char dep = arguments_.at(key)->dependency)
@@ -374,9 +374,10 @@ bool ArgParse::check_dependencies() noexcept
     return true;
 }
 
-std::set<char> ArgParse::get_active(std::function<bool(AbstractOption*)> filter) const noexcept
+ankerl::unordered_dense::set<char> ArgParse::get_active(
+    const std::function<bool(AbstractOption*)>& filter) const noexcept
 {
-    std::set<char> active_set;
+    ankerl::unordered_dense::set<char> active_set;
     for (auto&& [key, parg] : arguments_)
     {
         if (filter(parg) && parg->is_set)
@@ -388,13 +389,14 @@ std::set<char> ArgParse::get_active(std::function<bool(AbstractOption*)> filter)
     return active_set;
 }
 
-bool ArgParse::check_intersection(const std::set<char> active, const std::vector<std::set<char>>& exclusives) noexcept
+bool ArgParse::check_intersection(const ankerl::unordered_dense::set<char>& active,
+                                  const std::vector<ankerl::unordered_dense::set<char>>& exclusives) noexcept
 {
     // If any intersection of the active set with an exclusive set is of cardinal greater
     // than one, it means the exclusivity constraint was violated
     for (const auto& ex_set : exclusives)
     {
-        std::set<char> intersection;
+        ankerl::unordered_dense::set<char> intersection;
 
         std::set_intersection(active.begin(), active.end(), ex_set.begin(), ex_set.end(),
                               std::inserter(intersection, intersection.begin()));
@@ -419,10 +421,10 @@ bool ArgParse::check_intersection(const std::set<char> active, const std::vector
 void ArgParse::make_usage_string()
 {
     // Gather all unconstrained flags & variables
-    std::set<char> compat_flags;
-    std::set<char> compat_vars;
+    ankerl::unordered_dense::set<char> blacklist = {'h', 'v'}; // Exclude -h and -v from synopsis
+    ankerl::unordered_dense::set<char> compat_flags;
+    ankerl::unordered_dense::set<char> compat_vars;
     std::vector<std::pair<AbstractOption*, AbstractOption*>> args_with_deps;
-    std::set<char> blacklist = {'h', 'v'}; // Exclude -h and -v from synopsis
     for (auto&& [key, parg] : arguments_)
     {
         if (parg->dependency != 0)
@@ -473,7 +475,7 @@ void ArgParse::make_usage_string()
     for (char key : compat_vars)
     {
         const auto* parg = arguments_.at(key);
-        parts.push_back(fmt::format("[-{} <{}>]", parg->short_name, k_type_str.at(parg->underlying_type())));
+        parts.push_back(fmt::format("[-{} <{}>]", parg->short_name, k_type_str.at(size_t(parg->underlying_type()))));
     }
 
     // Display exclusive variables
@@ -481,8 +483,9 @@ void ArgParse::make_usage_string()
     {
         parts.push_back(fmt::format("[{}]", fmt::join(ex_set | std::views::transform([this](char key) {
                                                           const auto* parg = arguments_.at(key);
-                                                          return fmt::format("-{} <{}>", parg->short_name,
-                                                                             k_type_str.at(parg->underlying_type()));
+                                                          return fmt::format(
+                                                              "-{} <{}>", parg->short_name,
+                                                              k_type_str.at(size_t(parg->underlying_type())));
                                                       }),
                                                       " | ")));
     }
@@ -490,13 +493,14 @@ void ArgParse::make_usage_string()
     // Display arguments with dependencies
     for (auto&& [parg, preq] : args_with_deps)
     {
-        parts.push_back(fmt::format(
-            "[-{}{} [-{}{}]]", preq->short_name,
-            preq->underlying_type() != ArgType::BOOL ? fmt::format(" <{}>", k_type_str.at(preq->underlying_type()))
-                                                     : "",
-            parg->short_name,
-            parg->underlying_type() != ArgType::BOOL ? fmt::format(" <{}>", k_type_str.at(parg->underlying_type()))
-                                                     : ""));
+        parts.push_back(fmt::format("[-{}{} [-{}{}]]", preq->short_name,
+                                    preq->underlying_type() != ArgType::BOOL
+                                        ? fmt::format(" <{}>", k_type_str.at(size_t(preq->underlying_type())))
+                                        : "",
+                                    parg->short_name,
+                                    parg->underlying_type() != ArgType::BOOL
+                                        ? fmt::format(" <{}>", k_type_str.at(size_t(parg->underlying_type())))
+                                        : ""));
     }
 
     // Display positional arguments
@@ -560,7 +564,7 @@ std::string AbstractOption::format_description(long max_pad) const
 
     if (underlying_type() != ArgType::BOOL)
     {
-        option_str += fmt::format(" <{}>", k_type_str.at(underlying_type()));
+        option_str += fmt::format(" <{}>", k_type_str.at(size_t(underlying_type())));
     }
 
     if (dependency)

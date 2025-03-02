@@ -7,6 +7,8 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <utility>
 #include <vector>
 
 #include "kibble/hash/hash.h"
@@ -414,7 +416,7 @@ public:
      */
     inline void on_head_change(std::function<void(size_t)> func)
     {
-        on_head_change_ = func;
+        on_head_change_ = std::move(func);
     }
 
     /**
@@ -424,7 +426,7 @@ public:
      */
     inline void on_clean_change(std::function<void(bool)> func)
     {
-        on_clean_change_ = func;
+        on_clean_change_ = std::move(func);
     }
 
     /**
@@ -434,7 +436,7 @@ public:
      */
     inline void on_can_undo_change(std::function<void(bool)> func)
     {
-        on_can_undo_change_ = func;
+        on_can_undo_change_ = std::move(func);
     }
 
     /**
@@ -444,7 +446,7 @@ public:
      */
     inline void on_can_redo_change(std::function<void(bool)> func)
     {
-        on_can_redo_change_ = func;
+        on_can_redo_change_ = std::move(func);
     }
 
     /**
@@ -728,7 +730,7 @@ public:
      */
     inline void on_active_stack_change(std::function<void(hash_t)> func)
     {
-        on_active_stack_change_ = func;
+        on_active_stack_change_ = std::move(func);
     }
 
     /**

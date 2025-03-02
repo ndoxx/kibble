@@ -86,7 +86,7 @@ public:
      * @param meta Job metadata.
      * @return DaemonHandle A handle to the newly created daemon.
      */
-    DaemonHandle create(std::function<bool()> kernel, SchedulingData&& scheduling_data,
+    DaemonHandle create(std::function<bool()> kernel, const SchedulingData& scheduling_data,
                         JobMetadata&& meta = JobMetadata{});
 
     /**

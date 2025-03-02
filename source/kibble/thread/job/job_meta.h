@@ -66,12 +66,12 @@ struct JobMetadata
 
 private:
     friend class kb::log::Channel;
-    bool essential__ = false;
+    bool essential_ = false;
 
 public:
     inline bool is_essential() const
     {
-        return essential__;
+        return essential_;
     }
 };
 

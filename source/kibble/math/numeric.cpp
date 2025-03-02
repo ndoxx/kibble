@@ -5,7 +5,7 @@ namespace kb
 namespace math
 {
 
-std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime, float xx, float epsilon,
+std::pair<float, float> newton_raphson(const std::function<float(float)>& f_over_fprime, float xx, float epsilon,
                                        size_t max_iter)
 {
     float hh = f_over_fprime(xx);
@@ -19,7 +19,7 @@ std::pair<float, float> newton_raphson(std::function<float(float)> f_over_fprime
     return {xx, hh};
 }
 
-float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, float start_step, float alpha)
+float nr_initial_guess_iterative(const std::function<float(float)>& f, float start_x, float start_step, float alpha)
 {
     // Dilate step each iteration, break when sign has changed
     float xx = start_x;
@@ -38,7 +38,7 @@ float nr_initial_guess_iterative(std::function<float(float)> f, float start_x, f
     return xx - 0.5f * step / alpha;
 }
 
-float integrate_simpson(std::function<float(float)> f, float lb, float ub, uint32_t subdivisions)
+float integrate_simpson(const std::function<float(float)>& f, float lb, float ub, uint32_t subdivisions)
 {
     // * Simpson's rule is more accurate if we subdivide the interval of integration
     float h = (ub - lb) / float(subdivisions), // width of subdivisions

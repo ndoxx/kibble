@@ -1,4 +1,7 @@
 #pragma once
+
+#include "kibble/platform/macros.h"
+
 #include "atomic_queue/atomic_queue.h"
 #include "config.h"
 
@@ -59,7 +62,7 @@ struct WorkerActivity
 #define CONCAT(first, second) CONCAT_IMPL(first, second)
 #define JS_PROFILE_SCOPE(session, name, thread_id)                                                                     \
     volatile InstrumentationTimer CONCAT(timer_000_, __LINE__)(session, name, "js_internal", thread_id)
-#define JS_PROFILE_FUNCTION(session, thread_id) JS_PROFILE_SCOPE(session, __PRETTY_FUNCTION__, thread_id)
+#define JS_PROFILE_FUNCTION(session, thread_id) JS_PROFILE_SCOPE(session, KB_PRETTY_FUNCTION, thread_id)
 #else
 #define JS_PROFILE_SCOPE(session, name, thread_id)
 #define JS_PROFILE_FUNCTION(session, thread_id)
