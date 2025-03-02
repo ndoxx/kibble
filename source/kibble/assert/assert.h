@@ -22,7 +22,7 @@ void k_assert_except_impl(const char* condition, std::string_view message, const
         if (!(condition))                                                                                              \
         {                                                                                                              \
             ::detail::k_assert_except_impl(#condition, fmt::format(message, __VA_ARGS__), __FILE__, __LINE__,          \
-                                           __PRETTY_FUNCTION__);                                                       \
+                                           KB_PRETTY_FUNCTION);                                                        \
         }                                                                                                              \
     } while (0)
 #else
@@ -32,7 +32,7 @@ void k_assert_except_impl(const char* condition, std::string_view message, const
         if (!(condition))                                                                                              \
         {                                                                                                              \
             ::detail::k_assert_impl(#condition, fmt::format(message, __VA_ARGS__), __FILE__, __LINE__,                 \
-                                    __PRETTY_FUNCTION__);                                                              \
+                                    KB_PRETTY_FUNCTION);                                                               \
         }                                                                                                              \
     } while (0)
 #endif

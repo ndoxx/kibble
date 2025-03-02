@@ -1,4 +1,5 @@
 #include "kibble/time/instrumentation.h"
+#include "kibble/platform/macros.h"
 
 #include <thread>
 
@@ -13,7 +14,7 @@ InstrumentationSession* session = nullptr;
 #define CONCAT_IMPL(first, second) first##second
 #define CONCAT(first, second) CONCAT_IMPL(first, second)
 #define PROFILE_SCOPE(name, category) InstrumentationTimer CONCAT(timer_, __LINE__)(session, name, category)
-#define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__, "function")
+#define PROFILE_FUNCTION() PROFILE_SCOPE(KB_PRETTY_FUNCTION, "function")
 
 // This function will be profiled
 void test_func_01(size_t ms)
