@@ -3,6 +3,6 @@
 namespace kb
 {
 
-TimeBase::TimePoint TimeBase::s_start_time(std::chrono::steady_clock::now());
+TimeBase::TimePoint TimeBase::s_start_time(StdClock::now());
 
 } // namespace kb

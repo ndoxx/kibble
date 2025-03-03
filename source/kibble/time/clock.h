@@ -69,8 +69,9 @@ class TimeBase
 {
 public:
     // We use a steady_clock that is guaranteed to be monotonic
-    using TimePoint = std::chrono::steady_clock::time_point;
-    using TimeStamp = std::chrono::duration<long, std::ratio<1, 1000000000>>;
+    using StdClock = std::chrono::steady_clock;
+    using TimePoint = StdClock::time_point;
+    using TimeStamp = StdClock::duration;
 
     /**
      * @brief Manually start the clock.
@@ -80,7 +81,7 @@ public:
      */
     static inline void start()
     {
-        s_start_time = std::chrono::steady_clock::now();
+        s_start_time = StdClock::now();
     }
 
     /**
@@ -111,7 +112,7 @@ public:
      */
     static inline TimeStamp timestamp()
     {
-        return std::chrono::steady_clock::now() - s_start_time;
+        return StdClock::now() - s_start_time;
     }
 
 private:
