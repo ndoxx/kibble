@@ -123,16 +123,15 @@ public:
     }
 
     /**
-     * @brief Create a config directory for this application.
-     * The config directory will be aliased by "config", unless the third parameter is set.
+     * @brief Create a directory for application configuration.
+     * This directory will be aliased "appcfg", unless the third parameter is set.
      * Whitespace characters will be stripped from the two first arguments.
-     * If the configuration directory already exists, only the aliasing is performed.
-     * Under Linux systems, this function will try to create the config directory like so:\n
-     * `~/.config/<vendor>/<appname>`\n
-     * If this is not applicable, it will fall back to this form:\n
-     * `~/.<vendor>/<appname>/config`
-     * Under Windows systems, the settings directory will be located at\n
-     * `C:\Users\{username}\AppData\Local\<vendor>\<appname>`
+     * If the directory already exists, only the aliasing is performed.
+     * Under Linux systems, this function will try to create the directory like so:\n
+     * `${XDG_CONFIG_HOME}/<vendor>/<appname>`
+     * If `${XDG_CONFIG_HOME}` is empty, the default `~/.config` directory will be used
+     * Under Windows systems, the directory will be located at:\n
+     * `C:\Users\{username}\AppData\Roaming\<vendor>\<appname>`
      *
      * @param vendor The vendor name will be used as a parent directory for the configuration directory of this
      * application. Thus multiple applications can be grouped under the same vendor name
@@ -141,19 +140,18 @@ public:
      * @return true If the directory was created successfully or already exists
      * @return false if there was an error during the creation of the directory
      */
-    bool setup_settings_directory(std::string vendor, std::string appname, std::string alias = "");
+    bool setup_configuration_directory(std::string vendor, std::string appname, const std::string& alias = "appcfg");
 
     /**
-     * @brief Create a directory for application data and resources.
-     * This directory will be aliased "appdata", unless the third parameter is set.
+     * @brief Create a data directory for this application.
+     * The directory will be aliased by "appdata", unless the third parameter is set.
      * Whitespace characters will be stripped from the two first arguments.
      * If the directory already exists, only the aliasing is performed.
-     * Under Linux systems, this function will try to create the data directory like so:\n
-     * `~/.local/share/<vendor>/<appname>`\n
-     * If this is not applicable, it will fall back to this form:\n
-     * `~/.<vendor>/<appname>/appdata`
-     * Under Windows systems, the data directory will be located at:\n
-     * `C:\Users\{username}\AppData\Roaming\<vendor>\<appname>`
+     * Under Linux systems, this function will try to create the directory like so:\n
+     * `${XDG_DATA_HOME}/<vendor>/<appname>`\n
+     * If `${XDG_DATA_HOME}` is empty, the default `~/.local/share` directory will be used
+     * Under Windows systems, the directory will be located at\n
+     * `C:\Users\{username}\AppData\Local\<vendor>\<appname>`
      *
      * @param vendor The vendor name will be used as a parent directory for the data directory of this
      * application. Thus multiple applications can be grouped under the same vendor name
@@ -162,15 +160,15 @@ public:
      * @return true If the directory was created successfully or already exists
      * @return false if there was an error during the creation of the directory
      */
-    bool setup_app_data_directory(std::string vendor, std::string appname, std::string alias = "");
+    bool setup_data_directory(std::string vendor, std::string appname, const std::string& alias = "appdata");
 
     /**
-     * @brief Get the application config directory.
-     * If no config directory exists for this application, an empty path will be returned.
+     * @brief Get the application configuration directory.
+     * If no configuration directory exists for this application, an empty path will be returned.
      *
      * @return const fs::path&
      */
-    const fs::path& get_settings_directory() const;
+    const fs::path& get_configuration_directory() const;
 
     /**
      * @brief Get the application data directory.
@@ -178,16 +176,7 @@ public:
      *
      * @return const fs::path&
      */
-    const fs::path& get_app_data_directory() const;
-
-    /**
-     * @brief Get the app data directory of another project.
-     *
-     * @param vendor
-     * @param appname
-     * @return fs::path
-     */
-    fs::path get_app_data_directory(std::string vendor, std::string appname) const;
+    const fs::path& get_data_directory() const;
 
     /**
      * @brief Synchronize files or directories
@@ -306,8 +295,8 @@ private:
 
 private:
     fs::path self_directory_;
-    fs::path app_settings_directory_;
     fs::path app_data_directory_;
+    fs::path app_configuration_directory_;
     ankerl::unordered_dense::map<hash_t, AliasEntry> aliases_;
     const kb::log::Channel* log_channel_ = nullptr;
 };
