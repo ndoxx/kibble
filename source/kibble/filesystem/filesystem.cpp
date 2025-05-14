@@ -10,7 +10,8 @@
 #include <regex>
 
 #if defined(K_PLATFORM_LINUX)
-#include <climits>
+#include <cerrno>
+#include <cstring>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -45,13 +46,68 @@ struct FileSystem::UpathParsingResult
     std::string path_component;
 };
 
+#if defined(K_PLATFORM_LINUX)
+fs::path get_home_directory()
+{
+    // * Locate home directory
+    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
+    const char* env_home = getenv("HOME");
+    fs::path home_directory;
+    if (env_home && env_home[0] != '\0')
+    {
+        home_directory = fs::path(env_home);
+    }
+    else
+    {
+        auto* pw = getpwuid(getuid());
+        K_ASSERT(pw != nullptr, "Failed to get user home directory: {}", strerror(errno));
+        home_directory = fs::path(pw->pw_dir);
+    }
+
+    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
+             home_directory.string());
+
+    return fs::canonical(home_directory);
+}
+#endif
+
+bool get_path_from_env(const std::string& env_name, fs::path& result)
+{
+    bool has_env_value = false;
+
+#if defined(K_PLATFORM_WINDOWS)
+    // Convert env_name to wide string for Windows
+    std::wstring wenv_name(env_name.begin(), env_name.end());
+
+    // Read environment variable
+    wchar_t* buff = nullptr;
+    size_t sz = 0;
+    if (_wdupenv_s(&buff, &sz, wenv_name.c_str()) == 0 && buff != nullptr)
+    {
+        result = fs::path(buff);
+        free(buff); // Ensure buffer is freed
+        has_env_value = true;
+    }
+#else
+    // Standard getenv for other platforms
+    const char* env_value = getenv(env_name.c_str());
+    if (env_value && env_value[0] != '\0')
+    {
+        result = fs::path(env_value);
+        has_env_value = true;
+    }
+#endif
+
+    return has_env_value;
+}
+
 FileSystem::FileSystem(const kb::log::Channel* log_channel) : log_channel_(log_channel)
 {
     // Locate binary
     init_self_path();
 }
 
-bool FileSystem::setup_settings_directory(std::string vendor, std::string appname, std::string alias)
+bool FileSystem::setup_configuration_directory(std::string vendor, std::string appname, const std::string& alias)
 {
     // Strip spaces in provided arguments
     su::strip_spaces(vendor);
@@ -59,150 +115,113 @@ bool FileSystem::setup_settings_directory(std::string vendor, std::string appnam
 
 #if defined(K_PLATFORM_LINUX)
 
-    // * Locate home directory
-    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char* homebuf;
-    if ((homebuf = getenv("HOME")) == NULL)
+    // Get XDG_CONFIG_HOME or fallback to ~/.config
+    fs::path config_home;
+    if (!get_path_from_env("XDG_CONFIG_HOME", config_home))
     {
-        homebuf = getpwuid(getuid())->pw_dir;
+        config_home = get_home_directory() / ".config";
     }
 
-    fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
-             home_directory.string());
-
-    // Check if ~/.config/<vendor>/<appname> is applicable, if not, fallback to
-    // ~/.<vendor>/<appname>/config
-    if (fs::exists(home_directory / ".config"))
-    {
-        app_settings_directory_ = home_directory / ".config" / vendor / appname;
-    }
-    else
-    {
-        app_settings_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "config";
-    }
-
-#elif defined(K_PLATFORM_WINDOWS)
-
-    // Locate the LocalAppData directory
-    wchar_t* buff;
-    size_t sz;
-    if (_wdupenv_s(&buff, &sz, L"LOCALAPPDATA") != 0 || buff == nullptr)
-    {
-        klog(log_channel_).uid("FileSystem").error("Failed to locate LocalAppData directory.");
-        return false;
-    }
-
-    fs::path local_app_data_directory = fs::canonical(buff);
-    free(buff);
-
-    K_ASSERT(fs::exists(local_app_data_directory),
-             "LocalAppData directory does not exist, that should not be possible!\n  -> {}",
-             local_app_data_directory.string());
-
-    // Create the vendor/appname directory under AppData/Local
-    app_settings_directory_ = local_app_data_directory / vendor / appname;
-
-#else
-#error setup_config_directory() not yet implemented for this platform.
-#endif
-
-    // If directories do not exist, create them
-    if (!fs::exists(app_settings_directory_))
-    {
-        if (!fs::create_directories(app_settings_directory_))
-        {
-            klog(log_channel_)
-                .uid("FileSystem")
-                .error("Failed to create config directory at:\n{}", app_settings_directory_.string());
-            return false;
-        }
-        klog(log_channel_)
-            .uid("FileSystem")
-            .info("Created application directory at:\n{}", app_settings_directory_.string());
-    }
-    else
-    {
-        klog(log_channel_)
-            .uid("FileSystem")
-            .info("Detected application directory at:\n{}", app_settings_directory_.string());
-    }
-
-    // Alias the config directory
-    if (alias.empty())
-    {
-        alias = "config";
-    }
-    alias_directory(app_settings_directory_, alias);
-
-    return true;
-}
-
-bool FileSystem::setup_app_data_directory(std::string vendor, std::string appname, std::string alias)
-{
-    // Strip spaces in provided arguments
-    su::strip_spaces(vendor);
-    su::strip_spaces(appname);
-
-#if defined(K_PLATFORM_LINUX)
-
-    // * Locate home directory
-    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char* homebuf;
-    if ((homebuf = getenv("HOME")) == NULL)
-    {
-        homebuf = getpwuid(getuid())->pw_dir;
-    }
-
-    fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
-             home_directory.string());
-
-    // Check if ~/.local/share/<vendor>/<appname> is applicable, if not, fallback to
-    // ~/.<vendor>/<appname>/appdata
-    if (fs::exists(home_directory / ".local/share"))
-    {
-        app_data_directory_ = home_directory / ".local/share" / vendor / appname;
-    }
-    else
-    {
-        app_data_directory_ = home_directory / fmt::format(".{}", vendor) / appname / "appdata";
-    }
+    app_configuration_directory_ = config_home / vendor / appname;
 
 #elif defined(K_PLATFORM_WINDOWS)
 
     // Locate the AppData directory
-    wchar_t* buff;
-    size_t sz;
-    if (_wdupenv_s(&buff, &sz, L"APPDATA") != 0 || buff == nullptr)
+    fs::path appdata_dir;
+    if (!get_path_from_env("APPDATA", appdata_dir))
     {
-        klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
-        return false;
+        K_FAIL("Failed to locate AppData directory");
     }
 
-    fs::path appdata_directory = fs::canonical(buff);
-    free(buff);
-
-    K_ASSERT(fs::exists(appdata_directory), "AppData directory does not exist, that should not be possible!\n  -> {}",
-             appdata_directory.string());
+    K_ASSERT(fs::exists(appdata_dir), "AppData directory does not exist, that should not be possible!\n  -> {}",
+             appdata_dir.string());
 
     // Create the vendor/appname directory under AppData/Roaming
-    app_data_directory_ = appdata_directory / vendor / appname;
+    app_configuration_directory_ = fs::canonical(appdata_dir) / vendor / appname;
 
 #else
-#error setup_app_data_directory() not yet implemented for this platform.
+#error setup_configuration_directory() not yet implemented for this platform.
+#endif
+
+    // If directories do not exist, create them
+    if (!fs::exists(app_configuration_directory_))
+    {
+        std::error_code ec;
+        if (!fs::create_directories(app_configuration_directory_, ec))
+        {
+            klog(log_channel_)
+                .uid("FileSystem")
+                .error("Failed to create configuration directory:\n  -> {}\n  -> {}",
+                       app_configuration_directory_.string(), ec.message());
+            return false;
+        }
+
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Created application directory at:\n{}", app_configuration_directory_.string());
+    }
+    else
+    {
+        klog(log_channel_)
+            .uid("FileSystem")
+            .info("Detected application directory at:\n{}", app_configuration_directory_.string());
+    }
+
+    // Alias the directory
+    alias_directory(app_configuration_directory_, alias);
+
+    return true;
+}
+
+bool FileSystem::setup_data_directory(std::string vendor, std::string appname, const std::string& alias)
+{
+    // Strip spaces in provided arguments
+    su::strip_spaces(vendor);
+    su::strip_spaces(appname);
+
+#if defined(K_PLATFORM_LINUX)
+
+    // Get XDG_DATA_HOME or fallback to ~/.local/share
+    fs::path data_home;
+    if (!get_path_from_env("XDG_DATA_HOME", data_home))
+    {
+        data_home = get_home_directory() / ".local/share";
+    }
+
+    app_data_directory_ = data_home / vendor / appname;
+
+#elif defined(K_PLATFORM_WINDOWS)
+
+    // Locate the LocalAppData directory
+    fs::path localappdata_dir;
+    if (!get_path_from_env("LOCALAPPDATA", localappdata_dir))
+    {
+        K_FAIL("Failed to locate LocalAppData directory");
+    }
+
+    K_ASSERT(fs::exists(localappdata_dir),
+             "LocalAppData directory does not exist, that should not be possible!\n  -> {}", localappdata_dir.string());
+
+    // Create the vendor/appname directory under AppData/Local
+    app_data_directory_ = fs::canonical(localappdata_dir) / vendor / appname;
+
+#else
+#error setup_data_directory() not yet implemented for this platform.
 #endif
 
     // If directories do not exist, create them
     if (!fs::exists(app_data_directory_))
     {
-        if (!fs::create_directories(app_data_directory_))
+        std::error_code ec;
+        if (!fs::create_directories(app_data_directory_, ec))
         {
             klog(log_channel_)
                 .uid("FileSystem")
-                .error("Failed to create application data directory at:\n{}", app_data_directory_.string());
+                .error("Failed to create data directory:\n  -> {}\n  -> {}", app_data_directory_.string(),
+                       ec.message());
             return false;
         }
+
         klog(log_channel_)
             .uid("FileSystem")
             .info("Created application directory at:\n{}", app_data_directory_.string());
@@ -214,129 +233,34 @@ bool FileSystem::setup_app_data_directory(std::string vendor, std::string appnam
             .info("Detected application directory at:\n{}", app_data_directory_.string());
     }
 
-    // Alias the data directory
-    if (alias.empty())
-    {
-        alias = "appdata";
-    }
+    // Alias the directory
     alias_directory(app_data_directory_, alias);
 
     return true;
 }
 
-fs::path FileSystem::get_app_data_directory(std::string vendor, std::string appname) const
+const fs::path& FileSystem::get_data_directory() const
 {
-    // Strip spaces in provided arguments
-    su::strip_spaces(vendor);
-    su::strip_spaces(appname);
-
-#if defined(K_PLATFORM_LINUX)
-
-    // * Locate home directory
-    // First, check the HOME environment variable, and if not set, fallback to getpwuid()
-    const char* homebuf;
-    if ((homebuf = getenv("HOME")) == NULL)
-    {
-        homebuf = getpwuid(getuid())->pw_dir;
-    }
-
-    fs::path home_directory = fs::canonical(homebuf);
-    K_ASSERT(fs::exists(home_directory), "Home directory does not exist, that should not be possible!\n  -> {}",
-             home_directory.string());
-
-    // Check if ~/.local/share/<vendor>/<appname> exists, if not, fallback to
-    // ~/.<vendor>/<appname>/appdata
-    auto candidate1 = home_directory / ".local/share" / vendor / appname;
-    auto candidate2 = home_directory / fmt::format(".{}", vendor) / appname / "appdata";
-
-    if (fs::exists(candidate1))
-    {
-        return candidate1;
-    }
-    else if (fs::exists(candidate2))
-    {
-        return candidate2;
-    }
-    else
-    {
-        klog(log_channel_)
-            .uid("FileSystem")
-            .error(R"(Application data directory does not exist for:
-Vendor:   {}
-App name: {}
-Searched the following paths:
-    - {}
-    - {}
-=> Returning empty path.)",
-                   vendor, appname, candidate1.string(), candidate2.string());
-        return "";
-    }
-
-#elif defined(K_PLATFORM_WINDOWS)
-
-    // Locate the LocalAppData directory
-    wchar_t* buff;
-    size_t sz;
-    if (_wdupenv_s(&buff, &sz, L"APPDATA") != 0 || buff == nullptr)
-    {
-        klog(log_channel_).uid("FileSystem").error("Failed to locate AppData directory.");
-        return "";
-    }
-
-    fs::path app_data_directory = fs::canonical(buff);
-    free(buff);
-
-    K_ASSERT(fs::exists(app_data_directory), "AppData directory does not exist, that should not be possible!\n  -> {}",
-             app_data_directory.string());
-
-    // Check if the vendor/appname directory exists under AppData/Roaming
-    auto candidate = app_data_directory / vendor / appname;
-
-    if (fs::exists(candidate))
-    {
-        return candidate;
-    }
-    else
-    {
-        klog(log_channel_)
-            .uid("FileSystem")
-            .error(R"(Application data directory does not exist for:
-Vendor:   {}
-App name: {}
-Searched the following path:
-    - {}
-=> Returning empty path.)",
-                   vendor, appname, candidate.string());
-        return "";
-    }
-
-#else
-#error get_app_data_directory(2) not yet implemented for this platform.
-#endif
-}
-
-const fs::path& FileSystem::get_settings_directory() const
-{
-    if (app_settings_directory_.empty())
+    if (app_data_directory_.empty())
     {
         klog(log_channel_)
             .uid("FileSystem")
             .warn("Application config directory has not been setup.\nCall setup_config_directory() after FileSystem "
                   "construction.\nAn empty path will be returned.");
     }
-    return app_settings_directory_;
+    return app_data_directory_;
 }
 
-const fs::path& FileSystem::get_app_data_directory() const
+const fs::path& FileSystem::get_configuration_directory() const
 {
-    if (app_data_directory_.empty())
+    if (app_configuration_directory_.empty())
     {
         klog(log_channel_)
             .uid("FileSystem")
             .warn("Application data directory has not been setup.\nCall setup_app_data_directory() after FileSystem "
                   "construction.\nAn empty path will be returned.");
     }
-    return app_data_directory_;
+    return app_configuration_directory_;
 }
 
 void FileSystem::sync(const fs::path& source, const fs::path& target) const

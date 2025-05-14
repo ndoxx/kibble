@@ -39,9 +39,11 @@ struct argb32_t
     /// @brief Return the value of the blue channel
     constexpr inline uint32_t b() const { return (value & argb32_t::k_bmask) >> argb32_t::k_bshift; }
     /// @brief Access a color channel by index
-    constexpr inline uint32_t operator[](int chan) const { return (value & (uint32_t(0xff) << (chan * 8))) >> (chan * 8); }
+    constexpr inline uint32_t operator[](int chan) const     { return (value & (uint32_t(0xff) << (chan * 8))) >> (chan * 8); }
     /// @brief Directly assign a 32b value
     constexpr inline const argb32_t& operator=(uint32_t val) { value = val; return *this; }
+    /// @brief Value comparison
+    constexpr inline bool operator==(const argb32_t& other)  { return value == other.value; }
     // clang-format on
 
     /// @brief Build from channels
