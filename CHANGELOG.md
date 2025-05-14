@@ -9,9 +9,39 @@
 </div>
 
 
+# ver 1.3.0
+
+- Serialization
+  - New `VersionedArchiver` template to enable versioning with stream serializer
+  - Fully unit tested
+
+
+# ver 1.2.5
+
+- Build
+  - Moved to C++23
+  - Platform and compiler detection header
+  - CTTI was made platform independent
+  - Builds with GCC
+  - Builds on Windows with MSVC (unit tested)
+- Various fixes in memory system and event bus
+- Fixed clang-tidy `performance` and `cert` warnings
+- Runtime CPU instruction sets detection
+  - Morton encoding uses a runtime ISA dispatch
+- Arbitrary alignment supported by TLSF arena
+- Spline class is a bit more generic
+- Better stack trace with cpptrace (removed backward-cpp dependency)
+- Refactored color header
+- Job system:
+  - Can detach tasks (Experimental)
+  - Fixed a few races
+- Assertions can be configured to throw instead of breaking into debugger
+
+
 # ver 1.2.4
 
 - Modernized `CMake` scripts
+
 
 # ver 1.2.3
 
@@ -20,13 +50,16 @@
   - `PackFile`s can be read from generic `std::istream`, in particular `InputMemoryStream`
   - `kpak` utility can export a pack file to a binary array in a C++ header (useful for resource bundling)
 
+
 # ver 1.2.2
 
 - Added stream serialization helpers and memory streams
 
+
 # ver 1.2.1
 
 - Removed the old logger, `logger2` was renamed to `logger`
+
 
 # ver 1.2.0
 

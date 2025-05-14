@@ -89,6 +89,7 @@ This library is under heavy development, and the API is subject to change. Use a
     - Stream serialization helpers
     - Most `std` containers are supported
     - Memory streams
+    - Support for versioning and backward compatibility
 * Custom assertion
     - Prints a stack trace and can debug break
     - Formatted assertion message strings
