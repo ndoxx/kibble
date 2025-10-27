@@ -404,6 +404,13 @@ public:
     void wait(std::function<bool()> condition = []() { return true; });
 
     /**
+     * @brief Non-blockingly check if this job is pending.
+     *
+     * @return true it the job is pending, false otherwise
+     */
+    bool is_pending() const;
+
+    /**
      * @brief Non-blockingly check if this job is processed.
      *
      * @return true it the job was processed, false otherwise

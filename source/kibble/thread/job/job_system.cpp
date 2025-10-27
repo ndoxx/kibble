@@ -565,6 +565,11 @@ void Task::wait(std::function<bool()> condition)
     js_->wait_until([this, &condition]() { return !is_processed() && condition(); });
 }
 
+bool Task::is_pending() const
+{
+    return job_->check_state(JobState::Pending);
+}
+
 bool Task::is_processed() const
 {
     return job_->check_state(JobState::Processed);
