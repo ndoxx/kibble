@@ -165,6 +165,27 @@ public:
     }
 
     /**
+     * @brief Create a fire-and-forget task without a future
+     *
+     * Use this for tasks where you don't need to wait for completion or retrieve a result.
+     * This is more efficient as it avoids promise/future overhead.
+     * Exceptions will be caught and handled internally.
+     *
+     * @tparam FuncT type of the function to execute
+     * @tparam ArgsT type of the arguments to be passed to the function
+     * @param meta job metadata
+     * @param function function containing code to execute
+     * @param args arguments to be passed to the function
+     * @return Task object that can be scheduled
+     */
+    template <typename FuncT, typename... ArgsT>
+    inline auto create_blind_task(JobMetadata&& meta, FuncT&& function, ArgsT&&... args)
+    {
+        return Task(this, std::forward<JobMetadata>(meta), nullptr, std::forward<FuncT>(function),
+                    std::forward<ArgsT>(args)...);
+    }
+
+    /**
      * @brief Non-blockingly check if any worker threads are busy.
      *
      * @return true is at least one worker thread is currently unidle
@@ -456,6 +477,33 @@ private:
         };
 
         // Let the JobSystem perform job allocation, move the kernel
+        job_ = js_->create_job(std::move(kernel), std::move(meta));
+    }
+
+    /**
+     * @internal
+     * @brief Construct a fire-and-forget Task without a promise
+     *
+     * This constructor is for tasks where the result isn't needed.
+     * Exceptions will be caught and not propagated.
+     *
+     * @tparam FuncT type of function to execute
+     * @tparam ArgsT kernel arguments pack
+     */
+    template <typename FuncT, typename... ArgsT>
+    Task(JobSystem* js, JobMetadata&& meta, std::nullptr_t, FuncT&& func, ArgsT&&... args) : js_(js)
+    {
+        auto kernel = [func = std::forward<FuncT>(func), ... args = std::forward<ArgsT>(args)]() mutable {
+            try
+            {
+                func(std::forward<ArgsT>(args)...);
+            }
+            catch (...)
+            {
+                // Silent catch for fire-and-forget tasks
+            }
+        };
+
         job_ = js_->create_job(std::move(kernel), std::move(meta));
     }
 
