@@ -106,12 +106,11 @@ public:
     inline void subscribe(uint32_t priority)
     {
         auto delegate = EventDelegate<EventT>::template create<Function>();
-        auto findit = std::find_if(delegates_.begin(), delegates_.end(),
-                                   [&delegate](const auto& p) { return p.second == delegate; });
-        if (findit == delegates_.end())
+        if (std::none_of(delegates_.begin(), delegates_.end(),
+                         [&delegate](const auto& p) { return p.second == delegate; }))
         {
             delegates_.emplace_back(priority, delegate);
-            sort();
+            needs_sort_ = true;
         }
     }
 
@@ -130,12 +129,11 @@ public:
     inline void subscribe(typename to_pointer<ClassRef>::type instance, uint32_t priority)
     {
         auto delegate = EventDelegate<EventT>::template create<MemberFunction>(instance);
-        auto findit = std::find_if(delegates_.begin(), delegates_.end(),
-                                   [&delegate](const auto& p) { return p.second == delegate; });
-        if (findit == delegates_.end())
+        if (std::none_of(delegates_.begin(), delegates_.end(),
+                         [&delegate](const auto& p) { return p.second == delegate; }))
         {
             delegates_.emplace_back(priority, delegate);
-            sort();
+            needs_sort_ = true;
         }
     }
 
@@ -151,23 +149,9 @@ public:
     bool unsubscribe()
     {
         auto target = EventDelegate<EventT>::template create<Function>();
-
-        // If we're currently iterating, queue for later removal
-        // This circumvents iterator invalidation in process() when an event handler unsubscribes itself
-        if (delegates_locked_)
-        {
-            pending_removal_.push_back(target);
-            return true;
-        }
-
-        auto findit =
-            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
-        if (findit != delegates_.end())
-        {
-            delegates_.erase(findit);
-            return true;
-        }
-        return false;
+        auto initial_size = delegates_.size();
+        std::erase_if(delegates_, [&target](const auto& p) { return p.second == target; });
+        return delegates_.size() < initial_size;
     }
 
     /**
@@ -186,46 +170,27 @@ public:
     bool unsubscribe(typename to_pointer<ClassRef>::type instance)
     {
         auto target = EventDelegate<EventT>::template create<MemberFunction>(instance);
-
-        // If we're currently iterating, queue for later removal
-        // This circumvents iterator invalidation in process() when an event handler unsubscribes itself
-        if (delegates_locked_)
-        {
-            pending_removal_.push_back(target);
-            return true;
-        }
-
-        auto findit =
-            std::find_if(delegates_.begin(), delegates_.end(), [&target](const auto& p) { return p.second == target; });
-        if (findit != delegates_.end())
-        {
-            delegates_.erase(findit);
-            return true;
-        }
-        return false;
+        auto initial_size = delegates_.size();
+        std::erase_if(delegates_, [&target](const auto& p) { return p.second == target; });
+        return delegates_.size() < initial_size;
     }
 
-    /**
-     * @internal
-     * @brief Submit an event to this queue.
-     *
-     * @param event
-     */
-    inline void submit(const EventT& event)
-    {
-        queue_.push(event);
-    }
+    // clang-format off
+    /// @internal @brief Drop all events of this queue.
+    void drop() override final               { Queue{}.swap(queue_); /* Swap with an empty queue */ }
+    
+    /// @internal @brief Check if the queue is empty.
+    bool empty() const override final        { return queue_.empty(); }
 
-    /**
-     * @internal
-     * @brief Submit an event to this queue (r-value version).
-     *
-     * @param event
-     */
-    inline void submit(EventT&& event)
-    {
-        queue_.push(event);
-    }
+    /// @internal @brief Get the number of events in this queue.
+    size_t size() const override final       { return queue_.size(); }
+
+    /// @internal @brief Submit an event to this queue.
+    inline void enqueue(const EventT& event) { queue_.push(event); }
+
+    /// @internal @brief Submit an event to this queue (r-value version).
+    inline void enqueue(EventT&& event)      { queue_.push(std::move(event)); }
+    // clang-format on
 
     /**
      * @internal
@@ -237,21 +202,8 @@ public:
      */
     void fire(const EventT& event)
     {
-        // Prevent iterator invalidation
-        lock_delegates();
-
-        // Iterate in reverse order, so the last subscribers execute first
-        for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
-        {
-            if (it->second(event))
-            {
-                // If handler returns true, event is not propagated further
-                break;
-            }
-        }
-
-        unlock_delegates();
-        process_pending_removals();
+        ensure_sorted();
+        dispatch(event);
     }
 
     /**
@@ -266,123 +218,58 @@ public:
      */
     bool process(TimePoint deadline) override final
     {
-        // Prevent iterator invalidation
-        lock_delegates();
+        ensure_sorted();
 
         while (!queue_.empty())
         {
-            for (auto it = delegates_.rbegin(); it != delegates_.rend(); ++it)
-            {
-                if (it->second(queue_.front()))
-                {
-                    // If handler returns true, event is not propagated further
-                    break;
-                }
-            }
-
+            dispatch(queue_.front());
             queue_.pop();
 
             // Timeout if the deadline was exceeded
             if (nanoClock::now() > deadline)
             {
-                unlock_delegates();
-                process_pending_removals();
                 return false;
             }
         }
 
-        unlock_delegates();
-        process_pending_removals();
         return true;
     }
 
-    /**
-     * @internal
-     * @brief Drop all events of this queue.
-     *
-     */
-    void drop() override final
-    {
-        // Swap with an empty queue
-        Queue{}.swap(queue_);
-    }
-
-    /**
-     * @internal
-     * @brief Check if the queue is empty.
-     *
-     * @return true if it is empty
-     * @return false otherwise
-     */
-    bool empty() const override final
-    {
-        return queue_.empty();
-    }
-
-    /**
-     * @internal
-     * @brief Get the number of events in this queue.
-     *
-     * @return size_t
-     */
-    size_t size() const override final
-    {
-        return queue_.size();
-    }
-
 private:
-    /**
-     * @internal
-     * @brief Sort the delegate list according to delegate priority.
-     *
-     */
-    inline void sort()
+    /// @internal @brief Sort the delegate list according to delegate priority if needed.
+    void ensure_sorted()
     {
-        std::sort(delegates_.begin(), delegates_.end(),
-                  [](const PriorityDelegate& pd1, const PriorityDelegate& pd2) { return pd1.first < pd2.first; });
+        if (needs_sort_)
+        {
+            needs_sort_ = false;
+            std::sort(delegates_.begin(), delegates_.end(),
+                      [](const PriorityDelegate& pd1, const PriorityDelegate& pd2) { return pd1.first < pd2.first; });
+        }
     }
 
-    /**
-     * @internal
-     * @brief Perform the actual removal of delegates
-     *
-     */
-    void process_pending_removals()
+    /// @internal @brief Iterate delegate list in reverse order and call handlers
+    bool dispatch(const EventT& event)
     {
-        if (pending_removal_.empty())
+        // Iterate backwards by index - safe even if elements are removed during iteration
+        for (size_t ii = delegates_.size(); ii-- > 0;)
         {
-            return;
-        }
-
-        for (const auto& delegate : pending_removal_)
-        {
-            auto findit = std::find_if(delegates_.begin(), delegates_.end(),
-                                       [&delegate](const auto& p) { return p.second == delegate; });
-            if (findit != delegates_.end())
+            // Check bounds in case delegate was removed
+            if (ii < delegates_.size() && delegates_[ii].second(event))
             {
-                delegates_.erase(findit);
+                // If handler returns true, event is not propagated further
+                return true;
             }
         }
-
-        pending_removal_.clear();
+        return false;
     }
-
-    // clang-format off
-    /// @internal @brief Let the unsubscribe function know that it can't mutate the delegate list
-    inline void lock_delegates()   { delegates_locked_ = true; }
-    /// @internal @brief Allow the unsubscribe function to mutate the delegate list directly
-    inline void unlock_delegates() { delegates_locked_ = false; }
-    // clang-format on
 
 private:
     using PriorityDelegate = std::pair<uint32_t, EventDelegate<EventT>>;
-    using RemovalList = std::vector<EventDelegate<EventT>>;
     using DelegateList = std::vector<PriorityDelegate>;
     using Queue = std::queue<EventT>;
     DelegateList delegates_;
-    RemovalList pending_removal_;
     Queue queue_;
-    bool delegates_locked_{false};
+    bool needs_sort_{false};
 };
 
 /**
@@ -592,7 +479,7 @@ public:
 #ifdef K_DEBUG
             track_event(event, true);
 #endif
-            q_ptr->submit(event);
+            q_ptr->enqueue(event);
         });
     }
 
@@ -611,7 +498,7 @@ public:
 #ifdef K_DEBUG
             track_event(event, true);
 #endif
-            q_ptr->submit(std::forward<EventT>(event));
+            q_ptr->enqueue(std::forward<EventT>(event));
         });
     }
 

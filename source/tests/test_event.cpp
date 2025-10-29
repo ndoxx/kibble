@@ -515,6 +515,150 @@ TEST_CASE_METHOD(UnsubFixture, "Unsubscribing non-existent subscriber should do 
     REQUIRE(h2.handle_count == 1);
 }
 
+class SelfUnsubFixture
+{
+public:
+    SelfUnsubFixture()
+    {
+        s_self_unsub_count = 0;
+        s_handle_count_1 = 0;
+        s_handle_count_2 = 0;
+        s_event_bus_ptr = &event_bus;
+    }
+    
+    ~SelfUnsubFixture()
+    {
+        s_event_bus_ptr = nullptr;
+    }
+
+protected:
+    // Test helper: handler that unsubscribes itself
+    class SelfUnsubHandler
+    {
+    public:
+        int handle_count = 0;
+        
+        bool handle_poke(const PokeEvent&)
+        {
+            handle_count++;
+            if (s_event_bus_ptr)
+            {
+                s_event_bus_ptr->unsubscribe<&SelfUnsubHandler::handle_poke>(*this);
+            }
+            return false;
+        }
+    };
+    
+    // Test helper: free function that unsubscribes itself
+    static bool handle_poke_self_unsub(const PokeEvent&)
+    {
+        s_self_unsub_count++;
+        if (s_event_bus_ptr)
+        {
+            s_event_bus_ptr->unsubscribe<&SelfUnsubFixture::handle_poke_self_unsub>();
+        }
+        return false;
+    }
+    
+    // Test helper: observer that doesn't unsubscribe
+    static bool handle_poke_observer(const PokeEvent&)
+    {
+        s_handle_count_1++;
+        return false;
+    }
+    
+    // Test helper: another observer
+    static bool handle_poke_observer_2(const PokeEvent&)
+    {
+        s_handle_count_2++;
+        return false;
+    }
+
+protected:
+    EventBus event_bus;
+    static inline int s_self_unsub_count = 0;
+    static inline int s_handle_count_1 = 0;
+    static inline int s_handle_count_2 = 0;
+    static inline EventBus* s_event_bus_ptr = nullptr;
+};
+
+TEST_CASE_METHOD(SelfUnsubFixture, "Handler can unsubscribe itself during event firing", "[unsub][self-unsub]")
+{
+    SelfUnsubHandler self_unsub_handler;
+    
+    event_bus.subscribe<&handle_poke_observer>();
+    event_bus.subscribe<&SelfUnsubHandler::handle_poke>(self_unsub_handler);
+    event_bus.subscribe<&handle_poke_self_unsub>();
+    
+    // First fire: all handlers should execute
+    event_bus.fire<PokeEvent>({});
+    
+    REQUIRE(s_handle_count_1 == 1);
+    REQUIRE(self_unsub_handler.handle_count == 1);
+    REQUIRE(s_self_unsub_count == 1);
+    
+    // Second fire: self-unsubscribed handlers should NOT execute
+    event_bus.fire<PokeEvent>({});
+    
+    REQUIRE(s_handle_count_1 == 2);
+    REQUIRE(self_unsub_handler.handle_count == 1);
+    REQUIRE(s_self_unsub_count == 1);
+}
+
+TEST_CASE_METHOD(SelfUnsubFixture, "Multiple handlers can unsubscribe during event firing", "[unsub][self-unsub]")
+{
+    SelfUnsubHandler handler1;
+    SelfUnsubHandler handler2;
+    SelfUnsubHandler handler3;
+    
+    event_bus.subscribe<&handle_poke_observer>();
+    event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler1);
+    event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler2);
+    event_bus.subscribe<&handle_poke_self_unsub>();
+    event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler3);
+    event_bus.subscribe<&handle_poke_observer_2>();
+    
+    // First fire: all should execute
+    event_bus.fire<PokeEvent>({});
+    
+    REQUIRE(s_handle_count_1 == 1);
+    REQUIRE(s_handle_count_2 == 1);
+    REQUIRE(handler1.handle_count == 1);
+    REQUIRE(handler2.handle_count == 1);
+    REQUIRE(handler3.handle_count == 1);
+    REQUIRE(s_self_unsub_count == 1);
+    
+    // Second fire: only the observers should execute
+    event_bus.fire<PokeEvent>({});
+    
+    REQUIRE(s_handle_count_1 == 2);
+    REQUIRE(s_handle_count_2 == 2);
+    REQUIRE(handler1.handle_count == 1);
+    REQUIRE(handler2.handle_count == 1);
+    REQUIRE(handler3.handle_count == 1);
+    REQUIRE(s_self_unsub_count == 1);
+}
+
+TEST_CASE_METHOD(SelfUnsubFixture, "Self-unsubscribe works with deferred event processing", "[unsub][self-unsub][process]")
+{
+    SelfUnsubHandler self_unsub_handler;
+    
+    event_bus.subscribe<&handle_poke_observer>();
+    event_bus.subscribe<&SelfUnsubHandler::handle_poke>(self_unsub_handler);
+    
+    // Enqueue multiple events
+    event_bus.enqueue<PokeEvent>({});
+    event_bus.enqueue<PokeEvent>({});
+    event_bus.enqueue<PokeEvent>({});
+    
+    // Process all events
+    bool processed = event_bus.dispatch();
+    
+    REQUIRE(processed);
+    REQUIRE(s_handle_count_1 == 3);
+    REQUIRE(self_unsub_handler.handle_count == 1);
+}
+
 class IndexedPokeHandler
 {
 public:
