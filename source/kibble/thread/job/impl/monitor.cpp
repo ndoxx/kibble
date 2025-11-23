@@ -12,6 +12,7 @@ namespace th
 
 Monitor::Monitor(JobSystem& js) : js_(js)
 {
+    (void)js_;
 }
 
 void Monitor::update_statistics()
