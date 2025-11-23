@@ -7,8 +7,6 @@
 #include "kibble/memory/util/debug.h"
 #include "kibble/string/string.h"
 
-#include "fmt/color.h"
-
 namespace kb
 {
 namespace memory
@@ -20,22 +18,23 @@ void HeapArea::debug_show_content()
     size_t h_addr = reinterpret_cast<size_t>(head_);
     size_t used_mem = h_addr - b_addr;
     float usage = float(used_mem) / float(size_);
-
     static const float R1 = 204.f;
     static const float R2 = 255.f;
     static const float G1 = 255.f;
     static const float G2 = 51.f;
     static const float B1 = 153.f;
     static const float B2 = 0.f;
-
     uint8_t R = uint8_t((1.f - usage) * R1 + usage * R2);
     uint8_t G = uint8_t((1.f - usage) * G1 + usage * G2);
     uint8_t B = uint8_t((1.f - usage) * B1 + usage * B2);
 
+    constexpr std::string_view ANSI_RESET = "\033[0m";
+    auto color_code = fmt::format("\033[38;2;{};{};{}m", R, G, B);
+
     klog(log_channel_)
         .uid("HeapArea")
-        .debug("Usage: {} / {} ({}%)", su::human_size(used_mem), su::human_size(size_),
-               fmt::styled(100 * usage, fmt::fg(fmt::rgb{R, G, B})));
+        .debug("Usage: {} / {} ({}{}%{})", su::human_size(used_mem), su::human_size(size_), color_code, 100 * usage,
+               ANSI_RESET);
 
     for (auto&& item : items_)
     {
@@ -43,15 +42,14 @@ void HeapArea::debug_show_content()
         R = uint8_t((1.f - usage) * R1 + usage * R2);
         G = uint8_t((1.f - usage) * G1 + usage * G2);
         B = uint8_t((1.f - usage) * B1 + usage * B2);
+        color_code = fmt::format("\033[38;2;{};{};{}m", R, G, B);
 
         std::string name(item.name);
         kb::su::center(name, 22);
-
         klog(log_channel_)
             .raw()
-            .debug("    {:#x} [{}] {:#x} s={}", reinterpret_cast<size_t>(item.begin),
-                   fmt::styled(name, fmt::fg(fmt::rgb{R, G, B})), reinterpret_cast<size_t>(item.end),
-                   su::human_size(item.size));
+            .debug("    {:#x} [{}{}{}] {:#x} s={}", reinterpret_cast<size_t>(item.begin), color_code, name, ANSI_RESET,
+                   reinterpret_cast<size_t>(item.end), su::human_size(item.size));
     }
 }
 

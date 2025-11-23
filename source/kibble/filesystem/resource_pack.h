@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <istream>
 #include <vector>
 
 #include "kibble/filesystem/serialization/archiver.h"

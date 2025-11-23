@@ -225,7 +225,7 @@ using hash_t = uint64_t;
  * The syntax "hello"_h is equivalent to calling H_("hello")
  *
  */
-[[nodiscard]] inline constexpr kb::hash_t operator"" _h(const char* internstr, size_t)
+[[nodiscard]] inline constexpr kb::hash_t operator""_h(const char* internstr, size_t)
 {
     return kb::detail::hash_FNV(internstr);
 }
