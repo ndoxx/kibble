@@ -47,10 +47,13 @@ if(KB_MASTER_PROJECT)
 	endif()
 endif()
 
+option(KB_ENABLE_LTO OFF)
+
 set(CMAKE_MODULE_PATH "${KB_SOURCE_DIR}/cmake/")
 include(standard_settings)
 include(compiler_warnings) # Hardcore warnings
 include(sanitizers)
+include(interprocedural_optimization)
 include(documentation)
 include(clang-cxx-dev-tools)
 
@@ -89,6 +92,7 @@ endif()
 
 target_compile_features(project_options INTERFACE cxx_std_23)
 enable_sanitizers(project_options)
+enable_lto(project_options)
 
 set(DOCS_INPUT
 	"${KB_SOURCE_DIR}/source/kibble"
