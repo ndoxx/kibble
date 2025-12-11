@@ -7,6 +7,11 @@ namespace kb::event
 
 static constexpr auto k_timepoint_max = std::chrono::time_point<std::chrono::high_resolution_clock>::max();
 
+EventBus::~EventBus()
+{
+    delete observer_;
+}
+
 bool EventBus::dispatch(std::chrono::nanoseconds timeout)
 {
     bool enable_timeout = timeout.count() > 0;
@@ -17,7 +22,7 @@ bool EventBus::dispatch(std::chrono::nanoseconds timeout)
     {
         for (const auto& [id, queue] : event_queues_)
         {
-            if (!queue->process(deadline) && enable_timeout)
+            if (!queue->process(deadline, observer_) && enable_timeout)
             {
                 return false;
             }
@@ -53,6 +58,14 @@ size_t EventBus::get_unprocessed_count()
     return std::accumulate(event_queues_.begin(), event_queues_.end(), 0u, [](size_t accumulator, auto&& entry) {
         return accumulator + (entry.second ? entry.second->size() : 0u);
     });
+}
+
+void EventBus::notify_observer(const EventInfo& info)
+{
+    if (observer_)
+    {
+        observer_->on_event(info);
+    }
 }
 
 } // namespace kb::event

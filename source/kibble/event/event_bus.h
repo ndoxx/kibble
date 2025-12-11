@@ -29,7 +29,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <functional>
 #include <map>
 #include <memory>
 #include <queue>
@@ -37,14 +36,9 @@
 #include <vector>
 
 #include "kibble/ctti/ctti.h"
-#include "kibble/logger/logger.h"
+#include "kibble/event/event_observer.h"
 #include "kibble/time/clock.h"
 #include "kibble/util/delegate.h"
-
-namespace kb::log
-{
-class Channel;
-}
 
 namespace kb::event
 {
@@ -52,14 +46,8 @@ namespace kb::event
 namespace detail
 {
 
-/**
- * @internal
- * @brief Concept of an event for which an fmt lib formatter exists
- *
- * @tparam T Event type
- */
-template <typename EventT>
-concept Formattable = requires(EventT) { fmt::formatter<EventT>{}; };
+template <typename T>
+concept DerivedFromEventObserver = std::is_base_of_v<EventObserver, T>;
 
 template <typename EventT>
 using EventDelegate = kb::Delegate<bool(const EventT&)>;
@@ -79,7 +67,7 @@ class AbstractEventQueue
 public:
     virtual ~AbstractEventQueue() = default;
 
-    virtual bool process(TimePoint) = 0;
+    virtual bool process(TimePoint, EventObserver* observer) = 0;
     virtual void drop() = 0;
     virtual bool empty() const = 0;
     virtual size_t size() const = 0;
@@ -200,10 +188,10 @@ public:
      *
      * @param event
      */
-    void fire(const EventT& event)
+    void fire(const EventT& event, EventObserver* observer)
     {
         ensure_sorted();
-        dispatch(event);
+        dispatch(event, observer);
     }
 
     /**
@@ -216,13 +204,13 @@ public:
      * @return true if all the events have been processed
      * @return false if the function timed out, and there are still events in the queue
      */
-    bool process(TimePoint deadline) override final
+    bool process(TimePoint deadline, EventObserver* observer) override final
     {
         ensure_sorted();
 
         while (!queue_.empty())
         {
-            dispatch(queue_.front());
+            dispatch(queue_.front(), observer);
             queue_.pop();
 
             // Timeout if the deadline was exceeded
@@ -248,11 +236,21 @@ private:
     }
 
     /// @internal @brief Iterate delegate list in reverse order and call handlers
-    bool dispatch(const EventT& event)
+    bool dispatch(const EventT& event, EventObserver* observer)
     {
         // Iterate backwards by index - safe even if elements are removed during iteration
         for (size_t ii = delegates_.size(); ii-- > 0;)
         {
+            if (observer != nullptr)
+            {
+                observer->on_event(EventInfo{
+                    &event,
+                    kb::ctti::type_id<EventT>(),
+                    kb::ctti::type_name<EventT>(),
+                    EventInfo::Phase::Handle,
+                });
+            }
+
             // Check bounds in case delegate was removed
             if (ii < delegates_.size() && delegates_[ii].second(event))
             {
@@ -319,14 +317,61 @@ using EventID = hash_t;
 class EventBus
 {
 public:
+    EventBus() = default;
+    ~EventBus();
+
     /**
-     * @brief Set a logging channel
+     * @brief Create and set an event observer.
+     * The EventBus takes ownership of the observer.
+     * If an observer already exists, it will be deleted first.
      *
-     * @param log_channel
+     * @tparam T Observer type, must derive from EventObserver
+     * @tparam Args Constructor argument types
+     * @param args Arguments to forward to the observer's constructor
+     * @return Pointer to the created observer
      */
-    inline void set_logger_channel(const kb::log::Channel* log_channel)
+    template <detail::DerivedFromEventObserver T, typename... Args>
+    T* create_observer(Args&&... args)
     {
-        log_channel_ = log_channel;
+        // Delete existing observer if any
+        delete observer_;
+
+        // Create new observer
+        auto* new_observer = new T(std::forward<Args>(args)...);
+        observer_ = new_observer;
+
+        return new_observer;
+    }
+
+    /**
+     * @brief Remove and delete the current observer.
+     */
+    void remove_observer()
+    {
+        delete observer_;
+        observer_ = nullptr;
+    }
+
+    /**
+     * @brief Get the current observer (if any).
+     *
+     * @return Pointer to the observer, or nullptr if none exists
+     */
+    EventObserver* get_observer() const
+    {
+        return observer_;
+    }
+
+    /**
+     * @brief Get the current observer cast to a specific type.
+     *
+     * @tparam T The type to cast to
+     * @return Pointer to the observer cast to T, or nullptr if the cast fails or no observer exists
+     */
+    template <detail::DerivedFromEventObserver T>
+    T* get_observer_as() const
+    {
+        return dynamic_cast<T*>(observer_);
     }
 
     /**
@@ -455,13 +500,20 @@ public:
     template <typename EventT>
     void fire(const EventT& event)
     {
-        try_get<EventT>([&event, this](auto* q_ptr) {
-            (void)this;
-#ifdef K_DEBUG
-            track_event(event, false);
-#endif
-            q_ptr->fire(event);
+        auto* q_ptr = try_get<EventT>();
+        if (!q_ptr)
+        {
+            return;
+        }
+
+        notify_observer(EventInfo{
+            &event,
+            kb::ctti::type_id<EventT>(),
+            kb::ctti::type_name<EventT>(),
+            EventInfo::Phase::Fire,
         });
+
+        q_ptr->fire(event, observer_);
     }
 
     /**
@@ -474,13 +526,20 @@ public:
     template <typename EventT>
     void enqueue(const EventT& event)
     {
-        try_get<EventT>([&event, this](auto* q_ptr) {
-            (void)this;
-#ifdef K_DEBUG
-            track_event(event, true);
-#endif
-            q_ptr->enqueue(event);
+        auto* q_ptr = try_get<EventT>();
+        if (!q_ptr)
+        {
+            return;
+        }
+
+        notify_observer(EventInfo{
+            &event,
+            kb::ctti::type_id<EventT>(),
+            kb::ctti::type_name<EventT>(),
+            EventInfo::Phase::Enqueue,
         });
+
+        q_ptr->enqueue(event);
     }
 
     /**
@@ -493,13 +552,20 @@ public:
     template <typename EventT>
     void enqueue(EventT&& event)
     {
-        try_get<EventT>([&event, this](auto* q_ptr) {
-            (void)this;
-#ifdef K_DEBUG
-            track_event(event, true);
-#endif
-            q_ptr->enqueue(std::forward<EventT>(event));
+        auto* q_ptr = try_get<EventT>();
+        if (!q_ptr)
+        {
+            return;
+        }
+
+        notify_observer(EventInfo{
+            &event,
+            kb::ctti::type_id<EventT>(),
+            kb::ctti::type_name<EventT>(),
+            EventInfo::Phase::Enqueue,
         });
+
+        q_ptr->enqueue(std::forward<EventT>(event));
     }
 
     /**
@@ -561,53 +627,7 @@ public:
         return (event_queues_[kb::ctti::type_id<EventT>()] != nullptr);
     }
 
-#ifdef K_DEBUG
-    /**
-     * @brief Setup a callback that decides whether a particular event type should be tracked or not.
-     * Tracked events will be logged when enqueued or fired. An event that defines a fmt::formatter
-     * will automatically be serialized to the log stream.
-     * The logger must be up and running for this to work. All events are logged on
-     * the "event" channel. This channel must be created and configured beforehand.
-     * This callback should be a fast lookup, it will be called each time an event is emitted.
-     * Default implementation returns false.
-     *
-     * @param pred Any function that returns true if the argument ID corresponds to an event that
-     * should be tracked, and false otherwise.
-     */
-    inline void set_event_tracking_predicate(std::function<bool(EventID)> pred)
-    {
-        should_track_ = pred;
-    }
-#endif
-
 private:
-#ifdef K_DEBUG
-    /**
-     * @internal
-     * @brief Log an event.
-     *
-     * @tparam EventT event type
-     * @param event the event
-     * @param is_queued set to true if the event was enqueued
-     */
-    template <typename EventT>
-    inline void track_event(const EventT& event, bool is_queued)
-    {
-        if (log_channel_ && should_track_(kb::ctti::type_id<EventT>()))
-        {
-            // Using a concept we can know at compile-time if the event supports formatting
-            if constexpr (detail::Formattable<EventT>)
-            {
-                klog(log_channel_).debug("[{}] {}: {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>(), event);
-            }
-            else
-            {
-                klog(log_channel_).debug("[{}] {}", (is_queued ? 'q' : 'f'), kb::ctti::type_name<EventT>());
-            }
-        }
-    }
-#endif
-
     /**
      * @internal
      * @brief Helper function to get a particular event queue if it exists or create a new one if not.
@@ -629,33 +649,36 @@ private:
 
     /**
      * @internal
-     * @brief Helper function to access a queue only if it exists.
+     * @brief Get a typed event queue pointer if it exists, nullptr otherwise.
      *
      * @tparam EventT event type
-     * @param visit visitor called on the event queue if it exists
+     * @return Pointer to the queue, or nullptr if no subscribers exist for this event type
      */
     template <typename EventT>
-    void try_get(std::function<void(detail::EventQueue<EventT>*)> visit)
+    detail::EventQueue<EventT>* try_get()
     {
         auto findit = event_queues_.find(kb::ctti::type_id<EventT>());
         if (findit != event_queues_.end())
         {
-            auto* q_base_ptr = findit->second.get();
-            auto* q_ptr = static_cast<detail::EventQueue<EventT>*>(q_base_ptr);
-            visit(q_ptr);
+            return static_cast<detail::EventQueue<EventT>*>(findit->second.get());
         }
+        return nullptr;
     }
+
+    /**
+     * @internal
+     * @brief Nortify the observer of event processing status
+     *
+     * @param info
+     */
+    void notify_observer(const EventInfo& info);
 
 private:
     // NOTE(ndx): Not using std::unordered_map here because we need subscription order to have
     // a deterministic effect on event processing order.
     using EventQueues = std::map<EventID, std::unique_ptr<detail::AbstractEventQueue>>;
     EventQueues event_queues_;
-
-#ifdef K_DEBUG
-    std::function<bool(EventID)> should_track_ = [](EventID) { return false; };
-#endif
-    const kb::log::Channel* log_channel_ = nullptr;
+    EventObserver* observer_{nullptr};
 };
 
 } // namespace kb::event
