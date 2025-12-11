@@ -3,6 +3,7 @@
 #endif
 
 #include "kibble/event/event_bus.h"
+#include "kibble/event/event_observer.h"
 #include "kibble/logger/formatters/vscode_terminal_formatter.h"
 #include "kibble/logger/logger.h"
 #include "kibble/logger/sinks/console_sink.h"
@@ -21,7 +22,7 @@ struct ExampleEvent
     uint32_t second;
 };
 
-// This event can be serialized into a stream, as it defines a stream operator
+// This event can be serialized into a stream, as it defines a formatter
 struct FormattableEvent
 {
     uint32_t first;
@@ -42,6 +43,82 @@ struct fmt::formatter<FormattableEvent>
     {
         return fmt::format_to(ctx.out(), "[{}, {}]", fe.first, fe.second);
     }
+};
+
+// Logging observer implementation (inline for this example)
+template <typename EventT>
+concept Formattable = requires(EventT) { fmt::formatter<EventT>{}; };
+
+class LoggingEventObserver : public EventObserver
+{
+public:
+    LoggingEventObserver(const kb::log::Channel* channel) : log_channel_(channel)
+    {
+    }
+
+    template <typename EventT>
+    void register_formatter()
+    {
+        formatters_[kb::ctti::type_id<EventT>()] = [](const void* ptr) -> std::string {
+            const auto& event = *static_cast<const EventT*>(ptr);
+            if constexpr (Formattable<EventT>)
+            {
+                return fmt::format("{}", event);
+            }
+            else
+            {
+                return "";
+            }
+        };
+    }
+
+    void on_event(const EventInfo& info) override
+    {
+        if (!log_channel_ || !should_track_(info.type_id))
+        {
+            return;
+        }
+
+        char phase_char = phase_to_char(info.phase);
+
+        auto it = formatters_.find(info.type_id);
+        if (it != formatters_.end() && !it->second(info.event_ptr).empty())
+        {
+            klog(log_channel_).debug("[{}] {}: {}", phase_char, info.type_name, it->second(info.event_ptr));
+        }
+        else
+        {
+            klog(log_channel_).debug("[{}] {}", phase_char, info.type_name);
+        }
+    }
+
+    void set_filter(std::function<bool(EventID)> filter)
+    {
+        should_track_ = std::move(filter);
+    }
+
+private:
+    static char phase_to_char(EventInfo::Phase phase)
+    {
+        using enum EventInfo::Phase;
+        switch (phase)
+        {
+        case Fire:
+            return 'f';
+        case Enqueue:
+            return 'q';
+        case Dispatch:
+            return 'd';
+        case Handle:
+            return 'h';
+        default:
+            return '?';
+        }
+    }
+
+    const kb::log::Channel* log_channel_;
+    std::function<bool(EventID)> should_track_ = [](EventID) { return false; };
+    std::unordered_map<EventID, std::function<std::string(const void*)>> formatters_;
 };
 
 // Free function to handle ExampleEvent events
@@ -175,10 +252,17 @@ int main(int argc, char** argv)
 
     ExampleHandler example_handler(chan_handler);
     EventBus event_bus;
-    event_bus.set_logger_channel(&chan_event);
+
+    // Create and configure the logging observer
+    auto* observer = event_bus.create_observer<LoggingEventObserver>(&chan_event);
+
+    // Register formatters for events that support formatting
+    observer->register_formatter<FormattableEvent>();
+    observer->register_formatter<ExampleEvent>();
+    observer->register_formatter<PokeEvent>();
 
     // Track all events
-    event_bus.set_event_tracking_predicate([](auto id) {
+    observer->set_filter([](auto id) {
         (void)id;
         return true;
     });
@@ -200,11 +284,11 @@ int main(int argc, char** argv)
     klog(chan_kibble).info("Queued events are logged instantly...");
     // When an event is enqueued, the logging information will show a [q] flag before the event
     // name, and the label color will be turquoise.
-    // This event does not define a stream operator, the logging information will only
+    // This event does not define a formatter, the logging information will only
     // show a label with the event name.
     event_bus.enqueue<ExampleEvent>({1, 2});
-    // This event defines a stream operator, it will be serialized to the stream when the event
-    // gets logged, displaying "{first: 1, second: 2}" next to the event label.
+    // This event defines a formatter, it will be serialized when the event
+    // gets logged, displaying "[1, 2]" next to the event label.
     event_bus.enqueue<FormattableEvent>({1, 2});
 
     // Wait a bit
