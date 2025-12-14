@@ -4,6 +4,7 @@
 #include <istream>
 #include <ostream>
 #include <random>
+#include <string_view>
 
 /**
  * @brief UUIDv4 implementation
@@ -75,10 +76,12 @@ public:
     /**
      * @brief Static factory to parse an UUID from its string representation
      *
-     * @param s
+     * String view version
+     *
+     * @param strv
      * @return UUID
      */
-    static UUID from_str_factory(const std::string& s);
+    static UUID from_str_factory(std::string_view strv);
 
     /**
      * @brief Static factory to parse an UUID from its string representation

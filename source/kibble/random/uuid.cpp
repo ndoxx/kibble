@@ -84,10 +84,16 @@ UUID::UUID(const char* raw)
     _mm_store_si128(reinterpret_cast<__m128i*>(data_), stom128i(raw));
 }
 
-/* Static factory to parse an UUID from its string representation */
-UUID UUID::from_str_factory(const std::string& s)
+UUID UUID::from_str_factory(std::string_view strv)
 {
-    return from_str_factory(s.c_str());
+    // stom128i reads exactly 36 characters and doesn't require null-termination
+    if (strv.size() >= 36)
+    {
+        return UUID_factory(stom128i(strv.data()));
+    }
+
+    // If the string is too short, return a null UUID (all zeros)
+    return UUID();
 }
 
 UUID UUID::from_str_factory(const char* raw)
