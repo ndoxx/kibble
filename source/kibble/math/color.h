@@ -72,6 +72,13 @@ struct argb32_t
         return {float(r()) / 255.f, float(g()) / 255.f, float(b()) / 255.f, float(a()) / 255.f};
     }
 
+    /// @brief Convert to normalized floating point vector
+    template <typename Vec3T>
+    constexpr inline Vec3T to_rgb_vec() const
+    {
+        return {float(r()) / 255.f, float(g()) / 255.f, float(b()) / 255.f};
+    }
+
     /// @brief Convert from normalized floating point vector
     template <typename Vec4T>
     static constexpr inline argb32_t from_rgba_vec(const Vec4T& color)
@@ -80,6 +87,16 @@ struct argb32_t
                 (uint32_t(std::roundf(std::clamp(color[1], 0.f, 1.f) * 255.f)) << k_gshift) |
                 (uint32_t(std::roundf(std::clamp(color[2], 0.f, 1.f) * 255.f)) << k_bshift) |
                 (uint32_t(std::roundf(std::clamp(color[3], 0.f, 1.f) * 255.f)) << k_ashift)};
+    }
+
+    /// @brief Convert from normalized floating point vector
+    template <typename Vec3T>
+    static constexpr inline argb32_t from_rgb_vec(const Vec3T& color)
+    {
+        return {(uint32_t(std::roundf(std::clamp(color[0], 0.f, 1.f) * 255.f)) << k_rshift) |
+                (uint32_t(std::roundf(std::clamp(color[1], 0.f, 1.f) * 255.f)) << k_gshift) |
+                (uint32_t(std::roundf(std::clamp(color[2], 0.f, 1.f) * 255.f)) << k_bshift) |
+                (uint32_t(0xff) << k_ashift)};
     }
 
     /// @brief Convert to kibble normalized floating point RGBA format
