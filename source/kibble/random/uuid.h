@@ -197,7 +197,11 @@ public:
      */
     inline UUID get()
     {
-        return UUID::from_upper_lower(distribution_(generator_), distribution_(generator_));
+        // The order of evaluation of function arguments is unspecified in C++
+        // Don't call rng stuff directly as an argument
+        uint64_t upper = distribution_(generator_);
+        uint64_t lower = distribution_(generator_);
+        return UUID::from_upper_lower(upper, lower);
     }
 
     /**
