@@ -1,6 +1,7 @@
-#include "kibble/random/impl/endian.h"
+#include "kibble/platform/endian.h"
 
 #include <cstdint>
+#include <cstring>
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <smmintrin.h>
@@ -40,9 +41,9 @@ void m128itos(__m128i x, char* mem)
     __m256i resd = _mm256_shuffle_epi8(res, dash_shuffle);
     resd = _mm256_or_si256(resd, dash);
 
-    _mm256_storeu_si256(reinterpret_cast<__m256i*>(mem), betole256(resd));
-    *reinterpret_cast<uint16_t*>(mem + 16) = betole16(uint16_t(_mm256_extract_epi16(res, 7)));
-    *reinterpret_cast<uint32_t*>(mem + 32) = betole32(uint32_t(_mm256_extract_epi32(res, 7)));
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(mem), endian::betole_bytes256(resd));
+    *reinterpret_cast<int16_t*>(mem + 16) = endian::betolei16(int16_t(_mm256_extract_epi16(res, 7)));
+    *reinterpret_cast<int32_t*>(mem + 32) = endian::betolei32(int32_t(_mm256_extract_epi32(res, 7)));
 }
 
 __m128i stom128i(const char* mem)
@@ -52,10 +53,16 @@ __m128i stom128i(const char* mem)
         _mm256_set_epi32(int32_t(0x80808080L), int32_t(0x0f0e0d0cL), int32_t(0x0b0a0908L), int32_t(0x06050403L),
                          int32_t(0x80800f0eL), int32_t(0x0c0b0a09L), int32_t(0x07060504L), int32_t(0x03020100L));
 
-    __m256i x = betole256(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(mem)));
+    // Typed pointer casts on potentially unaligned addresses is UB, we copy.
+    int16_t i16;
+    int32_t i32;
+    std::memcpy(&i16, mem + 16, sizeof(i16));
+    std::memcpy(&i32, mem + 32, sizeof(i32));
+
+    __m256i x = endian::betole_bytes256(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(mem)));
     x = _mm256_shuffle_epi8(x, dash_shuffle);
-    x = _mm256_insert_epi16(x, static_cast<short>(betole16(*reinterpret_cast<const uint16_t*>(mem + 16))), 7);
-    x = _mm256_insert_epi32(x, static_cast<int>(betole32(*reinterpret_cast<const uint32_t*>(mem + 32))), 7);
+    x = _mm256_insert_epi16(x, endian::betolei16(i16), 7);
+    x = _mm256_insert_epi32(x, endian::betolei32(i32), 7);
 
     // Build a mask to apply a different offset to alphas and digits
     const __m256i sub = _mm256_set1_epi8(0x2F);

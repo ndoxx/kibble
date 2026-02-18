@@ -1,6 +1,6 @@
 #include "kibble/random/uuid.h"
 #include "kibble/platform/arch.h"
-#include "kibble/random/impl/endian.h"
+#include "kibble/platform/endian.h"
 
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -75,7 +75,7 @@ UUID::UUID(const uint8_t* bytes)
 /* Builds an UUID from a byte string (16 bytes long) */
 UUID::UUID(const std::string& bytes)
 {
-    __m128i x = betole128(_mm_loadu_si128(reinterpret_cast<const __m128i*>(bytes.data())));
+    __m128i x = endian::betole_bytes128(_mm_loadu_si128(reinterpret_cast<const __m128i*>(bytes.data())));
     _mm_store_si128(reinterpret_cast<__m128i*>(data_), x);
 }
 
@@ -172,7 +172,7 @@ bool operator>=(const UUID& lhs, const UUID& rhs)
 std::string UUID::bytes() const
 {
     std::string mem(sizeof(data_), ' ');
-    __m128i x = betole128(_mm_load_si128(reinterpret_cast<const __m128i*>(data_)));
+    __m128i x = endian::betole_bytes128(_mm_load_si128(reinterpret_cast<const __m128i*>(data_)));
     _mm_storeu_si128(reinterpret_cast<__m128i*>(mem.data()), x);
     return mem;
 }
