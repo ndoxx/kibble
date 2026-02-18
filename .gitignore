@@ -9,4 +9,5 @@ source/tests/nuclear.cpp
 source/vendor/tmp/
 workspace.code-workspace
 NOTES.md
+CMakeUserPresets.json
 .cache/

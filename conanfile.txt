@@ -1,0 +1,7 @@
+[requires]
+catch2/3.7.1
+benchmark/1.9.1
+
+[generators]
+CMakeDeps
+CMakeToolchain

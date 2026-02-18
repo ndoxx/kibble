@@ -48,6 +48,8 @@ https://www.markdownguide.org/basic-syntax/#reference-style-links
   - [Examples and tests](#examples-and-tests)
   - [Documentation](#documentation)
   - [Integration](#integration)
+    - [As a git submodule](#as-a-git-submodule)
+    - [With CMake's find\_package](#with-cmakes-find_package)
 - [Changelog](#changelog)
 - [How to help](#how-to-help)
 - [License](#license)
@@ -168,60 +170,102 @@ To get a local copy up and running follow these steps.
 
 ## Prerequisites
 
-* A compiler with support for C++20 (tested with clang 12.0.0)
-* CMake, minimum version 3.19
+* A compiler with C++23 support (tested with Clang 12+, GCC 13+)
+* CMake 3.19 or newer
+* Ninja (recommended; used as the default generator)
+* [Conan 2](https://conan.io/) package manager — used to provide Catch2 and Google Benchmark for tests and benchmarks
+
+If you intend to run the tests, first install Conan and generate a default profile if you haven't already:
+```sh
+pip install conan
+conan profile detect --force
+```
 
 ## Installation
 
 1. Clone the repo with its submodules
    ```sh
    git clone --recurse-submodules https://github.com/ndoxx/kibble.git
+   cd kibble
    ```
-2. Build the lib
+
+2. Install dependencies with Conan
+
+   The test and benchmark dependencies (Catch2 and Google Benchmark) are managed via Conan. Run the install step for each configuration you intend to build:
    ```sh
-    mkdir build
-    cd build
-    cmake ..
-    make kibble
+   mkdir build && cd build
+   conan install .. --output-folder=. --build=missing -s build_type=Debug
+   conan install .. --output-folder=. --build=missing -s build_type=Release
    ```
-3. Install
+
+3. Configure with CMake
+
+   Kibble uses the **Ninja Multi-Config** generator, so a single build directory covers both Debug and Release:
    ```sh
-    sudo make install
+   cmake .. \
+     -G "Ninja Multi-Config" \
+     -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+   ```
+
+4. Build the library
+   ```sh
+   cmake --build . --config Release --target kibble
+   ```
+
+5. Install
+   ```sh
+   sudo cmake --install . --config Release
    ```
 
 ## Examples and tests
 
-Some of the examples may require additional dependencies like [glm](https://github.com/g-truc/glm) to compile.<br/>
-To build the examples and tests, make sure you are in the `build` directory.
+Some examples may require additional dependencies like [glm](https://github.com/g-truc/glm).<br/>
+Make sure you are in the `build` directory and have run the Conan install step above before building tests or benchmarks.
 
-* You can build every example from the source/examples directory individually with
+* Build a single example:
   ```sh
-   make ex_<example_name>
+  cmake --build . --config Release --target ex_<example_name>
   ```
-  Replace `<example_name>` by the file name stem.
-* Or you can build all of them at once with
+  Replace `<example_name>` with the file name stem.
+
+* Build all examples at once:
   ```sh
-   make examples
+  cmake --build . --config Release --target kibble_examples
   ```
-* Similarly, to build the unit tests:
+
+* Build all unit tests:
   ```sh
-   make tests
+  cmake --build . --config Release --target kibble_tests
   ```
+
+* Build all benchmarks:
+  ```sh
+  cmake --build . --config Release --target kibble_bench
+  ```
+
+* You can run all unit tests with:
+  ```sh
+  ctest -C Release
+  ```
+
+> **Note:** tests and benchmarks are excluded from the default build. They are only available when configuring with `-DKB_TARGET_TESTS=ON`, which is the default when building kibble as the top-level project.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Documentation
 
-The source files are documented with Doxygen, and higher-level documentation is on its way. To build the docs, go to the `build` directory and do:
+The source files are documented with Doxygen, and higher-level documentation is on its way. To build the docs:
 ```sh
-  make docs
+cmake --build . --config Release --target docs
 ```
 
 ## Integration
 
 ### As a git submodule
 
-Kibble can be setup as a subproject easily with CMake and git. Add Kibble as a submodule, and in the relevant `CMakeLists.txt` configure the project with `set()` directives, then simply call `add_subdirectory()`. Kibble's CMake script will detect its use as a subproject, disable the tests, examples and install targets, and let the host project handle the configuration of the output directories. For example:
+Kibble can be set up as a subproject with CMake and git. Add it as a submodule, configure it with `set()` directives in your `CMakeLists.txt`, then call `add_subdirectory()`. Kibble's CMake script will detect its use as a subproject, disable the tests, examples and install targets, and let the host project handle output directory configuration.
+
+Note that when used as a submodule, **Conan is not required** — the test and benchmark dependencies are only pulled in when `KB_TARGET_TESTS` is `ON`, which is automatically disabled in subproject mode.
 
 ```cmake
 set(KB_AREA_MEMORY_INITIALIZATION ON CACHE BOOL "" FORCE)
@@ -234,14 +278,14 @@ set_target_properties(kibble
 )
 ```
 
-Then link your executable / library against the `kibble` target. That's it.
+Then link your executable or library against the `kibble` target. That's it.
 
 ### With CMake's find_package
 
-During a system installation, Kibble also generates CMake config files so it can be found by CMake. Then all you need to do is this:
+During a system installation, Kibble also generates CMake config files so it can be found by CMake:
 
 ```cmake
-find_package(kibble 1.2.2 REQUIRED)
+find_package(kibble 1.3.0 REQUIRED)
 ```
 
 

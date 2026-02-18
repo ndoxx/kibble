@@ -35,10 +35,10 @@ int main(int argc, char** argv)
     chan_ios.attach_sink(console_sink);
 
     kfs::FileSystem filesystem(&chan_ios);
-    filesystem.setup_settings_directory("ndoxx", "nuclear");
-    filesystem.setup_app_data_directory("ndoxx", "nuclear");
-    const auto& cfg_dir = filesystem.get_settings_directory();
-    const auto& appdata_dir = filesystem.get_app_data_directory();
+    filesystem.setup_configuration_directory("ndoxx", "nuclear");
+    filesystem.setup_data_directory("ndoxx", "nuclear");
+    const auto& cfg_dir = filesystem.get_configuration_directory();
+    const auto& appdata_dir = filesystem.get_data_directory();
     klog(chan).info("Config directory:   {}", cfg_dir);
     klog(chan).info("App data directory: {}", appdata_dir);
 

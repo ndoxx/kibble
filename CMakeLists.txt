@@ -47,7 +47,7 @@ if(KB_MASTER_PROJECT)
 	endif()
 endif()
 
-option(KB_ENABLE_LTO OFF)
+option(KB_ENABLE_LTO "Enable LTO" OFF)
 
 set(CMAKE_MODULE_PATH "${KB_SOURCE_DIR}/cmake/")
 include(standard_settings)
@@ -100,13 +100,17 @@ set(DOCS_INPUT
 )
 
 # -- Configuration --
-option(KB_TARGET_DOCUMENTATION OFF)
-option(KB_TARGET_INSTALL ${KB_MASTER_PROJECT})
-option(KB_TARGET_EXAMPLES ${KB_MASTER_PROJECT})
-option(KB_TARGET_TESTS ${KB_MASTER_PROJECT})
+option(KB_TARGET_DOCUMENTATION "Build docs" OFF)
+option(KB_TARGET_INSTALL "Add install target" ${KB_MASTER_PROJECT})
+option(KB_TARGET_EXAMPLES "Build examples" ${KB_MASTER_PROJECT})
+option(KB_TARGET_TESTS "Build tests" ${KB_MASTER_PROJECT})
 
 if(KB_TARGET_DOCUMENTATION)
 	setup_documentation(${DOCS_INPUT} ${CMAKE_CURRENT_BINARY_DIR}/doxygen)
+endif()
+
+if(KB_TARGET_TESTS)
+    enable_testing()
 endif()
 
 subdirs(
