@@ -61,6 +61,7 @@ inline constexpr double sqrt(double x)
  * @param x
  * @return constexpr uint32_t
  */
+[[deprecated("Use std::bit_floor() from the <bit> header instead.")]]
 inline constexpr uint32_t pp2(uint32_t x)
 {
     x |= x >> 1;
@@ -75,9 +76,12 @@ inline constexpr uint32_t pp2(uint32_t x)
  * @brief Next power of 2 of x.
  * May originate from the Hacker's Delight book
  *
+ * @warning This function will return 0 for x = 0, whereas std::bit_ceil() will return 1.
+ *
  * @param x
  * @return constexpr uint32_t
  */
+[[deprecated("Use std::bit_ceil() from the <bit> header instead.")]]
 inline constexpr uint32_t np2(uint32_t x)
 {
     --x;
