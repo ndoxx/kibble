@@ -173,7 +173,7 @@ To get a local copy up and running follow these steps.
 * A compiler with C++23 support (tested with Clang 12+, GCC 13+)
 * CMake 3.19 or newer
 * Ninja (recommended; used as the default generator)
-* [Conan 2](https://conan.io/) package manager — used to provide Catch2 and Google Benchmark for tests and benchmarks
+* [Conan 2](https://conan.io/) package manager - used to provide Catch2 and Google Benchmark for tests and benchmarks
 
 If you intend to run the tests, first install Conan and generate a default profile if you haven't already:
 ```sh
@@ -265,7 +265,7 @@ cmake --build . --config Release --target docs
 
 Kibble can be set up as a subproject with CMake and git. Add it as a submodule, configure it with `set()` directives in your `CMakeLists.txt`, then call `add_subdirectory()`. Kibble's CMake script will detect its use as a subproject, disable the tests, examples and install targets, and let the host project handle output directory configuration.
 
-Note that when used as a submodule, **Conan is not required** — the test and benchmark dependencies are only pulled in when `KB_TARGET_TESTS` is `ON`, which is automatically disabled in subproject mode.
+Note that when used as a submodule, **Conan is not required** - the test and benchmark dependencies are only pulled in when `KB_TARGET_TESTS` is `ON`, which is automatically disabled in subproject mode.
 
 ```cmake
 set(KB_AREA_MEMORY_INITIALIZATION ON CACHE BOOL "" FORCE)

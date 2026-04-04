@@ -65,13 +65,13 @@
 #endif
 
 #if defined(__SSSE3__)
-#include <emmintrin.h> // SSE2  — __m128i
+#include <emmintrin.h> // SSE2  - __m128i
 #include <smmintrin.h> // SSE4.1
-#include <tmmintrin.h> // SSSE3 — _mm_shuffle_epi8
+#include <tmmintrin.h> // SSSE3 - _mm_shuffle_epi8
 #endif
 
 #if defined(__AVX2__)
-#include <immintrin.h> // AVX2  — __m256i, _mm256_shuffle_epi8
+#include <immintrin.h> // AVX2  - __m256i, _mm256_shuffle_epi8
 #endif
 
 /**
@@ -85,18 +85,18 @@
  * SIMD variants (@ref betole_bytes128, @ref betole_bytes256) are only available when the
  * translation unit is compiled with SSSE3 (`-mssse3`) or AVX2 (`-mavx2`) respectively.
  * Note that @ref betole_bytes256 reverses bytes within each 128-bit lane independently
- * due to AVX2 lane boundary constraints — see its documentation for details.
+ * due to AVX2 lane boundary constraints - see its documentation for details.
  */
 namespace endian
 {
 
 /// @internal
-/// @brief Implementation details — not part of the public API.
+/// @brief Implementation details - not part of the public API.
 namespace detail
 {
 
 // ---------------------------------------------------------------------------
-// Unsigned byte-swap — compiler intrinsic selection
+// Unsigned byte-swap - compiler intrinsic selection
 // ---------------------------------------------------------------------------
 
 #if defined(BIGENDIAN)
@@ -234,7 +234,7 @@ inline __m256i bswap(__m256i value)
 }
 #endif // __AVX2__
 
-#else // LITTLEENDIAN — all swaps are no-ops
+#else // LITTLEENDIAN - all swaps are no-ops
 
 // clang-format off
 /// @internal @brief No-op on little-endian systems.
@@ -272,7 +272,7 @@ inline __m256i  bswap(__m256i x)  { return x; }
  * @{
  *
  * Each function converts a value from big-endian to little-endian byte order
- * (or equivalently, from little-endian to big-endian — the operation is
+ * (or equivalently, from little-endian to big-endian - the operation is
  * symmetric).  On little-endian hosts all functions are no-ops and compile
  * away entirely.
  */
@@ -312,7 +312,7 @@ inline __m128i betole_bytes128(__m128i x)
  * @brief Reverses the byte order within each 128-bit lane of a 256-bit AVX register.
  *
  * Due to the lane boundary constraint of @c _mm256_shuffle_epi8, each 16-byte
- * half is reversed independently — bytes do not cross the 128-bit boundary,
+ * half is reversed independently - bytes do not cross the 128-bit boundary,
  * and the two halves are not swapped relative to each other. Requires AVX2.
  */
 inline __m256i betole_bytes256(__m256i x)

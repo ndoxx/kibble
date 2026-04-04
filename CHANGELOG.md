@@ -8,6 +8,12 @@
 <h3 align="center">Kibble::Changelog</h3>
 </div>
 
+# ver 1.3.1
+- Base64 utils redesigned and moved to the `base64.h` header
+- SHA-1 implementation
+- Windows support for TCP socket and bug fixes
+- WebSocket support
+
 
 # ver 1.3.0
 

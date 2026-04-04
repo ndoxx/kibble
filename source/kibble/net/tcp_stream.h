@@ -1,23 +1,27 @@
 #pragma once
 
-#include "kibble/platform/platform.h"
-
-#if defined(K_PLATFORM_LINUX)
+#include "kibble/net/common.h"
+#include "kibble/net/error.h"
 
 #include <cstdint>
+#include <expected>
 #include <string>
 
-namespace kb
-{
-namespace net
+namespace kb::net
 {
 
 /**
- * @brief Used for bidirectionnal communication between a client and a server.
- * It represents an active connection, created either actively by a TCPConnector, or passively by a TCPAcceptor.
+ * @brief Used for bidirectional communication between a client and a server.
+ * It represents an active connection, created either actively by a TCPConnector,
+ * or passively by a TCPAcceptor.
  *
- * @note This object is non-copyable and its constructor is private. Only TCPAcceptor and TCPConnector can create it.
- * @note At the moment, only a linux implementation is available.
+ * All I/O operations return `std::expected<T, NetError>` so the caller can
+ * decide how to handle (log, rethrow, ignore) failures without coupling the
+ * library to any particular logging back-end.
+ *
+ * @note This object is non-copyable and its constructor is private.
+ *       Only TCPAcceptor and TCPConnector can create it.
+ * @note Linux and Windows implementations are available.
  */
 class TCPStream
 {
@@ -26,27 +30,24 @@ public:
     friend class TCPConnector;
 
     /**
-     * @brief Close the file descriptor and destroy the stream.
-     *
+     * @brief Close the socket and destroy the stream.
      */
     ~TCPStream();
 
-    /**
-     * @brief Get the remote port of this connection.
-     *
-     * @return port number
-     */
-    inline uint16_t get_peer_port() const
+    // Non-copyable, movable.
+    TCPStream(const TCPStream&) = delete;
+    TCPStream& operator=(const TCPStream&) = delete;
+    TCPStream(TCPStream&&) = default;
+    TCPStream& operator=(TCPStream&&) = default;
+
+    /// Remote port of this connection.
+    [[nodiscard]] uint16_t get_peer_port() const
     {
         return peer_port_;
     }
 
-    /**
-     * @brief Get the remote IP address of this connection.
-     *
-     * @return the IP address as a string
-     */
-    inline const std::string& get_peer_ip() const
+    /// Remote IP address of this connection.
+    [[nodiscard]] const std::string& get_peer_ip() const
     {
         return peer_ip_;
     }
@@ -55,50 +56,56 @@ public:
      * @brief Send a data buffer.
      *
      * @param buffer pointer to the data buffer
-     * @param len size of the data to transmit in bytes
-     * @return size of data that was written, or -1 on error
+     * @param len    number of bytes to transmit
+     * @return number of bytes written, or a NetError on failure
      */
-    ssize_t send(const char* buffer, size_t len);
+    [[nodiscard]] std::expected<detail::ssize_t, NetError> send(const char* buffer, size_t len);
 
     /**
-     * @brief Receive data from the peer and copy it to a buffer.
-     *
-     * @param buffer pointer to the data buffer
-     * @param len maximum amount of data to read
-     * @return the number of bytes read, 0 if EOF reached, -1 on error
+     * @brief Convenience overload - send a string.
      */
-    ssize_t receive(char* buffer, size_t len);
-
-    /**
-     * @brief Convenience function to send a string.
-     *
-     * @param msg string to send
-     * @return size of data that was written, or -1 on error
-     */
-    inline ssize_t send(const std::string& msg)
+    [[nodiscard]] std::expected<detail::ssize_t, NetError> send(const std::string& msg)
     {
         return send(msg.c_str(), msg.size());
     }
 
     /**
-     * @brief Receive data and put it into a string.
+     * @brief Non-exact read: returns as soon as any data is available,
+     *        which may be fewer bytes than `len`.
      *
-     * @param msg target string
+     * @param buffer destination buffer (at least `len` bytes)
+     * @param len    maximum number of bytes to read
+     * @return number of bytes read (0 = connection closed), or a NetError
      */
-    void receive(std::string& msg);
+    [[nodiscard]] std::expected<detail::ssize_t, NetError> receive(char* buffer, size_t len);
+
+    /**
+     * @brief Exact read: blocks until exactly `len` bytes have arrived.
+     *
+     * @param buffer destination buffer (at least `len` bytes)
+     * @param len    exact number of bytes to read
+     * @return `true` on success, or a NetError on connection close / IO error
+     */
+    [[nodiscard]] std::expected<void, NetError> receive_exact(char* buffer, size_t len);
+
+    /**
+     * @brief Read available data and append it to `msg`.
+     *        Loops until fewer than the internal buffer size bytes arrive
+     *        (i.e. no more data is immediately pending).
+     *
+     * @param msg target string - data is *appended*
+     * @return `void` on success, or a NetError on failure
+     */
+    [[nodiscard]] std::expected<void, NetError> receive(std::string& msg);
 
 private:
     TCPStream() = default;
-    TCPStream(const TCPStream& stream) = delete;
-    TCPStream(int fd, void* address_in);
+    TCPStream(detail::socket_t fd, void* address_in);
 
 private:
-    int fd_;              // Socket file descriptor
-    uint16_t peer_port_;  // Remote port for this connection
-    std::string peer_ip_; // Remote IP for this connection
+    detail::socket_t fd_ = detail::k_invalid_socket;
+    uint16_t peer_port_{};
+    std::string peer_ip_;
 };
 
-} // namespace net
-} // namespace kb
-
-#endif
+} // namespace kb::net

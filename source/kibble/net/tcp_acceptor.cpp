@@ -1,100 +1,153 @@
 #include "kibble/net/tcp_acceptor.h"
+#include "kibble/net/impl/wsa_guard.h"
 #include "kibble/net/tcp_stream.h"
 
-#if defined(K_PLATFORM_LINUX)
-
-#include <arpa/inet.h>
 #include <cstring>
-#include <netdb.h>
+#if defined(K_PLATFORM_LINUX)
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#elif defined(K_PLATFORM_WINDOWS)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 
-namespace kb
+namespace kb::net
 {
-namespace net
+
+namespace
 {
+
+inline bool socket_is_invalid(detail::socket_t s)
+{
+    return s == detail::k_invalid_socket;
+}
+
+inline void close_socket(detail::socket_t s)
+{
+#if defined(K_PLATFORM_LINUX)
+    close(s);
+#elif defined(K_PLATFORM_WINDOWS)
+    closesocket(s);
+#endif
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// Construction / destruction
+// ---------------------------------------------------------------------------
 
 TCPAcceptor::TCPAcceptor(uint16_t port, const char* address)
-    : lfd_(0), port_(port), listening_(false), address_(address)
+    : lfd_(detail::k_invalid_socket), port_(port), listening_(false), address_(address)
 {
+    detail::WSAGuard::init();
 }
 
 TCPAcceptor::~TCPAcceptor()
 {
-    if (lfd_)
+    if (!socket_is_invalid(lfd_))
     {
-        close(lfd_);
+        close_socket(lfd_);
     }
 }
 
-bool TCPAcceptor::start()
+// ---------------------------------------------------------------------------
+// start()
+// ---------------------------------------------------------------------------
+
+std::expected<void, NetError> TCPAcceptor::start()
 {
-    // If already listening, return
     if (listening_)
     {
-        return 0;
+        return {}; // idempotent
     }
 
-    // Create a listening socket
-    lfd_ = socket(PF_INET, SOCK_STREAM, 0);
+    lfd_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (socket_is_invalid(lfd_))
+    {
+        return std::unexpected(NetError::current("socket()"));
+    }
 
-    sockaddr_in address;
-    memset(&address, 0, sizeof(address));
-    address.sin_family = PF_INET;
+    // Allow fast server restarts without waiting for TIME_WAIT to expire.
+#if defined(K_PLATFORM_LINUX)
+    int optval = 1;
+    setsockopt(lfd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+#elif defined(K_PLATFORM_WINDOWS)
+    BOOL optval = TRUE;
+    setsockopt(lfd_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&optval), sizeof(optval));
+#endif
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
     address.sin_port = htons(port_);
     if (!address_.empty())
     {
-        inet_pton(PF_INET, address_.c_str(), &address.sin_addr);
+        inet_pton(AF_INET, address_.c_str(), &address.sin_addr);
     }
     else
     {
         address.sin_addr.s_addr = INADDR_ANY;
     }
 
-    int optval = 1;
-    setsockopt(lfd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-
-    int result = bind(lfd_, reinterpret_cast<sockaddr*>(&address), sizeof(address));
-    if (result != 0)
+    if (bind(lfd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0)
     {
-        perror("bind() failed");
-        return false;
+        auto err = NetError::current("bind()");
+        close_socket(lfd_);
+        lfd_ = detail::k_invalid_socket;
+        return std::unexpected(std::move(err));
     }
 
-    result = listen(lfd_, 5);
-    if (result != 0)
+    if (listen(lfd_, 5) != 0)
     {
-        perror("listen() failed");
-        return false;
+        auto err = NetError::current("listen()");
+        close_socket(lfd_);
+        lfd_ = detail::k_invalid_socket;
+        return std::unexpected(std::move(err));
     }
 
     listening_ = true;
-    return true;
+    return {};
 }
 
-TCPStream* TCPAcceptor::accept()
+// ---------------------------------------------------------------------------
+// accept()
+// ---------------------------------------------------------------------------
+
+std::expected<std::unique_ptr<TCPStream>, NetError> TCPAcceptor::accept()
 {
     if (!listening_)
     {
-        return nullptr;
+#if defined(K_PLATFORM_LINUX)
+        return std::unexpected(NetError{ENOTCONN, "accept()"});
+#elif defined(K_PLATFORM_WINDOWS)
+        return std::unexpected(NetError{WSAENOTCONN, "accept()"});
+#endif
     }
 
-    sockaddr_in address;
-    socklen_t len = sizeof(address);
-    memset(&address, 0, sizeof(address));
-    int fd = ::accept(lfd_, reinterpret_cast<sockaddr*>(&address), &len);
-    if (fd < 0)
+#if defined(K_PLATFORM_LINUX)
+    using socklen = socklen_t;
+#elif defined(K_PLATFORM_WINDOWS)
+    using socklen = int;
+#endif
+
+    sockaddr_in address{};
+    socklen len = sizeof(address);
+    detail::socket_t fd = ::accept(lfd_, reinterpret_cast<sockaddr*>(&address), &len);
+
+    if (socket_is_invalid(fd))
     {
-        perror("accept() failed");
-        return nullptr;
+        return std::unexpected(NetError::current("accept()"));
     }
 
-    return new TCPStream(fd, &address);
+    // TCPStream constructor is private; use a friend-accessible helper via make_unique equivalent.
+    // Since TCPStream's constructor is private and TCPAcceptor is a friend, we construct directly.
+    return std::unique_ptr<TCPStream>(new TCPStream(fd, &address));
 }
 
-} // namespace net
-} // namespace kb
-
-#endif
+} // namespace kb::net

@@ -12,13 +12,13 @@ NetSink::~NetSink()
     {
         // Notify server before closing connection
         on_destroy_(*stream_);
-        delete stream_;
+        delete stream_.release();
     }
 }
 
 void NetSink::submit(const LogEntry& e, const ChannelPresentation& p)
 {
-    stream_->send(formatter_->format_string(e, p));
+    (void)stream_->send(formatter_->format_string(e, p));
 }
 
 void NetSink::on_attach(const Channel& chan)
@@ -30,8 +30,14 @@ bool NetSink::connect(const std::string& server, uint16_t port)
 {
     port_ = port;
     server_ = server;
-    stream_ = net::TCPConnector::connect(server_, port_);
-    return (stream_ != nullptr);
+    auto result = net::TCPConnector::connect(server_, port_);
+    if (result)
+    {
+        stream_ = std::move(*result);
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace kb::log

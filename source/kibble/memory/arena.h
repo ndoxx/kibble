@@ -265,6 +265,10 @@ public:
             // new[] operator stores the number of instances in the first 4 bytes and
             // returns a pointer to the address right after, we emulate this behavior here.
             void* ptr = allocate(sizeof(T) * N + sizeof(SizeType), alignment, sizeof(SizeType), file, line);
+            if (ptr == nullptr)
+            {
+                return nullptr;
+            }
             *static_cast<SizeType*>(ptr) = SizeType(N);
 
             // First object starts right after

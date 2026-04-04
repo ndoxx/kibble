@@ -63,7 +63,7 @@ public:
 private:
     uint16_t port_;
     std::string server_;
-    net::TCPStream* stream_ = nullptr;
+    std::unique_ptr<net::TCPStream> stream_;
     AttachCallback on_attach_ = [](net::TCPStream&, const Channel&) {};
     DestroyCallback on_destroy_ = [](net::TCPStream&) {};
 };

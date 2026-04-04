@@ -185,34 +185,6 @@ inline void split_string(const std::string& str, Container& cont, char delim = '
 }
 
 /**
- * @brief Base64-encode some data.
- *
- * @param data
- * @param size
- * @return std::string
- */
-std::string base64_encode(const char* data, size_t size);
-
-/**
- * @brief Base64-encode a string.
- *
- * @param data
- * @return std::string
- */
-inline std::string base64_encode(const std::string& data)
-{
-    return base64_encode(data.data(), data.size());
-}
-
-/**
- * @brief Decode a Base64-encoded string.
- *
- * @param data
- * @return std::string
- */
-std::string base64_decode(const std::string& data);
-
-/**
  * @brief Concatenate multiple arguments of different types into a string.
  *
  * @tparam Args types of arguments

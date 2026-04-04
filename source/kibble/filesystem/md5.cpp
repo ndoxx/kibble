@@ -123,7 +123,7 @@ void md5::finish()
     length_ += head_;
 
     /*
-        Merkle–Damgård length padding / strengthening
+        Merkle-Damgård length padding / strengthening
 
         The total length to process can exceed k_block_size when head is initially
         between 56 and 64 bytes. This is why buffer_ has a size of two times k_block_size,

@@ -5,6 +5,7 @@
 #include "kibble/net/tcp_acceptor.h"
 #include "kibble/net/tcp_connector.h"
 #include "kibble/net/tcp_stream.h"
+#include "kibble/net/formatter.h"
 
 #include <thread>
 
@@ -24,7 +25,6 @@ int main(int argc, char** argv)
     Channel chan_server(Severity::Verbose, "server", "srv", kb::col::darkred);
     chan_server.attach_sink(console_sink);
 
-#if defined(K_PLATFORM_LINUX)
     // Start a TCP server on a new thread. This could as well be in another application on the same machine, or in a
     // remote machine in Zimbabwe, it does not matter.
     std::thread server([&chan_server]() {
@@ -46,53 +46,46 @@ int main(int argc, char** argv)
 
         // Accept the first connection
         // This is a blocking call
-        auto* a_stream = acceptor.accept();
-        klog(chan_server).info("Connection accepted");
+        auto result = acceptor.accept();
+        if (result)
+        {
+            auto a_stream = std::move(*result);
+            klog(chan_server).info("Connection accepted");
 
-        // The stream can work with generic char* buffers, but for the sake of the example, we are going to use the
-        // function that is specialized for strings.
-        // This is a blocking call
-        a_stream->receive(buf);
+            // The stream can work with generic char* buffers, but for the sake of the example, we are going to use the
+            // function that is specialized for strings.
+            // This is a blocking call
+            (void)a_stream->receive(buf);
 
-        klog(chan_server).verbose("Received: \"{}\"", buf);
-
-        // Cleanup
-        delete a_stream;
+            klog(chan_server).verbose("Received: \"{}\"", buf);
+        }
     });
 
     // Now we connect to the server using the same port number
     // There is no need to instantiate TCPConnector, this is a stateless static class
-    auto* c_stream = net::TCPConnector::connect("localhost", 9876);
-
-    // If the connection is not successful, no stream is returned
-    if (c_stream == nullptr)
+    auto result = net::TCPConnector::connect("localhost", 9876);
+    if (result)
     {
-        klog(chan_client).error("Cannot connect to server");
-        server.join();
-        return 0;
+        auto c_stream = std::move(*result);
+
+        // We made it here, so everything went fine
+        klog(chan_client).info("Successfully connected to server, sending message");
+        // Let's send some data to the server
+        auto sz = c_stream->send("hello there!");
+
+        if (!sz)
+        {
+            klog(chan_client).error("write error: {}", sz.error());
+        }
     }
-
-    // We made it here, so everything went fine
-    klog(chan_client).info("Successfully connected to server, sending message");
-    // Let's send some data to the server
-    auto sz = c_stream->send("hello there!");
-
-    if (sz == -1)
+    else
     {
-        klog(chan_client).error("write error");
+        // If the connection is not successful, no stream is returned
+        klog(chan_client).error("Cannot connect to server: {}", result.error());
     }
 
     // At this point, we're past the blocking call to receive() server-side, so the thread is joinable
     server.join();
-
-    // Cleanup
-    delete c_stream;
-
-#else
-
-    klog(chan_server).error("Socket implementation only exists for Linux");
-
-#endif
 
     return 0;
 }
