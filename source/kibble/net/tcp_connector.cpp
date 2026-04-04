@@ -5,6 +5,7 @@
 #include <cstring>
 #if defined(K_PLATFORM_LINUX)
 #include <arpa/inet.h>
+#include <cerrno>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
