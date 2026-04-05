@@ -100,7 +100,7 @@ std::string make_ws_key()
  * @brief Blocking TCP client that speaks raw WebSocket frames.
  *
  * Wraps a POSIX / Winsock socket. All sends/receives are synchronous.
- * Intended only for tests — no error-recovery logic.
+ * Intended only for tests - no error-recovery logic.
  */
 class RawClient
 {
@@ -222,7 +222,7 @@ public:
     /**
      * @brief Build and send a frame with the mask bit cleared (invalid: client
      *        frames must always be masked per RFC 6455 §5.3).  Used to test
-     *        that the server does NOT reject unmasked frames — the spec says
+     *        that the server does NOT reject unmasked frames - the spec says
      *        servers MUST close, but our implementation silently accepts them
      *        (common permissive behaviour). Adjust if your policy differs.
      */
@@ -238,7 +238,7 @@ public:
     }
 
     /**
-     * @brief Send a frame with one or more RSV bits set — must be rejected.
+     * @brief Send a frame with one or more RSV bits set - must be rejected.
      */
     void send_rsv_frame(uint8_t opcode, uint8_t rsv_bits, const std::string& payload)
     {
@@ -287,7 +287,7 @@ public:
         }
         else
         {
-            // 64-bit length — not needed in our tests
+            // 64-bit length - not needed in our tests
             FAIL("recv_text_frame: 64-bit payload length not supported in this helper");
         }
 
@@ -596,7 +596,7 @@ TEST_CASE("Non-localhost Origin produces a WSWarning, not an error", "[handshake
 
     RawClient client(fix.port);
     client.do_handshake("http://evil.example.com");
-    // Consume the greeting-less stream — send a close so the server tears down.
+    // Consume the greeting-less stream - send a close so the server tears down.
     client.send_frame(0x08, "\x03\xe8"); // close, code 1000
 
     server.get();
@@ -726,7 +726,7 @@ TEST_CASE("Large message (>125 bytes, 16-bit length field) round-trip", "[messag
 {
     ServerFixture fix;
 
-    // 300-byte payload — exercises the 16-bit extended-length path.
+    // 300-byte payload - exercises the 16-bit extended-length path.
     const std::string big(300, 'X');
 
     auto server = fix.run_server([&](auto ws_result, auto /*warning*/) {
@@ -843,7 +843,7 @@ TEST_CASE("Ping interleaved with fragmented data is handled correctly", "[fragme
     client.send_frame(0x00, "PartTwo", true);  // last fragment
     // Consume the pong the server sends back.
     // The pong frame: opcode 0x0A, FIN set, unmasked, payload "ping payload"
-    // We can just drain a few bytes — exact pong reading is not critical here.
+    // We can just drain a few bytes - exact pong reading is not critical here.
     client.recv_some(64);
 
     server.get();
@@ -859,7 +859,7 @@ TEST_CASE("Ping frame triggers an automatic Pong", "[control]")
 
     auto server = fix.run_server([](auto ws_result, auto /*warning*/) {
         REQUIRE(ws_result.has_value());
-        // Block in receive_message — the ping/pong will be handled internally.
+        // Block in receive_message - the ping/pong will be handled internally.
         // We send a text frame after so receive_message can return.
         std::string payload;
         auto op = (*ws_result)->receive_message(payload);
@@ -1011,7 +1011,7 @@ TEST_CASE("Fragmented control frame is rejected", "[protocol]")
 
     RawClient client(fix.port);
     client.do_handshake();
-    // Ping with FIN=0 — invalid.
+    // Ping with FIN=0 - invalid.
     client.send_frame(0x09, "frag ping", /*fin=*/false);
 
     server.get();
@@ -1032,7 +1032,7 @@ TEST_CASE("Control frame with payload > 125 bytes is rejected", "[protocol]")
     RawClient client(fix.port);
     client.do_handshake();
 
-    // Craft a ping with 126-byte payload — must use the 16-bit length form.
+    // Craft a ping with 126-byte payload - must use the 16-bit length form.
     const std::string big_ping(126, 'P');
     std::vector<char> frame;
     frame.push_back(static_cast<char>(0x89u));        // FIN + ping (0x09)
@@ -1091,7 +1091,7 @@ TEST_CASE("WebSocketStream destructor sends a close frame", "[teardown]")
 
     auto server = fix.run_server([](auto ws_result, auto /*warning*/) {
         REQUIRE(ws_result.has_value());
-        // Let ws_result go out of scope immediately — destructor fires.
+        // Let ws_result go out of scope immediately - destructor fires.
     });
 
     RawClient client(fix.port);
