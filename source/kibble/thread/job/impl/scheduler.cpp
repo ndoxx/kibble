@@ -19,7 +19,15 @@ Scheduler::Scheduler(JobSystem& js) : js_(js)
 
 void Scheduler::dispatch(Job* job)
 {
-    std::size_t& rr = round_robin_[js_.this_thread_id()];
+    tid_t thread_id = js_.this_thread_id();
+
+    // If this function was called from another unrelated thread, default to 0.
+    if (thread_id == k_invalid_thread_id)
+    {
+        thread_id = 0;
+    }
+
+    std::size_t& rr = round_robin_[thread_id];
 
     // The following code should be branchless (once optimized by the compiler)
     bool stealable = (job->meta.worker_affinity & (1 << k_stealable_bit)) >> k_stealable_bit;

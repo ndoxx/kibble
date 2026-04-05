@@ -1,6 +1,7 @@
 #include "kibble/logger/formatters/monochrome_terminal_formatter.h"
 #include "kibble/logger/channel.h"
 #include "kibble/logger/entry.h"
+#include "kibble/thread/job/job_meta.h"
 
 #include "fmt/format.h"
 #include <array>
@@ -42,7 +43,7 @@ void MonochromeTerminalFormatter::print(const LogEntry& e, const ChannelPresenta
 
     fmt::print("[{}] ", k_icons[size_t(e.severity)]);
 
-    if (e.thread_id != 0xffffffff)
+    if (e.thread_id != kb::th::k_invalid_thread_id)
     {
         fmt::print("T{}:", e.thread_id);
     }

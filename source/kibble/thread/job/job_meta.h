@@ -11,9 +11,10 @@ namespace kb::th
 using tid_t = uint32_t;
 using worker_affinity_t = uint32_t;
 
-[[maybe_unused]] static constexpr uint32_t k_stealable_bit = 8;
-[[maybe_unused]] static constexpr uint32_t k_balance_bit = 9;
-[[maybe_unused]] static constexpr uint32_t k_tid_hint_mask = 0xff;
+[[maybe_unused]] static inline constexpr uint32_t k_stealable_bit = 8;
+[[maybe_unused]] static inline constexpr uint32_t k_balance_bit = 9;
+[[maybe_unused]] static inline constexpr uint32_t k_tid_hint_mask = 0xff;
+[[maybe_unused]] static inline constexpr uint32_t k_invalid_thread_id = 0xffffffff;
 
 /**
  * @brief Encode worker affinity

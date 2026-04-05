@@ -402,6 +402,17 @@ Monitor& JobSystem::get_monitor()
     return internal_->monitor;
 }
 
+tid_t JobSystem::this_thread_id() const
+{
+    auto findit = thread_ids_.find(std::this_thread::get_id());
+    if (findit != thread_ids_.end())
+    {
+        return findit->second;
+    }
+
+    return k_invalid_thread_id;
+}
+
 void JobSystem::abort()
 {
     // Join all workers as fast as possible

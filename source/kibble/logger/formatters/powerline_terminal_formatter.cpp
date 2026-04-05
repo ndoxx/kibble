@@ -2,6 +2,7 @@
 #include "kibble/cli/terminal.h"
 #include "kibble/logger/channel.h"
 #include "kibble/logger/entry.h"
+#include "kibble/thread/job/job_meta.h"
 
 #include "fmt/color.h"
 #include "fmt/format.h"
@@ -43,7 +44,7 @@ void PowerlineTerminalFormatter::print(const LogEntry& e, const ChannelPresentat
     auto sev_color = k_severity_color[size_t(e.severity)];
     auto tag_color = to_rgb(p.color);
 
-    if (e.thread_id != 0xffffffff)
+    if (e.thread_id != kb::th::k_invalid_thread_id)
     {
         fmt::print("{}",
                    fmt::styled(fmt::format(fmt::runtime("T{}\u250a{:6.6f}"), e.thread_id, ts), fmt::bg(sev_color)));

@@ -2,6 +2,7 @@
 #include "kibble/cli/terminal.h"
 #include "kibble/logger/channel.h"
 #include "kibble/logger/entry.h"
+#include "kibble/thread/job/job_meta.h"
 
 #include "fmt/color.h"
 #include "fmt/format.h"
@@ -62,7 +63,7 @@ void VSCodeTerminalFormatter::print(const LogEntry& e, const ChannelPresentation
 
     float ts = std::chrono::duration_cast<std::chrono::duration<float>>(e.timestamp).count();
 
-    if (e.thread_id != 0xffffffff)
+    if (e.thread_id != kb::th::k_invalid_thread_id)
     {
         fmt::print("T{}:", e.thread_id);
     }

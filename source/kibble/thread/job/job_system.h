@@ -236,17 +236,14 @@ public:
         return config_;
     }
 
-    /// Get the tid of the current thread.
-    inline tid_t this_thread_id() const
-    {
-        return thread_ids_.at(std::this_thread::get_id());
-    }
-
     /// Get pointer to instrumentation session
     inline InstrumentationSession* get_instrumentation_session()
     {
         return instrumentor_;
     }
+
+    /// Get the tid of the current thread.
+    tid_t this_thread_id() const;
 
     /**
      * @brief Force workers to join, and execute essential work before shutdown
