@@ -64,10 +64,14 @@
 #include <stdlib.h> // _byteswap_* intrinsics
 #endif
 
+#if defined(__SSE2__) || (defined(_MSC_VER) && defined(_M_X64))
+#include <emmintrin.h> // SSE2 - __m128i
+#endif
 #if defined(__SSSE3__)
-#include <emmintrin.h> // SSE2  - __m128i
-#include <smmintrin.h> // SSE4.1
 #include <tmmintrin.h> // SSSE3 - _mm_shuffle_epi8
+#endif
+#if defined(__SSE4_1__)
+#include <smmintrin.h> // SSE4.1
 #endif
 
 #if defined(__AVX2__)
@@ -249,8 +253,7 @@ inline int16_t  bswap(int16_t x)  { return x; }
 inline int32_t  bswap(int32_t x)  { return x; }
 /// @internal @brief No-op on little-endian systems.
 inline int64_t  bswap(int64_t x)  { return x; }
-#if defined(__SSSE3__)
-/// @internal @brief No-op on little-endian systems.
+#if defined(__SSE2__) || (defined(_MSC_VER) && defined(_M_X64))
 inline __m128i  bswap(__m128i x)  { return x; }
 #endif
 #if defined(__AVX2__)
@@ -296,7 +299,7 @@ inline int64_t betolei64(int64_t x) { return detail::bswap(x); }
 // clang-format on
 
 // SIMD
-#if defined(__SSSE3__)
+#if defined(__SSE2__) || (defined(_MSC_VER) && defined(_M_X64))
 /**
  * @brief Reverses the byte order of a 128-bit SSE register, treating it as a
  *        contiguous 16-byte sequence. Byte 0 becomes byte 15 and vice versa.

@@ -45,11 +45,14 @@ set(KB_AVX2_FILES
 set(KB_BMI2_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/math/impl/morton_bmi2.cpp
 )
+
 set_source_files_properties(${KB_AVX2_FILES}
-    PROPERTIES COMPILE_FLAGS -mavx2
+    PROPERTIES COMPILE_OPTIONS
+        "$<IF:$<CXX_COMPILER_ID:MSVC>,/arch:AVX2,-mavx2>"
 )
 set_source_files_properties(${KB_BMI2_FILES}
-    PROPERTIES COMPILE_FLAGS -mbmi2
+    PROPERTIES COMPILE_OPTIONS
+        "$<IF:$<CXX_COMPILER_ID:MSVC>,/arch:AVX2,-mbmi2>"
 )
 
 # Baseline: SSE4.2, SSSE3, POPCNT
@@ -195,6 +198,12 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
         pthread
         atomic
         stdc++fs
+    )
+endif()
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    target_link_libraries(kibble
+        PRIVATE
+        ws2_32
     )
 endif()
 
