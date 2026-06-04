@@ -5,7 +5,6 @@
 
 // Self
 #define KIBBLE_NAME                     "@PROJECT_NAME@"
-#define KIBBLE_BUILD_TYPE               "@CMAKE_BUILD_TYPE@"
 #define KIBBLE_VERSION                  "@PROJECT_VERSION@"
 #define KIBBLE_VERSION_MAJOR            @PROJECT_VERSION_MAJOR@
 #define KIBBLE_VERSION_MINOR            @PROJECT_VERSION_MINOR@
@@ -21,7 +20,5 @@
 
 
 // Memory
-#define K_USE_MEM_AREA_MEMSET  @KB_MEM_AREA_MEMSET@
-#define K_USE_MEM_MARK_PADDING @KB_MEM_MARK_PADDING@
 [[maybe_unused]] static constexpr uint8_t k_area_memset_byte = 0x00;
 [[maybe_unused]] static constexpr uint8_t k_alignment_padding_mark = 0xd0;
