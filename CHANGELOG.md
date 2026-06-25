@@ -8,6 +8,12 @@
 <h3 align="center">Kibble::Changelog</h3>
 </div>
 
+# ver 1.3.2
+- Fixed all examples
+- Experimental URI parser (+ example, + unit test)
+- Experimental DP-based fuzzy string matcher and autocomplete engine (+ example, + unit test, + fuzz test)
+
+
 # ver 1.3.1
 - Base64 utils redesigned and moved to the `base64.h` header
 - SHA-1 implementation

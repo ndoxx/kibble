@@ -1,5 +1,5 @@
 #include "kibble/algorithm/optimization.h"
-#include "../tests/common/vec.h"
+#include "../tests/unit/common/vec.h"
 
 #include <iostream>
 

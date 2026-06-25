@@ -4,6 +4,7 @@
 #include "fmt/color.h"
 #include "fmt/core.h"
 #include <mutex>
+#include <thread>
 #include <unordered_set>
 
 using namespace kb;

@@ -42,6 +42,7 @@ https://www.markdownguide.org/basic-syntax/#reference-style-links
 - [About the project](#about-the-project)
   - [Kibble](#kibble)
   - [Feature list](#feature-list)
+    - [Experimental features](#experimental-features)
 - [Getting started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -160,6 +161,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * A precision chronometer with a simple interface
 * Multiple useful data structures, including sparse sets and sparse pools implementations
 
+
+### Experimental features
+* A lightweight URI parser
+* A DP-based fuzzy string matcher and autocompletion engine
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
@@ -241,6 +247,11 @@ Make sure you are in the `build` directory and have run the Conan install step a
 * Build all benchmarks:
   ```sh
   cmake --build . --config Release --target kibble_bench
+  ```
+
+* Build all fuzz tests:
+  ```sh
+  cmake --build . --config Release --target kibble_fuzz
   ```
 
 * You can run all unit tests with:

@@ -20,6 +20,7 @@
 #include "fmt/core.h"
 #include "fmt/os.h"
 #include <iostream>
+#include <thread>
 
 using namespace kb::log;
 

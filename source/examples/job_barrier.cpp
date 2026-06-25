@@ -1,6 +1,7 @@
 #include "harness/job_example.h"
 
 #include "fmt/color.h"
+#include <thread>
 
 using namespace kb;
 

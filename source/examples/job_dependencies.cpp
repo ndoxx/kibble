@@ -1,5 +1,6 @@
 #include "harness/job_example.h"
 #include "kibble/assert/assert.h"
+#include <thread>
 
 using namespace kb;
 

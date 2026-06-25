@@ -5,7 +5,7 @@ script/perf_branch.sh
 script/perf_cache.sh
 script/perf_stat.sh
 source/research/
-source/tests/nuclear.cpp
+source/tests/quick/nuclear.cpp
 source/vendor/tmp/
 workspace.code-workspace
 NOTES.md

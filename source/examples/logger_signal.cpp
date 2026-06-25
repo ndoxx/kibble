@@ -9,6 +9,7 @@
 
 #include <csignal>
 #include <iostream>
+#include <thread>
 
 using namespace kb::log;
 

@@ -5,7 +5,7 @@
 #include "kibble/net/tcp_acceptor.h"
 #include "kibble/net/tcp_connector.h"
 #include "kibble/net/tcp_stream.h"
-#include "kibble/net/formatter.h"
+#include "kibble/net/formatters/error.h"
 
 #include <thread>
 
