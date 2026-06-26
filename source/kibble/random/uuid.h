@@ -36,6 +36,7 @@ class UUID
 {
 public:
     UUID() = default;
+    ~UUID() = default;
 
     /**
      * @brief Copy ctor
@@ -43,6 +44,13 @@ public:
      * @param other
      */
     UUID(const UUID& other);
+
+    /**
+     * @brief Move ctor (identical to copy, but noexcept for trait compliance)
+     *
+     * @param other
+     */
+    UUID(UUID&& other) noexcept;
 
     /**
      * @brief Builds a 128-bits UUID
@@ -111,6 +119,14 @@ public:
      * @return UUID&
      */
     UUID& operator=(const UUID& other);
+
+    /**
+     * @brief Move assignment operator (identical to copy, but noexcept for trait compliance)
+     *
+     * @param other
+     * @return UUID&
+     */
+    UUID& operator=(UUID&& other) noexcept;
 
     friend bool operator==(const UUID& lhs, const UUID& rhs);
     friend bool operator<(const UUID& lhs, const UUID& rhs);

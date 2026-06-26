@@ -60,6 +60,12 @@ UUID::UUID(const UUID& other)
     _mm_store_si128(reinterpret_cast<__m128i*>(data_), x);
 }
 
+UUID::UUID(UUID&& other) noexcept
+{
+    __m128i x = _mm_load_si128(reinterpret_cast<const __m128i*>(other.data_));
+    _mm_store_si128(reinterpret_cast<__m128i*>(data_), x);
+}
+
 UUID::UUID(uint64_t x, uint64_t y)
 {
     __m128i z = _mm_set_epi64x(static_cast<long long>(x), static_cast<long long>(y));
@@ -118,6 +124,18 @@ UUID UUID::from_upper_lower(uint64_t upper, uint64_t lower)
 }
 
 UUID& UUID::operator=(const UUID& other)
+{
+    if (&other == this)
+    {
+        return *this;
+    }
+
+    __m128i x = _mm_load_si128(reinterpret_cast<const __m128i*>(other.data_));
+    _mm_store_si128(reinterpret_cast<__m128i*>(data_), x);
+    return *this;
+}
+
+UUID& UUID::operator=(UUID&& other) noexcept
 {
     if (&other == this)
     {
