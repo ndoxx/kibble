@@ -100,6 +100,31 @@ bool FuzzyScorer::feasible() const noexcept
     return pi == plen;
 }
 
+/*
+    NOTE(ndx): DP formulation (corrected from the original 1D-scalar approach).
+
+    best[pj * clen + ci] = best score for aligning pattern[0..pj] with
+    pattern[pj] landing exactly at candidate index ci.
+    k_no_match where candidate[ci] != pattern[pj], or no valid alignment exists.
+
+    pred_of[pj * clen + ci] = the ci (predecessor candidate index) that
+    achieved best[pj][ci], used for traceback. UINT32_MAX at row 0 (no
+    predecessor) or in cells that were never reached.
+
+    The old code kept a single scalar best[pj] (the best score so far for
+    pattern row pj) and best_end[pj] (where it landed). That collapses the
+    entire row to one representative cell, so each row could only
+    extend from whichever placement of pattern[pj-1] happened to win first.
+    If a better, tighter run appeared later in the string (e.g. "doors"
+    appearing as a consecutive boundary-aligned substring after an earlier
+    scattered match of the same characters) the earlier winner's position
+    is already locked in and the later run can never reach it as a
+    predecessor. A full 2D table lets every candidate position compete
+    independently as a predecessor for every subsequent row, so the true
+    global optimum is always reachable. Tried to be smart, I'm not.
+
+    Complexity: O(plen * clen^2).
+*/
 int32_t FuzzyScorer::score()
 {
     if (pattern_lower_.empty())
@@ -119,99 +144,81 @@ int32_t FuzzyScorer::score()
 
     const uint32_t plen = static_cast<uint32_t>(pattern_lower_.size());
     const uint32_t clen = static_cast<uint32_t>(candidate_lower_.size());
+    const size_t table_size = static_cast<size_t>(plen) * clen;
 
-    /*
-       NOTE(ndx): DP formulation.
-       best[jj] = best score for matching pattern[0..jj], last char landing at best_end[jj].
-       pred_of[jj * clen + ci] = candidate index where pattern[jj-1] landed, for the
-       specific win that set best[jj] at candidate index ci. UINT32_MAX for jj==0
-       (no predecessor) or for cells that were never a winner.
+    best_.assign(table_size, ScoreWeights::k_no_match);
 
-       We sweep the candidate left to right once. Walking pj high to low within each ci
-       step keeps best[pj-1] at its pre-step value, so we never read a value that this
-       same step already wrote.
-
-       Traceback uses a flat [pj * clen + ci] matrix instead of a [pj]-only array because
-       best[pj-1] can improve more than once across the sweep (a later, higher-scoring
-       placement of an earlier pattern character). A [pj]-only pred array only remembers
-       the predecessor from the most recent improvement, so if best[pj-1] improves again
-       afterward, every pred[pj' > pj-1] that already locked onto the old best_end[pj-1]
-       goes stale and the trace drifts off the actual winning alignment. Indexing by
-       (pj, ci) means each cell is written exactly once, by the step that wins it, so a
-       later improvement elsewhere can't retroactively invalidate it.
-    */
-
-    best_.assign(plen, ScoreWeights::k_no_match);
-    best_end_.assign(plen, UINT32_MAX);
-
-    const size_t pred_size = static_cast<size_t>(plen) * clen;
-    if (pred_of_.size() < pred_size)
+    if (pred_of_.size() < table_size)
     {
-        pred_of_.resize(pred_size);
+        pred_of_.resize(table_size);
     }
-    std::fill(pred_of_.begin(), pred_of_.begin() + static_cast<ptrdiff_t>(pred_size), UINT32_MAX);
+    std::fill(pred_of_.begin(), pred_of_.begin() + static_cast<ptrdiff_t>(table_size), UINT32_MAX);
 
-    /*
-       NOTE(ndx): high_water tracks the highest pj that has ever had a match, not just
-       the highest pj that has improved its score. If we only advanced it on score
-       improvements, a slot could get matched without beating its current best, and the
-       early-exit check below would fire before all valid completions were considered.
-    */
-    uint32_t high_water = 0;
+    best_final_ci_ = UINT32_MAX;
 
+    // Fill row 0: pattern[0] matched at every qualifying candidate index.
     for (uint32_t ci = 0; ci < clen; ++ci)
     {
-        if (best_[0] != ScoreWeights::k_no_match)
+        if (candidate_lower_[ci] == pattern_lower_[0])
         {
-            if (clen - ci < plen - high_water - 1)
-            {
-                break;
-            }
+            best_[ci] = char_bonus(candidate_orig_, ci, UINT32_MAX, weights_);
         }
+    }
 
-        // Walk pj high to low so best[pj-1] stays at its pre-step value.
-        uint32_t pj_max = std::min(plen - 1, ci);
-        for (uint32_t pj = pj_max + 1; pj-- > 0;)
+    // Fill rows 1..plen-1.
+    for (uint32_t pj = 1; pj < plen; ++pj)
+    {
+        const size_t prev_row = static_cast<size_t>(pj - 1) * clen;
+        const size_t cur_row = static_cast<size_t>(pj) * clen;
+
+        for (uint32_t ci = pj; ci < clen; ++ci) // ci < pj can never fit pj+1 chars
         {
-            if (pattern_lower_[pj] != candidate_lower_[ci])
+            if (candidate_lower_[ci] != pattern_lower_[pj])
             {
                 continue;
             }
 
-            if (pj == 0)
+            int32_t best_here = ScoreWeights::k_no_match;
+            uint32_t best_pred = UINT32_MAX;
+
+            // Try every valid predecessor ci' < ci in the previous row.
+            for (uint32_t cip = 0; cip < ci; ++cip)
             {
-                int32_t s = char_bonus(candidate_orig_, ci, UINT32_MAX, weights_);
-                if (s > best_[0])
+                if (best_[prev_row + cip] == ScoreWeights::k_no_match)
                 {
-                    best_[0] = s;
-                    best_end_[0] = ci;
+                    continue;
                 }
-            }
-            else if (best_[pj - 1] != ScoreWeights::k_no_match && best_end_[pj - 1] < ci)
-            {
-                uint32_t prev_idx = best_end_[pj - 1];
-                uint32_t gap = ci - prev_idx - 1;
+                uint32_t gap = ci - cip - 1;
                 int32_t gap_cost =
                     std::min(static_cast<int32_t>(gap) * weights_.gap_penalty_per_char, weights_.max_gap_penalty);
-
-                int32_t s = best_[pj - 1] + char_bonus(candidate_orig_, ci, prev_idx, weights_) - gap_cost;
-
-                if (s > best_[pj])
+                int32_t s = best_[prev_row + cip] + char_bonus(candidate_orig_, ci, cip, weights_) - gap_cost;
+                if (s > best_here)
                 {
-                    bool first_match = (best_[pj] == ScoreWeights::k_no_match);
-                    best_[pj] = s;
-                    best_end_[pj] = ci;
-                    pred_of_[static_cast<size_t>(pj) * clen + ci] = prev_idx;
-                    if (first_match && pj > high_water)
-                    {
-                        high_water = pj;
-                    }
+                    best_here = s;
+                    best_pred = cip;
                 }
+            }
+
+            if (best_here != ScoreWeights::k_no_match)
+            {
+                best_[cur_row + ci] = best_here;
+                pred_of_[cur_row + ci] = best_pred;
             }
         }
     }
 
-    return best_[plen - 1];
+    // Find the best score in the last row and record which ci achieved it.
+    int32_t result = ScoreWeights::k_no_match;
+    const size_t last_row = static_cast<size_t>(plen - 1) * clen;
+    for (uint32_t ci = 0; ci < clen; ++ci)
+    {
+        if (best_[last_row + ci] > result)
+        {
+            result = best_[last_row + ci];
+            best_final_ci_ = ci;
+        }
+    }
+    return result;
 }
 
 void FuzzyScorer::fill_matched_indices(ScoredMatch& match) const
@@ -220,7 +227,6 @@ void FuzzyScorer::fill_matched_indices(ScoredMatch& match) const
     const uint32_t clen = static_cast<uint32_t>(candidate_lower_.size());
 
     // Empty pattern: score() returned 0 early without populating any DP state.
-    // best_end_ is empty, so reading best_end_[plen - 1] would be UB.
     if (plen == 0)
     {
         match.n_matched = 0;
@@ -239,9 +245,9 @@ void FuzzyScorer::fill_matched_indices(ScoredMatch& match) const
         return;
     }
 
-    // Walk pred_of[] from the last pattern char back to 0.
+    // Walk pred_of[] backwards from the winning cell in the last row.
     match.n_matched = plen;
-    uint32_t ci = best_end_[plen - 1];
+    uint32_t ci = best_final_ci_;
     for (uint32_t pj = plen; pj-- > 0;)
     {
         match.matched_indices[pj] = ci;

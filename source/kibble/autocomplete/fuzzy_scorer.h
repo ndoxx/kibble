@@ -114,9 +114,10 @@ private:
     ScoreWeights weights_;
 
     // DP working buffers, grown on demand, never shrunk.
-    std::vector<int32_t> best_;       ///< best[pj]. Best score for pattern[0..pj] so far.
-    std::vector<uint32_t> best_end_;  ///< best_end[pj]. Candidate index where that best score landed.
-    std::vector<uint32_t> pred_of_;   ///< pred_of[pj*clen + ci]. Predecessor ci for the (pj,ci) winning cell.
+    std::vector<int32_t> best_;     ///< best[pj*clen + ci]. Best score for pattern[0..pj] ending exactly at ci.
+    std::vector<uint32_t> pred_of_; ///< pred_of[pj*clen + ci]. Predecessor ci (for pattern[pj-1]) of that cell.
+    /// Which ci won at row plen-1 in the last score() call. Seeds fill_matched_indices().
+    uint32_t best_final_ci_ = UINT32_MAX;
     std::string pattern_lower_;       ///< Lowercased current pattern.
     std::string candidate_lower_;     ///< Lowercased current candidate.
     std::string_view candidate_orig_; ///< Original-case view, set by prepare(); used for char_bonus.
