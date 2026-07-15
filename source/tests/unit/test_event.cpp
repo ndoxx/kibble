@@ -1,156 +1,11 @@
-#include <string>
+#include "kibble/event/event_bus.h"
+
+#include <catch2/catch_all.hpp>
 #include <thread>
 #include <vector>
 
-#include "kibble/event/event_bus.h"
-#include "kibble/util/delegate.h"
-
-#include <catch2/catch_all.hpp>
-
 using namespace kb;
 using namespace kb::event;
-
-// I also test delegates here, why not.
-
-auto square(int x) -> int
-{
-    return x * x;
-}
-
-auto cube(int x) -> int
-{
-    return x * x * x;
-}
-
-float foo(float a, int* b, const size_t& c)
-{
-    float res = 0.f;
-    for (size_t ii = 0; ii < c; ++ii)
-    {
-        res += a * float(*b) / float(ii + 1);
-    }
-    return res;
-}
-
-TEST_CASE("It is possible to delegate a free function", "[delegate]")
-{
-    auto d = Delegate<int(int)>::create<&square>();
-    REQUIRE(d(2) == 4);
-    REQUIRE(d(5) == 25);
-}
-
-TEST_CASE("It is possible to delegate a free function", "[packaged-delegate]")
-{
-    auto d = Delegate<int(int)>::create<&square>();
-    PackagedDelegate pd(d);
-    pd.prepare(2);
-    REQUIRE(pd.execute<int>() == 4);
-    pd.prepare(5);
-    REQUIRE(pd.execute<int>() == 25);
-}
-
-TEST_CASE("Packaged delegates can store multiple arguments", "[packaged-delegate]")
-{
-    auto d = Delegate<float(float, int*, const size_t&)>::create<&foo>();
-
-    int b = 2;
-    size_t c = 3;
-    PackagedDelegate pd(d);
-    pd.prepare(0.1f, &b, c);
-
-    REQUIRE(pd.execute<float>() == foo(0.1f, &b, c));
-}
-
-TEST_CASE("It is possible to delegate a non-mutating member function", "[delegate]")
-{
-    auto str = std::string{"Hello"};
-    auto d = Delegate<size_t()>::create<&std::string::size>(&str);
-    REQUIRE(d() == 5);
-}
-
-TEST_CASE("It is possible to delegate a non-mutating member function", "[packaged-delegate]")
-{
-    auto str = std::string{"Hello"};
-    auto d = Delegate<size_t()>::create<&std::string::size>(&str);
-    PackagedDelegate pd(d);
-    REQUIRE(pd.execute<size_t>() == 5);
-}
-
-TEST_CASE("It is possible to delegate a mutating member function", "[delegate]")
-{
-    auto str = std::string{"Hello"};
-    auto d = Delegate<void(int)>::create<&std::string::push_back>(&str);
-    d('!');
-    REQUIRE(str.compare("Hello!") == 0);
-}
-
-TEST_CASE("It is possible to delegate a mutating member function", "[packaged-delegate]")
-{
-    auto str = std::string{"Hello"};
-    auto d = Delegate<void(int)>::create<&std::string::push_back>(&str);
-    PackagedDelegate pd(d);
-    pd.prepare('!');
-    pd();
-    REQUIRE(str.compare("Hello!") == 0);
-}
-
-TEST_CASE("Free delegate comparison should be reflexive", "[delegate]")
-{
-    auto d = Delegate<int(int)>::create<&square>();
-    REQUIRE(d == d);
-    REQUIRE_FALSE(d != d);
-}
-
-TEST_CASE("A delegate should be equal to another delegate pointing to the same free function", "[delegate]")
-{
-    auto d1 = Delegate<int(int)>::create<&square>();
-    [[maybe_unused]] auto d3 = Delegate<int(int)>::create<&cube>();
-    auto d2 = Delegate<int(int)>::create<&square>();
-    REQUIRE(d1 == d2);
-    REQUIRE_FALSE(d1 != d2);
-}
-
-TEST_CASE("A delegate should not be equal to another delegate pointing to a different free function", "[delegate]")
-{
-    auto d1 = Delegate<int(int)>::create<&square>();
-    [[maybe_unused]] auto d3 = Delegate<int(int)>::create<&square>();
-    auto d2 = Delegate<int(int)>::create<&cube>();
-    REQUIRE_FALSE(d1 == d2);
-    REQUIRE(d1 != d2);
-}
-
-TEST_CASE("Member delegate comparison should be reflexive", "[delegate]")
-{
-    auto str = std::string{"Hello"};
-    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str);
-    auto d2 = Delegate<size_t()>::create<&std::string::size>(&str);
-
-    REQUIRE(d1 == d2);
-    REQUIRE_FALSE(d1 != d2);
-}
-
-TEST_CASE("Member delegates with different instances should be different", "[delegate]")
-{
-    auto str1 = std::string{"Hello"};
-    auto str2 = std::string{"World"};
-    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str1);
-    auto d2 = Delegate<size_t()>::create<&std::string::size>(&str2);
-
-    REQUIRE_FALSE(d1 == d2);
-    REQUIRE(d1 != d2);
-}
-
-TEST_CASE("Member delegates with different member pointers should be different", "[delegate]")
-{
-    auto str = std::string{"Hello"};
-    // Here we need to have the same signature otherwise it wouldn't even compile (and we would
-    // know at compile-time that they are different)
-    auto d1 = Delegate<size_t()>::create<&std::string::size>(&str);
-    auto d2 = Delegate<size_t()>::create<&std::string::length>(&str);
-
-    REQUIRE_FALSE(d1 == d2);
-    REQUIRE(d1 != d2);
-}
 
 struct CollideEvent
 {
@@ -525,7 +380,7 @@ public:
         s_handle_count_2 = 0;
         s_event_bus_ptr = &event_bus;
     }
-    
+
     ~SelfUnsubFixture()
     {
         s_event_bus_ptr = nullptr;
@@ -537,7 +392,7 @@ protected:
     {
     public:
         int handle_count = 0;
-        
+
         bool handle_poke(const PokeEvent&)
         {
             handle_count++;
@@ -548,7 +403,7 @@ protected:
             return false;
         }
     };
-    
+
     // Test helper: free function that unsubscribes itself
     static bool handle_poke_self_unsub(const PokeEvent&)
     {
@@ -559,14 +414,14 @@ protected:
         }
         return false;
     }
-    
+
     // Test helper: observer that doesn't unsubscribe
     static bool handle_poke_observer(const PokeEvent&)
     {
         s_handle_count_1++;
         return false;
     }
-    
+
     // Test helper: another observer
     static bool handle_poke_observer_2(const PokeEvent&)
     {
@@ -585,21 +440,21 @@ protected:
 TEST_CASE_METHOD(SelfUnsubFixture, "Handler can unsubscribe itself during event firing", "[unsub][self-unsub]")
 {
     SelfUnsubHandler self_unsub_handler;
-    
+
     event_bus.subscribe<&handle_poke_observer>();
     event_bus.subscribe<&SelfUnsubHandler::handle_poke>(self_unsub_handler);
     event_bus.subscribe<&handle_poke_self_unsub>();
-    
+
     // First fire: all handlers should execute
     event_bus.fire<PokeEvent>({});
-    
+
     REQUIRE(s_handle_count_1 == 1);
     REQUIRE(self_unsub_handler.handle_count == 1);
     REQUIRE(s_self_unsub_count == 1);
-    
+
     // Second fire: self-unsubscribed handlers should NOT execute
     event_bus.fire<PokeEvent>({});
-    
+
     REQUIRE(s_handle_count_1 == 2);
     REQUIRE(self_unsub_handler.handle_count == 1);
     REQUIRE(s_self_unsub_count == 1);
@@ -610,27 +465,27 @@ TEST_CASE_METHOD(SelfUnsubFixture, "Multiple handlers can unsubscribe during eve
     SelfUnsubHandler handler1;
     SelfUnsubHandler handler2;
     SelfUnsubHandler handler3;
-    
+
     event_bus.subscribe<&handle_poke_observer>();
     event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler1);
     event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler2);
     event_bus.subscribe<&handle_poke_self_unsub>();
     event_bus.subscribe<&SelfUnsubHandler::handle_poke>(handler3);
     event_bus.subscribe<&handle_poke_observer_2>();
-    
+
     // First fire: all should execute
     event_bus.fire<PokeEvent>({});
-    
+
     REQUIRE(s_handle_count_1 == 1);
     REQUIRE(s_handle_count_2 == 1);
     REQUIRE(handler1.handle_count == 1);
     REQUIRE(handler2.handle_count == 1);
     REQUIRE(handler3.handle_count == 1);
     REQUIRE(s_self_unsub_count == 1);
-    
+
     // Second fire: only the observers should execute
     event_bus.fire<PokeEvent>({});
-    
+
     REQUIRE(s_handle_count_1 == 2);
     REQUIRE(s_handle_count_2 == 2);
     REQUIRE(handler1.handle_count == 1);
@@ -639,21 +494,22 @@ TEST_CASE_METHOD(SelfUnsubFixture, "Multiple handlers can unsubscribe during eve
     REQUIRE(s_self_unsub_count == 1);
 }
 
-TEST_CASE_METHOD(SelfUnsubFixture, "Self-unsubscribe works with deferred event processing", "[unsub][self-unsub][process]")
+TEST_CASE_METHOD(SelfUnsubFixture, "Self-unsubscribe works with deferred event processing",
+                 "[unsub][self-unsub][process]")
 {
     SelfUnsubHandler self_unsub_handler;
-    
+
     event_bus.subscribe<&handle_poke_observer>();
     event_bus.subscribe<&SelfUnsubHandler::handle_poke>(self_unsub_handler);
-    
+
     // Enqueue multiple events
     event_bus.enqueue<PokeEvent>({});
     event_bus.enqueue<PokeEvent>({});
     event_bus.enqueue<PokeEvent>({});
-    
+
     // Process all events
     bool processed = event_bus.dispatch();
-    
+
     REQUIRE(processed);
     REQUIRE(s_handle_count_1 == 3);
     REQUIRE(self_unsub_handler.handle_count == 1);
