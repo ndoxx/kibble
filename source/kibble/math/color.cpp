@@ -176,6 +176,7 @@ ColorRGBA ColorCIELab::to_rgba() const
 
 argb32_t modulate_alpha(argb32_t color, float alpha)
 {
+    alpha = std::clamp(alpha, 0.f, 1.f);
     uint32_t alpha_chan = std::clamp(uint32_t(alpha * float(color.a())), 0u, 255u);
     color.value = (color.value & ~argb32_t::k_amask) | (alpha_chan << argb32_t::k_ashift);
     return color;
