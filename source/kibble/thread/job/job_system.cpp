@@ -206,10 +206,6 @@ void JobSystem::shutdown()
         termination_status[idx] = workers_[idx].terminate_and_join();
     }
 
-    // We just killed all threads, including the logger thread
-    // So we must go back to sync mode
-    kb::log::Channel::set_async(nullptr);
-
     // Worker #0 is the foreground (main) thread, its termination status is always Normal
     for (size_t idx = 1; idx < termination_status.size(); ++idx)
     {
@@ -427,9 +423,6 @@ void JobSystem::abort()
     {
     }
 
-    // We just killed all threads, including the logger thread
-    // So we must go back to sync mode
-    kb::log::Channel::set_async(nullptr);
     klog(log_channel_).uid("JobSystem").warn("PANIC: Essential work transfered to caller thread.");
 
     // Execute essential work on the caller thread

@@ -131,11 +131,6 @@ int main(int argc, char** argv)
     auto* session = new kb::InstrumentationSession();
     js->set_instrumentation_session(session);
 
-    // Set logger in async mode by providing a JobSystem instance
-    // By default, thread #1 is used for logging, this is an optional argument of set_async()
-    // When the job system is killed, it will automatically switch the logger back to synchronous mode
-    Channel::set_async(js);
-
     // By default, a fatal error will terminate thread execution and shutdown the program
     // We don't need this behavior here so we disable it
     Channel::exit_on_fatal_error(false);

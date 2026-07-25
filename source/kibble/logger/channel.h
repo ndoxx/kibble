@@ -8,13 +8,11 @@
 #include <mutex>
 #include <vector>
 
-namespace kb::th
-{
-class JobSystem;
-}
-
 namespace kb::log
 {
+
+struct LogEntry;
+class Channel;
 
 /**
  * @brief Textual and visual information about a channel that can be used by formatters for styling
@@ -27,8 +25,17 @@ struct ChannelPresentation
     math::argb32_t color;
 };
 
+namespace detail
+{
+void dispatch_entry(const Channel& channel, const LogEntry& entry);
+}
+
 /**
  * @brief Decentralized message broker that directs all submitted log entries to the subscribed sinks
+ *
+ * Submission is always asynchronous: a single dedicated worker thread owned by the logging system
+ * pops entries off a lock-free MPSC queue and dispatches them to the sinks. Filtering (severity check,
+ * policies) happens on the calling thread; only sink I/O is deferred to the worker.
  *
  */
 class Channel
@@ -43,6 +50,19 @@ public:
      * @param tag_color The color used by relevant formatters to display this channel
      */
     Channel(Severity level, const std::string& full_name, const std::string& short_name, math::argb32_t tag_color);
+
+    /**
+     * @brief Block until every entry submitted so far has been dispatched
+     *
+     * This is required so that no queued entry can ever reference a destroyed channel: the
+     * worker thread only ever touches sinks_/presentation_ through a raw pointer captured at
+     * submit() time.
+     *
+     */
+    ~Channel();
+
+    /// @brief Call when no more channel is alive to kill the worker thread
+    static void shutdown();
 
     /**
      * @brief Add a sink to this channel
@@ -85,23 +105,6 @@ public:
     }
 
     /**
-     * @brief Transition the whole logging system to asynchronous mode
-     *
-     * In asynchronous mode, a given worker thread of the JobSystem will be in
-     * charge of dispatching log entries to the sinks.
-     *
-     * @details Sinks will end up performing kernel calls to do their job. A kernel
-     * call induces a kernel transition, which is slow, and tends to pollute the
-     * CPU cache. Asynchronous mode will make the code around the call site
-     * perform faster. Speed is only constrained by how fast we can push tasks
-     * in a worker's queue, which is fast enough.
-     *
-     * @param js JobSystem instance. If set to nullptr, the logger will go back to synchronous mode.
-     * @param worker thread ID of the worker that will get the logging tasks
-     */
-    static void set_async(th::JobSystem* js, uint32_t worker = 1);
-
-    /**
      * @brief Configure logging system to exit after a log entry with Fatal severity is dispatched
      *
      * @param value
@@ -112,39 +115,31 @@ public:
     }
 
     /**
-     * @brief Intercept POSIX signals and force JobSystem to finish pending logging tasks before the program ends
+     * @brief Intercept POSIX signals so the logging worker gets a chance to drain pending entries
+     * before the program ends
      *
-     * Asynchronous mode only.
-     *
-     * @details When the program crashes, we'd like to have a full log of what happened. When the program terminates,
-     * pending logging tasks will be dropped. This setting allows set_async() to register signal handlers that will
-     * be called when a signal is intercepted. They will force the JobSystem into "panic mode", during which all
-     * workers are stopped and joined, and the caller thread will sequentially execute "essential" jobs in their
-     * private queues. Logging tasks are marked essential, and are the only such tasks.
+     * @details Registers handlers for SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV and SIGTERM on first
+     * call with value set to true. The handler only flips an atomic flag; the worker thread notices it
+     * and drains whatever is left in the queue before stopping.
      *
      * @warning Highly experimental, certainly UB, may not work as intended.
      *
      * @param value
      */
-    static inline void intercept_signals(bool value = true)
-    {
-        s_intercept_signals_ = value;
-    }
+    static void intercept_signals(bool value = true);
 
     /**
-     * @brief Dispatch log entries to the sinks
+     * @brief Enqueue a log entry for dispatch to the sinks
      *
-     * Policies are executed first. If the entry passes the filter, it is propagated to the sinks.
-     * - In synchronous mode, an entry is submitted to each sink sequentially on the caller thread.
-     * Sink access is synchronized by a mutex.
-     * - In asynchronous mode, sink dispatch is deferred to a worker thread. Task submission is lock-free.
+     * Policies run synchronously on the calling thread. If the entry passes every policy, it is
+     * pushed onto the lock-free queue for the worker thread to hand off to the sinks.
      *
      * @param entry
      */
     void submit(struct LogEntry&& entry) const;
 
     /**
-     * @brief Force sinks to flush
+     * @brief Block until every entry submitted so far has been dispatched, then flush the sinks
      *
      */
     void flush() const;
@@ -156,10 +151,10 @@ private:
     Severity level_;
     mutable std::mutex sink_mutex_;
 
-    static th::JobSystem* s_js_;
-    static uint32_t s_worker_;
     static bool s_exit_on_fatal_error_;
     static bool s_intercept_signals_;
+
+    friend void detail::dispatch_entry(const Channel&, const LogEntry&);
 };
 
 } // namespace kb::log

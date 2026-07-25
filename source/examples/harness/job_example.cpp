@@ -84,7 +84,6 @@ int JobExample::run(int argc, char** argv)
     memory::HeapArea area(th::JobSystem::get_memory_requirements(scheme), &chan_memory);
 
     auto* js = new th::JobSystem(area, scheme, &chan_thread);
-    Channel::set_async(js);
 
     // Job system profiling
 #ifdef KB_JOB_SYSTEM_PROFILING
