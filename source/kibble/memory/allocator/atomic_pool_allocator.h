@@ -46,6 +46,7 @@ public:
     AtomicPoolAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size, std::size_t user_size,
                         std::size_t max_alignment)
     {
+        arena_name_ = arena->name_;
         node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size), int32_t(max_alignment));
         auto range = area.require_slab(node_size_ * MAX_NODES, arena);
         begin_ = static_cast<uint8_t*>(range.first);
@@ -128,8 +129,8 @@ public:
         std::size_t padding = alignment_padding(next + offset, alignment);
 
         K_ASSERT(padding + size <= node_size_,
-                 "[AtomicPoolAllocator] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
-                 "-> node size: {}\n  -> data size: {}\n  -> offset: {}\n  -> alignment: {}\n  -> padding: {}",
+                 "[AtomicPoolAllocator] [{}] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
+                 "-> node size: {}\n  -> data size: {}\n  -> offset: {}\n  -> alignment: {}\n  -> padding: {}", arena_name_,
                  padding + size, node_size_, size, offset, alignment, padding);
 
         // Mark padding area
@@ -178,6 +179,7 @@ private:
     uint8_t* begin_;
     uint8_t* end_;
     atomic_queue::AtomicQueue<uint8_t*, MAX_NODES, nullptr, true, true, false, false> free_queue_;
+    const char* arena_name_{nullptr};
 };
 
 } // namespace memory

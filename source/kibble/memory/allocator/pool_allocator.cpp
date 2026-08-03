@@ -14,6 +14,7 @@ namespace memory
 PoolAllocator::PoolAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t decoration_size,
                              std::size_t max_nodes, std::size_t user_size, std::size_t max_alignment)
 {
+    arena_name_ = arena->name_;
     node_size_ = math::round_up_pow2(int32_t(user_size + decoration_size + max_alignment), int32_t(max_alignment));
     max_nodes_ = max_nodes;
     auto range = area.require_slab(node_size_ * max_nodes_, arena);
@@ -28,7 +29,7 @@ void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
 
     if (next == nullptr)
     {
-        K_ASSERT(false, "[PoolAllocator] Out of memory!\n  -> max nodes: {}", max_nodes_);
+        K_ASSERT(false, "[PoolAllocator] [{}] Out of memory!\n  -> max nodes: {}", arena_name_, max_nodes_);
         return nullptr;
     }
 
@@ -36,9 +37,9 @@ void* PoolAllocator::allocate([[maybe_unused]] std::size_t size, std::size_t ali
     // Check if alignment is required. If so, find the next aligned memory address.
     std::size_t padding = alignment_padding(next + offset, alignment);
     K_ASSERT(padding + size <= node_size_,
-             "[PoolAllocator] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
+             "[PoolAllocator] [{}] Allocation size does not fit initial requirement.\n  -> requested size: {}\n  "
              "-> node size: {}\n  -> data size: {}\n  -> offset: {}\n  -> alignment: {}\n  -> padding: {}",
-             padding + size, node_size_, size, offset, alignment, padding);
+             arena_name_, padding + size, node_size_, size, offset, alignment, padding);
 
     // Mark padding area
 #ifdef K_USE_MEM_MARK_PADDING

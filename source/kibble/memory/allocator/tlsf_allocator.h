@@ -150,6 +150,7 @@ private:
     void* pool_{nullptr};
     const size_t pool_size_{0};
     size_t used_size_{0};
+    const char* arena_name_{nullptr};
 };
 
 } // namespace kb::memory

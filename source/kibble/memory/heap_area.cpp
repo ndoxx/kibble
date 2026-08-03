@@ -93,7 +93,7 @@ std::pair<void*, void*> HeapArea::require_slab(size_t size, const MemoryArenaBas
 
     head_ += size + padding;
 
-    items_.push_back({.name = (arena_base->name_ ? arena_base->name_ : "arena"),
+    items_.push_back({.name = arena_base->name_,
                       .begin = ptr_range.first,
                       .end = ptr_range.second,
                       .size = size + padding,
@@ -108,8 +108,8 @@ Size:      {}
 Padding:   {}
 Remaining: {}
 Address:   {:#x})",
-            (arena_base->name_ ? arena_base->name_ : "<Arena>"), su::human_size(size), su::human_size(padding),
-            su::human_size(free_size()), reinterpret_cast<uint64_t>(head_ + padding));
+            arena_base->name_, su::human_size(size), su::human_size(padding), su::human_size(free_size()),
+            reinterpret_cast<uint64_t>(head_ + padding));
 
     return ptr_range;
 }

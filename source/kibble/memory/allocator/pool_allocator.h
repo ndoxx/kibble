@@ -131,6 +131,7 @@ private:
     uint8_t* begin_;
     uint8_t* end_;
     Freelist free_list_;
+    const char* arena_name_{nullptr};
 };
 
 } // namespace memory

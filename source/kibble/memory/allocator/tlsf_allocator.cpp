@@ -53,6 +53,7 @@ size_t adjust_request_size(size_t size, size_t alignment)
 TLSFAllocator::TLSFAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t, size_t pool_size)
     : pool_size_(pool_size)
 {
+    arena_name_ = arena->name_;
     // We want to reserve enough memory for the control structure, the pool, and some leeway for its 8B alignment
     size_t mem_size = sizeof(Control) + alignof(long long) + pool_size_;
     std::pair<void*, void*> range = area.require_slab(mem_size, arena);
@@ -78,12 +79,14 @@ TLSFAllocator::TLSFAllocator(const MemoryArenaBase* arena, HeapArea& area, uint3
 
 void TLSFAllocator::create_pool(void* pool, std::size_t size)
 {
-    K_ASSERT(size_t(pool) % k_align_size == 0, "pool memory must be {}B aligned", k_align_size);
+    K_ASSERT(size_t(pool) % k_align_size == 0, "[TLSFAllocator] [{}] Pool memory must be {}B aligned", arena_name_,
+             k_align_size);
 
     const size_t pool_bytes = align_down(size - k_pool_overhead, k_align_size);
-    K_ASSERT(pool_bytes >= k_block_size_min && pool_bytes <= k_block_size_max,
-             "bad pool size.\n  -> minimum required: {}\n  -> maximum allowed: {}\n  -> requested: {}",
-             k_pool_overhead + k_block_size_min, (k_pool_overhead + k_block_size_max) / 256, pool_bytes);
+    K_ASSERT(
+        pool_bytes >= k_block_size_min && pool_bytes <= k_block_size_max,
+        "[TLSFAllocator] [{}] Bad pool size.\n  -> minimum required: {}\n  -> maximum allowed: {}\n  -> requested: {}",
+        arena_name_, k_pool_overhead + k_block_size_min, (k_pool_overhead + k_block_size_max) / 256, pool_bytes);
 
     /*
         Create the main free block. Offset the start of the block slightly
@@ -264,9 +267,9 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
     // Out of memory
     if (ptr == nullptr)
     {
-        K_ASSERT(false,
-                 "[TLSFAllocator] Out of memory!\n  -> requested size: {}\n    -> alignment: {}\n    -> remaining: {}",
-                 size, alignment, total_size() - used_size());
+        K_FAIL(
+            "[TLSFAllocator] [{}] Out of memory!\n  -> requested size: {}\n    -> alignment: {}\n    -> remaining: {}",
+            arena_name_, size, alignment, total_size() - used_size());
     }
 
     return ptr;
@@ -274,7 +277,8 @@ void* TLSFAllocator::allocate(std::size_t size, std::size_t alignment, std::size
 
 void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, std::size_t user_offset)
 {
-    K_ASSERT(user_offset <= alignment, "user offset bigger than alignment during aligned allocation");
+    K_ASSERT(user_offset <= alignment,
+             "[TLSFAllocator] [{}] User offset bigger than alignment during aligned allocation", arena_name_);
 
     /*
         NOTE(ndx): original implementation tries to align the block, but we
@@ -320,7 +324,8 @@ void* TLSFAllocator::allocate_aligned(std::size_t size, std::size_t alignment, s
 
         if (gap)
         {
-            K_ASSERT(gap >= min_gap, "gap size is too small: Minimum: {}, got: {}", min_gap, gap);
+            K_ASSERT(gap >= min_gap, "[TLSFAllocator] [{}] Gap size is too small: Minimum: {}, got: {}", arena_name_,
+                     min_gap, gap);
             block = control_->trim_free_leading(block, gap);
         }
 
@@ -350,7 +355,7 @@ void* TLSFAllocator::reallocate(void* ptr, std::size_t size, std::size_t alignme
     else
     {
         BlockHeader* block = BlockHeader::from_void_ptr(ptr);
-        K_ASSERT(!block->is_free(), "block already marked as free");
+        K_ASSERT(!block->is_free(), "[TLSFAllocator] [{}] Block already marked as free", arena_name_);
 
         BlockHeader* next = block->get_next();
         const size_t cursize = block->block_size();
@@ -390,7 +395,7 @@ void TLSFAllocator::deallocate(void* ptr)
     if (ptr)
     {
         BlockHeader* block = BlockHeader::from_void_ptr(ptr);
-        K_ASSERT(!block->is_free(), "block already marked as free");
+        K_ASSERT(!block->is_free(), "[TLSFAllocator] [{}] Block already marked as free", arena_name_);
 
         used_size_ -= block->block_size();
         block->mark_as_free();

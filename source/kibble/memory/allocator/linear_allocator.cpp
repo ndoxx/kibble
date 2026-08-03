@@ -12,6 +12,7 @@ namespace memory
 
 LinearAllocator::LinearAllocator(const MemoryArenaBase* arena, HeapArea& area, uint32_t, std::size_t size)
 {
+    arena_name_ = arena->name_;
     std::pair<void*, void*> range = area.require_slab(size, arena);
 
     begin_ = static_cast<uint8_t*>(range.first);
@@ -30,8 +31,8 @@ void* LinearAllocator::allocate(std::size_t size, std::size_t alignment, std::si
     // Out of memory
     if (current + padding + size > end_)
     {
-        K_ASSERT(false, "[LinearAllocator] Out of memory!\n  -> padded size: {}, exceeded by: {}", padding + size,
-                 (std::size_t(current) + padding + size) - std::size_t(end_));
+        K_ASSERT(false, "[LinearAllocator] [{}] Out of memory!\n  -> padded size: {}, exceeded by: {}", arena_name_,
+                 padding + size, (std::size_t(current) + padding + size) - std::size_t(end_));
         return nullptr;
     }
 

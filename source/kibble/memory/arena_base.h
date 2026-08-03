@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
+#include <string>
 
 namespace kb::memory
 {
@@ -12,7 +14,11 @@ namespace kb::memory
 class MemoryArenaBase
 {
 public:
-    MemoryArenaBase(const char* name);
+    /// @brief Max length of the debug name, including null terminator
+    static constexpr size_t k_max_name_len = 64;
+
+    MemoryArenaBase(const std::string& name);
+
     virtual ~MemoryArenaBase() = default;
 
     /// @brief Get total size in bytes
@@ -26,7 +32,7 @@ public:
     }
 
     /// @brief Arena debug name
-    const char* name_{nullptr};
+    char name_[k_max_name_len];
 };
 
 } // namespace kb::memory

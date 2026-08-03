@@ -56,7 +56,7 @@ public:
      * @param args the allocator's constructor arguments
      */
     template <typename... ArgsT>
-    MemoryArena(const char* name, HeapArea& area, ArgsT&&... args)
+    MemoryArena(const std::string& name, HeapArea& area, ArgsT&&... args)
         : MemoryArenaBase(name), allocator_(this, area, k_allocation_overhead, std::forward<ArgsT>(args)...)
     {
         if constexpr (policy::is_active_memory_tracking_policy<MemoryTrackerT>)

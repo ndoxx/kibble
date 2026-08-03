@@ -121,6 +121,7 @@ private:
     uint8_t* begin_;
     uint8_t* end_;
     uint32_t head_;
+    const char* arena_name_{nullptr};
 };
 
 } // namespace memory
