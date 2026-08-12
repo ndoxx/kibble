@@ -143,6 +143,11 @@ This library is under heavy development, and the API is subject to change. Use a
 * Mathematical optimization and graph algorithms
     - Generic stochastic descent optimizer with FDSA / SPSA support
     - Generic A* search implementation
+* Math expression parser (`kb::expr`)
+    - C++ port of [TinyExpr](https://github.com/codeplea/tinyexpr) (CodePlea), API redesigned for modern C++
+    - Compiles to a syntax tree with constant folding, evaluate as many times as needed
+    - Runtime variable binding, custom functions with compile-time arity deduction
+    - `std::expected`-based error reporting with position, kind and message
 * Constexpr string hashes and intern string system
     - User defined literal allows to write a full string in the source that will be hashed at compile-time
     - The internstring utility can parse sources and write all string hashes to a text file,
