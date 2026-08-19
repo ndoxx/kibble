@@ -8,6 +8,7 @@
 #include <chrono>
 #include <csignal>
 #include <functional>
+#include <stop_token>
 #include <thread>
 
 namespace kb::log
@@ -20,7 +21,7 @@ namespace
 {
 
 constexpr unsigned k_queue_capacity = 8192;
-constexpr auto k_idle_sleep = std::chrono::microseconds(200);
+// constexpr auto k_idle_sleep = std::chrono::microseconds(200);
 
 std::function<void(int)> g_panic_handler;
 
@@ -85,14 +86,17 @@ public:
     {
         queue_.push(std::move(qe));
         pushed_.fetch_add(1, std::memory_order_relaxed);
+        has_work_.test_and_set(std::memory_order_release);
+        has_work_.notify_one();
     }
 
     void wait_drained() const
     {
         uint64_t target = pushed_.load(std::memory_order_relaxed);
-        while (processed_.load(std::memory_order_acquire) < target)
+        uint64_t seen;
+        while ((seen = processed_.load(std::memory_order_acquire)) < target)
         {
-            std::this_thread::yield();
+            processed_.wait(seen, std::memory_order_acquire);
         }
     }
 
@@ -112,6 +116,11 @@ private:
 
     void run(std::stop_token stoken)
     {
+        std::stop_callback cb(stoken, [this] {
+            has_work_.test_and_set(std::memory_order_release);
+            has_work_.notify_one();
+        });
+
         QueuedEntry qe;
         while (true)
         {
@@ -119,6 +128,7 @@ private:
             {
                 detail::dispatch_entry(*qe.channel, qe.entry);
                 processed_.fetch_add(1, std::memory_order_release);
+                processed_.notify_all();
                 continue;
             }
 
@@ -127,13 +137,15 @@ private:
                 break;
             }
 
-            std::this_thread::sleep_for(k_idle_sleep);
+            has_work_.wait(false, std::memory_order_acquire); // block, no polling
+            has_work_.clear(std::memory_order_relaxed);
         }
     }
 
     atomic_queue::AtomicQueueB2<QueuedEntry> queue_;
     std::atomic<uint64_t> pushed_{0};
     std::atomic<uint64_t> processed_{0};
+    std::atomic_flag has_work_ = ATOMIC_FLAG_INIT;
     std::jthread thread_;
 };
 

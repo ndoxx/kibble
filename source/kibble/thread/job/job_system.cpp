@@ -344,20 +344,44 @@ void JobSystem::wait_until(const std::function<bool()>& condition)
     int64_t idle_time_us = 0;
 #endif
 
+    //     while (condition())
+    //     {
+    //         if (!workers_[this_thread_id()].foreground_work())
+    //         {
+    //             // There's nothing we can do, just wait. Some work may come to us.
+    // #ifdef KB_JOB_SYSTEM_PROFILING
+    //             microClock clk;
+    // #endif
+    //             shared_state_->cv_wake.notify_all(); // wake worker threads
+    //             std::this_thread::yield();           // allow this thread to be rescheduled
+    // #ifdef KB_JOB_SYSTEM_PROFILING
+    //             idle_time_us += clk.get_elapsed_time().count();
+    // #endif
+    //         }
+    //     }
+
+    auto& worker = workers_[this_thread_id()];
     while (condition())
     {
-        if (!workers_[this_thread_id()].foreground_work())
+        if (worker.foreground_work())
         {
-            // There's nothing we can do, just wait. Some work may come to us.
-#ifdef KB_JOB_SYSTEM_PROFILING
-            microClock clk;
-#endif
-            shared_state_->cv_wake.notify_all(); // wake worker threads
-            std::this_thread::yield();           // allow this thread to be rescheduled
-#ifdef KB_JOB_SYSTEM_PROFILING
-            idle_time_us += clk.get_elapsed_time().count();
-#endif
+            continue;
         }
+
+#ifdef KB_JOB_SYSTEM_PROFILING
+        microClock clk;
+#endif
+
+        std::unique_lock<std::mutex> lock(shared_state_->wake_mutex);
+        // Bounded wait: acts as a safety net against missed wakeups,
+        // but normally we return promptly because try_schedule()
+        // notifies cv_wake when new work appears.
+        shared_state_->cv_wake.wait_for(lock, std::chrono::microseconds(100),
+                                        [&worker, &condition]() { return worker.had_pending_jobs() || !condition(); });
+
+#ifdef KB_JOB_SYSTEM_PROFILING
+        idle_time_us += clk.get_elapsed_time().count();
+#endif
     }
 
 #ifdef KB_JOB_SYSTEM_PROFILING
