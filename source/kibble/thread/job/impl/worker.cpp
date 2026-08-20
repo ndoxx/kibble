@@ -6,9 +6,12 @@
 #include "kibble/thread/job/impl/job_graph.h"
 #include "kibble/thread/job/impl/monitor.h"
 #include "kibble/thread/job/job_system.h"
+#include "kibble/util/sanitizer.h"
+
+#ifdef KB_JOB_SYSTEM_PROFILING
 #include "kibble/time/clock.h"
 #include "kibble/time/instrumentation.h"
-#include "kibble/util/sanitizer.h"
+#endif
 
 #if defined(K_PLATFORM_LINUX)
 #include <pthread.h>

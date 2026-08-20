@@ -331,34 +331,26 @@ bool JobSystem::is_busy() const
     return shared_state_->pending.load(std::memory_order_acquire) > 0;
 }
 
-// NOTE(ndx): Instead of busy-waiting I tried
-//      std::unique_lock<std::mutex> lock(shared_state_->wait_mutex);
-//      shared_state_->cv_wait.wait(lock, [this]() { return !is_busy(); });
-// and in WorkerThread::execute() I do this after the fetch_sub:
-//      ss_.cv_wait.notify_one();
-// But it deadlocks (lost wakeups?)
+/*
+    NOTE(ndx): Instead of a yield-spinning, I tried bounded wait on another
+    condition variable / mutex, with workers notifying it at the end of
+    process(). Care was taken to lock/unlock the mutex with an empty lock guard
+    before notifying, to avoid lost wakeup races. I also had an atomic bool flagging
+    the main thread's waiting state, and had workers check that hint (order relaxed)
+    before notifying. It was slower.
+    Then, I tried a busy-spin-then-lock approach with no yield call but
+    busy _mm_pause instead. Statistics were comparable to original implementation,
+    but showed slight bimodality, and *maybe* a heavier tail.
+    Samples were taken from about 4k parallel render passes constructions
+    in my game engine.
+    I'm keeping the simpler yield-spin for now.
+*/
 void JobSystem::wait_until(const std::function<bool()>& condition)
 {
     // Do some work to assist other threads
 #ifdef KB_JOB_SYSTEM_PROFILING
     int64_t idle_time_us = 0;
 #endif
-
-    //     while (condition())
-    //     {
-    //         if (!workers_[this_thread_id()].foreground_work())
-    //         {
-    //             // There's nothing we can do, just wait. Some work may come to us.
-    // #ifdef KB_JOB_SYSTEM_PROFILING
-    //             microClock clk;
-    // #endif
-    //             shared_state_->cv_wake.notify_all(); // wake worker threads
-    //             std::this_thread::yield();           // allow this thread to be rescheduled
-    // #ifdef KB_JOB_SYSTEM_PROFILING
-    //             idle_time_us += clk.get_elapsed_time().count();
-    // #endif
-    //         }
-    //     }
 
     auto& worker = workers_[this_thread_id()];
     while (condition())
@@ -372,12 +364,8 @@ void JobSystem::wait_until(const std::function<bool()>& condition)
         microClock clk;
 #endif
 
-        std::unique_lock<std::mutex> lock(shared_state_->wake_mutex);
-        // Bounded wait: acts as a safety net against missed wakeups,
-        // but normally we return promptly because try_schedule()
-        // notifies cv_wake when new work appears.
-        shared_state_->cv_wake.wait_for(lock, std::chrono::microseconds(100),
-                                        [&worker, &condition]() { return worker.had_pending_jobs() || !condition(); });
+        shared_state_->cv_wake.notify_all();
+        std::this_thread::yield();
 
 #ifdef KB_JOB_SYSTEM_PROFILING
         idle_time_us += clk.get_elapsed_time().count();
