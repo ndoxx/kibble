@@ -174,6 +174,16 @@ ColorRGBA ColorCIELab::to_rgba() const
     return ColorRGBA{R, G, B, 1.f};
 }
 
+argb32_t lerp(argb32_t col1, argb32_t col2, float t)
+{
+    t = std::clamp(t, 0.f, 1.f);
+    auto lerp_chan = [t](uint32_t a, uint32_t b) -> uint32_t {
+        return uint32_t(std::roundf(float(a) + t * float(int32_t(b) - int32_t(a))));
+    };
+    return argb32_t::pack(lerp_chan(col1.r(), col2.r()), lerp_chan(col1.g(), col2.g()), lerp_chan(col1.b(), col2.b()),
+                          lerp_chan(col1.a(), col2.a()));
+}
+
 argb32_t modulate_alpha(argb32_t color, float alpha)
 {
     alpha = std::clamp(alpha, 0.f, 1.f);

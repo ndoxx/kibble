@@ -163,6 +163,16 @@ struct ColorCIELab
 // * Color transformations
 
 /**
+ * @internal
+ * @brief Linearly interpolates between two packed ARGB colors, channel by channel.
+ *
+ * @param col1 Start color (t = 0)
+ * @param col2 End color (t = 1)
+ * @param t Blend factor, clamped to [0, 1]
+ */
+argb32_t lerp(argb32_t col1, argb32_t col2, float t);
+
+/**
  * @brief Scale alpha channel of a packed ARGB color
  *
  * @param color Initial color
