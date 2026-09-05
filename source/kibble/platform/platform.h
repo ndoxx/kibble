@@ -54,13 +54,16 @@
 #endif
 
 // Compiler
+#if defined(_MSC_VER)
+#define K_COMPILER_MSVC
+#define K_COMPILER_NAME "msvc"
 #if defined(__clang__)
+#define K_COMPILER_CLANG_CL // clang-cl acting as MSVC (ABI/API compatible)
+#endif
+#elif defined(__clang__)
 #define K_COMPILER_CLANG
 #define K_COMPILER_NAME "clang"
 #elif defined(__GNUC__) || defined(__GNUG__)
 #define K_COMPILER_GCC
 #define K_COMPILER_NAME "gcc"
-#elif defined(_MSC_VER)
-#define K_COMPILER_MSVC
-#define K_COMPILER_NAME "msvc"
 #endif
