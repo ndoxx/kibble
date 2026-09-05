@@ -50,6 +50,9 @@ constexpr auto type_name_array()
 #if defined(K_COMPILER_CLANG)
     constexpr std::string_view prefix{"[T = "};
     constexpr std::string_view suffix{"]"};
+#elif defined(K_COMPILER_CLANG_CL)
+    constexpr std::string_view prefix{"[T = "};
+    constexpr std::string_view suffix{"]"};
 #elif defined(K_COMPILER_GCC)
     constexpr std::string_view prefix{"with T = "};
     constexpr std::string_view suffix{"]"};
